@@ -1,63 +1,34 @@
 set shell := ["bash", "-c"]
 
-# Default: list available recipes
 default:
-    @just --list
+  @just --list
 
-# Install Conan dependencies (debug profile)
-deps:
-    conan install . \
-        --output-folder=build/debug \
-        --profile=conan/profiles/debug \
-        --build=missing
+build:
+  make compile NATIVE=1
 
-# Install Conan dependencies (release profile)
-deps-release:
-    conan install . \
-        --output-folder=build/release \
-        --profile=conan/profiles/default \
-        --build=missing
-
-# Build (debug, with Conan toolchain)
-build: deps
-    cmake --preset debug
-    cmake --build --preset debug
-
-# Build (release)
-build-release: deps-release
-    cmake --preset release
-    cmake --build --preset release
-
-# Run tests
 test:
-    ctest --preset debug --output-on-failure
+  make test NATIVE=1
 
-# Run linters (clang-tidy)
 lint:
-    @if [ -f scripts/lint.sh ]; then ./scripts/lint.sh; \
-    else echo "No scripts/lint.sh found — enable ENABLE_CLANG_TIDY in CMake"; fi
+  make lint NATIVE=1
 
-# Format code (clang-format)
 format:
-    @if [ -f scripts/format.sh ]; then ./scripts/format.sh; \
-    else find include/ src/ tests/ -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i; fi
+  make format NATIVE=1
 
-# Check formatting without modifying files
 format-check:
-    @if [ -f scripts/format.sh ]; then ./scripts/format.sh --check; \
-    else find include/ src/ tests/ -name '*.cpp' -o -name '*.hpp' | xargs clang-format --dry-run --Werror; fi
+  make format.check NATIVE=1
 
-# Build with coverage instrumentation
-coverage: deps
-    cmake --preset coverage
-    cmake --build --preset coverage
-
-# Full CI build (release + warnings-as-errors)
-ci: deps-release
-    cmake --preset ci
-    cmake --build --preset ci
-    ctest --preset ci
-
-# Remove all build artifacts
 clean:
-    rm -rf build install
+  make clean
+
+start:
+  make docker.up
+
+status:
+  docker-compose ps
+
+benchmark:
+  make benchmark NATIVE=1
+
+ci:
+  make ci NATIVE=1
