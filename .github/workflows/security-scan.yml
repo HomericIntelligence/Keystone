@@ -93,7 +93,9 @@ jobs:
             conan-codeql-${{ runner.os }}-
 
       - name: Install Conan dependencies
-        run: conan install . --output-folder=build/conan-deps --build=missing -s compiler.cppstd=20
+        run: |
+          conan install . --output-folder=build/conan-deps --build=missing -s build_type=Debug -s compiler.cppstd=20
+          conan install . --output-folder=build/conan-deps --build=missing -s build_type=Release -s compiler.cppstd=20
 
       - name: Build for CodeQL
         run: |

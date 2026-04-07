@@ -28,20 +28,21 @@ RUN apt-get update && apt-get install -y \
     libc++-18-dev \
     libc++abi-18-dev \
     git \
-    libgtest-dev \
-    libgmock-dev \
-    libbenchmark-dev \
-    libspdlog-dev \
-    libconcurrentqueue-dev \
     ninja-build \
     lcov \
     bc \
     gcovr \
+    python3-pip \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100 \
     && update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 \
+    && pip install conan --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
+
+# Detect Conan profile and install dependencies
+# Use Release build type to match Docker production build
+RUN conan profile detect --force
 
 # Verify C++20 support
 RUN clang++ --version && cmake --version
@@ -52,6 +53,13 @@ RUN mkdir -p /workspace && \
 
 # Set working directory
 WORKDIR /workspace
+
+# Copy conanfile first for dependency layer caching
+COPY conanfile.py ./
+
+# Install Conan dependencies (cached layer — only rebuilds if conanfile.py changes)
+RUN conan install . --output-folder=build/conan-deps --build=missing \
+    -s build_type=Release -s compiler.cppstd=20
 
 # Copy project files
 COPY CMakeLists.txt ./
@@ -64,13 +72,12 @@ COPY tests/ ./tests/
 COPY benchmarks/ ./benchmarks/
 COPY fuzz/ ./fuzz/
 
-# Build the project
-RUN mkdir -p build && cd build \
-    && cmake -G Ninja \
+# Build the project using Conan toolchain
+RUN cmake -S . -B build/release -G Ninja \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" \
-        .. \
-    && ninja
+        -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake \
+    && cmake --build build/release
 
 # Stage 2: Runtime environment (smaller image)
 FROM ubuntu:24.04 AS runtime
@@ -81,9 +88,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy built test executables from builder
-COPY --from=builder /workspace/build/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/component_coordination_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
@@ -108,11 +115,11 @@ RUN groupadd -g 1001 hmas || true && \
     chown -R hmas:hmas /app
 
 # Copy built test executables from builder
-COPY --from=builder /workspace/build/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/component_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/async_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/bin/distributed_hierarchy_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/async_delegation_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/distributed_hierarchy_tests /usr/local/bin/
 
 # Copy server wrapper script
 COPY scripts/hmas-server.sh /usr/local/bin/hmas-server.sh
