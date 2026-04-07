@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     libc++abi-18-dev \
     git \
     libgtest-dev \
+    libgmock-dev \
     libbenchmark-dev \
     libspdlog-dev \
     libconcurrentqueue-dev \
