@@ -43,16 +43,23 @@ void SimulatedNUMANode::submitToWorker(size_t worker_index, std::function<void()
 }
 
 void SimulatedNUMANode::registerAgent(const std::string& agent_id) {
-  local_agents_.insert(agent_id);
+  {
+    std::lock_guard<std::mutex> lock(agents_mutex_);
+    local_agents_.insert(agent_id);
+  }
   Logger::debug("SimulatedNUMANode {}: Registered agent '{}'", node_id_, agent_id);
 }
 
 void SimulatedNUMANode::unregisterAgent(const std::string& agent_id) {
-  local_agents_.erase(agent_id);
+  {
+    std::lock_guard<std::mutex> lock(agents_mutex_);
+    local_agents_.erase(agent_id);
+  }
   Logger::debug("SimulatedNUMANode {}: Unregistered agent '{}'", node_id_, agent_id);
 }
 
 bool SimulatedNUMANode::hasAgent(const std::string& agent_id) const {
+  std::lock_guard<std::mutex> lock(agents_mutex_);
   return local_agents_.find(agent_id) != local_agents_.end();
 }
 
@@ -83,6 +90,7 @@ size_t SimulatedNUMANode::getQueueDepth() const {
 }
 
 std::unordered_set<std::string> SimulatedNUMANode::getLocalAgents() const {
+  std::lock_guard<std::mutex> lock(agents_mutex_);
   return local_agents_;
 }
 

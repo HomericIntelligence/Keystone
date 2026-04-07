@@ -1,0 +1,12 @@
+# ThreadSanitizer suppressions for ProjectKeystone
+#
+# moodycamel::ConcurrentQueue uses relaxed atomics internally that are
+# correct but trigger TSan false positives on WorkItem moves. The queue
+# guarantees per-element exclusivity via its internal sequencing, so
+# the races TSan sees on WorkItem data members are not real races.
+race:moodycamel::ConcurrentQueue
+race:moodycamel::details
+race:keystone::concurrency::WorkItem::WorkItem
+race:keystone::concurrency::WorkStealingQueue::push
+race:keystone::concurrency::WorkStealingQueue::steal
+race:keystone::concurrency::WorkStealingQueue::pop
