@@ -77,14 +77,29 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build
+          sudo apt-get install -y build-essential cmake ninja-build \
+            clang-18 clang++-18 libc++-18-dev libc++abi-18-dev python3-pip
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100
+          pip install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2
+          key: conan-codeql-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-codeql-${{ runner.os }}-
+
+      - name: Install Conan dependencies
+        run: conan install . --output-folder=build/conan-deps --build=missing -s compiler.cppstd=20
 
       - name: Build for CodeQL
         run: |
-          mkdir -p build
-          cd build
-          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-          ninja
+          cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake
+          cmake --build build/codeql
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

@@ -42,6 +42,23 @@ BUILD_SUBDIR ?= x86
 BUILD_SUBDIR := $(subst $(SPACE),.,$(strip $(sort $(subst .,$(SPACE),$(BUILD_SUBDIR)))))
 CMAKE_BUILD_TYPE ?= Debug
 
+# Conan dependency management
+CONAN_OUTPUT_DIR ?= build/conan-deps
+CONAN_TOOLCHAIN := $(wildcard $(CONAN_OUTPUT_DIR)/conan_toolchain.cmake)
+CMAKE_EXTRA_FLAGS ?=
+ifneq ($(CONAN_TOOLCHAIN),)
+    CMAKE_EXTRA_FLAGS += -DCMAKE_TOOLCHAIN_FILE=$(CONAN_TOOLCHAIN)
+endif
+
+# ============================================================================
+# Dependency Management (Conan)
+# ============================================================================
+
+.PHONY: deps
+deps:
+	@echo "Installing Conan dependencies..."
+	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s compiler.cppstd=20
+
 # ============================================================================
 # Default target
 # ============================================================================
@@ -60,7 +77,7 @@ $(BUILD_DIR)/$(BUILD_SUBDIR):
 compile: $(BUILD_DIR)/$(BUILD_SUBDIR)
 	@echo "Building $* mode..."
 	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\""
+	$(DOCKER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS)"
 	$(DOCKER_PREFIX) bash -c "cmake --build $(BUILD_DIR)/$(BUILD_SUBDIR) -j$(NPROC)"
 
 # ============================================================================
