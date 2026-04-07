@@ -10,6 +10,10 @@ inputs:
     description: Include clang-tidy and cppcheck
     required: false
     default: 'false'
+  install-conan:
+    description: Install Conan 2 and detect compiler profile
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -29,6 +33,13 @@ runs:
           clang-format-18 \
           libc++-18-dev \
           libc++abi-18-dev
+      shell: bash
+
+    - name: Install Conan
+      if: inputs.install-conan == 'true'
+      run: |
+        pip install conan
+        conan profile detect --force
       shell: bash
 
     - name: Install coverage tools
