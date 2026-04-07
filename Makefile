@@ -56,8 +56,9 @@ endif
 
 .PHONY: deps
 deps:
-	@echo "Installing Conan dependencies..."
-	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s compiler.cppstd=20
+	@echo "Installing Conan dependencies (Debug + Release)..."
+	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Debug -s compiler.cppstd=20
+	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Release -s compiler.cppstd=20
 
 # ============================================================================
 # Default target
