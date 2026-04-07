@@ -220,8 +220,15 @@ target_include_directories(
     $<INSTALL_INTERFACE:include/keystone>
 )
 
-# Link dependencies (including spdlog for logger.hpp)
-target_link_libraries(keystone_concurrency PUBLIC keystone_core PRIVATE spdlog::spdlog)
+# Link dependencies (including spdlog for logger.hpp and concurrentqueue for queue headers)
+# Both are PUBLIC because keystone_concurrency's public headers (#include <spdlog/...> and
+# #include <concurrentqueue/...>) require these targets to propagate to consumers.
+target_link_libraries(keystone_concurrency
+  PUBLIC
+    keystone_core
+    spdlog::spdlog
+    concurrentqueue::concurrentqueue
+)
 
 # Handle circular dependency: keystone_core uses Logger from keystone_concurrency
 # This works with shared libraries
