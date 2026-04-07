@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -151,6 +152,7 @@ class SimulatedNUMANode {
  private:
   size_t node_id_;                                                 ///< Unique node identifier
   std::unique_ptr<concurrency::WorkStealingScheduler> scheduler_;  ///< Thread pool for this node
+  mutable std::mutex agents_mutex_;                                ///< Guards local_agents_
   std::unordered_set<std::string> local_agents_;  ///< Agents with affinity to this node
 
   std::atomic<size_t> local_steals_{0};   ///< Count of intra-node steals

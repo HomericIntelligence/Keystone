@@ -80,6 +80,9 @@ jobs:
 
       - name: Run tests with ${{ matrix.name }}
         run: make test.debug.${{ matrix.sanitizer }}.native
+        env:
+          # TSan: suppress ConcurrentQueue false positives; 600s timeout set in Makefile
+          TSAN_OPTIONS: ${{ matrix.sanitizer == 'tsan' && format('suppressions={0}/tsan.supp:second_deadlock_stack=1', github.workspace) || '' }}
 
       - name: Upload test logs
         if: failure()
