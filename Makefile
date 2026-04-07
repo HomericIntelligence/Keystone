@@ -41,6 +41,8 @@ SPACE := $(EMPTY) $(EMPTY)
 BUILD_SUBDIR ?= x86
 BUILD_SUBDIR := $(subst $(SPACE),.,$(strip $(sort $(subst .,$(SPACE),$(BUILD_SUBDIR)))))
 CMAKE_BUILD_TYPE ?= Debug
+# TSan slows thread ops 5-20x; give it more time per test
+CTEST_TIMEOUT ?= 120
 
 # Conan dependency management
 CONAN_OUTPUT_DIR ?= build/conan-deps
@@ -103,7 +105,7 @@ TEST_PROFILING := profiling_tests
 test: compile
 	@echo "Running all tests..."
 	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout 120"
+	$(DOCKER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
 
 # Individual test suites (run specific executable)
 test.unit: compile
@@ -336,7 +338,7 @@ docker.shell: docker-up
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_lsan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.tsan:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_tsan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_tsan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) CTEST_TIMEOUT=600
 
 %.msan:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_msan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
