@@ -280,7 +280,7 @@ target_include_directories(
     $<INSTALL_INTERFACE:include/keystone>
 )
 
-target_link_libraries(keystone_agents PUBLIC keystone_core keystone_concurrency)
+target_link_libraries(keystone_agents PUBLIC keystone_core keystone_concurrency spdlog::spdlog)
 
 # Simulation library (Phase D.3)
 add_library(
