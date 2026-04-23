@@ -95,7 +95,7 @@ For comprehensive style guidelines, see [CLAUDE.md - Coding Standards](CLAUDE.md
 
 ## Testing Requirements
 
-**All contributions must meet ≥95% code coverage threshold.**
+**All contributions must meet ≥85% line coverage threshold (enforced in CI).**
 
 ### Running Tests Locally
 
