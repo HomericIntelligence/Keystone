@@ -84,7 +84,7 @@ struct TaskMetadata {
 /// Task status
 struct TaskStatus {
   std::string phase{"PENDING"};  // PENDING, PLANNING, WAITING, EXECUTING, SYNTHESIZING,
-                                 // COMPLETED, FAILED, TIMEOUT, CANCELLED
+                                 // COMPLETED, FAILED, ERROR, TIMEOUT, CANCELLED
   std::optional<std::string> start_time;
   std::optional<std::string> completion_time;
   std::optional<std::string> result;

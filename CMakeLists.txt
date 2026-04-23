@@ -421,7 +421,8 @@ add_executable(
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
 if(ENABLE_GRPC)
   target_sources(unit_tests PRIVATE tests/fixtures/grpc_test_fixture.cpp
-                                     tests/unit/test_grpc_tls.cpp)
+                                     tests/unit/test_grpc_tls.cpp
+                                     tests/unit/test_task_phase_utils.cpp)  # Issue #95
   target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
   target_link_libraries(unit_tests keystone_agents keystone_core
                         keystone_concurrency keystone_network GTest::gtest_main)
