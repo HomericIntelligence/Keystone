@@ -97,7 +97,9 @@ class CoordinationState {
     std::lock_guard<std::mutex> lock(results_mutex_);
     expected_results_ = expected_count;
     received_results_ = 0;
+    failed_results_ = 0;
     results_.clear();
+    failure_messages_.clear();
     pending_subordinates_.clear();
   }
 
@@ -105,13 +107,54 @@ class CoordinationState {
    * @brief Record a result from a subordinate agent
    *
    * @param result Result payload
-   * @return true if all results received, false otherwise
+   * @return true if all results received (success + failure), false otherwise
    */
   bool recordResult(const ResultType& result) {
     std::lock_guard<std::mutex> lock(results_mutex_);
     results_.push_back(result);
     received_results_++;
     return received_results_ >= expected_results_;
+  }
+
+  /**
+   * @brief Record a failure from a subordinate agent (Issue #87)
+   *
+   * Counts the failure as a terminal result so all-received completion is
+   * detected and downstream agents are not permanently stalled.
+   *
+   * @param error_msg Error description from the failing subordinate
+   * @return true if all results (successes + failures) have been received
+   */
+  bool recordFailure(const std::string& error_msg) {
+    std::lock_guard<std::mutex> lock(results_mutex_);
+    failure_messages_.push_back(error_msg);
+    failed_results_++;
+    received_results_++;
+    return received_results_ >= expected_results_;
+  }
+
+  /**
+   * @brief Check if any subordinate reported a failure (Issue #87)
+   */
+  bool hasFailures() const {
+    std::lock_guard<std::mutex> lock(results_mutex_);
+    return failed_results_ > 0;
+  }
+
+  /**
+   * @brief Get count of failed results (Issue #87)
+   */
+  size_t getFailureCount() const {
+    std::lock_guard<std::mutex> lock(results_mutex_);
+    return failed_results_;
+  }
+
+  /**
+   * @brief Get failure messages from failed subordinates (Issue #87)
+   */
+  std::vector<std::string> getFailureMessages() const {
+    std::lock_guard<std::mutex> lock(results_mutex_);
+    return failure_messages_;
   }
 
   /**
@@ -359,7 +402,9 @@ class CoordinationState {
   // Result aggregation
   size_t expected_results_{0};
   size_t received_results_{0};
+  size_t failed_results_{0};
   std::vector<ResultType> results_;
+  std::vector<std::string> failure_messages_;
   std::unordered_map<std::string, std::string> pending_subordinates_;
   mutable std::mutex results_mutex_;
 

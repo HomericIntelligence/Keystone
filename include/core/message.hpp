@@ -47,7 +47,8 @@ enum class ActionType {
   EXECUTE,        ///< Execute a concrete task or command
   RETURN_RESULT,  ///< Return the result of a computation
   SHUTDOWN,       ///< Graceful shutdown signal
-  CANCEL_TASK     ///< Cancel a running task (Issue #52)
+  CANCEL_TASK,    ///< Cancel a running task (Issue #52)
+  TASK_FAILED     ///< Report task failure to parent agent (Issue #87)
 };
 
 /**
@@ -75,6 +76,8 @@ inline std::string actionTypeToString(ActionType type) {
       return "SHUTDOWN";
     case ActionType::CANCEL_TASK:
       return "CANCEL_TASK";
+    case ActionType::TASK_FAILED:
+      return "TASK_FAILED";
     default:
       return "UNKNOWN";
   }

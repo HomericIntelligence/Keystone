@@ -128,6 +128,26 @@ class LeadAgentBase : public AsyncAgent {
   virtual void processSubordinateResult(const core::KeystoneMessage& result_msg) = 0;
 
   /**
+   * @brief HOOK: Handle a failure reported by a subordinate agent (Issue #87)
+   *
+   * Called when a subordinate sends a TASK_FAILED message. The default
+   * implementation records the failure in coordination state and transitions
+   * to ERROR when all results (successes + failures) have been received,
+   * preventing permanent DAG deadlock.
+   *
+   * Subclasses may override to add custom failure propagation logic.
+   *
+   * @param failure_msg Message with action_type == TASK_FAILED
+   */
+  virtual void processSubordinateFailure(const core::KeystoneMessage& failure_msg) {
+    std::string error = failure_msg.payload.value_or("subordinate task failed");
+    bool all_done = coordination_.recordFailure(error);
+    if (all_done) {
+      coordination_.transitionTo(error_state_, stateToString(error_state_));
+    }
+  }
+
+  /**
    * @brief HOOK: Convert state enum to string for logging
    *
    * Subclasses must implement this to provide state names for tracing.
