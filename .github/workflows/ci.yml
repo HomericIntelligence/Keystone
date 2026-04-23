@@ -39,6 +39,39 @@ jobs:
       # For PR checks, we only verify formatting.
 
   # ============================================================================
+  # Python Tests with Coverage
+  # ============================================================================
+  pytest:
+    name: Python Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run pytest with coverage
+        run: pytest
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-coverage
+          path: coverage.xml
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ============================================================================
   # Build and Test Matrix (all sanitizers)
   # ============================================================================
   sanitizers:
@@ -191,13 +224,14 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-24.04
-    needs: [quality, sanitizers, benchmarks, coverage]
+    needs: [quality, pytest, sanitizers, benchmarks, coverage]
     if: always()
 
     steps:
       - name: Check results
         run: |
           echo "Quality: ${{ needs.quality.result }}"
+          echo "Python Tests: ${{ needs.pytest.result }}"
           echo "Sanitizers: ${{ needs.sanitizers.result }}"
           echo "Benchmarks: ${{ needs.benchmarks.result }}"
           echo "Coverage: ${{ needs.coverage.result }}"
@@ -205,6 +239,10 @@ jobs:
           # Fail if critical jobs failed
           if [ "${{ needs.quality.result }}" != "success" ]; then
             echo "::error::Quality checks failed"
+            exit 1
+          fi
+          if [ "${{ needs.pytest.result }}" != "success" ]; then
+            echo "::error::Python tests failed"
             exit 1
           fi
           if [ "${{ needs.sanitizers.result }}" != "success" ]; then
@@ -221,6 +259,7 @@ jobs:
           script: |
             const sanitizerResult = '${{ needs.sanitizers.result }}';
             const qualityResult = '${{ needs.quality.result }}';
+            const pytestResult = '${{ needs.pytest.result }}';
             const benchmarkResult = '${{ needs.benchmarks.result }}';
             const coverageResult = '${{ needs.coverage.result }}';
 
@@ -231,6 +270,7 @@ jobs:
             | Check | Status |
             |-------|--------|
             | Code Quality | ${statusIcon(qualityResult)} ${qualityResult} |
+            | Python Tests | ${statusIcon(pytestResult)} ${pytestResult} |
             | Sanitizers (ASan, UBSan, TSan, LSan, MSan) | ${statusIcon(sanitizerResult)} ${sanitizerResult} |
             | Benchmarks | ${statusIcon(benchmarkResult)} ${benchmarkResult} |
             | Coverage | ${statusIcon(coverageResult)} ${coverageResult} |
