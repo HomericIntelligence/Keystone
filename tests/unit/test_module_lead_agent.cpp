@@ -253,8 +253,8 @@ TEST_F(ModuleLeadAgentTest, SingleTaskFailureTransitionsToError) {
   failure_msg.action_type = core::ActionType::TASK_FAILED;
 
   // Initialize coordination for 1 expected result
-  module->processMessage(
-      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20"))
+      .get();
 
   // Deliver failure
   module->processMessage(failure_msg).get();
@@ -272,15 +272,14 @@ TEST_F(ModuleLeadAgentTest, SynthesizeAfterFailureReturnsErrorMessage) {
   module->setAvailableTaskAgents(task_ids);
 
   // Process goal to set up coordination for 2 tasks
-  module->processMessage(
-      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20"))
+      .get();
 
   // One success, one failure
   auto success_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "10");
   module->processMessage(success_msg).get();
 
-  auto failure_msg =
-      core::KeystoneMessage::create("task_2", "module_1", "response", "exec failed");
+  auto failure_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "exec failed");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   module->processMessage(failure_msg).get();
 
@@ -299,12 +298,13 @@ TEST_F(ModuleLeadAgentTest, FailureBeforeAllResultsDoesNotDeadlock) {
   module->setAvailableTaskAgents(task_ids);
 
   // Goal decomposes into 3 tasks (numbers extracted from "10 + 20 + 30")
-  module->processMessage(
-      core::KeystoneMessage::create("chief", "module_1", "Calculate sum of: 10 + 20 + 30")).get();
+  module
+      ->processMessage(
+          core::KeystoneMessage::create("chief", "module_1", "Calculate sum of: 10 + 20 + 30"))
+      .get();
 
   // First task fails — must not leave the remaining 2 in permanent pending
-  auto failure_msg =
-      core::KeystoneMessage::create("task_1", "module_1", "response", "error");
+  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "error");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   module->processMessage(failure_msg).get();
 
@@ -322,12 +322,11 @@ TEST_F(ModuleLeadAgentTest, SuccessResultAfterFailureStillCountsTowardCompletion
   std::vector<std::string> task_ids = {"task_1", "task_2"};
   module->setAvailableTaskAgents(task_ids);
 
-  module->processMessage(
-      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20"))
+      .get();
 
   // Failure first
-  auto failure_msg =
-      core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
+  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   module->processMessage(failure_msg).get();
 
