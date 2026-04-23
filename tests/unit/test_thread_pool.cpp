@@ -133,8 +133,7 @@ TEST(ThreadPoolTest, GracefulShutdown) {
 }
 
 // Test: No new work accepted after shutdown
-// DISABLED under TSan: hangs indefinitely (see issue #145)
-TEST(ThreadPoolTest, DISABLED_NoWorkAfterShutdown) {
+TEST(ThreadPoolTest, NoWorkAfterShutdown) {
   ThreadPool pool(2);
   std::atomic<int> counter{0};
 

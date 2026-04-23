@@ -1,0 +1,14 @@
+[settings]
+os=Linux
+compiler=gcc
+compiler.version=14
+compiler.libcxx=libstdc++11
+compiler.cppstd=20
+build_type=Debug
+arch=x86_64
+
+[conf]
+tools.build:cxxflags=["-fsanitize=thread", "-fno-omit-frame-pointer"]
+tools.build:cflags=["-fsanitize=thread", "-fno-omit-frame-pointer"]
+tools.build:sharedlinkflags=["-fsanitize=thread"]
+tools.build:exelinkflags=["-fsanitize=thread"]
