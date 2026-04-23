@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <mutex>
 #include <random>
 #include <string>
@@ -40,7 +41,7 @@ class FailureInjector {
    *
    * @param seed Random seed for reproducibility (0 = random)
    */
-  explicit FailureInjector(unsigned int seed = 0);
+  explicit FailureInjector(uint32_t seed = 0);
 
   // ========================================================================
   // Agent Crash Simulation
@@ -141,9 +142,9 @@ class FailureInjector {
   /**
    * @brief Get total number of injected failures
    *
-   * @return int Total failures
+   * @return int32_t Total failures
    */
-  int getTotalFailures() const;
+  int32_t getTotalFailures() const;
 
   /**
    * @brief Get list of currently failed agents
@@ -190,7 +191,7 @@ class FailureInjector {
   mutable std::mutex rng_mutex_;
 
   // Statistics
-  mutable std::atomic<int> total_failures_{0};
+  mutable std::atomic<int32_t> total_failures_{0};
 };
 
 }  // namespace core

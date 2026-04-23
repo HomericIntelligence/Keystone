@@ -275,7 +275,7 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(grpc::ServerContext* co
 
 void HMASCoordinatorServiceImpl::updateTaskStatus(const std::string& task_id,
                                                   hmas::TaskPhase phase,
-                                                  int progress,
+                                                  int32_t progress,
                                                   const std::string& current_subtask) {
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -310,11 +310,11 @@ size_t HMASCoordinatorServiceImpl::getActiveTaskCount() const {
   return active_tasks_.size();
 }
 
-int HMASCoordinatorServiceImpl::cleanupOldTasks(int64_t age_threshold_ms) {
+int32_t HMASCoordinatorServiceImpl::cleanupOldTasks(int64_t age_threshold_ms) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto now = std::chrono::system_clock::now();
-  int removed_count = 0;
+  int32_t removed_count = 0;
 
   // Clean up old completed/failed tasks
   for (auto it = active_tasks_.begin(); it != active_tasks_.end();) {
@@ -349,7 +349,7 @@ std::string HMASCoordinatorServiceImpl::generateTaskId() const {
 
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<int> dist(1000, 9999);
+  std::uniform_int_distribution<int32_t> dist(1000, 9999);
 
   std::ostringstream oss;
   oss << "task-" << timestamp_ms << "-" << dist(gen);

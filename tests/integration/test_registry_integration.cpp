@@ -443,8 +443,8 @@ TEST_F(RegistryIntegrationTest, ThreadSafeRegistryOperations) {
   }
 
   // 5 threads: query hasAgent() 1000 times each
-  std::atomic<int> queries{0};
-  for (int t = 5; t < 10; ++t) {
+  std::atomic<int32_t> queries{0};
+  for (int32_t t = 5; t < 10; ++t) {
     threads.emplace_back([this, &queries]() {
       for (int32_t i = 0; i < 1000; ++i) {
         bus_->hasAgent("agent_" + std::to_string(i % 100));
@@ -454,8 +454,8 @@ TEST_F(RegistryIntegrationTest, ThreadSafeRegistryOperations) {
   }
 
   // 5 threads: route messages 100 times each
-  std::atomic<int> routed{0};
-  for (int t = 10; t < 15; ++t) {
+  std::atomic<int32_t> routed{0};
+  for (int32_t t = 10; t < 15; ++t) {
     threads.emplace_back([this, &routed]() {
       for (int32_t i = 0; i < 100; ++i) {
         auto msg = KeystoneMessage::create("sender", "agent_" + std::to_string(i % 100), "message");

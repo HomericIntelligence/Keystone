@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -18,13 +19,13 @@ namespace network {
 struct AgentRegistrationInfo {
   std::string agent_id;
   std::string agent_type;
-  int level;
+  int32_t level;
   std::string ip_port;
   std::vector<std::string> capabilities;
   std::chrono::system_clock::time_point last_heartbeat;
   float cpu_usage_percent{0.0f};
   float memory_usage_mb{0.0f};
-  int active_tasks{0};
+  int32_t active_tasks{0};
 };
 
 /// Service Registry - manages agent registration and discovery
@@ -33,7 +34,7 @@ class ServiceRegistry final {
  public:
   /// Constructor
   /// @param heartbeat_timeout_ms Timeout for heartbeat (default: 3000ms)
-  explicit ServiceRegistry(int heartbeat_timeout_ms = 3000);
+  explicit ServiceRegistry(int32_t heartbeat_timeout_ms = 3000);
 
   /// Destructor
   ~ServiceRegistry();
@@ -51,7 +52,7 @@ class ServiceRegistry final {
   /// @return true if registered successfully, false if agent_id already exists
   bool registerAgent(const std::string& agent_id,
                      const std::string& agent_type,
-                     int level,
+                     int32_t level,
                      const std::string& ip_port,
                      const std::vector<std::string>& capabilities);
 
@@ -64,7 +65,7 @@ class ServiceRegistry final {
   bool updateHeartbeat(const std::string& agent_id,
                        float cpu_usage_percent = 0.0f,
                        float memory_usage_mb = 0.0f,
-                       int active_tasks = 0);
+                       int32_t active_tasks = 0);
 
   /// Unregister an agent
   /// @param agent_id Agent identifier
@@ -85,9 +86,9 @@ class ServiceRegistry final {
   /// @return List of matching agents
   std::vector<AgentRegistrationInfo> queryAgents(
       const std::string& agent_type = "",
-      int level = -1,
+      int32_t level = -1,
       const std::vector<std::string>& required_capabilities = {},
-      int max_results = 0,
+      int32_t max_results = 0,
       bool only_alive = true) const;
 
   /// List all registered agents
@@ -102,7 +103,7 @@ class ServiceRegistry final {
 
   /// Clean up dead agents (those with expired heartbeats)
   /// @return Number of agents removed
-  int cleanupDeadAgents();
+  int32_t cleanupDeadAgents();
 
   /// Get heartbeat timeout
   std::chrono::milliseconds getHeartbeatTimeout() const { return heartbeat_timeout_; }

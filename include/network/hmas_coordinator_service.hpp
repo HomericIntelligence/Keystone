@@ -5,6 +5,7 @@
 #include "network/task_router.hpp"
 #include "network/yaml_parser.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -24,7 +25,7 @@ struct TaskState {
   std::string assigned_agent_id;
   std::string assigned_node_ip_port;
   hmas::TaskPhase phase{hmas::TASK_PHASE_PENDING};
-  int progress_percent{0};
+  int32_t progress_percent{0};
   std::string current_subtask;
   std::chrono::system_clock::time_point created_at;
   std::chrono::system_clock::time_point updated_at;
@@ -84,7 +85,7 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// @param current_subtask Currently executing subtask name
   void updateTaskStatus(const std::string& task_id,
                         hmas::TaskPhase phase,
-                        int progress = 0,
+                        int32_t progress = 0,
                         const std::string& current_subtask = "");
 
   /// Get task state
@@ -101,7 +102,7 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// Clean up completed/failed tasks older than threshold
   /// @param age_threshold_ms Age threshold in milliseconds
   /// @return Number of tasks cleaned up
-  int cleanupOldTasks(int64_t age_threshold_ms = 3600000);  // Default: 1 hour
+  int32_t cleanupOldTasks(int64_t age_threshold_ms = 3600000);  // Default: 1 hour
 
  private:
   /// Generate unique task ID
