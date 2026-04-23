@@ -127,6 +127,9 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
+# cnats — NATS JetStream C client (Conan: cnats/3.9.3)
+find_package(cnats REQUIRED)
+
 # Cista — zero-copy serialization (NOT on ConanCenter, kept as FetchContent)
 FetchContent_Declare(
   cista
@@ -274,6 +277,16 @@ endif()
 # NOTE: keystone_agents (HMAS hierarchy) has been moved to ProjectAgamemnon.
 # See ProjectAgamemnon/include/projectagamemnon/agents/ and src/agents/.
 
+# NATS JetStream transport library (Issue #86)
+add_library(keystone_nats src/network/nats_listener.cpp)
+
+target_include_directories(
+  keystone_nats
+  PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include/keystone>)
+
+target_link_libraries(keystone_nats PUBLIC spdlog::spdlog nats)
+
 # Simulation library (Phase D.3)
 add_library(
   keystone_simulation
@@ -414,6 +427,17 @@ else()
 endif()
 
 gtest_discover_tests(unit_tests)
+
+# NATS listener unit tests (Issue #86)
+add_executable(nats_listener_tests tests/unit/test_nats_listener.cpp)
+
+target_include_directories(nats_listener_tests PRIVATE
+  ${PROJECT_SOURCE_DIR}/include)
+
+target_link_libraries(nats_listener_tests keystone_nats GTest::gtest_main
+                      GTest::gmock)
+
+gtest_discover_tests(nats_listener_tests)
 
 # Profiling Tests (Phase 2.3 - Issue #53)
 # Separate test suite for profiling tests (slow, opt-in)
