@@ -45,8 +45,14 @@ void ThreadPool::submit(std::coroutine_handle<> handle) {
 }
 
 void ThreadPool::shutdown() {
-  // Mark shutdown requested
-  shutdown_requested_.store(true);
+  {
+    // Hold the lock while setting the flag so workers can't miss the wakeup:
+    // a worker either sees shutdown_requested_==true in its predicate check
+    // (which it evaluates under the same lock), or it is already sleeping and
+    // will be woken by notify_all() below.
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    shutdown_requested_.store(true);
+  }
 
   // Wake up all threads
   condition_.notify_all();
