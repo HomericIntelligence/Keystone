@@ -103,6 +103,14 @@ class TaskAgent : public AsyncAgent {
   using PipeHandle = std::unique_ptr<FILE, PipeDeleter>;
 
   /**
+   * @brief Build and send a response message back to the original sender
+   *
+   * @param msg Original incoming message (provides sender_id and msg_id)
+   * @param payload Text payload for the response message
+   */
+  void sendResponseMessage(const core::KeystoneMessage& msg, const std::string& payload);
+
+  /**
    * @brief Validate command for security (FIX P1-03: Command injection prevention)
    *
    * @param command Command to validate

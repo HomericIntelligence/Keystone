@@ -1,5 +1,7 @@
 #include "agents/module_lead_agent.hpp"
 
+#include "core/config.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <numeric>
@@ -139,6 +141,24 @@ std::string ModuleLeadAgent::stateToString(State state) const {
 }
 
 #ifdef ENABLE_GRPC
+void ModuleLeadAgent::submitFailureResult(network::HierarchicalTaskSpec& spec,
+                                          const std::string& error) {
+  spec.status.phase = "FAILED";
+  spec.status.error = error;
+  coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
+
+  std::string result_yaml = network::YamlParser::generateTaskSpec(spec);
+  auto coordinator_client = coordination_.getCoordinatorClient();
+  if (coordinator_client && spec.metadata.parent_task_id) {
+    hmas::TaskResult task_result;
+    task_result.set_task_id(spec.metadata.task_id);
+    task_result.set_result_yaml(result_yaml);
+    task_result.set_success(false);
+    task_result.set_error_message(*spec.status.error);
+    coordinator_client->submitResult(task_result);
+  }
+}
+
 void ModuleLeadAgent::initializeGrpc(const std::string& coordinator_address,
                                      const std::string& registry_address,
                                      const std::string& agent_type,
@@ -165,23 +185,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
   auto tasks = decomposeGoal(spec.hierarchy.level2_module.value_or(""));
 
   if (tasks.empty()) {
-    spec.status.phase = "FAILED";
-    spec.status.error = "Failed to decompose module goal";
-    coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-
-    // Generate error result YAML
-    std::string result_yaml = network::YamlParser::generateTaskSpec(spec);
-
-    // Submit error result
-    auto coordinator_client = coordination_.getCoordinatorClient();
-    if (coordinator_client && spec.metadata.parent_task_id) {
-      hmas::TaskResult task_result;
-      task_result.set_task_id(spec.metadata.task_id);
-      task_result.set_result_yaml(result_yaml);
-      task_result.set_success(false);
-      task_result.set_error_message(*spec.status.error);
-      coordinator_client->submitResult(task_result);
-    }
+    submitFailureResult(spec, "Failed to decompose module goal");
     return;
   }
 
@@ -189,20 +193,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
   available_task_agents_ = coordination_.queryAvailableChildren("TaskAgent");
 
   if (available_task_agents_.empty()) {
-    spec.status.phase = "FAILED";
-    spec.status.error = "No TaskAgents available";
-    coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-
-    std::string result_yaml = network::YamlParser::generateTaskSpec(spec);
-    auto coordinator_client = coordination_.getCoordinatorClient();
-    if (coordinator_client && spec.metadata.parent_task_id) {
-      hmas::TaskResult task_result;
-      task_result.set_task_id(spec.metadata.task_id);
-      task_result.set_result_yaml(result_yaml);
-      task_result.set_success(false);
-      task_result.set_error_message(*spec.status.error);
-      coordinator_client->submitResult(task_result);
-    }
+    submitFailureResult(spec, "No TaskAgents available");
     return;
   }
 
@@ -210,7 +201,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
   auto timeout = network::YamlParser::parseDuration(spec.aggregation.timeout);
   result_aggregator_ = std::make_unique<network::ResultAggregator>(
       network::stringToStrategy(spec.aggregation.strategy),
-      std::chrono::milliseconds(timeout.value_or(25 * 60 * 1000)),
+      std::chrono::milliseconds(timeout.value_or(core::Config::DEFAULT_TASK_TIMEOUT_MS)),
       tasks.size());
 
   // Generate child task YAMLs and submit to TaskAgents
@@ -250,7 +241,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
     // Submit task via gRPC
     try {
       auto deadline_ms = network::YamlParser::parseDuration(spec.metadata.deadline.value_or("25m"))
-                             .value_or(25 * 60 * 1000);
+                             .value_or(core::Config::DEFAULT_TASK_TIMEOUT_MS);
       auto coordinator_client = coordination_.getCoordinatorClient();
       auto response = coordinator_client->submitTask(child_yaml,
                                                      spec.metadata.session_id.value_or(""),

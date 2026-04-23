@@ -172,6 +172,17 @@ class WorkStealingScheduler {
   std::optional<WorkItem> tryStealWithBackoff(size_t worker_index);
 
   /**
+   * @brief Try own queue then steal from all other workers once
+   *
+   * Shared inner loop body for all three backoff phases.
+   *
+   * @param worker_index This worker's index
+   * @param phase_label Log label for the calling phase ("SPIN", "YIELD", "SLEEP")
+   * @return Work item if found, nullopt otherwise
+   */
+  std::optional<WorkItem> tryStealOnce(size_t worker_index, const char* phase_label);
+
+  /**
    * @brief Get next worker index for round-robin submission
    */
   size_t getNextWorkerIndex();
