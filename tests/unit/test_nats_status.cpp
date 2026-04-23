@@ -84,8 +84,7 @@ TEST(NatsStatusTrackerTest, ConcurrentStateUpdatesAreSafe) {
   threads.reserve(kThreads);
   for (int i = 0; i < kThreads; ++i) {
     threads.emplace_back([&tracker, &start, i]() {
-      while (!start.load()) {
-      }
+      while (!start.load()) {}
       for (int j = 0; j < kIters; ++j) {
         switch ((i + j) % 3) {
           case 0:
@@ -110,7 +109,6 @@ TEST(NatsStatusTrackerTest, ConcurrentStateUpdatesAreSafe) {
   }
   // No crash == pass; state must be one of the valid enum values
   NatsConnectionState st = tracker.state();
-  EXPECT_TRUE(st == NatsConnectionState::kConnected ||
-              st == NatsConnectionState::kDisconnected ||
+  EXPECT_TRUE(st == NatsConnectionState::kConnected || st == NatsConnectionState::kDisconnected ||
               st == NatsConnectionState::kReconnecting);
 }
