@@ -25,6 +25,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/profiling/_deps
+          key: fetchcontent-profiling-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-profiling-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure sccache
+        run: echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -45,7 +59,9 @@ jobs:
         run: |
           mkdir -p build/profiling
           cd build/profiling
-          cmake -S ../.. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON -G Ninja
+          cmake -S ../.. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           ninja profiling_tests
 
       - name: Run profiling tests
