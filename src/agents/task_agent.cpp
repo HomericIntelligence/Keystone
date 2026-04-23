@@ -83,8 +83,7 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
 }
 
 void TaskAgent::sendResponseMessage(const core::KeystoneMessage& msg, const std::string& payload) {
-  auto response_msg =
-      core::KeystoneMessage::create(agent_id_, msg.sender_id, "response", payload);
+  auto response_msg = core::KeystoneMessage::create(agent_id_, msg.sender_id, "response", payload);
   response_msg.msg_id = msg.msg_id;
   sendMessage(response_msg);
 }
