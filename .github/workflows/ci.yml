@@ -76,6 +76,45 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================================================
+  # Python Quality Checks (mypy type checking)
+  # ============================================================================
+  python-quality:
+    name: Python Quality (mypy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install mypy
+        run: pip install "mypy>=1.8.0" "conan>=2.0.0"
+
+      - name: Type check (mypy)
+        run: mypy conanfile.py
+
+  # ============================================================================
+  # Pre-commit Checks
+  # ============================================================================
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: pre-commit/action@v3.0.1
+
+  # ============================================================================
   # Build and Test Matrix (all sanitizers)
   # ============================================================================
   sanitizers:
@@ -279,7 +318,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-24.04
-    needs: [quality, pytest, sanitizers, benchmarks, coverage]
+    needs: [quality, pytest, python-quality, pre-commit, sanitizers, benchmarks, coverage]
     if: always()
 
     steps:
@@ -287,6 +326,8 @@ jobs:
         run: |
           echo "Quality: ${{ needs.quality.result }}"
           echo "Python Tests: ${{ needs.pytest.result }}"
+          echo "Python Quality (mypy): ${{ needs.python-quality.result }}"
+          echo "Pre-commit: ${{ needs.pre-commit.result }}"
           echo "Sanitizers: ${{ needs.sanitizers.result }}"
           echo "Benchmarks: ${{ needs.benchmarks.result }}"
           echo "Coverage: ${{ needs.coverage.result }}"
@@ -298,6 +339,14 @@ jobs:
           fi
           if [ "${{ needs.pytest.result }}" != "success" ]; then
             echo "::error::Python tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.python-quality.result }}" != "success" ]; then
+            echo "::error::Python quality checks failed"
+            exit 1
+          fi
+          if [ "${{ needs.pre-commit.result }}" != "success" ]; then
+            echo "::error::Pre-commit checks failed"
             exit 1
           fi
           if [ "${{ needs.sanitizers.result }}" != "success" ]; then
@@ -315,6 +364,8 @@ jobs:
             const sanitizerResult = '${{ needs.sanitizers.result }}';
             const qualityResult = '${{ needs.quality.result }}';
             const pytestResult = '${{ needs.pytest.result }}';
+            const pythonQualityResult = '${{ needs.python-quality.result }}';
+            const preCommitResult = '${{ needs.pre-commit.result }}';
             const benchmarkResult = '${{ needs.benchmarks.result }}';
             const coverageResult = '${{ needs.coverage.result }}';
 
@@ -326,6 +377,8 @@ jobs:
             |-------|--------|
             | Code Quality | ${statusIcon(qualityResult)} ${qualityResult} |
             | Python Tests | ${statusIcon(pytestResult)} ${pytestResult} |
+            | Python Quality (mypy) | ${statusIcon(pythonQualityResult)} ${pythonQualityResult} |
+            | Pre-commit | ${statusIcon(preCommitResult)} ${preCommitResult} |
             | Sanitizers (ASan, UBSan, TSan, LSan, MSan) | ${statusIcon(sanitizerResult)} ${sanitizerResult} |
             | Benchmarks | ${statusIcon(benchmarkResult)} ${benchmarkResult} |
             | Coverage | ${statusIcon(coverageResult)} ${coverageResult} |
