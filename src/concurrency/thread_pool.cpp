@@ -5,7 +5,7 @@
 
 #include "concurrency/thread_pool.hpp"
 
-#include <iostream>
+#include "concurrency/logger.hpp"
 
 namespace keystone {
 namespace concurrency {
@@ -97,9 +97,9 @@ void ThreadPool::worker_loop() {
       work_item.execute();
     } catch (const std::exception& e) {
       // Log error (for now, just print to stderr)
-      std::cerr << "ThreadPool: Exception in worker: " << e.what() << std::endl;
+      Logger::error("ThreadPool: Exception in worker: {}", e.what());
     } catch (...) {
-      std::cerr << "ThreadPool: Unknown exception in worker" << std::endl;
+      Logger::error("ThreadPool: Unknown exception in worker");
     }
   }
 }

@@ -1,6 +1,7 @@
 #include "agents/component_lead_agent.hpp"
 
 #include "core/config.hpp"
+#include "concurrency/logger.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -253,7 +254,7 @@ void ComponentLeadAgent::processYamlComponent(const std::string& yaml_spec) {
       coordination_.trackPendingSubordinate(child_spec.metadata.task_id,
                                             available_module_leads_[agent_index]);
     } catch (const std::exception& e) {
-      std::cerr << "Failed to submit module: " << e.what() << std::endl;
+      concurrency::Logger::error("Failed to submit module: {}", e.what());
     }
   }
 }

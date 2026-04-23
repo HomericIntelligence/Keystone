@@ -1,11 +1,11 @@
 #include "monitoring/prometheus_exporter.hpp"
 
+#include "concurrency/logger.hpp"
 #include "core/config.hpp"  // FIX m3: Centralized configuration
 #include "core/metrics.hpp"
 
 #include <array>
 #include <cstring>
-#include <iostream>
 #include <sstream>
 #include <utility>  // FIX: For std::exchange
 
@@ -68,14 +68,14 @@ bool PrometheusExporter::start() {
   // Create socket
   server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd_ < 0) {
-    std::cerr << "Failed to create socket" << std::endl;
+    concurrency::Logger::error("PrometheusExporter: Failed to create socket");
     return false;
   }
 
   // Set socket options (reuse address)
   int opt = 1;
   if (setsockopt(server_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-    std::cerr << "Failed to set socket options" << std::endl;
+    concurrency::Logger::error("PrometheusExporter: Failed to set socket options");
     close(server_fd_);
     server_fd_ = -1;
     return false;
@@ -89,7 +89,7 @@ bool PrometheusExporter::start() {
   address.sin_port = htons(port_);
 
   if (bind(server_fd_, (struct sockaddr*)&address, sizeof(address)) < 0) {
-    std::cerr << "Failed to bind to port " << port_ << std::endl;
+    concurrency::Logger::error("PrometheusExporter: Failed to bind to port {}", port_);
     close(server_fd_);
     server_fd_ = -1;
     return false;
@@ -97,7 +97,7 @@ bool PrometheusExporter::start() {
 
   // Listen for connections
   if (listen(server_fd_, core::Config::HTTP_MAX_PENDING_CONNECTIONS) < 0) {
-    std::cerr << "Failed to listen on port " << port_ << std::endl;
+    concurrency::Logger::error("PrometheusExporter: Failed to listen on port {}", port_);
     close(server_fd_);
     server_fd_ = -1;
     return false;
@@ -107,7 +107,7 @@ bool PrometheusExporter::start() {
   running_.store(true);
   server_thread_ = std::make_unique<std::thread>(&PrometheusExporter::serverLoop, this);
 
-  std::cout << "Prometheus exporter started on port " << port_ << std::endl;
+  concurrency::Logger::info("Prometheus exporter started on port {}", port_);
   return true;
 }
 
@@ -129,7 +129,7 @@ void PrometheusExporter::stop() {
     server_thread_->join();
   }
 
-  std::cout << "Prometheus exporter stopped" << std::endl;
+  concurrency::Logger::info("Prometheus exporter stopped");
 }
 
 bool PrometheusExporter::isRunning() const {
@@ -149,7 +149,7 @@ void PrometheusExporter::serverLoop() {
     int client_fd = accept(server_fd_, (struct sockaddr*)&client_address, &client_len);
     if (client_fd < 0) {
       if (running_.load()) {
-        std::cerr << "Accept failed" << std::endl;
+        concurrency::Logger::error("PrometheusExporter: Accept failed");
       }
       continue;
     }
@@ -164,7 +164,7 @@ void PrometheusExporter::serverLoop() {
     timeout.tv_usec = 0;
 
     if (setsockopt(client_socket.get(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-      std::cerr << "Failed to set socket read timeout" << std::endl;
+      concurrency::Logger::error("PrometheusExporter: Failed to set socket read timeout");
       continue;  // Still try to handle request without timeout
     }
 

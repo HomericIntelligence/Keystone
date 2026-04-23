@@ -1,7 +1,8 @@
 #include "agents/chief_architect_agent.hpp"
 
+#include "concurrency/logger.hpp"
+
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 #ifdef ENABLE_GRPC
@@ -198,7 +199,7 @@ void ChiefArchitectAgent::heartbeatLoop() {
         registry_client_->heartbeat(agent_id_, 0.0f, 0.0f, 0);
       }
     } catch (const std::exception& e) {
-      std::cerr << "Heartbeat failed: " << e.what() << std::endl;
+      concurrency::Logger::error("Heartbeat failed: {}", e.what());
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -212,7 +213,7 @@ void ChiefArchitectAgent::shutdown() {
     try {
       registry_client_->unregisterAgent(agent_id_, "Shutdown requested");
     } catch (const std::exception& e) {
-      std::cerr << "Failed to unregister agent: " << e.what() << std::endl;
+      concurrency::Logger::error("Failed to unregister agent: {}", e.what());
     }
   }
 
@@ -237,7 +238,7 @@ std::string ChiefArchitectAgent::queryComponentLeadAgent() {
       return agent_list.agents(0).agent_id();
     }
   } catch (const std::exception& e) {
-    std::cerr << "Failed to query ComponentLeadAgent: " << e.what() << std::endl;
+    concurrency::Logger::error("Failed to query ComponentLeadAgent: {}", e.what());
   }
 
   return "";
