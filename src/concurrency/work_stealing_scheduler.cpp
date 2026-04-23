@@ -188,94 +188,61 @@ size_t WorkStealingScheduler::getNextWorkerIndex() {
   return idx % num_workers_;
 }
 
-std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(size_t worker_index) {
+std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(size_t worker_index,
+                                                              const char* phase_label) {
   auto& own_queue = *worker_queues_[worker_index];
+
+  if (auto work = own_queue.pop()) {
+    return work;
+  }
+
+  for (size_t i = 1; i < num_workers_; ++i) {
+    size_t victim_idx = (worker_index + i) % num_workers_;
+    if (auto work = worker_queues_[victim_idx]->steal()) {
+      Logger::trace("Worker {} stole work from worker {} ({} phase)",
+                    worker_index,
+                    victim_idx,
+                    phase_label);
+      return work;
+    }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(size_t worker_index) {
   size_t iterations = 0;
 
   // Phase 1: SPIN (0-100 iterations)
-  // Tight loop for ultra-low latency (1-10 microseconds)
   while (iterations < SPIN_ITERATIONS) {
-    // Try own queue first
-    auto work = own_queue.pop();
-    if (work.has_value()) {
+    if (auto work = tryStealOnce(worker_index, "SPIN")) {
       return work;
     }
-
-    // Try stealing from other workers
-    for (size_t i = 1; i < num_workers_; ++i) {
-      size_t victim_idx = (worker_index + i) % num_workers_;
-      work = worker_queues_[victim_idx]->steal();
-      if (work.has_value()) {
-        Logger::trace("Worker {} stole work from worker {} (SPIN phase)", worker_index, victim_idx);
-        return work;
-      }
-    }
-
     ++iterations;
-
-    // Early exit on shutdown
     if (shutdown_requested_.load()) {
       return std::nullopt;
     }
   }
 
   // Phase 2: YIELD (101-1000 iterations)
-  // Yield CPU to other threads while staying responsive (10-100 microseconds)
   while (iterations < YIELD_ITERATIONS) {
-    // Try own queue
-    auto work = own_queue.pop();
-    if (work.has_value()) {
+    if (auto work = tryStealOnce(worker_index, "YIELD")) {
       return work;
     }
-
-    // Try stealing
-    for (size_t i = 1; i < num_workers_; ++i) {
-      size_t victim_idx = (worker_index + i) % num_workers_;
-      work = worker_queues_[victim_idx]->steal();
-      if (work.has_value()) {
-        Logger::trace("Worker {} stole work from worker {} (YIELD phase)",
-                      worker_index,
-                      victim_idx);
-        return work;
-      }
-    }
-
-    // Yield CPU slice to other threads
     std::this_thread::yield();
     ++iterations;
-
-    // Early exit on shutdown
     if (shutdown_requested_.load()) {
       return std::nullopt;
     }
   }
 
   // Phase 3: SLEEP (1001+ iterations)
-  // Sleep with wake-up notification for minimal CPU usage
   while (true) {
-    // Try own queue
-    auto work = own_queue.pop();
-    if (work.has_value()) {
+    if (auto work = tryStealOnce(worker_index, "SLEEP")) {
       return work;
     }
-
-    // Try stealing
-    for (size_t i = 1; i < num_workers_; ++i) {
-      size_t victim_idx = (worker_index + i) % num_workers_;
-      work = worker_queues_[victim_idx]->steal();
-      if (work.has_value()) {
-        Logger::trace("Worker {} stole work from worker {} (SLEEP phase)",
-                      worker_index,
-                      victim_idx);
-        return work;
-      }
-    }
-
-    // Sleep with condition variable wake-up
-    // This allows immediate wake-up when work is submitted
     std::unique_lock<std::mutex> lock(shutdown_mutex_);
     shutdown_cv_.wait_for(lock, SLEEP_DURATION, [this]() { return shutdown_requested_.load(); });
-
     if (shutdown_requested_.load()) {
       return std::nullopt;
     }

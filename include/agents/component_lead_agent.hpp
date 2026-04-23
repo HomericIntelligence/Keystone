@@ -155,6 +155,14 @@ class ComponentLeadAgent : public LeadAgentBase<ComponentLeadState> {
   std::vector<std::string> available_module_leads_;
 
 #ifdef ENABLE_GRPC
+  /**
+   * @brief Mark spec as FAILED and submit the error result via gRPC if possible
+   *
+   * @param spec  Task spec to update (modified in place)
+   * @param error Human-readable error message
+   */
+  void submitFailureResult(network::HierarchicalTaskSpec& spec, const std::string& error);
+
   // Result aggregator (component-specific, not in template)
   std::unique_ptr<network::ResultAggregator> result_aggregator_;
 #endif

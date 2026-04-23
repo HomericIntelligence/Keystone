@@ -168,6 +168,19 @@ struct Config {
   }
 
   // ========================================================================
+  // Task / Coordination Configuration
+  // ========================================================================
+
+  /**
+   * @brief Default task execution timeout (25 minutes in milliseconds)
+   *
+   * Used as fallback when no explicit deadline is specified in a task spec.
+   * 25 minutes allows for complex multi-level coordination chains while
+   * preventing indefinite hangs.
+   */
+  static constexpr int DEFAULT_TASK_TIMEOUT_MS = 25 * 60 * 1000;
+
+  // ========================================================================
   // HTTP Server Configuration (PrometheusExporter)
   // ========================================================================
 

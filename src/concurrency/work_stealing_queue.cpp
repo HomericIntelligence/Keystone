@@ -25,11 +25,8 @@ std::optional<WorkItem> WorkStealingQueue::pop() {
 }
 
 std::optional<WorkItem> WorkStealingQueue::steal() {
-  WorkItem item = WorkItem::makeFunction(nullptr);
-  if (queue_.try_dequeue(item)) {
-    return item;
-  }
-  return std::nullopt;
+  // ConcurrentQueue is MPMC; pop() and steal() have identical semantics.
+  return pop();
 }
 
 size_t WorkStealingQueue::size_approx() const {

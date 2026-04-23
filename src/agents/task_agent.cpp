@@ -48,17 +48,7 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
   // Phase 1.2 (Issue #52): Handle CANCEL_TASK action type
   if (msg.action_type == core::ActionType::CANCEL_TASK) {
     auto response = handleCancellation(msg);
-
-    // Send acknowledgement back to sender via MessageBus
-    auto response_msg =
-        core::KeystoneMessage::create(agent_id_,
-                                      msg.sender_id,  // Route back to original sender
-                                      "response",
-                                      response.result);
-    response_msg.msg_id = msg.msg_id;  // Keep same msg_id for tracking
-
-    sendMessage(response_msg);
-
+    sendResponseMessage(msg, response.result);
     co_return response;
   }
 
@@ -79,40 +69,24 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
     // Log the execution
     command_log_.emplace_back(msg.command, result);
 
-    // Create success response
     auto response = core::Response::createSuccess(msg, agent_id_, result);
-
-    // Send response back to sender via MessageBus
-    auto response_msg =
-        core::KeystoneMessage::create(agent_id_,
-                                      msg.sender_id,  // Route back to original sender
-                                      "response",
-                                      result);
-    response_msg.msg_id = msg.msg_id;  // Keep same msg_id for tracking
-
-    // MessageBus routes it automatically
-    sendMessage(response_msg);
-
-    co_return response;  // FIX C3: Use co_return for coroutine
+    sendResponseMessage(msg, result);
+    co_return response;
 
   } catch (const std::exception& e) {
     // FIX P3-08: Sanitize error message to prevent information disclosure
     std::string sanitized_error = core::sanitizeErrorMessage(e.what());
-
-    // Create error response with sanitized message
     auto response = core::Response::createError(msg, agent_id_, sanitized_error);
-
-    // Send error response back via MessageBus
-    auto response_msg = core::KeystoneMessage::create(agent_id_,
-                                                      msg.sender_id,
-                                                      "response",
-                                                      std::string("ERROR: ") + sanitized_error);
-    response_msg.msg_id = msg.msg_id;
-
-    sendMessage(response_msg);
-
-    co_return response;  // FIX C3: Use co_return for coroutine
+    sendResponseMessage(msg, std::string("ERROR: ") + sanitized_error);
+    co_return response;
   }
+}
+
+void TaskAgent::sendResponseMessage(const core::KeystoneMessage& msg, const std::string& payload) {
+  auto response_msg =
+      core::KeystoneMessage::create(agent_id_, msg.sender_id, "response", payload);
+  response_msg.msg_id = msg.msg_id;
+  sendMessage(response_msg);
 }
 
 void TaskAgent::validateCommand(const std::string& command) {
