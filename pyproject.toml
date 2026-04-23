@@ -33,7 +33,7 @@ fail_under = 85
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
-    "@(abc\\.)?abstractmethod",
+    "@(abc\.)?abstractmethod",
     "class .*\\(Protocol\\):",
     "\\.\\.\\.\\s*$",
 ]
@@ -49,6 +49,7 @@ files = ["conanfile.py"]
 module = ["conan.*"]
 ignore_missing_imports = true
 
+# Conan uses dynamic attribute access on options/settings; attr-defined is not useful here
 [[tool.mypy.overrides]]
 module = ["conanfile"]
 disable_error_code = ["attr-defined"]
