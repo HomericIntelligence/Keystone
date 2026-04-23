@@ -2,7 +2,7 @@
 
 All notable changes to ProjectKeystone are documented here.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Starting from v0.2.0, this file is maintained automatically by
 [release-please](https://github.com/googleapis/release-please).
@@ -14,6 +14,27 @@ Starting from v0.2.0, this file is maintained automatically by
 ### Features
 - Migrate dependency management to Conan 2 with CMakePresets ([220326c](../../commit/220326c))
 
+### Added
+- NATS subject schema documentation and payload envelope contract
+- Pre-commit CI job enforcing all hook checks
+- Dependency vulnerability scanning in CI
+- Pytest-cov coverage reporting in CI
+- Mypy type checking in CI pipeline
+- `TASK_PHASE_ERROR` variant with centralized terminal state checks
+- Structured JSON logging for log aggregation
+- `/v1/health` monitoring endpoint with NATS status tracking
+- NATS reconnection callbacks and error handling
+- `NATSListener` with explicit JetStream ack/nak on every code path
+- `TASK_FAILED` event handling to prevent DAG deadlocks
+- `test_task_claimer.py` and shared `tests/helpers.py` test utilities
+- `justfile` wrapping Makefile for ecosystem convention
+
+### Changed
+- License replaced from MIT placeholder to BSD 3-Clause
+- Unsized integers converted to sized types (`int32_t`, `uint32_t`, `size_t`)
+- `CONTRIBUTING.md` rewritten to match current C++20/Conan/just workflow
+- `pixi.toml` and `justfile` aligned with ecosystem conventions
+
 ### Documentation
 - Add CODE_OF_CONDUCT.md ([b9d15bc](../../commit/b9d15bc))
 - Rewrite CLAUDE.md for pure transport role, remove HMAS hierarchy ([f442d1a](../../commit/f442d1a))
@@ -22,6 +43,15 @@ Starting from v0.2.0, this file is maintained automatically by
 - `monitoring`: Add `.load()` for atomic `server_fd_` and `port_` usages ([4a583ed](../../commit/4a583ed))
 - Resolve CI failures — TSan data races, MSan removal, Dockerfile COPY paths ([412b73c](../../commit/412b73c))
 - `ci`: Apply clang-format-18 and fix Dockerfile COPY for disabled tests ([14e9e42](../../commit/14e9e42))
+- DAG agent availability filtering to check current task assignment
+- DAG-walker recursive DFS replaced with iterative cycle detection
+- CI: Conan 2 wired into CI, Makefile, and Dockerfile
+- CI: security-scan.yml rewritten for C++20/pixi project
+- CI: `pull-requests: write` permission for PR summary comments
+- TSan data races in `SimulatedNUMANode`; `ConcurrentQueue` false positives suppressed
+- `ThreadPoolTest.CreateAndDestroy` disabled under sanitizer builds
+- `spdlog` and `concurrentqueue` promoted to `PUBLIC` in CMake targets
+- Atomic `server_fd_` and `port_` accesses use `.load()`
 
 ### Chores
 - Address audit quick wins — security, templates, DX improvements ([6fbb180](../../commit/6fbb180))
@@ -29,7 +59,7 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ---
 
-## [0.1.0] — 2025-12-01
+## [0.1.0] — 2026-03-15
 
 Initial tracked release. Establishes the C++20 transport infrastructure for
 ProjectKeystone: intra-host MessageBus (lock-free), NATS JetStream cross-host
@@ -54,6 +84,31 @@ bridge, BlazingMQ integration, and full sanitizer CI.
 - Stream A Phase A2 — `AgentIdInterning` registry optimization (Issue #43) ([229f40a](../../commit/229f40a))
 - Stream A Phase A1 — MessageBus interface segregation (Issue #46) ([2929bc0](../../commit/2929bc0))
 - Add GitHub issue workflow to all agent configurations ([5525693](../../commit/5525693))
+
+### Added
+- C++20 `MessageBus` with lock-free concurrent queue (`concurrentqueue`)
+- NATS JetStream integration via `nats.c` for cross-host delivery
+- Transparent bridge between local `MessageBus` and NATS JetStream
+- Pull-based, rate-limited delivery (`MaxAckPending = 1` per consumer)
+- Durable JetStream consumers surviving restarts
+- BlazingMQ local queue management
+- `WorkStealingScheduler` with async agent coroutine support
+- 4-layer HMAS hierarchy (`L0`–`L3`) — subsequently extracted to ProjectAgamemnon (ADR-006)
+- `spdlog`-based `Logger` and `LogContext` for distributed logging
+- CMake 3.20+ build system with `CMakePresets.json` (v8)
+- ASan, TSan, and UBSan sanitizer presets
+- GoogleTest unit and integration test suite
+- GitHub Actions CI/CD workflows
+- Docker-based build environment
+- HTTP monitoring server
+- Python DAG orchestration daemon (`daemon.py`) for ai-maestro integration
+- NATS listener with JetStream ack/nak support
+- `CODE_OF_CONDUCT.md` and `SECURITY.md`
+- Conan 2 dependency management with `conanfile.py`
+
+### Changed
+- Migrated from Python prototype to C++20 implementation
+- Migrated dependency management from vcpkg/system packages to Conan 2
 
 ### Bug Fixes
 - Switch to sized integers (multiple commits, Dec 2025) ([2aeb9e4](../../commit/2aeb9e4))
