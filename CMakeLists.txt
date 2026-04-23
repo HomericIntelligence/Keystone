@@ -199,6 +199,7 @@ add_library(
   src/monitoring/health_check_server.cpp # Phase 6.7: Health check endpoints
   # (C4)
   src/monitoring/nats_status.cpp # Issue #93: NATS connection state tracker
+  src/network/nats_listener.cpp # Issue #139: JetStream startup error handling
 )
 
 target_include_directories(
@@ -397,6 +398,7 @@ add_executable(
   # test_task_cancellation.cpp DISABLED: includes agents/async_agent.hpp (ADR-006)
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions (core/agent_types.hpp only)
+  tests/unit/test_nats_listener.cpp # Issue #139: JetStream startup error handling
   # test_subject_validator.cpp DISABLED: includes agents/task_agent.hpp (ADR-006)
 )
 
