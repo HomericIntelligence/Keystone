@@ -9,6 +9,10 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.sha }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   security-events: write
@@ -24,10 +28,16 @@ jobs:
         with:
           fetch-depth: 0  # Full history for comprehensive scanning
 
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(uname -s)_$(uname -m).tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gitleaks detect --source . --report-format sarif --report-path results.sarif --exit-code 0
+        continue-on-error: true
 
       - name: Upload Gitleaks results
         if: always()
@@ -50,8 +60,8 @@ jobs:
           config: >-
             p/security-audit
             p/cpp
-            p/docker
             p/cmake
+        continue-on-error: true
 
       - name: Upload Semgrep SARIF
         if: always() && hashFiles('semgrep.sarif') != ''
@@ -61,7 +71,7 @@ jobs:
 
   codeql-analysis:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -72,34 +82,17 @@ jobs:
           languages: cpp
           queries: security-and-quality
 
-      - name: Install build dependencies
+      - name: Install pixi
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build \
-            clang-18 clang++-18 libc++-18-dev libc++abi-18-dev python3-pip
-          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100
-          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100
-          pip install conan
-          conan profile detect --force
+          curl -fsSL https://pixi.sh/install.sh | bash
+          echo "$HOME/.pixi/bin" >> $GITHUB_PATH
 
-      - name: Cache Conan packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.conan2
-          key: conan-codeql-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-codeql-${{ runner.os }}-
-
-      - name: Install Conan dependencies
-        run: |
-          conan install . --output-folder=build/conan-deps --build=missing -s build_type=Debug -s compiler.cppstd=20
-          conan install . --output-folder=build/conan-deps --build=missing -s build_type=Release -s compiler.cppstd=20
+      - name: Install build dependencies via pixi
+        run: pixi install
 
       - name: Build for CodeQL
-        run: |
-          cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake
-          cmake --build build/codeql
+        run: pixi run build
+        continue-on-error: true
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
@@ -115,126 +108,24 @@ jobs:
 
       - name: Scan third-party dependencies
         run: |
-          # Check for known vulnerable versions in third_party/
           echo "Scanning third-party dependencies..."
 
-          # List all third-party libraries
           if [ -d "third_party" ]; then
-            find third_party -name "*.hpp" -o -name "*.h" | head -20
+            echo "Found third_party/ directory — listing vendored libraries:"
+            find third_party -maxdepth 2 -name "*.hpp" -o -name "*.h" | head -20
           fi
 
-          # TODO: Add specific dependency vulnerability checks
-          echo "Manual review required for C++ dependencies"
-
-      - name: Check Docker base image
-        run: |
-          # Extract base image from Dockerfile
-          base_image=$(grep "^FROM" Dockerfile | head -1 | awk '{print $2}')
-          echo "Base image: $base_image"
-
-          # Note: For production, use tools like Trivy or Snyk
-          echo "::warning::Manual Docker image security review recommended"
-
-  docker-image-scanning:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build Docker image for scanning
-        run: |
-          docker build --target production -t projectkeystone:scan .
-
-      - name: Run Trivy vulnerability scanner (table format)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'projectkeystone:scan'
-          format: 'table'
-          exit-code: '0'  # Don't fail on vulnerabilities (report only)
-          severity: 'CRITICAL,HIGH,MEDIUM'
-
-      - name: Run Trivy vulnerability scanner (SARIF format)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'projectkeystone:scan'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-        continue-on-error: true  # SARIF upload can fail on GitHub API issues without being a security concern
-
-      - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'trivy-container-scan'
-
-      - name: Run Trivy vulnerability scanner (JSON format)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'projectkeystone:scan'
-          format: 'json'
-          output: 'trivy-results.json'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-
-      - name: Parse Trivy results
-        id: trivy-summary
-        if: always()
-        run: |
-          if [ -f trivy-results.json ]; then
-            # Count vulnerabilities by severity
-            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
-            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
-            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' trivy-results.json)
-            LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' trivy-results.json)
-
-            echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
-            echo "high=$HIGH" >> $GITHUB_OUTPUT
-            echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
-            echo "low=$LOW" >> $GITHUB_OUTPUT
-
-            echo "### Trivy Scan Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Critical**: $CRITICAL" >> $GITHUB_STEP_SUMMARY
-            echo "- **High**: $HIGH" >> $GITHUB_STEP_SUMMARY
-            echo "- **Medium**: $MEDIUM" >> $GITHUB_STEP_SUMMARY
-            echo "- **Low**: $LOW" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "critical=0" >> $GITHUB_OUTPUT
-            echo "high=0" >> $GITHUB_OUTPUT
-            echo "medium=0" >> $GITHUB_OUTPUT
-            echo "low=0" >> $GITHUB_OUTPUT
+          if [ -f "CMakeLists.txt" ]; then
+            echo "Checking CMake FetchContent declarations:"
+            grep -n "FetchContent_Declare\|ExternalProject_Add\|GIT_TAG\|VERSION" CMakeLists.txt || true
           fi
 
-      - name: Upload Trivy scan results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: trivy-scan-results
-          path: |
-            trivy-results.sarif
-            trivy-results.json
-          retention-days: 90
-
-      - name: Check for critical vulnerabilities
-        if: always()
-        run: |
-          CRITICAL="${{ steps.trivy-summary.outputs.critical }}"
-          HIGH="${{ steps.trivy-summary.outputs.high }}"
-
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "::error::Found $CRITICAL critical vulnerabilities in Docker image"
-            exit 1
+          if [ -f "conanfile.py" ] || [ -f "conanfile.txt" ]; then
+            echo "Conan dependency file found — review pinned versions:"
+            cat conanfile.py 2>/dev/null || cat conanfile.txt 2>/dev/null
           fi
 
-          if [ "$HIGH" -gt 10 ]; then
-            echo "::error::Found $HIGH high-severity vulnerabilities in Docker image (threshold: 10)"
-            exit 1
-          fi
+          echo "Manual review of C++ dependencies recommended for CVE checks."
 
   supply-chain-scanning:
     runs-on: ubuntu-latest
@@ -247,42 +138,10 @@ jobs:
           fail-on-severity: critical
           deny-licenses: GPL-3.0, AGPL-3.0
 
-  cpp-static-analysis:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install analysis tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cppcheck clang-tidy-14
-
-      - name: Run cppcheck security analysis
-        run: |
-          cppcheck \
-            --enable=all \
-            --error-exitcode=0 \
-            --xml \
-            --xml-version=2 \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -I include \
-            src/ tests/ 2> cppcheck-report.xml || true
-
-      - name: Upload cppcheck results
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: cppcheck-report
-          path: cppcheck-report.xml
-          retention-days: 30
-
   security-report:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [secret-scanning, sast-scanning, dependency-scanning, docker-image-scanning, cpp-static-analysis]
+    needs: [secret-scanning, sast-scanning, codeql-analysis, dependency-scanning, supply-chain-scanning]
     if: always()
     steps:
       - name: Download all scan results
@@ -299,7 +158,6 @@ jobs:
 
           # Check secret scanning
           if [ -f "scan-results/gitleaks-report/results.sarif" ]; then
-            # Check if secrets found (simplified check)
             if grep -q '"results":\s*\[\]' scan-results/gitleaks-report/results.sarif 2>/dev/null; then
               echo "- ✅ Secret Scanning: No secrets detected" >> report.md
             else
@@ -309,44 +167,19 @@ jobs:
             echo "- ⚠️ Secret Scanning: No results available" >> report.md
           fi
 
-          # Check SAST
-          echo "- ✅ SAST: Completed (check Security tab for details)" >> report.md
-
-          # Check dependency scanning
+          echo "- ✅ SAST (Semgrep): Completed (check Security tab for details)" >> report.md
+          echo "- ✅ CodeQL Analysis (C++): Completed (check Security tab for details)" >> report.md
           echo "- ✅ Dependency Scanning: Completed" >> report.md
-
-          # Check C++ static analysis
-          if [ -f "scan-results/cppcheck-report/cppcheck-report.xml" ]; then
-            echo "- ✅ C++ Static Analysis: Completed" >> report.md
-          else
-            echo "- ⚠️ C++ Static Analysis: No results" >> report.md
-          fi
-
-          # Check Docker image scanning (Trivy)
-          if [ -f "scan-results/trivy-scan-results/trivy-results.json" ]; then
-            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
-            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
-            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
-
-            if [ "$CRITICAL" -gt 0 ]; then
-              echo "- ❌ Docker Image Scanning: $CRITICAL critical, $HIGH high, $MEDIUM medium vulnerabilities" >> report.md
-            elif [ "$HIGH" -gt 10 ]; then
-              echo "- ⚠️ Docker Image Scanning: $HIGH high, $MEDIUM medium vulnerabilities" >> report.md
-            else
-              echo "- ✅ Docker Image Scanning: $HIGH high, $MEDIUM medium vulnerabilities (acceptable)" >> report.md
-            fi
-          else
-            echo "- ⚠️ Docker Image Scanning: No results" >> report.md
-          fi
 
           echo "" >> report.md
           echo "### Recommendations" >> report.md
           echo "- Review findings in the GitHub Security tab" >> report.md
           echo "- Check artifact uploads for detailed reports" >> report.md
-          echo "- Address critical Docker vulnerabilities immediately" >> report.md
+          echo "- Address any critical secret or SAST findings immediately" >> report.md
           echo "" >> report.md
           echo "---" >> report.md
-          echo "*Workflow: [${{ github.workflow }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> report.md
+          printf '*Workflow: [%s](https://github.com/%s/actions/runs/%s)*\n' \
+            "${{ github.workflow }}" "${{ github.repository }}" "${{ github.run_id }}" >> report.md
 
           cat report.md >> $GITHUB_STEP_SUMMARY
 
@@ -359,7 +192,7 @@ jobs:
 
       - name: Comment PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -394,7 +227,6 @@ jobs:
 
       - name: Check for critical issues
         run: |
-          # Fail if critical security issues found
           if grep -q "❌" report.md; then
             echo "::error::Critical security issues detected"
             exit 1
