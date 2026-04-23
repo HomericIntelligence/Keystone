@@ -27,8 +27,7 @@ inline const std::regex& safeIdPattern() {
  * @return The validated value (unchanged).
  * @throws std::invalid_argument if value is empty or contains unsafe characters.
  */
-inline const std::string& validateSubjectToken(const std::string& value,
-                                               const std::string& label) {
+inline const std::string& validateSubjectToken(const std::string& value, const std::string& label) {
   if (value.empty() || !std::regex_match(value, safeIdPattern())) {
     throw std::invalid_argument("Invalid " + label + ": unsafe characters in '" + value + "'");
   }

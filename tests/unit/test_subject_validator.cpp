@@ -7,9 +7,9 @@
  * or API call construction.
  */
 
-#include "core/subject_validator.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
+#include "core/subject_validator.hpp"
 
 #include <gtest/gtest.h>
 
