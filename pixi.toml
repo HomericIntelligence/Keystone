@@ -11,12 +11,15 @@ ninja = ">=1.10"
 cxx-compiler = "*"
 gtest = "*"
 pkg-config = "*"
+just = ">=1.13"
 
 [tasks]
 configure = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF"
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
 test = { cmd = "cd build-native && ctest --output-on-failure", depends-on = ["build"] }
 clean = "rm -rf build-native"
+format = "just format"
+format-check = "just format-check"
 
 [tasks.test-phase1]
 cmd = "build-native/basic_delegation_tests"

@@ -31,8 +31,12 @@ jobs:
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
 
+      - name: Install just
+        run: |
+          curl -fsSL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
       - name: Check formatting
-        run: make format.check.native
+        run: just format-check
 
       # Note: Full static analysis (clang-tidy, cppcheck) takes 30+ minutes
       # and should be run locally or in a separate weekly workflow.
