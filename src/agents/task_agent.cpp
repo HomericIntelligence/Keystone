@@ -1,5 +1,6 @@
 #include "agents/task_agent.hpp"
 
+#include "concurrency/logger.hpp"
 #include "core/error_sanitizer.hpp"
 #include "core/metrics.hpp"
 
@@ -289,7 +290,7 @@ void TaskAgent::processYamlTask(const std::string& yaml_spec) {
       coordinator_client_->submitResult(task_result);
     } catch (const std::exception& e) {
       // Log error but don't fail the task
-      std::cerr << "Failed to submit result via gRPC: " << e.what() << std::endl;
+      concurrency::Logger::error("Failed to submit result via gRPC: {}", e.what());
     }
   }
 }
@@ -322,7 +323,7 @@ void TaskAgent::heartbeatLoop() {
       }
     } catch (const std::exception& e) {
       // Log error but continue heartbeating
-      std::cerr << "Heartbeat failed: " << e.what() << std::endl;
+      concurrency::Logger::error("Heartbeat failed: {}", e.what());
     }
 
     // Sleep for 1 second
@@ -339,7 +340,7 @@ void TaskAgent::shutdown() {
     try {
       registry_client_->unregisterAgent(agent_id_, "Shutdown requested");
     } catch (const std::exception& e) {
-      std::cerr << "Failed to unregister agent: " << e.what() << std::endl;
+      concurrency::Logger::error("Failed to unregister agent: {}", e.what());
     }
   }
 

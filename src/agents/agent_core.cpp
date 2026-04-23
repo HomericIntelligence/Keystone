@@ -1,8 +1,8 @@
 #include "agents/agent_core.hpp"
 
+#include "concurrency/logger.hpp"
 #include "core/config.hpp"  // FIX m3: Centralized configuration
 
-#include <iostream>  // FIX M1: For std::cerr (backpressure logging)
 #include <stdexcept>
 // FIX ISP (Issue #46): Include IMessageRouter instead of MessageBus
 #include "core/i_message_router.hpp"
@@ -56,8 +56,7 @@ void AgentCore::receiveMessage(const core::KeystoneMessage& msg) {
                                                         true,
                                                         std::memory_order_relaxed)) {
         // Log warning on first occurrence
-        std::cerr << "[BACKPRESSURE] Agent " << agent_id_ << " inbox full (" << total_depth
-                  << " messages), rejecting new messages" << std::endl;
+        concurrency::Logger::warn("[BACKPRESSURE] Agent {} inbox full ({} messages), rejecting new messages", agent_id_, total_depth);
       }
     }
 
@@ -73,8 +72,7 @@ void AgentCore::receiveMessage(const core::KeystoneMessage& msg) {
     // Only one thread wins the race to clear and log
     bool expected = true;
     if (backpressure_applied_.compare_exchange_strong(expected, false, std::memory_order_relaxed)) {
-      std::cerr << "[BACKPRESSURE] Agent " << agent_id_ << " inbox recovered (" << total_depth
-                << " messages), accepting messages again" << std::endl;
+      concurrency::Logger::info("[BACKPRESSURE] Agent {} inbox recovered ({} messages), accepting messages again", agent_id_, total_depth);
     }
   }
 
