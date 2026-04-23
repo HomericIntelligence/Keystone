@@ -5,11 +5,10 @@
 
 #include "transport/nats_connection.hpp"
 
-#include <nats.h>
-
 #include <cstdlib>
 #include <string>
 
+#include <nats.h>
 #include <spdlog/spdlog.h>
 
 namespace keystone {
@@ -30,7 +29,9 @@ std::string getEnvVar(const char* name) {
 
 NatsConnection::NatsConnection(NatsConfig config) : config_(std::move(config)) {}
 
-NatsConnection::~NatsConnection() { disconnect(); }
+NatsConnection::~NatsConnection() {
+  disconnect();
+}
 
 // ---------------------------------------------------------------------------
 // Callback registration
@@ -104,7 +105,8 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
   if (!cert_path.empty() && !key_path.empty()) {
     if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(), key_path.c_str()) != NATS_OK) {
       spdlog::error("NatsConnection: failed to load client certificate from {} / {}",
-                    cert_path, key_path);
+                    cert_path,
+                    key_path);
       return false;
     }
   } else if (!cert_path.empty() || !key_path.empty()) {
@@ -112,7 +114,8 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
     spdlog::error(
         "NatsConnection: TLS client certificate requires both cert and key paths; "
         "cert_path='{}' key_path='{}'",
-        cert_path, key_path);
+        cert_path,
+        key_path);
     return false;
   }
 
@@ -212,15 +215,19 @@ bool NatsConnection::isConnected() const noexcept {
   return getState() == NatsConnectionState::CONNECTED;
 }
 
-natsConnection* NatsConnection::handle() const noexcept { return conn_; }
+natsConnection* NatsConnection::handle() const noexcept {
+  return conn_;
+}
 
 // ---------------------------------------------------------------------------
 // Static callback shims
 // ---------------------------------------------------------------------------
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
-                             natsStatus err, void* closure) noexcept {
+void NatsConnection::onError(natsConnection* /*nc*/,
+                             natsSubscription* /*sub*/,
+                             natsStatus err,
+                             void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   ErrorCallback cb;
   {
