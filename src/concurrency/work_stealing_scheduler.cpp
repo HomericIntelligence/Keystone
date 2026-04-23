@@ -189,7 +189,7 @@ size_t WorkStealingScheduler::getNextWorkerIndex() {
 }
 
 std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(size_t worker_index,
-                                                              const char* phase_label) {
+                                                            const char* phase_label) {
   auto& own_queue = *worker_queues_[worker_index];
 
   if (auto work = own_queue.pop()) {
