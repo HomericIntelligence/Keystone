@@ -273,12 +273,11 @@ void HealthCheckServer::handleRequest(int client_fd) {
 
   if (is_v1_health) {
     std::string body = generateV1HealthResponse(nats_status_);
-    NatsConnectionState nats_state =
-        nats_status_ ? nats_status_->state() : NatsConnectionState::kDisconnected;
-    bool healthy = (nats_status_ == nullptr) ||
-                   (nats_state == NatsConnectionState::kConnected);
-    std::string status_line =
-        healthy ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 503 Service Unavailable\r\n";
+    NatsConnectionState nats_state = nats_status_ ? nats_status_->state()
+                                                  : NatsConnectionState::kDisconnected;
+    bool healthy = (nats_status_ == nullptr) || (nats_state == NatsConnectionState::kConnected);
+    std::string status_line = healthy ? "HTTP/1.1 200 OK\r\n"
+                                      : "HTTP/1.1 503 Service Unavailable\r\n";
 
     std::ostringstream response;
     response << status_line;
