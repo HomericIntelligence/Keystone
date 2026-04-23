@@ -86,13 +86,9 @@ bool waitFor(Pred predicate, std::chrono::milliseconds timeout = std::chrono::mi
 
 class NatsIntegrationTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    bus_ = std::make_unique<MessageBus>();
-  }
+  void SetUp() override { bus_ = std::make_unique<MessageBus>(); }
 
-  void TearDown() override {
-    bus_.reset();
-  }
+  void TearDown() override { bus_.reset(); }
 
   std::unique_ptr<MessageBus> bus_;
 };
@@ -114,14 +110,14 @@ TEST_F(NatsIntegrationTest, PipelineLocalEventTriggersAgentProcessing) {
   bus_->registerAgent(agent->getAgentId(), agent);
 
   // Simulate an inbound NATS payload (e.g., from hi.tasks.execute subject)
-  const std::string nats_payload = R"({"task_id":"t-001","command":"advance_dag","dag_id":"dag-42"})";
+  const std::string nats_payload =
+      R"({"task_id":"t-001","command":"advance_dag","dag_id":"dag-42"})";
 
-  auto msg = KeystoneMessage::create(
-      "nats_bridge",         // sender: the transparent bridge
-      "pipeline_agent",      // receiver: the consuming agent
-      ActionType::EXECUTE,
-      "nats-session-001",
-      nats_payload);
+  auto msg = KeystoneMessage::create("nats_bridge",     // sender: the transparent bridge
+                                     "pipeline_agent",  // receiver: the consuming agent
+                                     ActionType::EXECUTE,
+                                     "nats-session-001",
+                                     nats_payload);
 
   EXPECT_TRUE(bus_->routeMessage(msg));
 
@@ -197,33 +193,33 @@ TEST_F(NatsIntegrationTest, PipelineShutdownDrainsCleanly) {
   // Queue several work messages before the shutdown signal.
   constexpr int kWorkMessages = 5;
   for (int i = 0; i < kWorkMessages; ++i) {
-    auto work = KeystoneMessage::create(
-        "bridge", "drain_agent",
-        ActionType::EXECUTE,
-        "session-drain",
-        "payload-" + std::to_string(i));
+    auto work = KeystoneMessage::create("bridge",
+                                        "drain_agent",
+                                        ActionType::EXECUTE,
+                                        "session-drain",
+                                        "payload-" + std::to_string(i));
     EXPECT_TRUE(bus_->routeMessage(work));
   }
 
   // Issue shutdown signal (last in queue).
-  auto shutdown_msg = KeystoneMessage::create(
-      "bridge", "drain_agent",
-      ActionType::SHUTDOWN,
-      "session-drain");
+  auto shutdown_msg =
+      KeystoneMessage::create("bridge", "drain_agent", ActionType::SHUTDOWN, "session-drain");
   EXPECT_TRUE(bus_->routeMessage(shutdown_msg));
 
   // Drain: consume all kWorkMessages + 1 shutdown.
   int drained = 0;
   bool saw_shutdown = false;
-  bool drained_all = waitFor([&]() {
-    while (auto m = agent->getMessage()) {
-      ++drained;
-      if (m->action_type == ActionType::SHUTDOWN) {
-        saw_shutdown = true;
-      }
-    }
-    return drained >= kWorkMessages + 1;
-  }, std::chrono::milliseconds{2000});
+  bool drained_all = waitFor(
+      [&]() {
+        while (auto m = agent->getMessage()) {
+          ++drained;
+          if (m->action_type == ActionType::SHUTDOWN) {
+            saw_shutdown = true;
+          }
+        }
+        return drained >= kWorkMessages + 1;
+      },
+      std::chrono::milliseconds{2000});
 
   EXPECT_TRUE(drained_all) << "Did not drain all messages before timeout";
   EXPECT_TRUE(saw_shutdown) << "Shutdown signal was not delivered";
@@ -278,32 +274,33 @@ TEST_F(NatsIntegrationTest, PipelineCancellationPropagates) {
 
   // First, dispatch a long-running task.
   auto task_msg = KeystoneMessage::create(
-      "bridge", "cancel_target",
-      ActionType::EXECUTE,
-      "session-cancel",
-      "long-running-payload");
+      "bridge", "cancel_target", ActionType::EXECUTE, "session-cancel", "long-running-payload");
   task_msg.task_id = "task-xyz-99";
   EXPECT_TRUE(bus_->routeMessage(task_msg));
 
   // Now send a cancellation for the same task ID.
-  auto cancel_msg = KeystoneMessage::createCancellation(
-      "bridge", "cancel_target", "task-xyz-99", "session-cancel");
+  auto cancel_msg = KeystoneMessage::createCancellation("bridge",
+                                                        "cancel_target",
+                                                        "task-xyz-99",
+                                                        "session-cancel");
   EXPECT_TRUE(bus_->routeMessage(cancel_msg));
 
   // Drain both messages.
   bool got_execute = false;
   bool got_cancel = false;
-  bool drained = waitFor([&]() {
-    while (auto m = agent->getMessage()) {
-      if (m->action_type == ActionType::EXECUTE) {
-        got_execute = true;
-      }
-      if (m->action_type == ActionType::CANCEL_TASK) {
-        got_cancel = true;
-      }
-    }
-    return got_execute && got_cancel;
-  }, std::chrono::milliseconds{1000});
+  bool drained = waitFor(
+      [&]() {
+        while (auto m = agent->getMessage()) {
+          if (m->action_type == ActionType::EXECUTE) {
+            got_execute = true;
+          }
+          if (m->action_type == ActionType::CANCEL_TASK) {
+            got_cancel = true;
+          }
+        }
+        return got_execute && got_cancel;
+      },
+      std::chrono::milliseconds{1000});
 
   EXPECT_TRUE(drained) << "Did not receive both EXECUTE and CANCEL_TASK messages";
   EXPECT_TRUE(got_execute);
@@ -321,7 +318,8 @@ class NatsServerTest : public NatsIntegrationTest {
     if (!integrationTestsEnabled()) {
       GTEST_SKIP() << "NATS integration tests disabled. "
                       "Set KEYSTONE_INTEGRATION_TESTS=1 and start a NATS server "
-                      "at " << natsUrl() << " (see tests/integration/README.md).";
+                      "at "
+                   << natsUrl() << " (see tests/integration/README.md).";
     }
   }
 };
@@ -375,22 +373,23 @@ TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
   const std::string nats_payload =
       R"({"task_id":"t-002","action":"advance_dag","dag_id":"dag-prod-01","priority":"HIGH"})";
 
-  auto bridged_msg = KeystoneMessage::create(
-      "nats.bridge:" + nats_subject,
-      "hi.myrmidon.pipeline.0",
-      ActionType::EXECUTE,
-      "nats-e2e-session",
-      nats_payload);
+  auto bridged_msg = KeystoneMessage::create("nats.bridge:" + nats_subject,
+                                             "hi.myrmidon.pipeline.0",
+                                             ActionType::EXECUTE,
+                                             "nats-e2e-session",
+                                             nats_payload);
   bridged_msg.priority = Priority::HIGH;
   bridged_msg.task_id = "t-002";
 
   EXPECT_TRUE(bus_->routeMessage(bridged_msg));
 
   std::optional<KeystoneMessage> evt;
-  bool received = waitFor([&]() {
-    evt = agent->getMessage();
-    return evt.has_value();
-  }, std::chrono::milliseconds{2000});
+  bool received = waitFor(
+      [&]() {
+        evt = agent->getMessage();
+        return evt.has_value();
+      },
+      std::chrono::milliseconds{2000});
   ASSERT_TRUE(received) << "Pipeline agent did not receive the advance_dag event";
   ASSERT_TRUE(evt.has_value());
 
@@ -414,37 +413,37 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
 
   constexpr int kPending = 3;
   for (int i = 0; i < kPending; ++i) {
-    auto work = KeystoneMessage::create(
-        "nats.bridge:hi.tasks.execute",
-        "hi.myrmidon.tasks.0",
-        ActionType::EXECUTE,
-        "drain-session",
-        "pending-task-" + std::to_string(i));
+    auto work = KeystoneMessage::create("nats.bridge:hi.tasks.execute",
+                                        "hi.myrmidon.tasks.0",
+                                        ActionType::EXECUTE,
+                                        "drain-session",
+                                        "pending-task-" + std::to_string(i));
     EXPECT_TRUE(bus_->routeMessage(work));
   }
 
   // Shutdown signal arrives after the work messages (e.g., from SIGTERM handler).
-  auto shutdown = KeystoneMessage::create(
-      "nats.bridge:hi.agents.shutdown",
-      "hi.myrmidon.tasks.0",
-      ActionType::SHUTDOWN,
-      "drain-session");
+  auto shutdown = KeystoneMessage::create("nats.bridge:hi.agents.shutdown",
+                                          "hi.myrmidon.tasks.0",
+                                          ActionType::SHUTDOWN,
+                                          "drain-session");
   EXPECT_TRUE(bus_->routeMessage(shutdown));
 
   int count = 0;
   bool saw_shutdown = false;
-  bool ok = waitFor([&]() {
-    while (auto m = agent->getMessage()) {
-      ++count;
-      if (m->action_type == ActionType::SHUTDOWN) {
-        saw_shutdown = true;
-      }
-    }
-    return count >= kPending + 1;
-  }, std::chrono::milliseconds{5000});
+  bool ok = waitFor(
+      [&]() {
+        while (auto m = agent->getMessage()) {
+          ++count;
+          if (m->action_type == ActionType::SHUTDOWN) {
+            saw_shutdown = true;
+          }
+        }
+        return count >= kPending + 1;
+      },
+      std::chrono::milliseconds{5000});
 
-  EXPECT_TRUE(ok) << "Drain timed out; only received " << count << " of "
-                  << (kPending + 1) << " messages";
+  EXPECT_TRUE(ok) << "Drain timed out; only received " << count << " of " << (kPending + 1)
+                  << " messages";
   EXPECT_TRUE(saw_shutdown) << "Shutdown message was not delivered";
   EXPECT_EQ(count, kPending + 1);
 }
