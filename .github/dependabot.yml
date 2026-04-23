@@ -114,6 +114,33 @@ updates:
   # ============================================================================
 
   # ============================================================================
+  # Conan - C++ package manager (Python-based, tracked via pip ecosystem)
+  # ============================================================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "12:00"
+      timezone: "America/New_York"
+
+    # Only update the conan tool itself; C++ library versions are pinned in conanfile.py
+    allow:
+      - dependency-name: "conan"
+
+    open-pull-requests-limit: 3
+
+    labels:
+      - "dependencies"
+      - "automated"
+      - "cpp"
+    assignees:
+      - "mvillmow"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # ============================================================================
   # C++ Dependencies - Manual Management
   # ============================================================================
   #
