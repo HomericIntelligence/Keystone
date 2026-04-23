@@ -194,6 +194,7 @@ add_library(
   src/monitoring/health_check_server.cpp # Phase 6.7: Health check endpoints
   # (C4)
   src/monitoring/nats_status.cpp # Issue #93: NATS connection state tracker
+  src/network/nats_listener.cpp # Issue #139: JetStream startup error handling
 )
 
 target_include_directories(
@@ -421,6 +422,7 @@ add_executable(
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_subject_validator.cpp # Issue #113: NATS subject token validation
+  tests/unit/test_nats_listener.cpp # Issue #139: JetStream startup error handling
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
