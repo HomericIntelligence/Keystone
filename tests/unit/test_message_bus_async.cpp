@@ -3,7 +3,7 @@
  * @brief Tests for MessageBus with WorkStealingScheduler integration
  */
 
-#include "agents/base_agent.hpp"
+#include "agents/async_agent.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message_bus.hpp"
 
@@ -18,10 +18,10 @@ using namespace keystone::agents;
 using namespace keystone::concurrency;
 
 // Simple test agent that counts received messages
-class CountingAgent : public BaseAgent {
+class CountingAgent : public AsyncAgent {
  public:
   explicit CountingAgent(const std::string& agent_id)
-      : BaseAgent(agent_id), count_(std::make_shared<std::atomic<int>>(0)) {}
+      : AsyncAgent(agent_id), count_(std::make_shared<std::atomic<int>>(0)) {}
 
   Task<Response> processMessage(const KeystoneMessage& msg) override {
     count_->fetch_add(1);

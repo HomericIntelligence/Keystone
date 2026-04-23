@@ -331,15 +331,23 @@ target_link_libraries(async_delegation_tests keystone_agents keystone_core
 
 gtest_discover_tests(async_delegation_tests)
 
-# E2E Tests - Async Agents (Coroutines)
-# DISABLED: Phase 6 async features not yet implemented
-# add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
-#                                   tests/e2e/full_async_hierarchy_test.cpp)
-#
-# target_link_libraries(async_agents_tests keystone_agents keystone_core
+# E2E Tests - Async Agents (Coroutines) — Phase B single-agent async tests
+add_executable(async_agents_tests tests/e2e/async_agents_test.cpp)
+
+target_link_libraries(async_agents_tests keystone_agents keystone_core
+                      keystone_concurrency GTest::gtest_main)
+
+gtest_discover_tests(async_agents_tests)
+
+# E2E Tests - Full Async Hierarchy (4-layer) — requires async sendCommand re-implementation
+# DISABLED: Phase B 4-layer async hierarchy not yet compatible with auto-processing model.
+# full_async_hierarchy_test.cpp uses ChiefArchitectAgent::sendCommand() which combines
+# sendMessage + synchronous getMessage(), incompatible with async round-trips.
+# Tracked in #149 for future implementation.
+# add_executable(full_async_hierarchy_tests tests/e2e/full_async_hierarchy_test.cpp)
+# target_link_libraries(full_async_hierarchy_tests keystone_agents keystone_core
 #                       keystone_concurrency GTest::gtest_main)
-#
-# gtest_discover_tests(async_agents_tests)
+# gtest_discover_tests(full_async_hierarchy_tests)
 
 # E2E Tests - Distributed Hierarchy
 add_executable(distributed_hierarchy_tests
@@ -370,23 +378,21 @@ endif()
 # gtest_discover_tests(multi_component_tests)
 
 # E2E Tests - Chaos Engineering
-# DISABLED: Phase 5 chaos engineering features not yet implemented
-# add_executable(chaos_engineering_tests tests/e2e/chaos_engineering_test.cpp)
-#
-# target_link_libraries(
-#   chaos_engineering_tests keystone_agents keystone_core keystone_concurrency
-#   keystone_simulation GTest::gtest_main)
-#
-# gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
+add_executable(chaos_engineering_tests tests/e2e/chaos_engineering_test.cpp)
+
+target_link_libraries(
+  chaos_engineering_tests keystone_agents keystone_core keystone_concurrency
+  keystone_simulation GTest::gtest_main)
+
+gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
 
 # Unit Tests
 add_executable(
   unit_tests
   tests/unit/test_message_bus.cpp
   tests/unit/test_message_serializer.cpp
-  # DISABLED: Async API not yet implemented
-  # tests/unit/test_message_bus_async.cpp
-  # tests/unit/test_async_task_agent.cpp
+  tests/unit/test_message_bus_async.cpp
+  tests/unit/test_async_task_agent.cpp
   tests/unit/test_message_priority.cpp
   tests/unit/test_agent_core.cpp  # Additional coverage for AgentCore
   tests/unit/test_agent_id_interning.cpp  # Phase A2: Agent ID interning tests
@@ -474,8 +480,7 @@ add_executable(
   concurrency_unit_tests
   tests/unit/test_task.cpp
   tests/unit/test_thread_pool.cpp
-  # DISABLED: Compilation error - private constructor access
-  # tests/unit/test_work_stealing_queue.cpp
+  tests/unit/test_work_stealing_queue.cpp
   tests/unit/test_logger.cpp
   tests/unit/test_pull_or_steal.cpp
   tests/unit/test_work_stealing_scheduler.cpp
@@ -527,10 +532,11 @@ add_custom_target(
           module_coordination_tests
           component_coordination_tests
           async_delegation_tests
-          # DISABLED: async_agents_tests (Phase 6)
+          async_agents_tests
+          # DISABLED: full_async_hierarchy_tests (requires async sendCommand)
           distributed_hierarchy_tests
-          # DISABLED: multi_component_tests (Phase 4)
-          # DISABLED: chaos_engineering_tests (Phase 5)
+          # DISABLED: multi_component_tests (unimplemented HMAS APIs)
+          chaos_engineering_tests
           unit_tests
           concurrency_unit_tests
           simulation_unit_tests
