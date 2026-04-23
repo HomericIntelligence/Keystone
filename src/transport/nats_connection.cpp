@@ -1,0 +1,197 @@
+/**
+ * @file nats_connection.cpp
+ * @brief NATS connection wrapper implementation
+ */
+
+#include "transport/nats_connection.hpp"
+
+#include <nats.h>
+
+#include <string>
+
+namespace keystone {
+namespace transport {
+
+// ---------------------------------------------------------------------------
+// Construction / destruction
+// ---------------------------------------------------------------------------
+
+NatsConnection::NatsConnection(NatsConfig config) : config_(std::move(config)) {}
+
+NatsConnection::~NatsConnection() { disconnect(); }
+
+// ---------------------------------------------------------------------------
+// Callback registration
+// ---------------------------------------------------------------------------
+
+void NatsConnection::setErrorCallback(ErrorCallback cb) {
+  std::lock_guard<std::mutex> lock(callbacks_mutex_);
+  error_cb_ = std::move(cb);
+}
+
+void NatsConnection::setDisconnectedCallback(DisconnectedCallback cb) {
+  std::lock_guard<std::mutex> lock(callbacks_mutex_);
+  disconnected_cb_ = std::move(cb);
+}
+
+void NatsConnection::setReconnectedCallback(ReconnectedCallback cb) {
+  std::lock_guard<std::mutex> lock(callbacks_mutex_);
+  reconnected_cb_ = std::move(cb);
+}
+
+void NatsConnection::setClosedCallback(ClosedCallback cb) {
+  std::lock_guard<std::mutex> lock(callbacks_mutex_);
+  closed_cb_ = std::move(cb);
+}
+
+// ---------------------------------------------------------------------------
+// Connection lifecycle
+// ---------------------------------------------------------------------------
+
+bool NatsConnection::connect() {
+  natsOptions* opts = nullptr;
+
+  if (natsOptions_Create(&opts) != NATS_OK) {
+    return false;
+  }
+
+  // RAII guard: always destroy opts on exit from this function, whether we
+  // succeed or fail.  natsConnection_Connect() internally references-counts
+  // the options, so destroying them here is safe.
+  struct OptsGuard {
+    natsOptions* ptr;
+    ~OptsGuard() { natsOptions_Destroy(ptr); }
+  } opts_guard{opts};
+
+  // Server URL
+  if (natsOptions_SetURL(opts, config_.url.c_str()) != NATS_OK) {
+    return false;
+  }
+
+  // Reconnection policy: configurable attempts and wait interval
+  if (natsOptions_SetMaxReconnect(opts, config_.max_reconnect_attempts) != NATS_OK) {
+    return false;
+  }
+
+  int64_t wait_ms = static_cast<int64_t>(config_.reconnect_wait.count());
+  if (natsOptions_SetReconnectWait(opts, wait_ms) != NATS_OK) {
+    return false;
+  }
+
+  // Keep-alive: detect dead connections via ping/pong
+  int64_t ping_ms = static_cast<int64_t>(config_.ping_interval.count());
+  if (natsOptions_SetPingInterval(opts, ping_ms) != NATS_OK) {
+    return false;
+  }
+  if (natsOptions_SetMaxPingsOut(opts, config_.max_pings_out) != NATS_OK) {
+    return false;
+  }
+
+  // Lifecycle callbacks — pass `this` as the closure pointer so the static
+  // shims can dispatch to the correct instance.
+  if (natsOptions_SetErrorHandler(opts, NatsConnection::onError, this) != NATS_OK) {
+    return false;
+  }
+  if (natsOptions_SetDisconnectedCB(opts, NatsConnection::onDisconnected, this) != NATS_OK) {
+    return false;
+  }
+  if (natsOptions_SetReconnectedCB(opts, NatsConnection::onReconnected, this) != NATS_OK) {
+    return false;
+  }
+  if (natsOptions_SetClosedCB(opts, NatsConnection::onClosed, this) != NATS_OK) {
+    return false;
+  }
+
+  natsConnection* conn = nullptr;
+  if (natsConnection_Connect(&conn, opts) != NATS_OK) {
+    return false;
+  }
+
+  conn_ = conn;
+  state_.store(NatsConnectionState::CONNECTED, std::memory_order_release);
+  return true;
+}
+
+void NatsConnection::disconnect() {
+  if (conn_ != nullptr) {
+    natsConnection_Close(conn_);
+    natsConnection_Destroy(conn_);
+    conn_ = nullptr;
+  }
+  state_.store(NatsConnectionState::DISCONNECTED, std::memory_order_release);
+}
+
+// ---------------------------------------------------------------------------
+// State inspection
+// ---------------------------------------------------------------------------
+
+NatsConnectionState NatsConnection::getState() const noexcept {
+  return state_.load(std::memory_order_acquire);
+}
+
+bool NatsConnection::isConnected() const noexcept {
+  return getState() == NatsConnectionState::CONNECTED;
+}
+
+natsConnection* NatsConnection::handle() const noexcept { return conn_; }
+
+// ---------------------------------------------------------------------------
+// Static callback shims
+// ---------------------------------------------------------------------------
+
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
+                             natsStatus err, void* closure) noexcept {
+  auto* self = static_cast<NatsConnection*>(closure);
+  ErrorCallback cb;
+  {
+    std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
+    cb = self->error_cb_;
+  }
+  if (cb) {
+    const char* text = natsStatus_GetText(err);
+    cb(text != nullptr ? text : "unknown nats error");
+  }
+}
+
+void NatsConnection::onDisconnected(natsConnection* /*nc*/, void* closure) noexcept {
+  auto* self = static_cast<NatsConnection*>(closure);
+  self->state_.store(NatsConnectionState::RECONNECTING, std::memory_order_release);
+  DisconnectedCallback cb;
+  {
+    std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
+    cb = self->disconnected_cb_;
+  }
+  if (cb) {
+    cb();
+  }
+}
+
+void NatsConnection::onReconnected(natsConnection* /*nc*/, void* closure) noexcept {
+  auto* self = static_cast<NatsConnection*>(closure);
+  self->state_.store(NatsConnectionState::CONNECTED, std::memory_order_release);
+  ReconnectedCallback cb;
+  {
+    std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
+    cb = self->reconnected_cb_;
+  }
+  if (cb) {
+    cb();
+  }
+}
+
+void NatsConnection::onClosed(natsConnection* /*nc*/, void* closure) noexcept {
+  auto* self = static_cast<NatsConnection*>(closure);
+  self->state_.store(NatsConnectionState::CLOSED, std::memory_order_release);
+  ClosedCallback cb;
+  {
+    std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
+    cb = self->closed_cb_;
+  }
+  if (cb) {
+    cb();
+  }
+}
+
+}  // namespace transport
+}  // namespace keystone

@@ -134,6 +134,18 @@ FetchContent_Declare(
   GIT_TAG v0.14)
 FetchContent_MakeAvailable(cista)
 
+# nats.c — NATS client library (issue #88: reconnection callbacks)
+# NOT on ConanCenter; pulled directly from upstream.
+FetchContent_Declare(
+  natsc
+  GIT_REPOSITORY https://github.com/nats-io/nats.c.git
+  GIT_TAG v3.12.0
+  GIT_SHALLOW TRUE)
+set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(natsc)
+
 # yaml-cpp — YAML parser for task specifications (Phase 8 only)
 if(ENABLE_GRPC)
   find_package(yaml-cpp REQUIRED)
@@ -290,6 +302,18 @@ target_include_directories(
 target_link_libraries(keystone_simulation PUBLIC keystone_concurrency
                                                  keystone_core)
 
+# Transport library — NATS connection with reconnection callbacks (issue #88)
+add_library(keystone_transport src/transport/nats_connection.cpp)
+
+target_include_directories(
+  keystone_transport
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/keystone>
+)
+
+target_link_libraries(keystone_transport PUBLIC keystone_core nats)
+
 # E2E Tests - Basic Delegation
 add_executable(basic_delegation_tests tests/e2e/basic_delegation_test.cpp)
 
@@ -409,6 +433,7 @@ add_executable(
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_subject_validator.cpp # Issue #113: NATS subject token validation
+  tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
@@ -418,13 +443,19 @@ if(ENABLE_GRPC)
                                      tests/unit/test_task_phase_utils.cpp)  # Issue #95
   target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
   target_link_libraries(unit_tests keystone_agents keystone_core
-                        keystone_concurrency keystone_network GTest::gtest_main)
+                        keystone_concurrency keystone_network keystone_transport
+                        GTest::gtest_main)
 else()
   target_link_libraries(unit_tests keystone_agents keystone_core
-                        keystone_concurrency GTest::gtest_main)
+                        keystone_concurrency keystone_transport GTest::gtest_main)
 endif()
 
 gtest_discover_tests(unit_tests)
+
+# Transport unit tests — standalone, no agents/concurrency dependency (issue #88)
+add_executable(transport_tests tests/unit/test_nats_connection.cpp)
+target_link_libraries(transport_tests keystone_transport GTest::gtest_main)
+gtest_discover_tests(transport_tests)
 
 # Profiling Tests (Phase 2.3 - Issue #53)
 # Separate test suite for profiling tests (slow, opt-in)
