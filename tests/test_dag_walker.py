@@ -1,4 +1,4 @@
-"""Tests for DAGWalker.get_available_agents() and advance_dag()."""
+"""Tests for DAGWalker — cycle detection, ready tasks, available agents, and advance_dag."""
 from __future__ import annotations
 
 import pytest
@@ -61,6 +61,77 @@ class TestGetReadyTasks:
         assert task not in walker.get_ready_tasks()
 
 
+class TestValidateNoCycles:
+    def test_empty_dag_is_acyclic(self) -> None:
+        walker = DAGWalker(tasks=[], agents=[])
+        assert walker.validate_no_cycles() is True
+
+    def test_single_task_no_deps_is_acyclic(self) -> None:
+        task = make_task(id="t1")
+        walker = DAGWalker(tasks=[task], agents=[])
+        assert walker.validate_no_cycles() is True
+
+    def test_linear_chain_is_acyclic(self) -> None:
+        # t1 -> t2 -> t3
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t1"])
+        t3 = make_task(id="t3", dependencies=["t2"])
+        walker = DAGWalker(tasks=[t1, t2, t3], agents=[])
+        assert walker.validate_no_cycles() is True
+
+    def test_diamond_dag_is_acyclic(self) -> None:
+        # t1 -> t2, t1 -> t3, t2 -> t4, t3 -> t4
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t1"])
+        t3 = make_task(id="t3", dependencies=["t1"])
+        t4 = make_task(id="t4", dependencies=["t2", "t3"])
+        walker = DAGWalker(tasks=[t1, t2, t3, t4], agents=[])
+        assert walker.validate_no_cycles() is True
+
+    def test_two_node_cycle_detected(self) -> None:
+        # t1 -> t2 -> t1
+        t1 = make_task(id="t1", dependencies=["t2"])
+        t2 = make_task(id="t2", dependencies=["t1"])
+        walker = DAGWalker(tasks=[t1, t2], agents=[])
+        assert walker.validate_no_cycles() is False
+
+    def test_three_node_cycle_detected(self) -> None:
+        # t1 -> t2 -> t3 -> t1
+        t1 = make_task(id="t1", dependencies=["t3"])
+        t2 = make_task(id="t2", dependencies=["t1"])
+        t3 = make_task(id="t3", dependencies=["t2"])
+        walker = DAGWalker(tasks=[t1, t2, t3], agents=[])
+        assert walker.validate_no_cycles() is False
+
+    def test_self_cycle_detected(self) -> None:
+        t1 = make_task(id="t1", dependencies=["t1"])
+        walker = DAGWalker(tasks=[t1], agents=[])
+        assert walker.validate_no_cycles() is False
+
+    def test_cycle_in_subgraph_detected(self) -> None:
+        # t1 is clean; t2 <-> t3 form a cycle
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t3"])
+        t3 = make_task(id="t3", dependencies=["t2"])
+        walker = DAGWalker(tasks=[t1, t2, t3], agents=[])
+        assert walker.validate_no_cycles() is False
+
+    def test_deep_chain_no_recursion_error(self) -> None:
+        """2000-node linear chain must not raise RecursionError (regression for #100)."""
+        n = 2000
+        tasks = [make_task(id="t0")]
+        for i in range(1, n):
+            tasks.append(make_task(id=f"t{i}", dependencies=[f"t{i - 1}"]))
+        walker = DAGWalker(tasks=tasks, agents=[])
+        assert walker.validate_no_cycles() is True
+
+    def test_external_dependency_ignored(self) -> None:
+        """Dependencies referencing task IDs not in the graph are silently ignored."""
+        t1 = make_task(id="t1", dependencies=["external-task-not-in-graph"])
+        walker = DAGWalker(tasks=[t1], agents=[])
+        assert walker.validate_no_cycles() is True
+
+
 class TestAdvanceDag:
     @pytest.mark.asyncio
     async def test_assigns_ready_task_to_available_agent(self) -> None:
@@ -94,18 +165,15 @@ class TestAdvanceDag:
         walker = DAGWalker(tasks=[task1, task2], agents=[agent])
         assignments = await walker.advance_dag()
         assert len(assignments) == 1
-        # Agent is now marked busy
         assert agent.current_task_id is not None
 
     @pytest.mark.asyncio
     async def test_agent_marked_busy_immediately(self) -> None:
-        """Within advance_dag, agent.current_task_id is set before next iteration."""
         task1 = make_task(id="t1")
         task2 = make_task(id="t2")
         agent = make_agent(id="a1")
         walker = DAGWalker(tasks=[task1, task2], agents=[agent])
         await walker.advance_dag()
-        # Only one task should be assigned since agent was marked busy after first
         assert sum(1 for t in walker.tasks if t.assigned_agent_id is not None) == 1
 
     @pytest.mark.asyncio
@@ -118,7 +186,6 @@ class TestAdvanceDag:
 
     @pytest.mark.asyncio
     async def test_no_ready_tasks_no_assignments(self) -> None:
-        # dep is in-progress (not pending, not terminal) — t1 depends on it and is blocked
         dep = make_task(id="dep", status="in_progress")
         task = make_task(id="t1", dependencies=["dep"])
         agent = make_agent()
