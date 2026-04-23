@@ -3,6 +3,7 @@
 #include "agents/agent_core.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/metrics.hpp"
+#include "core/subject_validator.hpp"
 
 #include <stdexcept>
 
@@ -25,6 +26,9 @@ void MessageBus::registerAgent(const std::string& agent_id,
   if (!agent) {
     throw std::invalid_argument("Cannot register null agent");
   }
+
+  // Issue #113: Reject agent IDs with path traversal or injection characters.
+  validateSubjectToken(agent_id, "agent_id");
 
   std::lock_guard<std::mutex> lock(registry_mutex_);
 

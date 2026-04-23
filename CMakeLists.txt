@@ -420,6 +420,7 @@ add_executable(
   tests/unit/test_task_cancellation.cpp # Phase 1.2 (Issue #52): Task cancellation notification
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
+  tests/unit/test_subject_validator.cpp # Issue #113: NATS subject token validation
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
