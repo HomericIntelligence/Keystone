@@ -74,7 +74,7 @@ For comprehensive style guidelines, see [CLAUDE.md - Coding Standards](CLAUDE.md
 
 ## Testing Requirements
 
-**All contributions must meet ≥85% line coverage threshold (enforced in CI).**
+**All contributions must meet ≥70% line coverage threshold (enforced in CI).**
 
 ### Running Tests Locally
 
@@ -207,13 +207,13 @@ For detailed workflow, see [CLAUDE.md - Git Workflow](CLAUDE.md#git-workflow).
 
 ProjectKeystone enforces **5 quality gates** that must pass before merge:
 
-### 1. Code Coverage (≥95%)
+### 1. Code Coverage (≥70%)
 
-**Requirement**: All code must have ≥95% line coverage
+**Requirement**: All code must have ≥70% line coverage
 
 ```bash
 # Check locally
-docker-compose exec dev bash -c "cd build && ./scripts/generate_coverage.sh"
+docker-compose exec dev bash -c "./scripts/generate_coverage.sh"
 ```
 
 Tools: `lcov`, `gcov` (requires `-DENABLE_COVERAGE=ON`)
