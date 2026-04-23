@@ -100,8 +100,7 @@ grpc::Status HMASCoordinatorServiceImpl::StreamTaskStatus(
               .count());
 
       // Check if task is in terminal state
-      if (state.phase == hmas::TASK_PHASE_COMPLETED || state.phase == hmas::TASK_PHASE_FAILED ||
-          state.phase == hmas::TASK_PHASE_TIMEOUT || state.phase == hmas::TASK_PHASE_CANCELLED) {
+      if (isTerminalPhase(state.phase)) {
         writer->Write(update);
         break;  // Task done, stop streaming
       }
@@ -145,9 +144,8 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(grpc::ServerContext* cont
       // Check if task is in terminal state
       auto state_it = active_tasks_.find(task_id);
       if (state_it != active_tasks_.end()) {
-        if (state_it->second.phase == hmas::TASK_PHASE_FAILED ||
-            state_it->second.phase == hmas::TASK_PHASE_TIMEOUT ||
-            state_it->second.phase == hmas::TASK_PHASE_CANCELLED) {
+        if (isTerminalPhase(state_it->second.phase) &&
+            state_it->second.phase != hmas::TASK_PHASE_COMPLETED) {
           // Task failed but no result yet
           response->set_task_id(task_id);
           response->set_status(state_it->second.phase);
@@ -222,8 +220,7 @@ grpc::Status HMASCoordinatorServiceImpl::CancelTask(grpc::ServerContext* context
   auto& state = it->second;
 
   // Check if task can be cancelled (not already in terminal state)
-  if (state.phase == hmas::TASK_PHASE_COMPLETED || state.phase == hmas::TASK_PHASE_FAILED ||
-      state.phase == hmas::TASK_PHASE_CANCELLED) {
+  if (isTerminalPhase(state.phase)) {
     response->set_cancelled(false);
     response->set_message("Task already in terminal state");
     response->set_current_phase(state.phase);
@@ -269,9 +266,7 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(grpc::ServerContext* co
           .count());
 
   // Check if complete
-  response->set_is_complete(
-      state.phase == hmas::TASK_PHASE_COMPLETED || state.phase == hmas::TASK_PHASE_FAILED ||
-      state.phase == hmas::TASK_PHASE_TIMEOUT || state.phase == hmas::TASK_PHASE_CANCELLED);
+  response->set_is_complete(isTerminalPhase(state.phase));
 
   return grpc::Status::OK;
 }
@@ -326,8 +321,7 @@ int HMASCoordinatorServiceImpl::cleanupOldTasks(int64_t age_threshold_ms) {
     const auto& state = it->second;
 
     // Only clean up terminal states
-    if (state.phase == hmas::TASK_PHASE_COMPLETED || state.phase == hmas::TASK_PHASE_FAILED ||
-        state.phase == hmas::TASK_PHASE_TIMEOUT || state.phase == hmas::TASK_PHASE_CANCELLED) {
+    if (isTerminalPhase(state.phase)) {
       auto age =
           std::chrono::duration_cast<std::chrono::milliseconds>(now - state.updated_at).count();
 
@@ -382,6 +376,8 @@ std::string HMASCoordinatorServiceImpl::phaseToString(hmas::TaskPhase phase) {
       return "TIMEOUT";
     case hmas::TASK_PHASE_CANCELLED:
       return "CANCELLED";
+    case hmas::TASK_PHASE_ERROR:
+      return "ERROR";
     default:
       return "UNSPECIFIED";
   }
@@ -406,6 +402,8 @@ hmas::TaskPhase HMASCoordinatorServiceImpl::stringToPhase(const std::string& pha
     return hmas::TASK_PHASE_TIMEOUT;
   if (phase_str == "CANCELLED")
     return hmas::TASK_PHASE_CANCELLED;
+  if (phase_str == "ERROR")
+    return hmas::TASK_PHASE_ERROR;
 
   return hmas::TASK_PHASE_UNSPECIFIED;
 }

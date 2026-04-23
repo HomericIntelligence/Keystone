@@ -1,6 +1,7 @@
 #pragma once
 
 #include "network/service_registry.hpp"
+#include "network/task_phase_utils.hpp"
 #include "network/task_router.hpp"
 #include "network/yaml_parser.hpp"
 

@@ -30,9 +30,10 @@ enum TaskPhase {
   TASK_PHASE_EXECUTING = 4;
   TASK_PHASE_SYNTHESIZING = 5;
   TASK_PHASE_COMPLETED = 6;
-  TASK_PHASE_FAILED = 7;
+  TASK_PHASE_FAILED = 7;     // Task explicitly returned failure status
   TASK_PHASE_TIMEOUT = 8;
   TASK_PHASE_CANCELLED = 9;
+  TASK_PHASE_ERROR = 10;     // Infrastructure or unexpected error (agent crash, serialization failure)
 }
 
 // Task action type
