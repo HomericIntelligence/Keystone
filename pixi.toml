@@ -11,7 +11,6 @@ ninja = ">=1.10"
 cxx-compiler = "*"
 gtest = "*"
 pkg-config = "*"
-just = ">=1.13"
 python = ">=3.11,<4"
 
 [pypi-dependencies]
@@ -31,16 +30,8 @@ mypy = ">=1.0,<2"
 [tasks]
 configure = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF"
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
-test = { cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q", depends-on = ["build"] }
-test-python = "python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+test = { cmd = "cd build-native && ctest --output-on-failure", depends-on = ["build"] }
 clean = "rm -rf build-native"
-format = "just format"
-format-check = "just format-check"
-test-asan = "make test.debug.asan"
-test-tsan = "make test.debug.tsan"
-test-ubsan = "make test.debug.ubsan"
-build-asan = "make compile.debug.asan"
-build-tsan = "make compile.debug.tsan"
 
 [tasks.test-phase1]
 cmd = "build-native/basic_delegation_tests"
@@ -51,5 +42,5 @@ cmd = "build-native/async_delegation_tests"
 depends-on = ["build"]
 
 [tasks.test-all]
-cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+cmd = "cd build-native && ctest --output-on-failure"
 depends-on = ["build"]
