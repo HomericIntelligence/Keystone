@@ -6,7 +6,6 @@
 #include "concurrency/work_stealing_scheduler.hpp"
 
 #include "concurrency/scheduler_accessor.hpp"
-#include "core/config.hpp"  // FIX m3: Centralized configuration
 
 #include <random>
 #include <sstream>
@@ -23,10 +22,10 @@ namespace concurrency {
 WorkStealingScheduler::WorkStealingScheduler(size_t num_workers, bool enable_cpu_affinity)
     : num_workers_(num_workers), enable_cpu_affinity_(enable_cpu_affinity) {
   // FIX P2-10: Enforce maximum worker thread limit to prevent DoS
-  if (num_workers_ > core::Config::MAX_WORKER_THREADS) {
+  if (num_workers_ > MAX_WORKER_THREADS) {
     throw std::invalid_argument(
         "Too many worker threads requested: " + std::to_string(num_workers_) +
-        " (max: " + std::to_string(core::Config::MAX_WORKER_THREADS) + ")");
+        " (max: " + std::to_string(MAX_WORKER_THREADS) + ")");
   }
 
   if (num_workers_ == 0) {
