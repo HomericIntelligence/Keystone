@@ -43,7 +43,13 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
     co_return response;
   }
 
-  // Step 2: Check if this is a subordinate result or a new goal
+  // Step 2a: Handle subordinate failure (Issue #87 - prevents DAG deadlock)
+  if (msg.action_type == core::ActionType::TASK_FAILED) {
+    processSubordinateFailure(msg);
+    co_return core::Response::createSuccess(msg, agent_id_, "Subordinate failure recorded");
+  }
+
+  // Step 2b: Check if this is a subordinate result or a new goal
   if (isSubordinateResult(msg)) {
     // This is a subordinate result - process it
     processSubordinateResult(msg);

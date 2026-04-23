@@ -638,6 +638,89 @@ TEST_F(CoordinationStateTest, RequesterId) {
 }
 
 // ============================================================================
+// Category 7: Failure Tracking Tests — Issue #87 (DAG deadlock prevention)
+// ============================================================================
+
+TEST_F(CoordinationStateTest, HasNoFailuresInitially) {
+  state_.initializeCoordination(3);
+  EXPECT_FALSE(state_.hasFailures());
+  EXPECT_EQ(state_.getFailureCount(), 0u);
+  EXPECT_TRUE(state_.getFailureMessages().empty());
+}
+
+TEST_F(CoordinationStateTest, RecordFailureCountsAsTerminal) {
+  state_.initializeCoordination(1);
+  bool all_done = state_.recordFailure("task execution error");
+  EXPECT_TRUE(all_done);
+  EXPECT_TRUE(state_.hasFailures());
+  EXPECT_EQ(state_.getFailureCount(), 1u);
+}
+
+TEST_F(CoordinationStateTest, RecordFailurePreservesMessage) {
+  state_.initializeCoordination(2);
+  state_.recordFailure("first error");
+  state_.recordFailure("second error");
+
+  auto msgs = state_.getFailureMessages();
+  ASSERT_EQ(msgs.size(), 2u);
+  EXPECT_EQ(msgs[0], "first error");
+  EXPECT_EQ(msgs[1], "second error");
+}
+
+TEST_F(CoordinationStateTest, MixedSuccessAndFailureReachesCompletion) {
+  state_.initializeCoordination(3);
+  EXPECT_FALSE(state_.recordResult("ok_result"));
+  EXPECT_FALSE(state_.recordFailure("subtask failed"));
+  EXPECT_TRUE(state_.recordResult("another_ok"));
+
+  EXPECT_TRUE(state_.isComplete());
+  EXPECT_TRUE(state_.hasFailures());
+  EXPECT_EQ(state_.getFailureCount(), 1u);
+  EXPECT_EQ(state_.getResults().size(), 2u);
+}
+
+TEST_F(CoordinationStateTest, AllFailuresReachCompletion) {
+  state_.initializeCoordination(3);
+  EXPECT_FALSE(state_.recordFailure("err1"));
+  EXPECT_FALSE(state_.recordFailure("err2"));
+  EXPECT_TRUE(state_.recordFailure("err3"));
+
+  EXPECT_TRUE(state_.isComplete());
+  EXPECT_EQ(state_.getFailureCount(), 3u);
+  EXPECT_EQ(state_.getResults().size(), 0u);
+}
+
+TEST_F(CoordinationStateTest, InitializeClearsPreviousFailures) {
+  state_.initializeCoordination(1);
+  state_.recordFailure("old error");
+
+  EXPECT_TRUE(state_.hasFailures());
+
+  state_.initializeCoordination(2);
+  EXPECT_FALSE(state_.hasFailures());
+  EXPECT_EQ(state_.getFailureCount(), 0u);
+  EXPECT_TRUE(state_.getFailureMessages().empty());
+}
+
+TEST_F(CoordinationStateTest, RecordFailureThreadSafety) {
+  constexpr int NUM_THREADS = 10;
+  state_.initializeCoordination(NUM_THREADS);
+
+  std::vector<std::thread> threads;
+  for (int32_t i = 0; i < NUM_THREADS; ++i) {
+    threads.emplace_back([this, i]() {
+      state_.recordFailure("error_" + std::to_string(i));
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  EXPECT_TRUE(state_.isComplete());
+  EXPECT_EQ(state_.getFailureCount(), NUM_THREADS);
+}
+
+// ============================================================================
 // Test Summary
 // ============================================================================
 
@@ -649,12 +732,7 @@ TEST_F(CoordinationStateTest, RequesterId) {
  * - Category 4: Integration (4 tests)
  * - Category 5: gRPC (6 tests - optional, 2 disabled)
  * - Category 6: Context (2 tests)
+ * - Category 7: Failure Tracking — Issue #87 (7 tests)
  *
- * Total: 36 tests (32 always enabled, 4 gRPC-conditional)
- *
- * Coverage:
- * - All public methods of CoordinationState tested
- * - Thread safety verified
- * - Integration workflows validated
- * - gRPC features tested (if enabled)
+ * Total: 43 tests (39 always enabled, 4 gRPC-conditional)
  */

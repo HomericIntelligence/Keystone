@@ -79,7 +79,18 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
     // FIX P3-08: Sanitize error message to prevent information disclosure
     std::string sanitized_error = core::sanitizeErrorMessage(e.what());
     auto response = core::Response::createError(msg, agent_id_, sanitized_error);
-    sendResponseMessage(msg, std::string("ERROR: ") + sanitized_error);
+
+    // Issue #87: Send TASK_FAILED so parent Lead Agent can unblock the DAG
+    auto failure_msg =
+        core::KeystoneMessage::create(agent_id_,
+                                      msg.sender_id,
+                                      "response",
+                                      std::string("ERROR: ") + sanitized_error);
+    failure_msg.action_type = core::ActionType::TASK_FAILED;
+    failure_msg.msg_id = msg.msg_id;
+
+    sendMessage(failure_msg);
+
     co_return response;
   }
 }

@@ -235,6 +235,110 @@ TEST_F(ModuleLeadAgentTest, StateTransitionFlow) {
   (void)trace;  // Suppress unused variable warning
 }
 
+// ============================================================================
+// Issue #87: DAG Deadlock Prevention — Failure Handling Tests (4 tests)
+// ============================================================================
+
+TEST_F(ModuleLeadAgentTest, SingleTaskFailureTransitionsToError) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Simulate receiving a TASK_FAILED message from a TaskAgent
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "command not found");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+
+  // Initialize coordination for 1 expected result
+  module->processMessage(
+      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+
+  // Deliver failure
+  module->processMessage(failure_msg).get();
+
+  // Agent must be in ERROR state — DAG is not deadlocked
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
+}
+
+TEST_F(ModuleLeadAgentTest, SynthesizeAfterFailureReturnsErrorMessage) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1", "task_2"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Process goal to set up coordination for 2 tasks
+  module->processMessage(
+      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+
+  // One success, one failure
+  auto success_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "10");
+  module->processMessage(success_msg).get();
+
+  auto failure_msg =
+      core::KeystoneMessage::create("task_2", "module_1", "response", "exec failed");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
+
+  auto result = module->synthesizeResults();
+  EXPECT_NE(result.find("ERROR"), std::string::npos);
+}
+
+TEST_F(ModuleLeadAgentTest, FailureBeforeAllResultsDoesNotDeadlock) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1", "task_2", "task_3"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Goal decomposes into 3 tasks (numbers extracted from "10 + 20 + 30")
+  module->processMessage(
+      core::KeystoneMessage::create("chief", "module_1", "Calculate sum of: 10 + 20 + 30")).get();
+
+  // First task fails — must not leave the remaining 2 in permanent pending
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "error");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  // State must not be stuck in WAITING after any terminal event
+  auto state = module->getCurrentState();
+  EXPECT_TRUE(state == agents::ModuleLeadAgent::State::ERROR ||
+              state == agents::ModuleLeadAgent::State::WAITING_FOR_TASKS);
+}
+
+TEST_F(ModuleLeadAgentTest, SuccessResultAfterFailureStillCountsTowardCompletion) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1", "task_2"};
+  module->setAvailableTaskAgents(task_ids);
+
+  module->processMessage(
+      core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20")).get();
+
+  // Failure first
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  // Then success — all results are now terminal, agent must not remain in WAITING
+  auto success_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "20");
+  module->processMessage(success_msg).get();
+
+  auto state = module->getCurrentState();
+  EXPECT_NE(state, agents::ModuleLeadAgent::State::WAITING_FOR_TASKS);
+}
+
 TEST_F(ModuleLeadAgentTest, ConcurrentCoordination) {
   auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
   module->setMessageBus(bus_.get());

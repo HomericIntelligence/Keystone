@@ -101,6 +101,15 @@ void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& resu
 
 std::string ModuleLeadAgent::synthesizeResults() {
   State current_state = coordination_.getCurrentState();
+  if (current_state == State::ERROR) {
+    auto failures = coordination_.getFailureMessages();
+    std::string msg = "ERROR: " + std::to_string(coordination_.getFailureCount()) +
+                      " subordinate task(s) failed";
+    if (!failures.empty()) {
+      msg += ": " + failures.front();
+    }
+    return msg;
+  }
   if (current_state != State::SYNTHESIZING && current_state != State::WAITING_FOR_TASKS) {
     return "ERROR: Cannot synthesize in current state";
   }
