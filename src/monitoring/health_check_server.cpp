@@ -373,9 +373,8 @@ std::string HealthCheckServer::generateV1HealthResponse(const NatsStatusTracker*
   bool healthy = (st == NatsConnectionState::kConnected);
   const char* overall = healthy ? "healthy" : "degraded";
 
-  body << "{\"status\":\"" << overall << "\","
-       << "\"nats\":{\"state\":\"" << state_str << "\","
-       << "\"last_success_epoch_ms\":" << last_ms << "}}";
+  body << "{\"status\":\"" << overall << "\",\"nats\":{\"state\":\"" << state_str
+       << "\",\"last_success_epoch_ms\":" << last_ms << "}}";
   return body.str();
 }
 
