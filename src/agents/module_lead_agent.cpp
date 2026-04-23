@@ -1,7 +1,7 @@
 #include "agents/module_lead_agent.hpp"
 
-#include "core/config.hpp"
 #include "concurrency/logger.hpp"
+#include "core/config.hpp"
 
 #include <algorithm>
 #include <chrono>
