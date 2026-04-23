@@ -7,8 +7,7 @@
 namespace keystone {
 namespace core {
 
-FailureInjector::FailureInjector(uint32_t seed)
-    : rng_(seed == 0 ? std::random_device{}() : seed) {}
+FailureInjector::FailureInjector(uint32_t seed) : rng_(seed == 0 ? std::random_device{}() : seed) {}
 
 // ============================================================================
 // Agent Crash Simulation
