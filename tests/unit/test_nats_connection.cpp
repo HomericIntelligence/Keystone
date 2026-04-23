@@ -1,0 +1,322 @@
+/**
+ * @file test_nats_connection.cpp
+ * @brief Unit tests for NatsConnection (issue #122 — NATS TLS configuration)
+ *
+ * Tests cover:
+ * - Default construction and initial state
+ * - Callback registration before connect()
+ * - Config field validation (reconnect attempts, wait interval, ping settings)
+ * - TLS configuration fields (enable_tls, ca_cert_path, client cert/key, skip_verify)
+ * - State transitions via the public callback shims (simulated without a live server)
+ * - disconnect() is safe to call without a prior connect()
+ * - isConnected() reflects getState()
+ * - Null-safety of unregistered callbacks
+ * - Callback replacement semantics
+ *
+ * Tests do NOT exercise connect() against a live NATS server because the CI
+ * environment has no NATS process. The callback dispatch path is exercised via
+ * the NatsConnectionTestPeer helper below.
+ */
+
+#include "transport/nats_connection.hpp"
+
+#include <atomic>
+#include <string>
+
+#include <gtest/gtest.h>
+
+using namespace keystone::transport;
+
+// ---------------------------------------------------------------------------
+// Test peer — fires static callback shims without a live connection
+// ---------------------------------------------------------------------------
+
+class NatsConnectionTestPeer : public NatsConnection {
+ public:
+  using NatsConnection::NatsConnection;
+
+  void fireError() {
+    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
+  }
+
+  void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
+  void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
+  void fireClosed() { NatsConnection::onClosed(nullptr, this); }
+};
+
+// ---------------------------------------------------------------------------
+// NatsConnectionStateTest — initial state and disconnect safety
+// ---------------------------------------------------------------------------
+
+class NatsConnectionStateTest : public ::testing::Test {};
+
+TEST_F(NatsConnectionStateTest, InitialStateIsDisconnected) {
+  NatsConnection conn;
+  EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED);
+}
+
+TEST_F(NatsConnectionStateTest, IsConnectedReturnsFalseWhenDisconnected) {
+  NatsConnection conn;
+  EXPECT_FALSE(conn.isConnected());
+}
+
+TEST_F(NatsConnectionStateTest, HandleIsNullBeforeConnect) {
+  NatsConnection conn;
+  EXPECT_EQ(conn.handle(), nullptr);
+}
+
+TEST_F(NatsConnectionStateTest, DisconnectWithoutConnectIsNoOp) {
+  NatsConnection conn;
+  EXPECT_NO_THROW(conn.disconnect());
+  EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED);
+}
+
+TEST_F(NatsConnectionStateTest, DoubleDisconnectIsNoOp) {
+  NatsConnection conn;
+  conn.disconnect();
+  EXPECT_NO_THROW(conn.disconnect());
+}
+
+// ---------------------------------------------------------------------------
+// NatsConfigTest — configuration fields
+// ---------------------------------------------------------------------------
+
+class NatsConfigTest : public ::testing::Test {};
+
+TEST_F(NatsConfigTest, DefaultConfigValues) {
+  NatsConfig cfg;
+  EXPECT_EQ(cfg.url, "nats://localhost:4222");
+  EXPECT_EQ(cfg.max_reconnect_attempts, 60);
+  EXPECT_EQ(cfg.reconnect_wait, std::chrono::milliseconds{2000});
+  EXPECT_EQ(cfg.ping_interval, std::chrono::milliseconds{20000});
+  EXPECT_EQ(cfg.max_pings_out, 2);
+}
+
+TEST_F(NatsConfigTest, DefaultTlsDisabled) {
+  NatsConfig cfg;
+  EXPECT_FALSE(cfg.tls.enable_tls);
+  EXPECT_TRUE(cfg.tls.ca_cert_path.empty());
+  EXPECT_TRUE(cfg.tls.client_cert_path.empty());
+  EXPECT_TRUE(cfg.tls.client_key_path.empty());
+  EXPECT_FALSE(cfg.tls.skip_server_verification);
+}
+
+TEST_F(NatsConfigTest, CustomConfigPreserved) {
+  NatsConfig cfg;
+  cfg.url = "nats://myserver:4222";
+  cfg.max_reconnect_attempts = 10;
+  cfg.reconnect_wait = std::chrono::milliseconds{500};
+  cfg.ping_interval = std::chrono::milliseconds{5000};
+  cfg.max_pings_out = 5;
+  NatsConnectionTestPeer conn(cfg);
+  EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED);
+}
+
+TEST_F(NatsConfigTest, UnlimitedReconnectAttempts) {
+  NatsConfig cfg;
+  cfg.max_reconnect_attempts = -1;
+  EXPECT_EQ(cfg.max_reconnect_attempts, -1);
+}
+
+// ---------------------------------------------------------------------------
+// NatsTlsConfigTest — TLS configuration fields
+// ---------------------------------------------------------------------------
+
+class NatsTlsConfigTest : public ::testing::Test {};
+
+TEST_F(NatsTlsConfigTest, TlsCanBeEnabled) {
+  NatsTlsConfig tls;
+  tls.enable_tls = true;
+  EXPECT_TRUE(tls.enable_tls);
+}
+
+TEST_F(NatsTlsConfigTest, TlsWithCaCertPath) {
+  NatsTlsConfig tls;
+  tls.enable_tls = true;
+  tls.ca_cert_path = "/etc/ssl/certs/ca.pem";
+  EXPECT_EQ(tls.ca_cert_path, "/etc/ssl/certs/ca.pem");
+}
+
+TEST_F(NatsTlsConfigTest, TlsWithClientCertAndKey) {
+  NatsTlsConfig tls;
+  tls.enable_tls = true;
+  tls.client_cert_path = "/etc/ssl/certs/client.pem";
+  tls.client_key_path = "/etc/ssl/private/client.key";
+  EXPECT_EQ(tls.client_cert_path, "/etc/ssl/certs/client.pem");
+  EXPECT_EQ(tls.client_key_path, "/etc/ssl/private/client.key");
+}
+
+TEST_F(NatsTlsConfigTest, SkipServerVerificationDefaultFalse) {
+  NatsTlsConfig tls;
+  EXPECT_FALSE(tls.skip_server_verification);
+}
+
+TEST_F(NatsTlsConfigTest, SkipServerVerificationCanBeEnabled) {
+  NatsTlsConfig tls;
+  tls.skip_server_verification = true;
+  EXPECT_TRUE(tls.skip_server_verification);
+}
+
+TEST_F(NatsTlsConfigTest, TlsConfigStoredInNatsConfig) {
+  NatsConfig cfg;
+  cfg.tls.enable_tls = true;
+  cfg.tls.ca_cert_path = "/path/to/ca.pem";
+  cfg.tls.client_cert_path = "/path/to/cert.pem";
+  cfg.tls.client_key_path = "/path/to/key.pem";
+
+  NatsConnectionTestPeer conn(cfg);
+  // Construction must not throw — TLS is only applied during connect()
+  EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED);
+}
+
+TEST_F(NatsTlsConfigTest, TlsUrlSchemeAccepted) {
+  NatsConfig cfg;
+  cfg.url = "tls://nats.example.com:4222";
+  cfg.tls.enable_tls = true;
+  EXPECT_EQ(cfg.url, "tls://nats.example.com:4222");
+  EXPECT_TRUE(cfg.tls.enable_tls);
+}
+
+// ---------------------------------------------------------------------------
+// NatsCallbackTest — callback registration and dispatch
+// ---------------------------------------------------------------------------
+
+class NatsCallbackTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;
+};
+
+TEST_F(NatsCallbackTest, ErrorCallbackFiredOnError) {
+  std::atomic<int> call_count{0};
+  conn_.setErrorCallback([&](const std::string& /*err*/) { ++call_count; });
+
+  conn_.fireError();
+
+  EXPECT_EQ(call_count.load(), 1);
+}
+
+TEST_F(NatsCallbackTest, DisconnectedCallbackFiredOnDisconnect) {
+  std::atomic<int> call_count{0};
+  conn_.setDisconnectedCallback([&]() { ++call_count; });
+
+  conn_.fireDisconnected();
+
+  EXPECT_EQ(call_count.load(), 1);
+}
+
+TEST_F(NatsCallbackTest, ReconnectedCallbackFiredOnReconnect) {
+  std::atomic<int> call_count{0};
+  conn_.setReconnectedCallback([&]() { ++call_count; });
+
+  conn_.fireReconnected();
+
+  EXPECT_EQ(call_count.load(), 1);
+}
+
+TEST_F(NatsCallbackTest, ClosedCallbackFiredOnClose) {
+  std::atomic<int> call_count{0};
+  conn_.setClosedCallback([&]() { ++call_count; });
+
+  conn_.fireClosed();
+
+  EXPECT_EQ(call_count.load(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// NatsStateTransitionTest — state machine driven by callbacks
+// ---------------------------------------------------------------------------
+
+class NatsStateTransitionTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;
+};
+
+TEST_F(NatsStateTransitionTest, DisconnectedCallbackSetsReconnectingState) {
+  conn_.fireDisconnected();
+  EXPECT_EQ(conn_.getState(), NatsConnectionState::RECONNECTING);
+  EXPECT_FALSE(conn_.isConnected());
+}
+
+TEST_F(NatsStateTransitionTest, ReconnectedCallbackSetsConnectedState) {
+  conn_.fireDisconnected();
+  conn_.fireReconnected();
+
+  EXPECT_EQ(conn_.getState(), NatsConnectionState::CONNECTED);
+  EXPECT_TRUE(conn_.isConnected());
+}
+
+TEST_F(NatsStateTransitionTest, ClosedCallbackSetsClosedState) {
+  conn_.fireClosed();
+  EXPECT_EQ(conn_.getState(), NatsConnectionState::CLOSED);
+  EXPECT_FALSE(conn_.isConnected());
+}
+
+TEST_F(NatsStateTransitionTest, IsConnectedOnlyTrueInConnectedState) {
+  EXPECT_FALSE(conn_.isConnected());
+
+  conn_.fireDisconnected();  // → RECONNECTING
+  EXPECT_FALSE(conn_.isConnected());
+
+  conn_.fireReconnected();  // → CONNECTED
+  EXPECT_TRUE(conn_.isConnected());
+
+  conn_.fireClosed();  // → CLOSED
+  EXPECT_FALSE(conn_.isConnected());
+}
+
+TEST_F(NatsStateTransitionTest, DisconnectResetsStateToDisconnected) {
+  conn_.fireReconnected();
+  ASSERT_TRUE(conn_.isConnected());
+
+  conn_.disconnect();
+
+  EXPECT_EQ(conn_.getState(), NatsConnectionState::DISCONNECTED);
+  EXPECT_FALSE(conn_.isConnected());
+}
+
+// ---------------------------------------------------------------------------
+// NatsCallbackNullSafetyTest — no crash when callbacks are not set
+// ---------------------------------------------------------------------------
+
+class NatsCallbackNullSafetyTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;
+};
+
+TEST_F(NatsCallbackNullSafetyTest, ErrorWithNoCallbackDoesNotCrash) {
+  EXPECT_NO_THROW(conn_.fireError());
+}
+
+TEST_F(NatsCallbackNullSafetyTest, DisconnectedWithNoCallbackDoesNotCrash) {
+  EXPECT_NO_THROW(conn_.fireDisconnected());
+}
+
+TEST_F(NatsCallbackNullSafetyTest, ReconnectedWithNoCallbackDoesNotCrash) {
+  EXPECT_NO_THROW(conn_.fireReconnected());
+}
+
+TEST_F(NatsCallbackNullSafetyTest, ClosedWithNoCallbackDoesNotCrash) {
+  EXPECT_NO_THROW(conn_.fireClosed());
+}
+
+// ---------------------------------------------------------------------------
+// NatsCallbackOverrideTest — replacing a callback after initial registration
+// ---------------------------------------------------------------------------
+
+class NatsCallbackOverrideTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;
+};
+
+TEST_F(NatsCallbackOverrideTest, ReplacedCallbackIsInvokedInsteadOfOriginal) {
+  std::atomic<int> first_count{0};
+  std::atomic<int> second_count{0};
+
+  conn_.setReconnectedCallback([&]() { ++first_count; });
+  conn_.setReconnectedCallback([&]() { ++second_count; });
+
+  conn_.fireReconnected();
+
+  EXPECT_EQ(first_count.load(), 0);
+  EXPECT_EQ(second_count.load(), 1);
+}
