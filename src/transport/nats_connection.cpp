@@ -5,9 +5,9 @@
 
 #include "transport/nats_connection.hpp"
 
-#include <nats.h>
-
 #include <string>
+
+#include <nats.h>
 
 namespace keystone {
 namespace transport {
@@ -18,7 +18,9 @@ namespace transport {
 
 NatsConnection::NatsConnection(NatsConfig config) : config_(std::move(config)) {}
 
-NatsConnection::~NatsConnection() { disconnect(); }
+NatsConnection::~NatsConnection() {
+  disconnect();
+}
 
 // ---------------------------------------------------------------------------
 // Callback registration
@@ -133,15 +135,19 @@ bool NatsConnection::isConnected() const noexcept {
   return getState() == NatsConnectionState::CONNECTED;
 }
 
-natsConnection* NatsConnection::handle() const noexcept { return conn_; }
+natsConnection* NatsConnection::handle() const noexcept {
+  return conn_;
+}
 
 // ---------------------------------------------------------------------------
 // Static callback shims
 // ---------------------------------------------------------------------------
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
-                             natsStatus err, void* closure) noexcept {
+void NatsConnection::onError(natsConnection* /*nc*/,
+                             natsSubscription* /*sub*/,
+                             natsStatus err,
+                             void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   ErrorCallback cb;
   {
