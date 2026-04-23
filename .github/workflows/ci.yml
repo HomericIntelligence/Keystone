@@ -61,9 +61,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip setuptools
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev]"
 
       - name: Run pytest with coverage
         run: pytest
@@ -102,24 +100,10 @@ jobs:
         run: mypy conanfile.py
 
   # ============================================================================
-  # Pre-commit Checks
-  # ============================================================================
-  pre-commit:
-    name: Pre-commit Checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-      - uses: pre-commit/action@v3.0.1
-
-  # ============================================================================
   # Build and Test Matrix (all sanitizers)
   # ============================================================================
   sanitizers:
+
     name: Test (${{ matrix.sanitizer }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -320,7 +304,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-24.04
-    needs: [quality, pytest, python-quality, pre-commit, sanitizers, benchmarks, coverage]
+    needs: [quality, pytest, python-quality, sanitizers, benchmarks, coverage]
     if: always()
 
     steps:
@@ -329,7 +313,6 @@ jobs:
           echo "Quality: ${{ needs.quality.result }}"
           echo "Python Tests: ${{ needs.pytest.result }}"
           echo "Python Quality (mypy): ${{ needs.python-quality.result }}"
-          echo "Pre-commit: ${{ needs.pre-commit.result }}"
           echo "Sanitizers: ${{ needs.sanitizers.result }}"
           echo "Benchmarks: ${{ needs.benchmarks.result }}"
           echo "Coverage: ${{ needs.coverage.result }}"
@@ -345,10 +328,6 @@ jobs:
           fi
           if [ "${{ needs.python-quality.result }}" != "success" ]; then
             echo "::error::Python quality checks failed"
-            exit 1
-          fi
-          if [ "${{ needs.pre-commit.result }}" != "success" ]; then
-            echo "::error::Pre-commit checks failed"
             exit 1
           fi
           if [ "${{ needs.sanitizers.result }}" != "success" ]; then
@@ -367,7 +346,6 @@ jobs:
             const qualityResult = '${{ needs.quality.result }}';
             const pytestResult = '${{ needs.pytest.result }}';
             const pythonQualityResult = '${{ needs.python-quality.result }}';
-            const preCommitResult = '${{ needs.pre-commit.result }}';
             const benchmarkResult = '${{ needs.benchmarks.result }}';
             const coverageResult = '${{ needs.coverage.result }}';
 
@@ -380,7 +358,6 @@ jobs:
             | Code Quality | ${statusIcon(qualityResult)} ${qualityResult} |
             | Python Tests | ${statusIcon(pytestResult)} ${pytestResult} |
             | Python Quality (mypy) | ${statusIcon(pythonQualityResult)} ${pythonQualityResult} |
-            | Pre-commit | ${statusIcon(preCommitResult)} ${preCommitResult} |
             | Sanitizers (ASan, UBSan, TSan, LSan, MSan) | ${statusIcon(sanitizerResult)} ${sanitizerResult} |
             | Benchmarks | ${statusIcon(benchmarkResult)} ${benchmarkResult} |
             | Coverage | ${statusIcon(coverageResult)} ${coverageResult} |

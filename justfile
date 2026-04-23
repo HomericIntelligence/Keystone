@@ -62,6 +62,22 @@ integration-test:
     KEYSTONE_INTEGRATION_TESTS=1 NATS_URL="${NATS_URL:-nats://localhost:4222}" \
         ctest --preset debug --tests-regex nats_integration --output-on-failure
 
+# Build with coverage instrumentation
+coverage: deps
+    cmake --preset coverage
+    cmake --build --preset coverage
+
+# Full CI build (release + warnings-as-errors)
+ci: deps-release
+    cmake --preset ci
+    cmake --build --preset ci
+    ctest --preset ci
+
+# Type-check Python files (conanfile.py) with mypy
+typecheck:
+    mypy conanfile.py
+
+
 clean:
   make clean
 
@@ -73,6 +89,3 @@ status:
 
 benchmark:
   make benchmark NATIVE=1
-
-ci:
-  make ci NATIVE=1
