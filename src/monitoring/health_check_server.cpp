@@ -54,8 +54,13 @@ class SocketHandle {
   int fd_;
 };
 
-HealthCheckServer::HealthCheckServer(uint16_t port, ReadinessCheck readiness_check)
-    : port_(port), server_fd_(-1), readiness_check_(std::move(readiness_check)) {}
+HealthCheckServer::HealthCheckServer(uint16_t port,
+                                     ReadinessCheck readiness_check,
+                                     NatsStatusTracker* nats_status)
+    : port_(port),
+      server_fd_(-1),
+      readiness_check_(std::move(readiness_check)),
+      nats_status_(nats_status) {}
 
 HealthCheckServer::~HealthCheckServer() {
   stop();
@@ -264,8 +269,28 @@ void HealthCheckServer::handleRequest(int client_fd) {
   // Check which endpoint is requested
   bool is_liveness = (request.find("GET /healthz") != std::string::npos);
   bool is_readiness = (request.find("GET /ready") != std::string::npos);
+  bool is_v1_health = (request.find("GET /v1/health ") != std::string::npos);
 
-  if (is_liveness) {
+  if (is_v1_health) {
+    std::string body = generateV1HealthResponse(nats_status_);
+    NatsConnectionState nats_state =
+        nats_status_ ? nats_status_->state() : NatsConnectionState::kDisconnected;
+    bool healthy = (nats_status_ == nullptr) ||
+                   (nats_state == NatsConnectionState::kConnected);
+    std::string status_line =
+        healthy ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 503 Service Unavailable\r\n";
+
+    std::ostringstream response;
+    response << status_line;
+    response << "Content-Type: application/json\r\n";
+    response << "Content-Length: " << body.size() << "\r\n";
+    response << "\r\n";
+    response << body;
+
+    std::string response_str = response.str();
+    [[maybe_unused]] auto result = write(client_fd, response_str.c_str(), response_str.size());
+
+  } else if (is_liveness) {
     // Liveness probe - always return 200 OK if process is alive
     std::string body = generateLivenessResponse();
 
@@ -325,6 +350,34 @@ std::string HealthCheckServer::generateReadinessResponse(bool ready) {
   } else {
     return "{\"status\":\"not_ready\"}";
   }
+}
+
+std::string HealthCheckServer::generateV1HealthResponse(const NatsStatusTracker* nats_status) {
+  std::ostringstream body;
+
+  if (nats_status == nullptr) {
+    body << "{\"status\":\"healthy\","
+         << "\"nats\":{\"state\":\"unknown\",\"last_success_epoch_ms\":0}}";
+    return body.str();
+  }
+
+  NatsConnectionState st = nats_status->state();
+  int64_t last_ms = nats_status->lastSuccessEpochMs();
+
+  const char* state_str = "disconnected";
+  if (st == NatsConnectionState::kConnected) {
+    state_str = "connected";
+  } else if (st == NatsConnectionState::kReconnecting) {
+    state_str = "reconnecting";
+  }
+
+  bool healthy = (st == NatsConnectionState::kConnected);
+  const char* overall = healthy ? "healthy" : "degraded";
+
+  body << "{\"status\":\"" << overall << "\","
+       << "\"nats\":{\"state\":\"" << state_str << "\","
+       << "\"last_success_epoch_ms\":" << last_ms << "}}";
+  return body.str();
 }
 
 }  // namespace monitoring

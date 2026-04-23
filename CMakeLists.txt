@@ -193,6 +193,7 @@ add_library(
   # exporter
   src/monitoring/health_check_server.cpp # Phase 6.7: Health check endpoints
   # (C4)
+  src/monitoring/nats_status.cpp # Issue #93: NATS connection state tracker
 )
 
 target_include_directories(
@@ -414,7 +415,7 @@ add_executable(
   tests/unit/test_circuit_breaker.cpp # Phase 5.4: Chaos engineering - circuit
   # breaker
   tests/unit/test_agent_concepts.cpp # Issue #24: Agent concepts type safety
-  tests/unit/test_health_check_server.cpp # Phase 6.7: Health check endpoints (C4)
+  # test_health_check_server.cpp moved to monitoring_unit_tests (Issue #93)
   tests/unit/test_coordination_state.cpp # Stream B Phase B1: CoordinationState template tests (FIX: added mutexes)
   tests/unit/test_task_cancellation.cpp # Phase 1.2 (Issue #52): Task cancellation notification
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
@@ -548,6 +549,20 @@ add_custom_target(
           registry_integration_tests
           nats_integration_tests
   COMMENT "Running all ProjectKeystone tests with failure output")
+
+# Daemon executable (Issue #93: health check endpoint for Nomad/Argus)
+add_executable(keystone_daemon src/daemon/main.cpp)
+target_link_libraries(keystone_daemon PRIVATE keystone_core)
+
+# Unit Tests - Monitoring (Issue #93: NatsStatusTracker + /v1/health endpoint)
+add_executable(
+  monitoring_unit_tests
+  tests/unit/test_health_check_server.cpp
+  tests/unit/test_nats_status.cpp
+  tests/unit/test_health_v1_endpoint.cpp
+)
+target_link_libraries(monitoring_unit_tests keystone_core GTest::gtest_main)
+gtest_discover_tests(monitoring_unit_tests)
 
 # Benchmarks
 # Phase 3.1: Re-enabled hierarchy benchmarks with unified async API

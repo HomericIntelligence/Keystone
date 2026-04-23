@@ -1,5 +1,7 @@
 #pragma once
 
+#include "monitoring/nats_status.hpp"
+
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -39,8 +41,11 @@ class HealthCheckServer {
    * @brief Construct health check server with configuration
    * @param port HTTP server port (default: 8080 for Kubernetes)
    * @param readiness_check Optional custom readiness check function
+   * @param nats_status Optional NATS status tracker (non-owning); used by /v1/health
    */
-  explicit HealthCheckServer(uint16_t port = 8080, ReadinessCheck readiness_check = nullptr);
+  explicit HealthCheckServer(uint16_t port = 8080,
+                             ReadinessCheck readiness_check = nullptr,
+                             NatsStatusTracker* nats_status = nullptr);
 
   /**
    * @brief Destructor - stops server if running
@@ -105,12 +110,20 @@ class HealthCheckServer {
    */
   static std::string generateReadinessResponse(bool ready);
 
+  /**
+   * @brief Generate /v1/health response JSON body
+   * @param nats_status Optional NATS tracker (may be nullptr)
+   * @return JSON body string
+   */
+  static std::string generateV1HealthResponse(const NatsStatusTracker* nats_status);
+
   std::atomic<uint16_t> port_;
   std::atomic<bool> running_{false};
   std::unique_ptr<std::thread> server_thread_;
   std::atomic<int> server_fd_{-1};
   mutable std::mutex readiness_mutex_;
   ReadinessCheck readiness_check_;
+  NatsStatusTracker* nats_status_{nullptr};  // non-owning
 };
 
 }  // namespace monitoring
