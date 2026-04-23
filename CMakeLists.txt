@@ -229,8 +229,7 @@ target_link_libraries(keystone_concurrency
     concurrentqueue::concurrentqueue
 )
 
-# Handle circular dependency: keystone_core uses Logger from keystone_concurrency
-# This works with shared libraries
+# keystone_core depends on keystone_concurrency (one-directional)
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
 # Network library (Phase 8: Distributed communication)

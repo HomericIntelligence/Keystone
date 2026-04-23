@@ -186,6 +186,9 @@ class WorkStealingScheduler {
    */
   void setCPUAffinity(size_t worker_index);
 
+  // Maximum number of worker threads (prevents DoS via excessive thread creation)
+  static constexpr size_t MAX_WORKER_THREADS = 256;
+
   // Stream C1: 3-phase backoff thresholds
   static constexpr size_t SPIN_ITERATIONS = 100;
   static constexpr size_t YIELD_ITERATIONS = 1000;
