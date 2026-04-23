@@ -31,8 +31,15 @@ std::string generateCorrelationId() {
   c = (c & 0x3FFFFFFFu) | 0x80000000u;  // variant 10xx
 
   char buf[37];
-  std::snprintf(buf, sizeof(buf), "%08x-%04x-%04x-%04x-%04x%08x", a, (b >> 16) & 0xFFFF,
-                b & 0xFFFF, (c >> 16) & 0xFFFF, c & 0xFFFF, d);
+  std::snprintf(buf,
+                sizeof(buf),
+                "%08x-%04x-%04x-%04x-%04x%08x",
+                a,
+                (b >> 16) & 0xFFFF,
+                b & 0xFFFF,
+                (c >> 16) & 0xFFFF,
+                c & 0xFFFF,
+                d);
   return std::string(buf);
 }
 
