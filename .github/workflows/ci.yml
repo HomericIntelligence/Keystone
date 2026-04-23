@@ -76,9 +76,34 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================================================
+  # Python Quality Checks (mypy type checking)
+  # ============================================================================
+  python-quality:
+    name: Python Quality (mypy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install mypy
+        run: pip install "mypy>=1.8.0" "conan>=2.0.0"
+
+      - name: Type check (mypy)
+        run: mypy conanfile.py
+
+  # ============================================================================
   # Build and Test Matrix (all sanitizers)
   # ============================================================================
   sanitizers:
+
     name: Test (${{ matrix.sanitizer }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -279,7 +304,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-24.04
-    needs: [quality, pytest, sanitizers, benchmarks, coverage]
+    needs: [quality, pytest, python-quality, sanitizers, benchmarks, coverage]
     if: always()
 
     steps:
@@ -287,6 +312,7 @@ jobs:
         run: |
           echo "Quality: ${{ needs.quality.result }}"
           echo "Python Tests: ${{ needs.pytest.result }}"
+          echo "Python Quality (mypy): ${{ needs.python-quality.result }}"
           echo "Sanitizers: ${{ needs.sanitizers.result }}"
           echo "Benchmarks: ${{ needs.benchmarks.result }}"
           echo "Coverage: ${{ needs.coverage.result }}"
@@ -298,6 +324,10 @@ jobs:
           fi
           if [ "${{ needs.pytest.result }}" != "success" ]; then
             echo "::error::Python tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.python-quality.result }}" != "success" ]; then
+            echo "::error::Python quality checks failed"
             exit 1
           fi
           if [ "${{ needs.sanitizers.result }}" != "success" ]; then
@@ -315,6 +345,7 @@ jobs:
             const sanitizerResult = '${{ needs.sanitizers.result }}';
             const qualityResult = '${{ needs.quality.result }}';
             const pytestResult = '${{ needs.pytest.result }}';
+            const pythonQualityResult = '${{ needs.python-quality.result }}';
             const benchmarkResult = '${{ needs.benchmarks.result }}';
             const coverageResult = '${{ needs.coverage.result }}';
 
@@ -326,6 +357,7 @@ jobs:
             |-------|--------|
             | Code Quality | ${statusIcon(qualityResult)} ${qualityResult} |
             | Python Tests | ${statusIcon(pytestResult)} ${pytestResult} |
+            | Python Quality (mypy) | ${statusIcon(pythonQualityResult)} ${pythonQualityResult} |
             | Sanitizers (ASan, UBSan, TSan, LSan, MSan) | ${statusIcon(sanitizerResult)} ${sanitizerResult} |
             | Benchmarks | ${statusIcon(benchmarkResult)} ${benchmarkResult} |
             | Coverage | ${statusIcon(coverageResult)} ${coverageResult} |
