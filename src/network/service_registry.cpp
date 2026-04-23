@@ -5,14 +5,14 @@
 
 namespace keystone::network {
 
-ServiceRegistry::ServiceRegistry(int heartbeat_timeout_ms)
+ServiceRegistry::ServiceRegistry(int32_t heartbeat_timeout_ms)
     : heartbeat_timeout_(heartbeat_timeout_ms) {}
 
 ServiceRegistry::~ServiceRegistry() = default;
 
 bool ServiceRegistry::registerAgent(const std::string& agent_id,
                                     const std::string& agent_type,
-                                    int level,
+                                    int32_t level,
                                     const std::string& ip_port,
                                     const std::vector<std::string>& capabilities) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -41,7 +41,7 @@ bool ServiceRegistry::registerAgent(const std::string& agent_id,
 bool ServiceRegistry::updateHeartbeat(const std::string& agent_id,
                                       float cpu_usage_percent,
                                       float memory_usage_mb,
-                                      int active_tasks) {
+                                      int32_t active_tasks) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto it = agents_.find(agent_id);
@@ -75,9 +75,9 @@ std::optional<AgentRegistrationInfo> ServiceRegistry::getAgent(const std::string
 
 std::vector<AgentRegistrationInfo> ServiceRegistry::queryAgents(
     const std::string& agent_type,
-    int level,
+    int32_t level,
     const std::vector<std::string>& required_capabilities,
-    int max_results,
+    int32_t max_results,
     bool only_alive) const {
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -107,7 +107,7 @@ std::vector<AgentRegistrationInfo> ServiceRegistry::queryAgents(
     results.push_back(info);
 
     // Check max results limit
-    if (max_results > 0 && static_cast<int>(results.size()) >= max_results) {
+    if (max_results > 0 && static_cast<int32_t>(results.size()) >= max_results) {
       break;
     }
   }
@@ -144,10 +144,10 @@ bool ServiceRegistry::isAgentAlive(const std::string& agent_id) const {
   return elapsed < heartbeat_timeout_;
 }
 
-int ServiceRegistry::cleanupDeadAgents() {
+int32_t ServiceRegistry::cleanupDeadAgents() {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  int removed_count = 0;
+  int32_t removed_count = 0;
   auto now = std::chrono::system_clock::now();
 
   for (auto it = agents_.begin(); it != agents_.end();) {
@@ -222,7 +222,7 @@ AgentRegistrationInfo ServiceRegistry::fromProtoRegistration(const hmas::AgentRe
   info.level = reg.level();
   info.ip_port = reg.ip_port();
 
-  for (int i = 0; i < reg.capabilities_size(); ++i) {
+  for (int32_t i = 0; i < reg.capabilities_size(); ++i) {
     info.capabilities.push_back(reg.capabilities(i));
   }
 
@@ -250,7 +250,7 @@ grpc::Status ServiceRegistryServiceImpl::RegisterAgent(grpc::ServerContext* cont
   (void)context;  // Unused
 
   std::vector<std::string> capabilities;
-  for (int i = 0; i < request->capabilities_size(); ++i) {
+  for (int32_t i = 0; i < request->capabilities_size(); ++i) {
     capabilities.push_back(request->capabilities(i));
   }
 
@@ -312,7 +312,7 @@ grpc::Status ServiceRegistryServiceImpl::QueryAgents(grpc::ServerContext* contex
   (void)context;  // Unused
 
   std::vector<std::string> required_capabilities;
-  for (int i = 0; i < request->required_capabilities_size(); ++i) {
+  for (int32_t i = 0; i < request->required_capabilities_size(); ++i) {
     required_capabilities.push_back(request->required_capabilities(i));
   }
 

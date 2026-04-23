@@ -6,6 +6,7 @@
 #include <array>
 #include <cctype>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <regex>
 #include <sstream>
@@ -213,7 +214,7 @@ std::string TaskAgent::executeBash(const std::string& command) {
   }
 
   // Manual close to get status (release() transfers ownership)
-  int status = pclose(pipe.release());
+  int32_t status = pclose(pipe.release());
   if (status != 0) {
     std::stringstream ss;
     ss << "Command exited with status " << status;

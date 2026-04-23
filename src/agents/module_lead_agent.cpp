@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <numeric>
 #include <regex>
 #include <sstream>
@@ -102,11 +103,11 @@ std::string ModuleLeadAgent::synthesizeResults() {
   }
 
   // Parse each result as a number and sum them
-  int total = 0;
+  int32_t total = 0;
   const auto& results = coordination_.getResults();
   for (const auto& result : results) {
     try {
-      int value = std::stoi(result);
+      int32_t value = std::stoi(result);
       total += value;
     } catch (const std::exception&) {
       // Skip non-numeric results
@@ -215,7 +216,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
 
   // Generate child task YAMLs and submit to TaskAgents
   coordination_.transitionTo(State::WAITING_FOR_TASKS, stateToString(State::WAITING_FOR_TASKS));
-  coordination_.initializeCoordination(static_cast<int>(tasks.size()));
+  coordination_.initializeCoordination(static_cast<int32_t>(tasks.size()));
 
   for (size_t i = 0; i < tasks.size(); ++i) {
     // Create child task spec

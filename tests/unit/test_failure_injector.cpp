@@ -175,7 +175,7 @@ TEST_F(FailureInjectorTest, ShouldFailProbabilistic) {
 
   // With 50% rate, approximately half should fail
   int32_t fail_count = 0;
-  const int trials = 1000;
+  const int32_t trials = 1000;
 
   for (int32_t i = 0; i < trials; ++i) {
     if (injector->shouldFail()) {
@@ -270,8 +270,8 @@ TEST_F(FailureInjectorTest, GetStatistics) {
 // ============================================================================
 
 TEST_F(FailureInjectorTest, ConcurrentCrashInjection) {
-  const int THREADS = 4;
-  const int CRASHES_PER_THREAD = 10;
+  const int32_t THREADS = 4;
+  const int32_t CRASHES_PER_THREAD = 10;
 
   std::vector<std::thread> threads;
   for (int32_t t = 0; t < THREADS; ++t) {
@@ -295,9 +295,9 @@ TEST_F(FailureInjectorTest, ConcurrentCrashInjection) {
 TEST_F(FailureInjectorTest, ConcurrentRandomFailures) {
   injector->setFailureRate(0.5);
 
-  const int THREADS = 4;
-  const int CHECKS_PER_THREAD = 100;
-  std::atomic<int> total_failures{0};
+  const int32_t THREADS = 4;
+  const int32_t CHECKS_PER_THREAD = 100;
+  std::atomic<int32_t> total_failures{0};
 
   std::vector<std::thread> threads;
   for (int32_t t = 0; t < THREADS; ++t) {
@@ -315,7 +315,7 @@ TEST_F(FailureInjectorTest, ConcurrentRandomFailures) {
   }
 
   // Approximately half should fail (allow wide variance due to threading)
-  int total_checks = THREADS * CHECKS_PER_THREAD;
+  int32_t total_checks = THREADS * CHECKS_PER_THREAD;
   EXPECT_GT(total_failures.load(), total_checks * 0.3);
   EXPECT_LT(total_failures.load(), total_checks * 0.7);
 }

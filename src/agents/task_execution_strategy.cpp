@@ -3,6 +3,7 @@
 #include "core/error_sanitizer.hpp"
 
 #include <array>
+#include <cstdint>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -122,7 +123,7 @@ std::string TaskExecutionStrategy::executeBashCommand(const std::string& cmd) co
   }
 
   // Get exit status
-  int status = pclose(pipe.fp);
+  int32_t status = pclose(pipe.fp);
   pipe.fp = nullptr;  // Mark as closed
 
   if (status != 0) {

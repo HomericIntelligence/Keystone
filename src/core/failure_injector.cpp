@@ -1,12 +1,13 @@
 #include "core/failure_injector.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <sstream>
 
 namespace keystone {
 namespace core {
 
-FailureInjector::FailureInjector(unsigned int seed)
+FailureInjector::FailureInjector(uint32_t seed)
     : rng_(seed == 0 ? std::random_device{}() : seed) {}
 
 // ============================================================================
@@ -85,7 +86,7 @@ bool FailureInjector::shouldAgentFail(const std::string& agent_id) {
 // Statistics
 // ============================================================================
 
-int FailureInjector::getTotalFailures() const {
+int32_t FailureInjector::getTotalFailures() const {
   return total_failures_.load();
 }
 
