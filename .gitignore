@@ -122,6 +122,9 @@ credentials*
 # CMake user-specific preset overrides (generated, not shared)
 CMakeUserPresets.json
 
+# Pixi
+.pixi/
+
 # Conan package manager cache and generated files
 .conan/
 conan_provider.cmake
