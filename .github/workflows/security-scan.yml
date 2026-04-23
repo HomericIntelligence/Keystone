@@ -95,6 +95,14 @@ jobs:
           conan install . --output-folder=build/conan-deps --build=missing -s build_type=Debug -s compiler.cppstd=20
           conan install . --output-folder=build/conan-deps --build=missing -s build_type=Release -s compiler.cppstd=20
 
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/codeql/_deps
+          key: fetchcontent-codeql-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-codeql-${{ runner.os }}-
+
       - name: Build for CodeQL
         run: |
           cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Debug \
