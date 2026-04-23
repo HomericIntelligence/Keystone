@@ -172,6 +172,18 @@ build/
 └── coverage/     # Debug + Coverage
 ```
 
+### Test Structure
+
+```
+tests/
+├── unit/           # Unit tests per component
+├── integration/    # Cross-component integration tests
+├── e2e/            # End-to-end and distributed tests
+├── load/           # Load and throughput tests
+├── fixtures/       # Shared test fixtures
+└── mocks/          # Mock implementations
+```
+
 ---
 
 ## Quality Tooling
