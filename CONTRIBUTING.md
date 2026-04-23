@@ -47,6 +47,58 @@ ProjectKeystone follows **Test-Driven Development (TDD)**:
 
 ## Building the Project
 
+3. **Refactor** while keeping tests green (REFACTOR phase)
+   - Improve code quality, readability, and structure
+   - All tests must continue passing
+
+4. **Commit** when tests pass
+   - Use conventional commit format (see below)
+   - Push to feature branch
+
+For more details, see [CLAUDE.md - Development Workflow](CLAUDE.md#development-workflow).
+
+## C++20 Code Standards
+
+### Core Principles
+
+- **Language**: Exclusively C++20. No Python, Mojo, or other languages
+- **Naming**: `camelBack` for functions, `lower_case` for variables/members/parameters, `PascalCase` for types
+- **Memory**: Prefer `std::unique_ptr`, use `std::shared_ptr` only for shared ownership
+- **Async**: Use C++20 coroutines for async operations (no raw threads)
+- **RAII**: Always use Resource Acquisition Is Initialization
+
+### Style Examples
+
+```cpp
+// Functions: camelBack
+void processMessage(const KeystoneMessage& msg);
+auto createAgent() -> std::unique_ptr<AgentBase>;
+
+// Types: PascalCase
+class ChiefArchitectAgent;
+struct KeystoneMessage;
+
+// Coroutines for async
+Task<void> handleMessageAsync(const KeystoneMessage& msg) {
+    co_await delegateTask(msg);
+    co_return;
+}
+
+// Prefer unique_ptr for ownership
+auto agent = std::make_unique<TaskAgent>("task1");
+
+// References for non-owning access
+void updateAgent(const AgentBase& agent);
+```
+
+For comprehensive style guidelines, see [CLAUDE.md - Coding Standards](CLAUDE.md#coding-standards).
+
+## Testing Requirements
+
+**All contributions must meet ≥95% code coverage threshold.**
+
+### Running Tests Locally
+
 Use CMakePresets for all builds:
 
 ```bash
@@ -90,10 +142,11 @@ language to the implementation.
 
 | Element | Style |
 |---------|-------|
-| Functions / variables | `snake_case` |
+| Functions | `camelBack` |
+| Variables / members / parameters | `lower_case` |
 | Types / classes | `PascalCase` |
 | Constants / enums | `kPascalCase` |
-| Private members | `snake_case_` (trailing underscore) |
+| Private members | `lower_case_` (trailing underscore) |
 
 ### Memory Management
 
