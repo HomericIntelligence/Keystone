@@ -36,6 +36,12 @@ The following are in scope:
 - CI/CD pipeline configurations
 - Kubernetes deployment manifests
 
+### Credit policy
+
+Researchers who responsibly disclose security vulnerabilities will be credited in the
+release notes and/or security advisory for the fix, unless they prefer to remain
+anonymous. Please indicate your preference when reporting.
+
 ### Security measures in place
 
 - Static analysis: Semgrep, CodeQL, cppcheck
