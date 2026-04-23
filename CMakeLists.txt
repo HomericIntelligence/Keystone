@@ -137,6 +137,18 @@ FetchContent_Declare(
   GIT_TAG v0.14)
 FetchContent_MakeAvailable(cista)
 
+# nats.c — NATS client library with TLS support (issue #122)
+# NOT on ConanCenter; pulled directly from upstream.
+FetchContent_Declare(
+  natsc
+  GIT_REPOSITORY https://github.com/nats-io/nats.c.git
+  GIT_TAG v3.12.0
+  GIT_SHALLOW TRUE)
+set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(natsc)
+
 # yaml-cpp — YAML parser for task specifications (Phase 8 only)
 if(ENABLE_GRPC)
   find_package(yaml-cpp REQUIRED)
@@ -501,6 +513,25 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 
 gtest_discover_tests(simulation_unit_tests)
 
+# Transport library — NATS connection with TLS support (issue #122)
+add_library(keystone_transport src/transport/nats_connection.cpp)
+
+target_include_directories(
+  keystone_transport
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/keystone>
+)
+
+target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog)
+
+# Unit Tests — NATS transport (issue #122)
+add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
+
+target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
+
+gtest_discover_tests(transport_unit_tests)
+
 # Integration Tests (Phase C3: Registry integration tests)
 # DISABLED: keystone_agents moved to ProjectAgamemnon (ADR-006)
 # add_executable(registry_integration_tests tests/integration/test_registry_integration.cpp)
@@ -530,6 +561,7 @@ add_custom_target(
           unit_tests
           concurrency_unit_tests
           simulation_unit_tests
+          transport_unit_tests
           # DISABLED: registry_integration_tests (ADR-006)
           # DISABLED: nats_integration_tests (ADR-006, uses task_agent.hpp)
   COMMENT "Running all ProjectKeystone tests with failure output")
