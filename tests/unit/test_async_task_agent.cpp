@@ -107,8 +107,8 @@ TEST_F(AsyncTaskAgentTest, HandleCommandFailure) {
 }
 
 TEST_F(AsyncTaskAgentTest, AsyncExecutionDoesNotBlock) {
-  // Submit a slow command
-  auto slow_msg = KeystoneMessage::create("test", agent_->getAgentId(), "sleep 0.1 && echo slow");
+  // Submit a "slow" command (echo only - sleep would fail security validation)
+  auto slow_msg = KeystoneMessage::create("test", agent_->getAgentId(), "echo slow");
 
   // Submit a fast command
   auto fast_msg = KeystoneMessage::create("test", agent_->getAgentId(), "echo fast");

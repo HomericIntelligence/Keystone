@@ -1,10 +1,13 @@
 #pragma once
 
 #include "agents/async_agent.hpp"
+#include "core/failure_injector.hpp"
 
 #include <atomic>
 #include <cstdio>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -50,6 +53,39 @@ class TaskAgent : public AsyncAgent {
    */
   const std::vector<std::pair<std::string, std::string>>& getCommandHistory() const {
     return command_log_;
+  }
+
+  // =========================================================================
+  // Phase 5: Chaos Engineering — Failure State API
+  // =========================================================================
+
+  bool isFailed() const { return failed_.load(std::memory_order_acquire); }
+
+  std::string getFailureReason() const {
+    std::lock_guard<std::mutex> lock(failure_mutex_);
+    return failure_reason_;
+  }
+
+  void markAsFailed(const std::string& reason) {
+    std::lock_guard<std::mutex> lock(failure_mutex_);
+    failure_reason_ = reason;
+    failed_.store(true, std::memory_order_release);
+  }
+
+  void recover() {
+    std::lock_guard<std::mutex> lock(failure_mutex_);
+    failure_reason_.clear();
+    failed_.store(false, std::memory_order_release);
+    failure_injector_ = nullptr;
+  }
+
+  void setFailureInjector(core::FailureInjector* injector) { failure_injector_ = injector; }
+
+  bool shouldFail() {
+    if (failure_injector_ == nullptr) {
+      return false;
+    }
+    return failure_injector_->shouldAgentFail(agent_id_);
   }
 
 #ifdef ENABLE_GRPC
@@ -130,6 +166,12 @@ class TaskAgent : public AsyncAgent {
   std::string executeBash(const std::string& command);
 
   std::vector<std::pair<std::string, std::string>> command_log_;
+
+  // Phase 5: Chaos Engineering failure state
+  std::atomic<bool> failed_{false};
+  mutable std::mutex failure_mutex_;
+  std::string failure_reason_;
+  core::FailureInjector* failure_injector_{nullptr};
 
 #ifdef ENABLE_GRPC
   /**

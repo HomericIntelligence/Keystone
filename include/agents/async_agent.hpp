@@ -2,8 +2,10 @@
 
 #include "agent_core.hpp"
 #include "concurrency/task.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message.hpp"
 
+#include <memory>
 #include <string>
 
 namespace keystone {
@@ -40,6 +42,17 @@ class AsyncAgent : public AgentCore {
    * @return concurrency::Task<core::Response> Async task that resolves to response
    */
   virtual concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) = 0;
+
+  /**
+   * @brief Receive a message — auto-processes via scheduler when one is stored
+   *
+   * When setScheduler() has been called with a non-null scheduler, submits
+   * processMessage() to the scheduler immediately (push/auto-processing model).
+   * Without a stored scheduler, falls back to AgentCore inbox (pull model).
+   *
+   * @param msg Message to receive
+   */
+  void receiveMessage(const core::KeystoneMessage& msg) override;
 
  protected:
   /**

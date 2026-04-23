@@ -97,18 +97,25 @@ class AgentCore {
   /**
    * @brief Set the work-stealing scheduler for this agent
    *
-   * Issue #19: Scheduler integration for async Task<T> execution.
+   * When a scheduler is stored on the agent, AsyncAgent::receiveMessage will
+   * submit processMessage() directly to the scheduler rather than queuing to
+   * the inbox (auto-processing / push model). Without a stored scheduler, the
+   * pull model is used: messages go to the inbox and callers must call
+   * getMessage() + processMessage() manually.
    *
-   * Note: This method is provided for API completeness and testing.
-   * The actual scheduler is accessed via thread-local storage by Task<T>::await_suspend()
-   * when coroutines execute on worker threads.
-   *
-   * @param scheduler Pointer to scheduler (must outlive agent)
+   * @param scheduler Pointer to scheduler (must outlive agent), or nullptr to disable
    */
   void setScheduler(concurrency::WorkStealingScheduler* scheduler) {
-    // Note: Agents don't store scheduler themselves - it's accessed via thread-local
-    // storage. This method exists for API compatibility and future extensions.
-    (void)scheduler;  // Suppress unused parameter warning
+    scheduler_.store(scheduler, std::memory_order_release);
+  }
+
+  /**
+   * @brief Get the stored scheduler for this agent
+   *
+   * @return WorkStealingScheduler* or nullptr
+   */
+  concurrency::WorkStealingScheduler* getScheduler() const {
+    return scheduler_.load(std::memory_order_acquire);
   }
 
   /**
@@ -198,6 +205,8 @@ class AgentCore {
   std::string agent_id_;
   // FIX ISP (Issue #46): Use IMessageRouter* instead of MessageBus*
   core::IMessageRouter* message_bus_{nullptr};
+  // Stored scheduler for auto-processing (AsyncAgent uses this in receiveMessage)
+  std::atomic<concurrency::WorkStealingScheduler*> scheduler_{nullptr};
 
   // Phase C: Priority-based lock-free inboxes
   // Messages are routed to queues by priority and processed HIGH -> NORMAL ->

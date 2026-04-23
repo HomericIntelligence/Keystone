@@ -14,24 +14,19 @@
  * the required features are implemented in TaskAgent and other components.
  */
 
-#if 0  // Disabled until chaos engineering features are implemented
+#include "agents/task_agent.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
+#include "core/failure_injector.hpp"
+#include "core/message_bus.hpp"
+#include "core/retry_policy.hpp"
+#include "simulation/simulated_network.hpp"
 
-#  include "agents/chief_architect_agent.hpp"
-#  include "agents/component_lead_agent.hpp"
-#  include "agents/module_lead_agent.hpp"
-#  include "agents/task_agent.hpp"
-#  include "concurrency/work_stealing_scheduler.hpp"
-#  include "core/failure_injector.hpp"
-#  include "core/message_bus.hpp"
-#  include "core/retry_policy.hpp"
-#  include "simulation/simulated_network.hpp"
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <vector>
 
-#  include <chrono>
-#  include <memory>
-#  include <thread>
-#  include <vector>
-
-#  include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::agents;
@@ -924,5 +919,3 @@ TEST_F(Phase5MessageLossTest, CombinedPartitionAndLoss) {
   EXPECT_GT(delivered.load(), 0);
   EXPECT_LT(delivered.load(), 50);  // Less than total sent within partition
 }
-
-#endif  // Disabled chaos engineering tests
