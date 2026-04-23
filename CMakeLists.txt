@@ -115,8 +115,12 @@ find_package(benchmark REQUIRED)
 find_package(concurrentqueue REQUIRED)
 
 # spdlog — fast logging library (Conan: spdlog/1.12.0)
+# fmt is pulled in as a Conan dependency so use SPDLOG_FMT_EXTERNAL to avoid
+# the bundled copy (which is not installed into the package include tree).
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
 # Cista — zero-copy serialization (NOT on ConanCenter, kept as FetchContent)
 FetchContent_Declare(
@@ -219,13 +223,13 @@ target_include_directories(
     $<INSTALL_INTERFACE:include/keystone>
 )
 
-# Link dependencies (including spdlog for logger.hpp and concurrentqueue for queue headers)
-# Both are PUBLIC because keystone_concurrency's public headers (#include <spdlog/...> and
-# #include <concurrentqueue/...>) require these targets to propagate to consumers.
+# Link dependencies (spdlog/fmt PUBLIC: logger.hpp is a public header that includes spdlog/fmt)
+# concurrentqueue PUBLIC: concurrentqueue.h is used in public AgentCore headers
 target_link_libraries(keystone_concurrency
   PUBLIC
     keystone_core
     spdlog::spdlog
+    fmt::fmt
     concurrentqueue::concurrentqueue
 )
 
@@ -514,6 +518,17 @@ target_link_libraries(registry_integration_tests keystone_agents keystone_core
 
 gtest_discover_tests(registry_integration_tests)
 
+# Integration Tests: NATS transport pipeline (Issue #135)
+# Tests in NatsServerTest fixture require KEYSTONE_INTEGRATION_TESTS=1 and a
+# running NATS server.  They self-skip via GTEST_SKIP() when the env var is
+# absent, so this target is safe to include in every CI build.
+add_executable(nats_integration_tests tests/integration/test_nats_integration.cpp)
+
+target_link_libraries(nats_integration_tests keystone_agents keystone_core
+                      GTest::gtest_main)
+
+gtest_discover_tests(nats_integration_tests)
+
 # Add test target
 add_custom_target(
   run_tests
@@ -530,6 +545,7 @@ add_custom_target(
           concurrency_unit_tests
           simulation_unit_tests
           registry_integration_tests
+          nats_integration_tests
   COMMENT "Running all ProjectKeystone tests with failure output")
 
 # Benchmarks
@@ -735,6 +751,7 @@ install(
     concurrency_unit_tests
     simulation_unit_tests
     registry_integration_tests
+    nats_integration_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
   COMPONENT keystone-test
 )

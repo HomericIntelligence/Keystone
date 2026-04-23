@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Integration test environment: NATS server + test runner
+# Usage: docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    container_name: keystone-test-nats
+    command:
+      - "--jetstream"
+      - "--store_dir=/data"
+      - "--port=4222"
+      - "--http_port=8222"
+    ports:
+      - "4222:4222"   # Client connections
+      - "8222:8222"   # HTTP monitoring
+    tmpfs:
+      - /data         # Ephemeral JetStream storage; wiped each run
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+      start_period: 3s
+
+  integration-tests:
+    build:
+      context: .
+      target: builder
+    container_name: keystone-integration-tests
+    depends_on:
+      nats:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://nats:4222
+      - KEYSTONE_INTEGRATION_TESTS=1
+    command: >
+      bash -c "
+        cmake --preset debug &&
+        cmake --build --preset debug --target nats_integration_tests &&
+        ctest --preset debug --tests-regex nats_integration --output-on-failure
+      "
+    working_dir: /workspace
