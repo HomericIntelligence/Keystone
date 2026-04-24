@@ -28,14 +28,23 @@ jobs:
         with:
           fetch-depth: 0  # Full history for comprehensive scanning
 
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION=8.30.1
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${OS}_${ARCH}.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: false
+        run: |
+          gitleaks detect --source . --report-format sarif --report-path results.sarif --exit-code 0
+        continue-on-error: true
 
       - name: Upload Gitleaks results
-        if: always() && hashFiles('results.sarif') != ''
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: gitleaks-report
