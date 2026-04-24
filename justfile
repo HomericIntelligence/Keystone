@@ -63,12 +63,12 @@ integration-test:
         ctest --preset debug --tests-regex nats_integration --output-on-failure
 
 # Build with coverage instrumentation
-coverage: deps
+coverage:
     cmake --preset coverage
     cmake --build --preset coverage
 
 # Full CI build (release + warnings-as-errors)
-ci: deps-release
+ci:
     cmake --preset ci
     cmake --build --preset ci
     ctest --preset ci
