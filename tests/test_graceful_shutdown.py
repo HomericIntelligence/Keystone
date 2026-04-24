@@ -210,7 +210,7 @@ class TestNATSListenerShutdown:
         listener = NATSListener(claimer)
         listener.begin_shutdown()
 
-        await listener._on_task_event("team-1")
+        await listener._on_task_event("hi.tasks.team-1.t1.assigned", "team-1", "t1")
 
         assert claimer.in_flight_count == 0
         assert claimer.calls == []
@@ -220,7 +220,7 @@ class TestNATSListenerShutdown:
         claimer = SlowTaskClaimer(delay=0.0)
         listener = NATSListener(claimer)
 
-        await listener._on_task_event("team-1")
+        await listener._on_task_event("hi.tasks.team-1.t1.assigned", "team-1", "t1")
         await asyncio.sleep(0.01)
 
         assert "team-1" in claimer.calls
@@ -232,10 +232,12 @@ class TestNATSListenerShutdown:
         listener.begin_shutdown()
 
         with patch("keystone.nats_listener.logger") as mock_logger:
-            await listener._on_task_event("team-dropped")
-            mock_logger.info.assert_called_with(
-                "nats_event_dropped_during_shutdown", team_id="team-dropped"
+            await listener._on_task_event(
+                "hi.tasks.team-dropped.t1.assigned", "team-dropped", "t1"
             )
+            mock_logger.info.assert_called_once()
+            call_args = mock_logger.info.call_args
+            assert call_args[0][0] == "nats_event_dropped_during_shutdown"
 
     @pytest.mark.asyncio
     async def test_inflight_before_shutdown_completes(self) -> None:
@@ -244,7 +246,7 @@ class TestNATSListenerShutdown:
         listener = NATSListener(claimer)
 
         # Dispatch an event before shutdown.
-        await listener._on_task_event("team-1")
+        await listener._on_task_event("hi.tasks.team-1.t1.assigned", "team-1", "t1")
         assert claimer.in_flight_count == 1
 
         # Now signal shutdown.
@@ -269,14 +271,14 @@ class TestShutdownSequence:
         listener = NATSListener(claimer)
 
         # Simulate events arriving before shutdown.
-        await listener._on_task_event("team-a")
-        await listener._on_task_event("team-b")
+        await listener._on_task_event("hi.tasks.team-a.t1.assigned", "team-a", "t1")
+        await listener._on_task_event("hi.tasks.team-b.t1.assigned", "team-b", "t1")
 
         # Shutdown starts.
         listener.begin_shutdown()
 
         # New events are dropped.
-        await listener._on_task_event("team-c")
+        await listener._on_task_event("hi.tasks.team-c.t1.assigned", "team-c", "t1")
 
         # Drain in-flight ops.
         drained = await claimer.drain(timeout=5.0)
