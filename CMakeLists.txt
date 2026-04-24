@@ -118,9 +118,11 @@ find_package(benchmark REQUIRED)
 # concurrentqueue — lock-free MPMC queue (Conan: concurrentqueue/1.0.4)
 find_package(concurrentqueue REQUIRED)
 
-# spdlog — fast logging library (Conan: spdlog/1.12.0)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# fmt + spdlog — fmt is a Conan dep; use SPDLOG_FMT_EXTERNAL so spdlog does
+# not try to use its bundled copy (which would make spdlog/fmt/fmt.h unavailable)
+find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
 # Cista — zero-copy serialization (NOT on ConanCenter, kept as FetchContent)
 FetchContent_Declare(
@@ -228,8 +230,7 @@ target_include_directories(
 # Link dependencies - note: keystone_core depends on keystone_concurrency
 # (circular dependency handled via shared libraries)
 # We'll link keystone_concurrency after it's defined
-target_link_libraries(keystone_core PRIVATE spdlog::spdlog)
-target_link_libraries(keystone_core PUBLIC concurrentqueue::concurrentqueue)
+target_link_libraries(keystone_core PUBLIC spdlog::spdlog fmt::fmt concurrentqueue::concurrentqueue)
 
 # Concurrency library (Phase A)
 add_library(
@@ -247,7 +248,7 @@ target_include_directories(
 )
 
 # Link dependencies (including spdlog for logger.hpp)
-target_link_libraries(keystone_concurrency PUBLIC keystone_core PRIVATE spdlog::spdlog)
+target_link_libraries(keystone_concurrency PUBLIC keystone_core)
 
 # Handle circular dependency: keystone_core uses Logger from keystone_concurrency
 # This works with shared libraries
