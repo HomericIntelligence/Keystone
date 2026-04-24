@@ -98,9 +98,9 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     echo -e "${YELLOW}Running tests...${NC}"
     ctest --output-on-failure || echo -e "${YELLOW}Warning: Some tests failed, but continuing with coverage generation${NC}"
 
-    # Capture coverage data (ignore errors from multi-threaded tests)
+    # Capture coverage data (ignore errors from multi-threaded tests and gcov version skew)
     echo -e "${YELLOW}Capturing coverage data...${NC}"
-    lcov --capture --directory . --output-file "$COVERAGE_INFO" --ignore-errors negative,mismatch
+    lcov --capture --directory . --output-file "$COVERAGE_INFO" --ignore-errors negative,mismatch,version
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to capture coverage data${NC}"
