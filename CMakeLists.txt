@@ -217,6 +217,7 @@ add_library(
   # exporter
   src/monitoring/health_check_server.cpp # Phase 6.7: Health check endpoints
   # (C4)
+  src/monitoring/nats_status.cpp # Phase 88: NATS reconnection status tracking
 )
 
 target_include_directories(
