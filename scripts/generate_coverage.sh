@@ -19,7 +19,14 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/coverage}"
+# Resolve BUILD_DIR to absolute path so paths remain valid after 'cd "$BUILD_DIR"'
+_raw_build="${BUILD_DIR:-$PROJECT_ROOT/build/coverage}"
+if [[ "$_raw_build" = /* ]]; then
+  BUILD_DIR="$_raw_build"
+else
+  BUILD_DIR="$PROJECT_ROOT/$_raw_build"
+fi
+unset _raw_build
 COVERAGE_DIR="${COVERAGE_OUTPUT_DIR:-$BUILD_DIR/reports/coverage}"
 HTML_OUTPUT_DIR="$COVERAGE_DIR/html"
 COVERAGE_INFO="$COVERAGE_DIR/coverage.info"
