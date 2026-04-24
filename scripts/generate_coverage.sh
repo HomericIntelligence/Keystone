@@ -62,7 +62,12 @@ if [[ "$HTML_ONLY" == "false" ]]; then
 
     # Configure with coverage enabled
     echo -e "${YELLOW}Configuring CMake with coverage enabled...${NC}"
-    cmake -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -G Ninja ..
+    # Pass Conan toolchain if it exists
+    TOOLCHAIN_ARG=""
+    if [ -f "$PROJECT_ROOT/build/conan-deps/conan_toolchain.cmake" ]; then
+        TOOLCHAIN_ARG="-DCMAKE_TOOLCHAIN_FILE=$PROJECT_ROOT/build/conan-deps/conan_toolchain.cmake"
+    fi
+    cmake -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -G Ninja $TOOLCHAIN_ARG ..
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}CMake configuration failed${NC}"
