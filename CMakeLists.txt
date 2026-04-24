@@ -371,13 +371,13 @@ endif()
 # Unit Tests
 add_executable(
   unit_tests
-  tests/unit/test_message_bus.cpp
+  # test_message_bus.cpp DISABLED: includes agents/chief_architect_agent.hpp, agents/task_agent.hpp (ADR-006)
   tests/unit/test_message_serializer.cpp
   # DISABLED: Async API not yet implemented
   # tests/unit/test_message_bus_async.cpp
   # tests/unit/test_async_task_agent.cpp
-  tests/unit/test_message_priority.cpp
-  tests/unit/test_agent_core.cpp  # Additional coverage for AgentCore
+  # test_message_priority.cpp DISABLED: includes agents/agent_core.hpp (ADR-006)
+  # test_agent_core.cpp DISABLED: includes agents/agent_core.hpp (ADR-006)
   tests/unit/test_agent_id_interning.cpp  # Phase A2: Agent ID interning tests
   tests/unit/test_metrics.cpp
   tests/unit/test_deadline_scheduling.cpp
@@ -397,7 +397,7 @@ add_executable(
   # test_task_cancellation.cpp DISABLED: includes agents/async_agent.hpp (ADR-006)
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions (core/agent_types.hpp only)
-  tests/unit/test_subject_validator.cpp # Issue #113: NATS subject token validation
+  # test_subject_validator.cpp DISABLED: includes agents/task_agent.hpp (ADR-006)
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
@@ -484,14 +484,11 @@ gtest_discover_tests(simulation_unit_tests)
 # gtest_discover_tests(registry_integration_tests)
 
 # Integration Tests: NATS transport pipeline (Issue #135)
-# Tests in NatsServerTest fixture require KEYSTONE_INTEGRATION_TESTS=1 and a
-# running NATS server.  They self-skip via GTEST_SKIP() when the env var is
-# absent, so this target is safe to include in every CI build.
-add_executable(nats_integration_tests tests/integration/test_nats_integration.cpp)
-
-target_link_libraries(nats_integration_tests keystone_core GTest::gtest_main)
-
-gtest_discover_tests(nats_integration_tests)
+# DISABLED: test_nats_integration.cpp includes agents/task_agent.hpp (ADR-006).
+# Needs to be rewritten with a plain subscriber stub before re-enabling.
+# add_executable(nats_integration_tests tests/integration/test_nats_integration.cpp)
+# target_link_libraries(nats_integration_tests keystone_core GTest::gtest_main)
+# gtest_discover_tests(nats_integration_tests)
 
 # Add test target
 add_custom_target(
@@ -510,7 +507,7 @@ add_custom_target(
           concurrency_unit_tests
           simulation_unit_tests
           # DISABLED: registry_integration_tests (ADR-006)
-          nats_integration_tests
+          # DISABLED: nats_integration_tests (ADR-006, uses task_agent.hpp)
   COMMENT "Running all ProjectKeystone tests with failure output")
 
 # Daemon executable (Issue #93: health check endpoint for Nomad/Argus)
@@ -720,7 +717,7 @@ install(
     unit_tests
     concurrency_unit_tests
     simulation_unit_tests
-    nats_integration_tests
+    # nats_integration_tests disabled (ADR-006, see above)
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
   COMPONENT keystone-test
 )
