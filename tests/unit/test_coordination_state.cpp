@@ -708,9 +708,8 @@ TEST_F(CoordinationStateTest, RecordFailureThreadSafety) {
 
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < NUM_THREADS; ++i) {
-    threads.emplace_back([this, i]() {
-      state_.recordFailure("error_" + std::to_string(i));
-    });
+    threads.emplace_back(
+        [this, i]() { state_.recordFailure("error_" + std::to_string(i)); });
   }
   for (auto& t : threads) {
     t.join();
