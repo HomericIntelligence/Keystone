@@ -18,12 +18,7 @@ deps-tsan:
         --profile=conan/profiles/tsan \
         --build=missing
     rm -f build/tsan/CMakePresets.json
-    python3 -c "\
-import json, pathlib; \
-p = pathlib.Path('CMakeUserPresets.json'); \
-d = json.loads(p.read_text()); \
-d['include'] = [x for x in d.get('include', []) if x != 'build/tsan/CMakePresets.json']; \
-p.write_text(json.dumps(d, indent=4) + '\n')"
+    python3 scripts/remove-preset-include.py CMakeUserPresets.json build/tsan/CMakePresets.json
 
 # Build with ThreadSanitizer
 build-tsan: deps-tsan
