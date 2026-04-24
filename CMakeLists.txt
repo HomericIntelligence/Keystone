@@ -11,10 +11,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Compiler warnings
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -Werror)
-  # GCC 13+ has stricter dangling-reference warnings that trigger false positives with spdlog/fmt
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
+    $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
+  # GCC 13+ has stricter dangling-reference warnings that trigger false positives with spdlog/fmt.
+  # Restrict to C++ only so it does not break C-language FetchContent targets (e.g. nats.c).
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
-    add_compile_options(-Wno-dangling-reference)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-dangling-reference>)
   endif()
 endif()
 
@@ -266,25 +271,8 @@ if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
     STATUS "keystone_network library configured for distributed communication")
 endif()
 
-# Agents library
-add_library(keystone_agents
-    src/agents/agent_core.cpp
-    src/agents/async_agent.cpp
-    src/agents/task_execution_strategy.cpp  # ARCH-007: Strategy pattern
-    src/agents/chief_architect_agent.cpp
-    src/agents/component_lead_agent.cpp
-    src/agents/module_lead_agent.cpp
-    src/agents/task_agent.cpp
-)
-
-target_include_directories(
-  keystone_agents
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
-
-target_link_libraries(keystone_agents PUBLIC keystone_core keystone_concurrency spdlog::spdlog)
+# NOTE: keystone_agents (HMAS hierarchy) has been moved to ProjectAgamemnon.
+# See ProjectAgamemnon/include/projectagamemnon/agents/ and src/agents/.
 
 # Simulation library (Phase D.3)
 add_library(
