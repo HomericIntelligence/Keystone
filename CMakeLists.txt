@@ -147,7 +147,13 @@ FetchContent_Declare(
 set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# natsc unconditionally adds test/check_cpp which has unused-param warnings.
+# Temporarily clear add_compile_options before populating so our -Werror
+# does not propagate into natsc's own subdirectories.
+get_directory_property(_saved_compile_options COMPILE_OPTIONS)
+set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
 FetchContent_MakeAvailable(natsc)
+set_directory_properties(PROPERTIES COMPILE_OPTIONS "${_saved_compile_options}")
 
 # yaml-cpp — YAML parser for task specifications (Phase 8 only)
 if(ENABLE_GRPC)
