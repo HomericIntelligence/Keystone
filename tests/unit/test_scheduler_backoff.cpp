@@ -72,8 +72,18 @@ TEST_F(SchedulerBackoffTest, SpinPhaseFindsWork) {
         std::chrono::duration_cast<std::chrono::microseconds>(execute_time - submit_time).count();
 
     // Should be found in SPIN phase (< 10μs typical)
-    // Allow up to 200μs for safety (CI systems can be slower)
+    // Under sanitizers the overhead is significant; use a relaxed limit.
+#if defined(__has_feature)
+#  if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+    EXPECT_LT(latency, 5000);
+#  else
     EXPECT_LT(latency, 200);
+#  endif
+#elif defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+    EXPECT_LT(latency, 5000);
+#else
+    EXPECT_LT(latency, 200);
+#endif
     work_found->store(true);
   });
 
