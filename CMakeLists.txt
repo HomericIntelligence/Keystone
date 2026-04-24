@@ -9,11 +9,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Export compile commands for clang-tidy and other tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Compiler warnings
+# Compiler warnings — C++ only to avoid breaking C FetchContent targets (e.g. nats.c)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
+    $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
   # GCC 13+ has stricter dangling-reference warnings that trigger false positives with spdlog/fmt.
-  # Restrict to C++ only so it does not break C-language FetchContent targets (e.g. nats.c).
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-dangling-reference>)
   endif()
@@ -128,6 +131,8 @@ FetchContent_MakeAvailable(cista)
 
 # nats.c — NATS client library with TLS support and reconnection callbacks (issues #122, #88)
 # NOT on ConanCenter; pulled directly from upstream.
+# natsc unconditionally adds test/check_cpp; clear our compile options so
+# -Werror does not propagate into natsc's own subdirectories.
 FetchContent_Declare(
   natsc
   GIT_REPOSITORY https://github.com/nats-io/nats.c.git
