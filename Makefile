@@ -23,7 +23,7 @@ ifeq ($(NATIVE),1)
     DOCKER_PREFIX :=
 else
     DOCKER_CHECK := docker-compose up -d dev >/dev/null 2>&1 || true;
-    DOCKER_PREFIX := docker-compose exec -T dev 
+    DOCKER_PREFIX := docker-compose exec -T dev
 endif
 
 # Compiler flags
