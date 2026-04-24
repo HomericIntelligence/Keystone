@@ -285,7 +285,7 @@ target_include_directories(
   PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
          $<INSTALL_INTERFACE:include/keystone>)
 
-target_link_libraries(keystone_nats PUBLIC spdlog::spdlog nats)
+target_link_libraries(keystone_nats PUBLIC spdlog::spdlog cnats::nats_static)
 
 # Simulation library (Phase D.3)
 add_library(
