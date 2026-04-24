@@ -565,7 +565,6 @@ TEST_F(Phase5NetworkPartitionTest, SplitBrainWorkDistribution) {
   SimulatedNetwork network(config);
 
   // Simulate 4 nodes with work
-  std::atomic<int> node0_work{0};
   std::atomic<int> node1_work{0};
   std::atomic<int> node2_work{0};
   std::atomic<int> node3_work{0};
