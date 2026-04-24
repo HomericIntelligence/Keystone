@@ -67,7 +67,7 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     if [ -f "$PROJECT_ROOT/build/conan-deps/conan_toolchain.cmake" ]; then
         TOOLCHAIN_ARG="-DCMAKE_TOOLCHAIN_FILE=$PROJECT_ROOT/build/conan-deps/conan_toolchain.cmake"
     fi
-    cmake -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -G Ninja $TOOLCHAIN_ARG ..
+    cmake -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -G Ninja $TOOLCHAIN_ARG "$PROJECT_ROOT"
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}CMake configuration failed${NC}"
