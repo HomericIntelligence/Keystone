@@ -712,17 +712,14 @@ install(
 )
 
 # Install test executables (keystone-test package)
+# Note: basic_delegation_tests, module_coordination_tests, component_coordination_tests,
+# async_delegation_tests, registry_integration_tests disabled (ADR-006, keystone_agents removed)
 install(
   TARGETS
-    basic_delegation_tests
-    module_coordination_tests
-    component_coordination_tests
-    async_delegation_tests
     distributed_hierarchy_tests
     unit_tests
     concurrency_unit_tests
     simulation_unit_tests
-    registry_integration_tests
     nats_integration_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
   COMPONENT keystone-test
@@ -747,12 +744,7 @@ install(
   OPTIONAL
 )
 
-# Install load test (keystone-misc package)
-install(
-  TARGETS hmas_load_test
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
-  COMPONENT keystone-misc
-)
+# hmas_load_test install disabled (ADR-006, keystone_agents removed)
 
 # Install fuzz testing targets if enabled (keystone-misc package)
 if(ENABLE_FUZZING)
