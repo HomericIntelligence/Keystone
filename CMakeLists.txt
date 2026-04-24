@@ -147,9 +147,11 @@ FetchContent_Declare(
 set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(NATS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# natsc unconditionally adds test/check_cpp which has unused-param warnings.
-# Temporarily clear add_compile_options before populating so our -Werror
-# does not propagate into natsc's own subdirectories.
+# natsc's test/ and test/check_cpp/ check BUILD_TESTING; turn it off so
+# natsc's own tests (which require a live NATS server) are not compiled or
+# registered with ctest. Also clear COMPILE_OPTIONS so our -Werror does not
+# propagate into any natsc subdirectory that ignores BUILD_TESTING.
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 get_directory_property(_saved_compile_options COMPILE_OPTIONS)
 set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
 FetchContent_MakeAvailable(natsc)
