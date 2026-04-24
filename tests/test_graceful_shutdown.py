@@ -17,11 +17,24 @@ from keystone.task_claimer import TaskClaimer
 # ---------------------------------------------------------------------------
 
 
+async def _noop_get_tasks(team_id: str) -> list[dict[str, Any]]:
+    return []
+
+
+async def _noop_claim_task(team_id: str, task_id: str) -> bool:
+    return False
+
+
+def make_claimer() -> TaskClaimer:
+    """Return a TaskClaimer with no-op callbacks for unit tests."""
+    return TaskClaimer(get_tasks=_noop_get_tasks, claim_task=_noop_claim_task)
+
+
 class SlowTaskClaimer(TaskClaimer):
     """TaskClaimer whose advance_dag sleeps for a configurable duration."""
 
     def __init__(self, delay: float = 0.0) -> None:
-        super().__init__()
+        super().__init__(get_tasks=_noop_get_tasks, claim_task=_noop_claim_task)
         self.delay = delay
         self.calls: list[str] = []
 
@@ -39,13 +52,13 @@ class SlowTaskClaimer(TaskClaimer):
 class TestDrainEmpty:
     @pytest.mark.asyncio
     async def test_drain_returns_true_immediately_when_no_inflight(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
         result = await claimer.drain(timeout=5.0)
         assert result is True
 
     @pytest.mark.asyncio
     async def test_inflight_count_zero_initially(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
         assert claimer.in_flight_count == 0
 
 
@@ -81,7 +94,7 @@ class TestInflightTracking:
 
     @pytest.mark.asyncio
     async def test_inflight_removed_after_exception(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
 
         async def failing_advance_dag(team_id: str) -> None:
             raise RuntimeError("simulated failure")
@@ -180,12 +193,12 @@ class TestDrainTimeout:
 
 class TestNATSListenerShutdown:
     def test_shutting_down_false_initially(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
         listener = NATSListener(claimer)
         assert listener.shutting_down is False
 
     def test_begin_shutdown_sets_flag(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
         listener = NATSListener(claimer)
         listener.begin_shutdown()
         assert listener.shutting_down is True
@@ -214,7 +227,7 @@ class TestNATSListenerShutdown:
 
     @pytest.mark.asyncio
     async def test_event_dropped_during_shutdown_logs_info(self) -> None:
-        claimer = TaskClaimer()
+        claimer = make_claimer()
         listener = NATSListener(claimer)
         listener.begin_shutdown()
 
