@@ -63,7 +63,7 @@ jobs:
         run: |
           cmake -S . -B build/codeql \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake
           cmake --build build/codeql
 
