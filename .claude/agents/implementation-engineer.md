@@ -18,7 +18,7 @@ Implement standard C++20 functions and classes for the Hierarchical Multi-Agent 
 - Language: **C++20 only**
 - Build: **CMake 3.20+**
 - Testing: **Google Test**
-- Style: **snake_case functions, PascalCase types**
+- Style: **camelBack functions, lower_case variables/members/parameters, PascalCase types/classes**
 
 See [CLAUDE.md](../../CLAUDE.md) for complete overview.
 
@@ -31,6 +31,7 @@ See [CLAUDE.md](../../CLAUDE.md) for complete overview.
 **ALL code changes MUST follow this workflow:**
 
 1. **Create a Feature Branch FIRST**
+
    ```bash
    git checkout -b feat/descriptive-name-$(date +%Y%m%d-%H%M%S)
    # OR for fixes:
@@ -40,6 +41,7 @@ See [CLAUDE.md](../../CLAUDE.md) for complete overview.
 2. **Make Your Changes** (Write, Edit, etc.)
 
 3. **Commit to the Feature Branch**
+
    ```bash
    git add <files>
    git commit -m "feat: descriptive message"
@@ -47,6 +49,7 @@ See [CLAUDE.md](../../CLAUDE.md) for complete overview.
    ```
 
 4. **Create Pull Request**
+
    ```bash
    gh pr create --title "feat: Brief description" \
                 --body "## Summary
@@ -80,6 +83,7 @@ See [CLAUDE.md](../../CLAUDE.md) for complete overview.
 ### Verification Before Every Commit
 
 Before committing, verify:
+
 1. ✅ On a feature branch (not main): `git branch --show-current`
 2. ✅ All tests pass: `make test.debug.asan`
 3. ✅ Code formatted: `make format`
