@@ -152,6 +152,7 @@ std::string ModuleLeadAgent::stateToString(State state) const {
   }
 }
 
+#ifdef ENABLE_GRPC
 void ModuleLeadAgent::initializeGrpc(const std::string& coordinator_address,
                                      const std::string& registry_address,
                                      const std::string& agent_type,
@@ -270,6 +271,7 @@ void ModuleLeadAgent::shutdown() {
   // Clean up module-specific resources
   result_aggregator_.reset();
 }
+#endif  // ENABLE_GRPC
 
 }  // namespace agents
 }  // namespace keystone
