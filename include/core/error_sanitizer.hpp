@@ -25,33 +25,35 @@ inline std::string sanitizeErrorMessage(const std::string& error_message,
                                         bool production_mode = false) {
   std::string sanitized = error_message;
 
+  // Static locals: compiled once on first call; C++11 guarantees thread-safe
+  // initialization, avoiding a data race when multiple threads call this
+  // simultaneously (std::regex construction touches locale state).
+
   // 1. Remove file paths (e.g., /path/to/file.cpp:123)
-  // Pattern: /[path components]/filename.ext:line_number
-  std::regex path_regex(R"(\/[^\s:]+\.(cpp|hpp|h|cc):?\d*)");
+  static const std::regex path_regex(R"(\/[^\s:]+\.(cpp|hpp|h|cc):?\d*)");
   sanitized = std::regex_replace(sanitized, path_regex, "[internal]");
 
   // 2. Remove memory addresses (e.g., 0x7fff5fbff710)
-  std::regex addr_regex(R"(0x[0-9a-fA-F]+)");
+  static const std::regex addr_regex(R"(0x[0-9a-fA-F]+)");
   sanitized = std::regex_replace(sanitized, addr_regex, "[address]");
 
   // 3. Remove C++ namespace paths (e.g., keystone::agents::TaskAgent)
   // Only in production mode to keep debugging info in dev
   if (production_mode) {
-    std::regex namespace_regex(R"((\w+::)+)");
+    static const std::regex namespace_regex(R"((\w+::)+)");
     sanitized = std::regex_replace(sanitized, namespace_regex, "[class]");
   }
 
   // 4. Remove "what(): " prefix if present (redundant in responses)
-  std::regex what_prefix_regex(R"(what\(\):\s*)");
+  static const std::regex what_prefix_regex(R"(what\(\):\s*)");
   sanitized = std::regex_replace(sanitized, what_prefix_regex, "");
 
   // 5. In production, redact specific keywords that might leak info
   if (production_mode) {
-    // Replace absolute paths
-    std::regex home_regex(R"(/home/\w+)");
+    static const std::regex home_regex(R"(/home/\w+)");
     sanitized = std::regex_replace(sanitized, home_regex, "~");
 
-    std::regex root_regex(R"(/usr/[^\s]+)");
+    static const std::regex root_regex(R"(/usr/[^\s]+)");
     sanitized = std::regex_replace(sanitized, root_regex, "[system]");
   }
 
