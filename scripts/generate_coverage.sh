@@ -170,10 +170,10 @@ fi
 # Print summary
 echo ""
 echo -e "${GREEN}=== Coverage Summary ===${NC}"
-lcov --summary "$COVERAGE_FILTERED"
+lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent
 
 # Calculate coverage percentage
-COVERAGE_PERCENT=$(lcov --summary "$COVERAGE_FILTERED" 2>&1 | grep -oP 'lines......: \K[0-9.]+')
+COVERAGE_PERCENT=$(lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent 2>&1 | grep -oP 'lines......: \K[0-9.]+')
 
 echo ""
 echo -e "${GREEN}Coverage report generated successfully!${NC}"
