@@ -1,12 +1,12 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <thread>
-
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+
+#include <memory>
+#include <string>
+#include <thread>
 
 namespace keystone {
 namespace concurrency {
@@ -17,7 +17,8 @@ namespace concurrency {
  * Uses thread-local random state for efficiency. Not cryptographically secure
  * but suitable for log correlation across a single NATS event lifecycle.
  *
- * @return std::string UUID4 string (e.g. "550e8400-e29b-41d4-a716-446655440000")
+ * @return std::string UUID4 string (e.g.
+ * "550e8400-e29b-41d4-a716-446655440000")
  */
 std::string generateCorrelationId();
 
@@ -43,7 +44,8 @@ class LogContext {
    * @param worker_id Worker thread index
    * @param session_id Session identifier
    */
-  static void set(const std::string& agent_id, int32_t worker_id, const std::string& session_id);
+  static void set(const std::string& agent_id, int32_t worker_id,
+                  const std::string& session_id);
 
   /**
    * @brief Clear the thread-local logging context (including correlation ID)
@@ -112,11 +114,31 @@ class LogContext {
  * restores the previous correlation ID on destruction. This makes it safe to
  * nest scopes without losing the outer operation's ID.
  *
- * Usage:
+ * **Non-moveable by design**: CorrelationScope deliberately deletes move
+ * constructor and move assignment to prevent use in contexts where the
+ * object's lifetime may be unclear (e.g., inside std::async lambdas,
+ * coroutines, or other deferred execution contexts). Moving would break RAII
+ * semantics: the correlation ID would be restored at an unpredictable time.
+ *
+ * If you need to pass a correlation ID across async boundaries, capture a
+ * std::string copy of current() via LogContext::getCorrelationId() and set it
+ * explicitly on the remote thread with LogContext::setCorrelationId(id).
+ *
+ * Usage (correct):
  *   void onNatsMessage(const NatsMsg& msg) {
  *     CorrelationScope scope;  // new UUID, restored on exit
  *     Logger::info("Received NATS event");
  *     advanceDag(msg);         // all logs share scope.id()
+ *   }
+ *
+ * Usage (async - capture ID string instead):
+ *   void asyncHandler() {
+ *     CorrelationScope scope;
+ *     std::string id = scope.id();  // capture as string
+ *     std::async([id]() {
+ *       LogContext::setCorrelationId(id);  // set on remote thread
+ *       // work here
+ *     });
  *   }
  */
 class CorrelationScope {
@@ -215,7 +237,8 @@ class Logger {
   static std::shared_ptr<spdlog::logger> logger_;
 
   template <typename... Args>
-  static void log(spdlog::level::level_enum level, const std::string& fmt, Args&&... args) {
+  static void log(spdlog::level::level_enum level, const std::string& fmt,
+                  Args&&... args) {
     if (!logger_) {
       init();
     }
@@ -225,7 +248,8 @@ class Logger {
     std::string full_fmt = context + " " + fmt;
 
     // Use runtime format to avoid compile-time format string requirement
-    logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt), std::forward<Args>(args)...);
+    logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt),
+                 std::forward<Args>(args)...);
   }
 };
 
