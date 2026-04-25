@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
+# SPDX-License-Identifier: BSD-3-Clause
 project(ProjectKeystone CXX)
 
 # C++20 standard required
@@ -238,7 +239,9 @@ target_include_directories(
 
 # Link dependencies - note: keystone_core depends on keystone_concurrency
 # (circular dependency handled via shared libraries) We'll link
-# keystone_concurrency after it's defined
+# keystone_concurrency after it's defined spdlog is PUBLIC because logger.hpp
+# exposes spdlog types in the public API; transitive consumers of keystone_core
+# need spdlog headers
 target_link_libraries(keystone_core PUBLIC spdlog::spdlog fmt::fmt
                                            concurrentqueue::concurrentqueue)
 
