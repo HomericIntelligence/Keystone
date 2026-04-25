@@ -11,11 +11,11 @@
  * (Issue #280).
  */
 
-#include <gtest/gtest.h>
-
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
 #include "core/subject_validator.hpp"
+
+#include <gtest/gtest.h>
 
 // =============================================================================
 // Valid identifiers -- must pass without throwing
@@ -38,8 +38,8 @@ TEST(SubjectValidatorTest, AcceptsUnderscores) {
 }
 
 TEST(SubjectValidatorTest, AcceptsUuid) {
-  EXPECT_NO_THROW(keystone::core::validateSubjectToken(
-      "550e8400-e29b-41d4-a716-446655440000", "team_id"));
+  EXPECT_NO_THROW(
+      keystone::core::validateSubjectToken("550e8400-e29b-41d4-a716-446655440000", "team_id"));
 }
 
 TEST(SubjectValidatorTest, ReturnsValueUnchanged) {
@@ -57,8 +57,7 @@ TEST(SubjectValidatorTest, RejectsPathTraversalDotDot) {
 }
 
 TEST(SubjectValidatorTest, RejectsSlash) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("foo/bar", "team_id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("foo/bar", "team_id"), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, RejectsLeadingSlash) {
@@ -71,23 +70,19 @@ TEST(SubjectValidatorTest, RejectsLeadingSlash) {
 // =============================================================================
 
 TEST(SubjectValidatorTest, RejectsSpace) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("team id", "id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("team id", "id"), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, RejectsNewline) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("team\nid", "id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("team\nid", "id"), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, RejectsSemicolon) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("team;id", "id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("team;id", "id"), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, RejectsDot) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("team.id", "id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("team.id", "id"), std::invalid_argument);
 }
 
 // =============================================================================
@@ -95,8 +90,7 @@ TEST(SubjectValidatorTest, RejectsDot) {
 // =============================================================================
 
 TEST(SubjectValidatorTest, RejectsEmptyString) {
-  EXPECT_THROW(keystone::core::validateSubjectToken("", "id"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateSubjectToken("", "id"), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, ErrorMessageContainsLabel) {
@@ -138,8 +132,7 @@ TEST(SubjectValidatorTest, MessageBusAcceptsValidAgentId) {
 TEST(NatsSubjectTokenTest, AcceptsAlphanumericToken) {
   EXPECT_NO_THROW(keystone::core::validateNatsSubjectToken("foo", "tok"));
   EXPECT_NO_THROW(keystone::core::validateNatsSubjectToken("abc123", "tok"));
-  EXPECT_NO_THROW(
-      keystone::core::validateNatsSubjectToken("agent-core_7", "tok"));
+  EXPECT_NO_THROW(keystone::core::validateNatsSubjectToken("agent-core_7", "tok"));
 }
 
 TEST(NatsSubjectTokenTest, AcceptsSingleStarWildcard) {
@@ -152,29 +145,24 @@ TEST(NatsSubjectTokenTest, AcceptsGreaterThanWildcard) {
 
 TEST(NatsSubjectTokenTest, RejectsDotInSingleToken) {
   // Dots are subject separators and must not appear inside a single token.
-  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo.bar", "tok"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo.bar", "tok"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTokenTest, RejectsEmptyToken) {
-  EXPECT_THROW(keystone::core::validateNatsSubjectToken("", "tok"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubjectToken("", "tok"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTokenTest, RejectsSlashInToken) {
-  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo/bar", "tok"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo/bar", "tok"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTokenTest, RejectsSpaceInToken) {
-  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo bar", "tok"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubjectToken("foo bar", "tok"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTokenTest, RejectsDoubleWildcard) {
   // "**" is not a valid NATS token.
-  EXPECT_THROW(keystone::core::validateNatsSubjectToken("**", "tok"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubjectToken("**", "tok"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTokenTest, ReturnsValueUnchanged) {
@@ -196,8 +184,7 @@ TEST(NatsSubjectTokenTest, ErrorMessageContainsLabel) {
 // =============================================================================
 
 TEST(NatsSubjectTest, AcceptsSimpleSubject) {
-  EXPECT_NO_THROW(
-      keystone::core::validateNatsSubject("hi.agents.task-1", "subj"));
+  EXPECT_NO_THROW(keystone::core::validateNatsSubject("hi.agents.task-1", "subj"));
 }
 
 TEST(NatsSubjectTest, AcceptsSingleToken) {
@@ -205,8 +192,7 @@ TEST(NatsSubjectTest, AcceptsSingleToken) {
 }
 
 TEST(NatsSubjectTest, AcceptsStarWildcardInMiddle) {
-  EXPECT_NO_THROW(
-      keystone::core::validateNatsSubject("hi.myrmidon.*.status", "subj"));
+  EXPECT_NO_THROW(keystone::core::validateNatsSubject("hi.myrmidon.*.status", "subj"));
 }
 
 TEST(NatsSubjectTest, AcceptsGtWildcardAtEnd) {
@@ -218,18 +204,15 @@ TEST(NatsSubjectTest, AcceptsGtAloneAsSubject) {
 }
 
 TEST(NatsSubjectTest, RejectsGtNotAtEnd) {
-  EXPECT_THROW(keystone::core::validateNatsSubject("hi.>.extra", "subj"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubject("hi.>.extra", "subj"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTest, RejectsEmptySubject) {
-  EXPECT_THROW(keystone::core::validateNatsSubject("", "subj"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubject("", "subj"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTest, RejectsEmptyTokenBetweenDots) {
-  EXPECT_THROW(keystone::core::validateNatsSubject("hi..agents", "subj"),
-               std::invalid_argument);
+  EXPECT_THROW(keystone::core::validateNatsSubject("hi..agents", "subj"), std::invalid_argument);
 }
 
 TEST(NatsSubjectTest, RejectsSpaceInToken) {
