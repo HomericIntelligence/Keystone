@@ -6,24 +6,28 @@
  * - Default construction and initial state
  * - Callback registration before connect()
  * - Config field validation (reconnect attempts, wait interval, ping settings)
- * - TLS configuration fields (enable_tls, ca_cert_path, client cert/key, skip_verify)
- * - State transitions via the public callback shims (simulated without a live server)
+ * - TLS configuration fields (enable_tls, ca_cert_path, client cert/key,
+ * skip_verify)
+ * - State transitions via the public callback shims (simulated without a live
+ * server)
  * - disconnect() is safe to call without a prior connect()
  * - isConnected() reflects getState()
  * - Null-safety of unregistered callbacks
  * - Callback replacement semantics
+ * - jsContext() returns nullptr when not connected (issue #274)
+ * - jsContext() caching semantics (issue #274)
  *
  * Tests do NOT exercise connect() against a live NATS server because the CI
  * environment has no NATS process. The callback dispatch path is exercised via
  * the NatsConnectionTestPeer helper below.
  */
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <string>
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 using namespace keystone::transport;
 
@@ -35,7 +39,9 @@ class NatsConnectionTestPeer : public NatsConnection {
  public:
   using NatsConnection::NatsConnection;
 
-  void fireError() { NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this); }
+  void fireError() {
+    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
+  }
 
   void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
   void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
@@ -252,13 +258,13 @@ TEST_F(NatsStateTransitionTest, ClosedCallbackSetsClosedState) {
 TEST_F(NatsStateTransitionTest, IsConnectedOnlyTrueInConnectedState) {
   EXPECT_FALSE(conn_.isConnected());
 
-  conn_.fireDisconnected();  // → RECONNECTING
+  conn_.fireDisconnected();  // -> RECONNECTING
   EXPECT_FALSE(conn_.isConnected());
 
-  conn_.fireReconnected();  // → CONNECTED
+  conn_.fireReconnected();  // -> CONNECTED
   EXPECT_TRUE(conn_.isConnected());
 
-  conn_.fireClosed();  // → CLOSED
+  conn_.fireClosed();  // -> CLOSED
   EXPECT_FALSE(conn_.isConnected());
 }
 
@@ -317,4 +323,44 @@ TEST_F(NatsCallbackOverrideTest, ReplacedCallbackIsInvokedInsteadOfOriginal) {
 
   EXPECT_EQ(first_count.load(), 0);
   EXPECT_EQ(second_count.load(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// NatsJsContextTest -- jsContext() behaviour without a live NATS server
+// ---------------------------------------------------------------------------
+
+class NatsJsContextTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;
+};
+
+TEST_F(NatsJsContextTest, JsContextReturnsNullWhenNotConnected) {
+  // conn_ is in DISCONNECTED state (no live server) -- jsContext() must return
+  // nullptr gracefully rather than crash.
+  EXPECT_EQ(conn_.jsContext(), nullptr);
+}
+
+TEST_F(NatsJsContextTest, JsContextReturnsNullAfterDisconnect) {
+  // Simulate a connect -> disconnect cycle without a live server.
+  // After disconnect() the cached js_ctx_ must be cleared so subsequent calls
+  // return nullptr.
+  conn_.disconnect();
+  EXPECT_EQ(conn_.jsContext(), nullptr);
+}
+
+TEST_F(NatsJsContextTest, JsContextIsIdempotentWhenNotConnected) {
+  // Multiple calls without a connection must all return nullptr -- no
+  // state corruption between calls.
+  EXPECT_EQ(conn_.jsContext(), nullptr);
+  EXPECT_EQ(conn_.jsContext(), nullptr);
+  EXPECT_EQ(conn_.jsContext(), nullptr);
+}
+
+TEST_F(NatsJsContextTest, JsContextNullDoesNotAffectOtherMethods) {
+  // Calling jsContext() on an unconnected object must not corrupt the
+  // observable connection state.
+  conn_.jsContext();
+  EXPECT_EQ(conn_.getState(), NatsConnectionState::DISCONNECTED);
+  EXPECT_FALSE(conn_.isConnected());
+  EXPECT_EQ(conn_.handle(), nullptr);
 }
