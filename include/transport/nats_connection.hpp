@@ -185,15 +185,15 @@ class NatsConnection {
    * @brief Acquire (and cache) a JetStream context for this connection
    *
    * On first call after a successful connect(), acquires a jsCtx* via
-   * js_Context() with default options and caches it. Subsequent calls return
+   * natsConnection_JetStream() and caches it. Subsequent calls return
    * the cached pointer without re-acquiring.
    *
    * @return Non-null jsCtx* on success, nullptr if not connected or if
-   *         js_Context() fails.
+   *         natsConnection_JetStream() fails.
    *
    * The returned pointer is owned by this NatsConnection and is destroyed
    * automatically in disconnect() / destructor. Callers must NOT call
-   * js_Destroy() on it.
+   * jsCtx_Destroy() on it.
    *
    * Thread-safety: this method is NOT thread-safe. Call it from the same
    * owner thread that calls connect() / disconnect().
