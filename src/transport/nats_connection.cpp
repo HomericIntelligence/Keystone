@@ -198,7 +198,7 @@ bool NatsConnection::connect() {
 
 void NatsConnection::disconnect() {
   if (js_ctx_ != nullptr) {
-    js_Destroy(js_ctx_);
+    jsCtx_Destroy(js_ctx_);
     js_ctx_ = nullptr;
   }
   if (conn_ != nullptr) {
@@ -217,9 +217,10 @@ jsCtx* NatsConnection::jsContext() noexcept {
     spdlog::error("NatsConnection::jsContext: called before connect()");
     return nullptr;
   }
-  const natsStatus status = js_Context(&js_ctx_, conn_, nullptr, nullptr);
+  const natsStatus status = natsConnection_JetStream(&js_ctx_, conn_, nullptr);
   if (status != NATS_OK) {
-    spdlog::error("NatsConnection::jsContext: js_Context failed: {}", natsStatus_GetText(status));
+    spdlog::error("NatsConnection::jsContext: natsConnection_JetStream failed: {}",
+                  natsStatus_GetText(status));
     js_ctx_ = nullptr;
     return nullptr;
   }
