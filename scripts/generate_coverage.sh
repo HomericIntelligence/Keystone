@@ -123,10 +123,12 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     # Capture coverage data.
     # Use llvm-cov gcov wrapper so Clang-built .gcda files are processed correctly
     # (system gcov reports version mismatch '4.8*' vs 'B33*' for Clang-generated data).
+    # --ignore-errors inconsistent: llvm-cov gcov emits __cxx_global_var_init on a line
+    # with no corresponding line coverage data; geninfo rejects this without the flag.
     echo -e "${YELLOW}Capturing coverage data...${NC}"
     lcov --capture --directory . --output-file "$COVERAGE_INFO" \
         $GCOV_TOOL_ARG \
-        --ignore-errors negative,mismatch,source
+        --ignore-errors negative,mismatch,source,inconsistent
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to capture coverage data${NC}"
