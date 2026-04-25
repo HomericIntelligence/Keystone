@@ -38,6 +38,11 @@ jobs:
       - name: Check formatting
         run: just format-check
 
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
+        with:
+          extra_args: --show-diff-on-failure
+
       # Note: Full static analysis (clang-tidy, cppcheck) takes 30+ minutes
       # and should be run locally or in a separate weekly workflow.
       # For PR checks, we only verify formatting.
@@ -66,6 +71,9 @@ jobs:
       - name: Run pytest with coverage
         run: pytest
 
+      - name: Run version bounds test
+        run: python3 -m pytest tests/test_version_bounds.py -v
+
       - name: Upload coverage XML
         if: always()
         uses: actions/upload-artifact@v7
@@ -93,8 +101,11 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install mypy
-        run: pip install "mypy>=1.8.0" "conan>=2.0.0"
+      - name: Install mypy and ruff
+        run: pip install "mypy>=1.8.0" "conan>=2.0.0" "ruff>=0.1.0"
+
+      - name: Lint with ruff
+        run: ruff check src/ tests/
 
       - name: Type check (mypy)
         run: mypy conanfile.py
@@ -161,6 +172,10 @@ jobs:
       - name: Build with ${{ matrix.name }}
         run: make compile.debug.${{ matrix.sanitizer }}.native
 
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
       - name: Run tests with ${{ matrix.name }}
         run: make test.debug.${{ matrix.sanitizer }}.native
         env:
@@ -222,6 +237,10 @@ jobs:
       - name: Build release
         run: make compile.release.native
 
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
       - name: Run benchmarks
         run: make benchmark.native || true  # Don't fail on benchmark results
 
@@ -281,6 +300,10 @@ jobs:
 
       - name: Build with coverage
         run: make compile.debug.coverage.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Run tests for coverage
         run: make test.debug.coverage.native
