@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from src.keystone.models import TaskEvent
+from src.keystone.models import TaskEvent, resolve_event_status
 
 
 class TestTaskEventFlatStatus:
@@ -122,3 +122,22 @@ class TestTaskEventResolutionPriority:
     def test_none_status_falls_through(self) -> None:
         event = TaskEvent.model_validate({"status": None, "newStatus": "completed"})
         assert event.effective_status == "completed"
+
+
+class TestResolveEventStatus:
+    """Unit tests for the standalone resolve_event_status utility function."""
+
+    def test_status_returned_when_set(self) -> None:
+        assert resolve_event_status("done", None, None) == "done"
+
+    def test_data_status_used_when_status_absent(self) -> None:
+        assert resolve_event_status(None, {"status": "done"}, None) == "done"
+
+    def test_new_status_used_as_final_fallback(self) -> None:
+        assert resolve_event_status(None, None, "done") == "done"
+
+    def test_status_takes_priority_over_data_and_new_status(self) -> None:
+        assert resolve_event_status("top", {"status": "nested"}, "new") == "top"
+
+    def test_all_none_returns_none(self) -> None:
+        assert resolve_event_status(None, None, None) is None
