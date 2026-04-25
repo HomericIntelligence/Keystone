@@ -1,10 +1,15 @@
-"""Tests for NATSListener ID validation in _on_task_event."""
+"""Tests for NATSListener: ID validation in _on_task_event and start() error handling."""
 from __future__ import annotations
 
 import json
 
 import pytest
 from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
+import nats.errors
+import nats.js.errors
+import pytest
 
 from src.keystone.nats_listener import NATSListener
 
@@ -137,3 +142,93 @@ class TestOnTaskEventRawPayload:
             "hi.tasks.team-1.task-42.completed", "team-1", "task-42", raw_payload=None
         )
         claimer.advance_dag_tracked.assert_called_once_with("team-1")
+# ---------------------------------------------------------------------------
+# Helpers for start() tests
+# ---------------------------------------------------------------------------
+
+def _make_mock_nc(subscribe_side_effect: object = None) -> MagicMock:
+    """Return a mock NATS client whose jetstream().subscribe() behaves as specified."""
+    nc = MagicMock()
+    js = MagicMock()
+    nc.jetstream.return_value = js
+    if subscribe_side_effect is None:
+        js.subscribe = AsyncMock(return_value=MagicMock())
+    else:
+        js.subscribe = AsyncMock(side_effect=subscribe_side_effect)
+    return nc
+
+
+class TestStartSubscribeSuccess:
+    async def test_subscribe_success_returns(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc()
+        await listener.start(nc, "hi.tasks.>", stream="homeric-tasks")
+        nc.jetstream().subscribe.assert_awaited_once()
+
+    async def test_subscribe_success_uses_subject(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc()
+        await listener.start(nc, "hi.tasks.team-1.>", stream="homeric-tasks")
+        nc.jetstream().subscribe.assert_awaited_once_with("hi.tasks.team-1.>")
+
+
+class TestStartStreamNotFound:
+    async def test_stream_not_found_raises_runtime_error(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(subscribe_side_effect=nats.js.errors.NotFoundError())
+        with pytest.raises(RuntimeError, match="homeric-tasks"):
+            await listener.start(
+                nc, "hi.tasks.>", stream="homeric-tasks", max_retries=1, retry_base_delay=0.0
+            )
+
+    async def test_stream_not_found_retries_up_to_max(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(subscribe_side_effect=nats.js.errors.NotFoundError())
+        with pytest.raises(RuntimeError):
+            await listener.start(nc, "hi.tasks.>", max_retries=3, retry_base_delay=0.0)
+        assert nc.jetstream().subscribe.await_count == 3
+
+    async def test_stream_not_found_succeeds_on_retry(self) -> None:
+        listener, _ = _make_listener()
+        nc = MagicMock()
+        js = MagicMock()
+        nc.jetstream.return_value = js
+        js.subscribe = AsyncMock(
+            side_effect=[
+                nats.js.errors.NotFoundError(),
+                nats.js.errors.NotFoundError(),
+                MagicMock(),
+            ]
+        )
+        await listener.start(nc, "hi.tasks.>", max_retries=3, retry_base_delay=0.0)
+        assert js.subscribe.await_count == 3
+
+    async def test_error_message_includes_stream_name(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(subscribe_side_effect=nats.js.errors.NotFoundError())
+        with pytest.raises(RuntimeError, match="my-custom-stream"):
+            await listener.start(
+                nc, "hi.tasks.>", stream="my-custom-stream", max_retries=1, retry_base_delay=0.0
+            )
+
+
+class TestStartConnectionErrors:
+    async def test_no_servers_raises_connection_error(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(subscribe_side_effect=nats.errors.NoServersError())
+        with pytest.raises(ConnectionError, match="unreachable"):
+            await listener.start(nc, "hi.tasks.>")
+
+    async def test_auth_error_raises_connection_error(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(subscribe_side_effect=nats.errors.AuthorizationError())
+        with pytest.raises(ConnectionError, match="authentication"):
+            await listener.start(nc, "hi.tasks.>")
+
+    async def test_jetstream_unavailable_raises_runtime_error(self) -> None:
+        listener, _ = _make_listener()
+        nc = _make_mock_nc(
+            subscribe_side_effect=nats.js.errors.ServiceUnavailableError()
+        )
+        with pytest.raises(RuntimeError, match="JetStream"):
+            await listener.start(nc, "hi.tasks.>")
