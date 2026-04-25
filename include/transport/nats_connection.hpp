@@ -1,9 +1,11 @@
 /**
  * @file nats_connection.hpp
- * @brief NATS connection wrapper with TLS, reconnection callbacks, and error handling
+ * @brief NATS connection wrapper with TLS, reconnection callbacks, and error
+ * handling
  *
  * Wraps nats.c to provide:
- * - Optional TLS with CA certificate, client certificate, and hostname verification
+ * - Optional TLS with CA certificate, client certificate, and hostname
+ * verification
  * - Configurable reconnection (max attempts, wait interval)
  * - Error, disconnected, reconnected, and closed callbacks
  * - Observable connection state for health checks
@@ -12,14 +14,14 @@
 
 #pragma once
 
+#include <nats.h>
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
-
-#include <nats.h>
 
 namespace keystone {
 namespace transport {
@@ -79,7 +81,8 @@ struct NatsConfig {
   /// Ping interval for keep-alive detection
   std::chrono::milliseconds ping_interval{std::chrono::milliseconds{20000}};
 
-  /// How many pings may go unacknowledged before the connection is declared dead
+  /// How many pings may go unacknowledged before the connection is declared
+  /// dead
   int max_pings_out{2};
 
   /// TLS configuration (disabled by default)
@@ -95,7 +98,8 @@ using ReconnectedCallback = std::function<void()>;
 using ClosedCallback = std::function<void()>;
 
 /**
- * @brief NATS connection wrapper with TLS, reconnection, and error-handling support
+ * @brief NATS connection wrapper with TLS, reconnection, and error-handling
+ * support
  *
  * Owns a natsConnection* and configures it with optional TLS and the four
  * lifecycle callbacks required for production resilience. The connection state
@@ -177,13 +181,30 @@ class NatsConnection {
    */
   natsConnection* handle() const noexcept;
 
+  /**
+   * @brief Acquire (and cache) a JetStream context for this connection
+   *
+   * On first call after a successful connect(), acquires a jsCtx* via
+   * js_Context() with default options and caches it. Subsequent calls return
+   * the cached pointer without re-acquiring.
+   *
+   * @return Non-null jsCtx* on success, nullptr if not connected or if
+   *         js_Context() fails.
+   *
+   * The returned pointer is owned by this NatsConnection and is destroyed
+   * automatically in disconnect() / destructor. Callers must NOT call
+   * js_Destroy() on it.
+   *
+   * Thread-safety: this method is NOT thread-safe. Call it from the same
+   * owner thread that calls connect() / disconnect().
+   */
+  jsCtx* jsContext() noexcept;
+
  protected:
   // nats.c static callback shims — nats.c passes a void* user data pointer
   // which we cast back to NatsConnection*. Protected to allow test subclasses
   // to invoke them directly without a live nats.c connection.
-  static void onError(natsConnection* nc,
-                      natsSubscription* sub,
-                      natsStatus err,
+  static void onError(natsConnection* nc, natsSubscription* sub, natsStatus err,
                       void* closure) noexcept;
   static void onDisconnected(natsConnection* nc, void* closure) noexcept;
   static void onReconnected(natsConnection* nc, void* closure) noexcept;
@@ -208,6 +229,10 @@ class NatsConnection {
 
   // Raw handle — owned by this object
   natsConnection* conn_{nullptr};
+
+  // Cached JetStream context — acquired lazily by jsContext(), destroyed by
+  // disconnect() / destructor
+  jsCtx* js_ctx_{nullptr};
 
   // Observable state (atomic for lock-free health checks)
   std::atomic<NatsConnectionState> state_{NatsConnectionState::DISCONNECTED};
