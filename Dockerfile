@@ -137,7 +137,7 @@ EXPOSE 8080 9090 50051
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')" || exit 1
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/v1/health')" || exit 1
 
 # Default command: run HMAS server
 CMD ["/usr/local/bin/hmas-server.sh"]
