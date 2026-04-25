@@ -5,11 +5,11 @@
 
 #include "transport/nats_connection.hpp"
 
-#include <nats.h>
-#include <spdlog/spdlog.h>
-
 #include <cstdlib>
 #include <string>
+
+#include <nats.h>
+#include <spdlog/spdlog.h>
 
 namespace keystone {
 namespace transport {
@@ -27,10 +27,11 @@ std::string getEnvVar(const char* name) {
 // Construction / destruction
 // ---------------------------------------------------------------------------
 
-NatsConnection::NatsConnection(NatsConfig config)
-    : config_(std::move(config)) {}
+NatsConnection::NatsConnection(NatsConfig config) : config_(std::move(config)) {}
 
-NatsConnection::~NatsConnection() { disconnect(); }
+NatsConnection::~NatsConnection() {
+  disconnect();
+}
 
 // ---------------------------------------------------------------------------
 // Callback registration
@@ -85,10 +86,8 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
     ca_path = tls.ca_cert_path;
   }
   if (!ca_path.empty()) {
-    if (natsOptions_LoadCATrustedCertificates(opts, ca_path.c_str()) !=
-        NATS_OK) {
-      spdlog::error("NatsConnection: failed to load CA certificate from {}",
-                    ca_path);
+    if (natsOptions_LoadCATrustedCertificates(opts, ca_path.c_str()) != NATS_OK) {
+      spdlog::error("NatsConnection: failed to load CA certificate from {}", ca_path);
       return false;
     }
   }
@@ -105,11 +104,10 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
   }
 
   if (!cert_path.empty() && !key_path.empty()) {
-    if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(),
-                                          key_path.c_str()) != NATS_OK) {
-      spdlog::error(
-          "NatsConnection: failed to load client certificate from {} / {}",
-          cert_path, key_path);
+    if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(), key_path.c_str()) != NATS_OK) {
+      spdlog::error("NatsConnection: failed to load client certificate from {} / {}",
+                    cert_path,
+                    key_path);
       return false;
     }
   } else if (!cert_path.empty() || !key_path.empty()) {
@@ -118,7 +116,8 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
         "NatsConnection: TLS client certificate requires both cert and key "
         "paths; "
         "cert_path='{}' key_path='{}'",
-        cert_path, key_path);
+        cert_path,
+        key_path);
     return false;
   }
 
@@ -150,8 +149,7 @@ bool NatsConnection::connect() {
   }
 
   // Reconnection policy
-  if (natsOptions_SetMaxReconnect(opts, config_.max_reconnect_attempts) !=
-      NATS_OK) {
+  if (natsOptions_SetMaxReconnect(opts, config_.max_reconnect_attempts) != NATS_OK) {
     return false;
   }
 
@@ -175,20 +173,16 @@ bool NatsConnection::connect() {
   }
 
   // Lifecycle callbacks — pass `this` as closure so static shims can dispatch
-  if (natsOptions_SetErrorHandler(opts, NatsConnection::onError, this) !=
-      NATS_OK) {
+  if (natsOptions_SetErrorHandler(opts, NatsConnection::onError, this) != NATS_OK) {
     return false;
   }
-  if (natsOptions_SetDisconnectedCB(opts, NatsConnection::onDisconnected,
-                                    this) != NATS_OK) {
+  if (natsOptions_SetDisconnectedCB(opts, NatsConnection::onDisconnected, this) != NATS_OK) {
     return false;
   }
-  if (natsOptions_SetReconnectedCB(opts, NatsConnection::onReconnected, this) !=
-      NATS_OK) {
+  if (natsOptions_SetReconnectedCB(opts, NatsConnection::onReconnected, this) != NATS_OK) {
     return false;
   }
-  if (natsOptions_SetClosedCB(opts, NatsConnection::onClosed, this) !=
-      NATS_OK) {
+  if (natsOptions_SetClosedCB(opts, NatsConnection::onClosed, this) != NATS_OK) {
     return false;
   }
 
@@ -225,8 +219,7 @@ jsCtx* NatsConnection::jsContext() noexcept {
   }
   const natsStatus status = js_Context(&js_ctx_, conn_, nullptr, nullptr);
   if (status != NATS_OK) {
-    spdlog::error("NatsConnection::jsContext: js_Context failed: {}",
-                  natsStatus_GetText(status));
+    spdlog::error("NatsConnection::jsContext: js_Context failed: {}", natsStatus_GetText(status));
     js_ctx_ = nullptr;
     return nullptr;
   }
@@ -245,15 +238,19 @@ bool NatsConnection::isConnected() const noexcept {
   return getState() == NatsConnectionState::CONNECTED;
 }
 
-natsConnection* NatsConnection::handle() const noexcept { return conn_; }
+natsConnection* NatsConnection::handle() const noexcept {
+  return conn_;
+}
 
 // ---------------------------------------------------------------------------
 // Static callback shims
 // ---------------------------------------------------------------------------
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
-                             natsStatus err, void* closure) noexcept {
+void NatsConnection::onError(natsConnection* /*nc*/,
+                             natsSubscription* /*sub*/,
+                             natsStatus err,
+                             void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   ErrorCallback cb;
   {
@@ -266,11 +263,9 @@ void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
   }
 }
 
-void NatsConnection::onDisconnected(natsConnection* /*nc*/,
-                                    void* closure) noexcept {
+void NatsConnection::onDisconnected(natsConnection* /*nc*/, void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
-  self->state_.store(NatsConnectionState::RECONNECTING,
-                     std::memory_order_release);
+  self->state_.store(NatsConnectionState::RECONNECTING, std::memory_order_release);
   DisconnectedCallback cb;
   {
     std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
@@ -281,8 +276,7 @@ void NatsConnection::onDisconnected(natsConnection* /*nc*/,
   }
 }
 
-void NatsConnection::onReconnected(natsConnection* /*nc*/,
-                                   void* closure) noexcept {
+void NatsConnection::onReconnected(natsConnection* /*nc*/, void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   self->state_.store(NatsConnectionState::CONNECTED, std::memory_order_release);
   ReconnectedCallback cb;

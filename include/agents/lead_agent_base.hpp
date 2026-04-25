@@ -1,15 +1,16 @@
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include "agents/async_agent.hpp"
 #include "agents/coordination_state.hpp"
 #include "core/message.hpp"
 
+#include <string>
+#include <vector>
+
 #ifdef ENABLE_GRPC
-#include "hmas_coordinator.pb.h"
-#include "network/yaml_parser.hpp"
+#  include "network/yaml_parser.hpp"
+
+#  include "hmas_coordinator.pb.h"
 #endif
 
 namespace keystone {
@@ -40,9 +41,12 @@ class LeadAgentBase : public AsyncAgent {
    * @param aggregating_state Aggregating/Synthesizing results state value
    * @param error_state Error state value
    */
-  explicit LeadAgentBase(const std::string& agent_id, StateEnum idle_state,
-                         StateEnum planning_state, StateEnum waiting_state,
-                         StateEnum aggregating_state, StateEnum error_state);
+  explicit LeadAgentBase(const std::string& agent_id,
+                         StateEnum idle_state,
+                         StateEnum planning_state,
+                         StateEnum waiting_state,
+                         StateEnum aggregating_state,
+                         StateEnum error_state);
 
   /**
    * @brief Process incoming message asynchronously (TEMPLATE METHOD - FINAL)
@@ -59,17 +63,14 @@ class LeadAgentBase : public AsyncAgent {
    * @param msg Message to process
    * @return concurrency::Task<core::Response> Async task with response
    */
-  concurrency::Task<core::Response> processMessage(
-      const core::KeystoneMessage& msg) final;
+  concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) final;
 
   /**
    * @brief Get execution trace for testing/debugging
    *
    * @return std::vector<std::string> State transition history
    */
-  std::vector<std::string> getExecutionTrace() const {
-    return coordination_.getExecutionTrace();
-  }
+  std::vector<std::string> getExecutionTrace() const { return coordination_.getExecutionTrace(); }
 
   /**
    * @brief Get current state
@@ -130,8 +131,7 @@ class LeadAgentBase : public AsyncAgent {
    *
    * @param result_msg Message containing subordinate result
    */
-  virtual void processSubordinateResult(
-      const core::KeystoneMessage& result_msg) = 0;
+  virtual void processSubordinateResult(const core::KeystoneMessage& result_msg) = 0;
 
   /**
    * @brief HOOK: Handle a failure reported by a subordinate agent (Issue #87)
@@ -145,8 +145,7 @@ class LeadAgentBase : public AsyncAgent {
    *
    * @param failure_msg Message with action_type == TASK_FAILED
    */
-  virtual void processSubordinateFailure(
-      const core::KeystoneMessage& failure_msg) {
+  virtual void processSubordinateFailure(const core::KeystoneMessage& failure_msg) {
     std::string error = failure_msg.payload.value_or("subordinate task failed");
     bool all_done = coordination_.recordFailure(error);
     if (all_done) {
@@ -175,12 +174,10 @@ class LeadAgentBase : public AsyncAgent {
    * @param spec  Task spec to update (modified in place)
    * @param error Human-readable error message
    */
-  void submitFailureResult(network::HierarchicalTaskSpec& spec,
-                           const std::string& error) {
+  void submitFailureResult(network::HierarchicalTaskSpec& spec, const std::string& error) {
     spec.status.phase = "FAILED";
     spec.status.error = error;
-    this->coordination_.transitionTo(this->error_state_,
-                                     stateToString(this->error_state_));
+    this->coordination_.transitionTo(this->error_state_, stateToString(this->error_state_));
 
     std::string result_yaml = network::YamlParser::generateTaskSpec(spec);
     auto coordinator_client = this->coordination_.getCoordinatorClient();

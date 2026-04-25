@@ -44,19 +44,15 @@ jobs:
       - name: Check CMake dependency graph for cycles
         run: |
           cmake -S . -B build/graphviz -G Ninja --graphviz=build/graphviz/deps.dot -DCMAKE_BUILD_TYPE=Debug 2>/dev/null || true
-          # Check if any graphviz output was created (optional ci-only check)
           if [ -f build/graphviz/deps.dot ]; then
             echo "CMake dependency graph generated successfully"
-            # A simple cycle check: no node should appear as its own ancestor
-            python3 -c "
+            python3 << 'EOF'
           import re, sys
           content = open("build/graphviz/deps.dot").read()
-          edges = re.findall(r"\\"([^\\"]+)\\" -> \\"([^\\"]+)\\"", content)
-          # Build adjacency list
+          edges = re.findall(r'"([^"]+)" -> "([^"]+)"', content)
           adj = {}
           for src, dst in edges:
               adj.setdefault(src, []).append(dst)
-          # DFS cycle detection
           visited, in_stack = set(), set()
           def has_cycle(node):
               if node in in_stack: return True
@@ -67,7 +63,7 @@ jobs:
           if any(has_cycle(n) for n in list(adj)):
               print("CYCLE DETECTED in CMake dependency graph!"); sys.exit(1)
           print("No cycles detected in CMake dependency graph")
-          "
+          EOF
           fi
 
       # Note: Full static analysis (clang-tidy, cppcheck) takes 30+ minutes
