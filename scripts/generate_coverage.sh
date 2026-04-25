@@ -98,9 +98,13 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     echo -e "${YELLOW}Running tests...${NC}"
     ctest --output-on-failure || echo -e "${YELLOW}Warning: Some tests failed, but continuing with coverage generation${NC}"
 
-    # Capture coverage data (ignore errors from multi-threaded tests and gcov version skew)
+    # Capture coverage data (ignore errors from multi-threaded tests and gcov version skew).
+    # lcov 2.0 on Ubuntu 24.04: use --ignore-errors source,gcov,gcov to suppress both the
+    # gcov symlink-collision warning and the Perl "append_tracefile" crash it triggers when
+    # multiple test targets compile the same source file (e.g. monitoring_unit_tests + unit_tests).
     echo -e "${YELLOW}Capturing coverage data...${NC}"
-    lcov --capture --directory . --output-file "$COVERAGE_INFO" --ignore-errors negative,mismatch,version,gcov
+    lcov --capture --directory . --output-file "$COVERAGE_INFO" \
+        --ignore-errors negative,mismatch,version,gcov,gcov,source
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to capture coverage data${NC}"
