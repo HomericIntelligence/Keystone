@@ -1,5 +1,1 @@
-import sys
-import os
-
-# Ensure src/ is on the path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# PYTHONPATH configured in pyproject.toml [tool.pytest.ini_options]
