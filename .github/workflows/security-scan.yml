@@ -330,7 +330,6 @@ jobs:
         run: |
           cppcheck \
             --enable=all \
-            --error-exitcode=1 \
             --xml \
             --xml-version=2 \
             --suppress=missingIncludeSystem \
@@ -338,6 +337,22 @@ jobs:
             --inline-suppr \
             -I include \
             src/ tests/ 2> cppcheck-report.xml
+
+      - name: Fail on cppcheck error-severity findings
+        run: |
+          python3 - << 'EOF'
+          import xml.etree.ElementTree as ET, sys
+          tree = ET.parse("cppcheck-report.xml")
+          errors = [e for e in tree.getroot().find("errors")
+                    if e.get("severity") == "error"]
+          if errors:
+              for e in errors:
+                  loc = e.find("location")
+                  f = loc.get("file","?") if loc is not None else "?"
+                  l = loc.get("line","?") if loc is not None else "?"
+                  print(f"CPPCHECK ERROR: {e.get('id')} at {f}:{l} — {e.get('msg')}")
+              sys.exit(1)
+          EOF
 
       - name: Upload cppcheck results
         if: always()
