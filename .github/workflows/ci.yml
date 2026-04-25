@@ -30,10 +30,8 @@ jobs:
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
-
-      - name: Install just
-        run: |
-          curl -fsSL https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+        with:
+          include-just: 'true'
 
       - name: Check formatting
         run: just format-check
