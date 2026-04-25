@@ -57,7 +57,30 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "ENABLE_GRPC": "OFF"
+        "ENABLE_GRPC": "OFF",
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "Debug + AddressSanitizer",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_COVERAGE": "OFF",
+        "ENABLE_GRPC": "OFF",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "ubsan",
+      "displayName": "Debug + UndefinedBehaviorSanitizer",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_COVERAGE": "OFF",
+        "ENABLE_GRPC": "OFF",
+        "CMAKE_CXX_FLAGS": "-fsanitize=undefined"
       }
     }
   ],
@@ -81,6 +104,14 @@
     {
       "name": "tsan",
       "configurePreset": "tsan"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan"
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan"
     }
   ],
   "testPresets": [
@@ -115,6 +146,20 @@
     {
       "name": "tsan",
       "configurePreset": "tsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan",
       "output": {
         "outputOnFailure": true
       }
