@@ -6,6 +6,10 @@ inputs:
     description: Include lcov for coverage builds
     required: false
     default: 'false'
+  include-just:
+    description: Install the just command runner
+    required: false
+    default: 'false'
   include-static-analysis:
     description: Include clang-tidy and cppcheck
     required: false
@@ -50,6 +54,12 @@ runs:
     - name: Install static analysis tools
       if: inputs.include-static-analysis == 'true'
       run: sudo apt-get install -y clang-tidy-18 cppcheck
+      shell: bash
+
+    - name: Install just
+      if: inputs.include-just == 'true'
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
       shell: bash
 
     - name: Set up compiler alternatives
