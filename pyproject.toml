@@ -38,6 +38,9 @@ exclude_lines = [
     "\\.\\.\\.\\s*$",
 ]
 
+[tool.setuptools.package-data]
+keystone = ["py.typed"]
+
 [tool.mypy]
 python_version = "3.9"
 warn_return_any = true
