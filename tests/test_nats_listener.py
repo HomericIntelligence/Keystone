@@ -4,12 +4,10 @@ from __future__ import annotations
 import json
 
 import pytest
-from unittest.mock import MagicMock
 from unittest.mock import AsyncMock, MagicMock
 
 import nats.errors
 import nats.js.errors
-import pytest
 
 from src.keystone.nats_listener import NATSListener
 
