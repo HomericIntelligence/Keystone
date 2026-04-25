@@ -3,12 +3,12 @@
  * @brief Unit tests for Logger and LogContext
  */
 
-#include <gtest/gtest.h>
+#include "concurrency/logger.hpp"
 
 #include <thread>
 #include <vector>
 
-#include "concurrency/logger.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::concurrency;
 
@@ -190,8 +190,7 @@ TEST(CorrelationIdTest, FormatIsUUID4) {
   // Variant nibble must be '8', '9', 'a', or 'b'
   // (std::snprintf with %x always produces lowercase hex; uppercase 'A'/'B' impossible)
   char variant = id[19];
-  EXPECT_TRUE(variant == '8' || variant == '9' || variant == 'a' ||
-              variant == 'b')
+  EXPECT_TRUE(variant == '8' || variant == '9' || variant == 'a' || variant == 'b')
       << "variant nibble '" << variant << "' is not in {8,9,a,b}";
 }
 
