@@ -671,11 +671,18 @@ if(ENABLE_FUZZING)
   target_link_options(fuzz_retry_policy PRIVATE ${FUZZING_FLAGS})
   target_link_libraries(fuzz_retry_policy keystone_core)
 
+  # Fuzz test: Subject validator
+  add_executable(fuzz_subject_validator fuzz/fuzz_subject_validator.cpp)
+  target_compile_options(fuzz_subject_validator PRIVATE ${FUZZING_FLAGS})
+  target_link_options(fuzz_subject_validator PRIVATE ${FUZZING_FLAGS})
+  target_link_libraries(fuzz_subject_validator keystone_core)
+
   message(STATUS "Fuzz testing targets enabled:")
   message(STATUS "  - fuzz_message_serialization")
   message(STATUS "  - fuzz_message_bus_routing")
   message(STATUS "  - fuzz_work_stealing")
   message(STATUS "  - fuzz_retry_policy")
+  message(STATUS "  - fuzz_subject_validator")
   message(STATUS "Run with: ./<fuzz_target> -max_len=4096 -runs=1000000")
 endif()
 
@@ -803,7 +810,7 @@ install(TARGETS hmas_load_test RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
 if(ENABLE_FUZZING)
   install(
     TARGETS fuzz_message_serialization fuzz_message_bus_routing
-            fuzz_work_stealing fuzz_retry_policy
+            fuzz_work_stealing fuzz_retry_policy fuzz_subject_validator
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/fuzz COMPONENT keystone-misc)
 endif()
 
