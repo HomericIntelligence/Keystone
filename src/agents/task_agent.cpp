@@ -47,6 +47,15 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
   // Record message processed for metrics tracking
   core::Metrics::getInstance().recordMessageProcessed(msg.msg_id);
 
+  // Issue #376: Reject immediately if agent is in failed state
+  if (isFailed()) {
+    auto response = core::Response::createError(msg,
+                                                agent_id_,
+                                                "Agent is in failed state: " + getFailureReason());
+    sendResponseMessage(msg, response.result);
+    co_return response;
+  }
+
   // Phase 1.2 (Issue #52): Handle CANCEL_TASK action type
   if (msg.action_type == core::ActionType::CANCEL_TASK) {
     auto response = handleCancellation(msg);

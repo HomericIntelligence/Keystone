@@ -416,7 +416,7 @@ add_executable(
   tests/unit/test_message_serializer.cpp
   # DISABLED: Async API not yet implemented
   # tests/unit/test_message_bus_async.cpp
-  # tests/unit/test_async_task_agent.cpp
+  tests/unit/test_async_task_agent.cpp  # Issue #376: isFailed() guard
   tests/unit/test_message_priority.cpp
   tests/unit/test_agent_core.cpp  # Additional coverage for AgentCore
   tests/unit/test_agent_id_interning.cpp  # Phase A2: Agent ID interning tests

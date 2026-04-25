@@ -195,3 +195,16 @@ TEST_F(AsyncTaskAgentTest, SchedulerRequired) {
   ASSERT_TRUE(inbox_msg.has_value());
   EXPECT_EQ(inbox_msg->command, "echo test");
 }
+
+// Issue #376: A failed agent must reject messages without executing them.
+TEST_F(AsyncTaskAgentTest, FailedAgentRejectsMessages) {
+  agent_->markAsFailed("injected failure");
+
+  auto msg = KeystoneMessage::create("test", agent_->getAgentId(), "echo hello");
+  bus_->routeMessage(msg);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Command should NOT have been logged (agent rejected it before execution)
+  const auto& history = agent_->getCommandHistory();
+  EXPECT_TRUE(history.empty());
+}
