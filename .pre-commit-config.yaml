@@ -98,6 +98,19 @@ repos:
         args: [-c=.yamllint.yaml]
 
   # ============================================================================
+  # CHANGELOG Linting (Keep a Changelog format)
+  # ============================================================================
+  - repo: local
+    hooks:
+      - id: changelog-lint
+        name: Lint CHANGELOG.md (Keep a Changelog format)
+        language: python
+        entry: python3 scripts/lint-changelog.py
+        args: [CHANGELOG.md]
+        files: CHANGELOG\.md
+        pass_filenames: false
+
+  # ============================================================================
   # Git Commit Message Linting (Optional)
   # ============================================================================
   - repo: https://github.com/commitizen-tools/commitizen
