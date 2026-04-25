@@ -9,15 +9,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Export compile commands for clang-tidy and other tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Compiler warnings — C++ only to avoid breaking C FetchContent targets (e.g. nats.c)
+# Compiler warnings — C++ only to avoid breaking C FetchContent targets (e.g.
+# nats.c)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
-    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
-    $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
-    $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
-  # GCC 13+ has stricter dangling-reference warnings that trigger false positives with spdlog/fmt.
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall> $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic> $<$<COMPILE_LANGUAGE:CXX>:-Werror>)
+  # GCC 13+ has stricter dangling-reference warnings that trigger false
+  # positives with spdlog/fmt.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER_EQUAL 13.0)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-dangling-reference>)
   endif()
 endif()
@@ -118,8 +119,8 @@ find_package(benchmark REQUIRED)
 # concurrentqueue — lock-free MPMC queue (Conan: concurrentqueue/1.0.4)
 find_package(concurrentqueue REQUIRED)
 
-# fmt + spdlog — fmt is a Conan dep; use SPDLOG_FMT_EXTERNAL so spdlog does
-# not try to use its bundled copy (which would make spdlog/fmt/fmt.h unavailable)
+# fmt + spdlog — fmt is a Conan dep; use SPDLOG_FMT_EXTERNAL so spdlog does not
+# try to use its bundled copy (which would make spdlog/fmt/fmt.h unavailable)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 add_compile_definitions(SPDLOG_FMT_EXTERNAL)
@@ -131,23 +132,31 @@ FetchContent_Declare(
   GIT_TAG v0.14)
 FetchContent_MakeAvailable(cista)
 
-# nats.c — NATS client library with TLS support and reconnection callbacks (issues #122, #88)
-# NOT on ConanCenter; pulled directly from upstream.
-# natsc unconditionally adds test/check_cpp; clear our compile options so
-# -Werror does not propagate into natsc's own subdirectories.
+# nats.c — NATS client library with TLS support and reconnection callbacks
+# (issues #122, #88) NOT on ConanCenter; pulled directly from upstream. natsc
+# unconditionally adds test/check_cpp; clear our compile options so -Werror does
+# not propagate into natsc's own subdirectories.
 FetchContent_Declare(
   natsc
   GIT_REPOSITORY https://github.com/nats-io/nats.c.git
   GIT_TAG v3.12.0
   GIT_SHALLOW TRUE)
-set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)
-set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(NATS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-# natsc's test/ and test/check_cpp/ check BUILD_TESTING; turn it off so
-# natsc's own tests (which require a live NATS server) are not compiled or
-# registered with ctest. Also clear COMPILE_OPTIONS so our -Werror does not
-# propagate into any natsc subdirectory that ignores BUILD_TESTING.
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(NATS_BUILD_STREAMING
+    OFF
+    CACHE BOOL "" FORCE)
+set(NATS_BUILD_EXAMPLES
+    OFF
+    CACHE BOOL "" FORCE)
+set(NATS_BUILD_TESTS
+    OFF
+    CACHE BOOL "" FORCE)
+# natsc's test/ and test/check_cpp/ check BUILD_TESTING; turn it off so natsc's
+# own tests (which require a live NATS server) are not compiled or registered
+# with ctest. Also clear COMPILE_OPTIONS so our -Werror does not propagate into
+# any natsc subdirectory that ignores BUILD_TESTING.
+set(BUILD_TESTING
+    OFF
+    CACHE BOOL "" FORCE)
 get_directory_property(_saved_compile_options COMPILE_OPTIONS)
 set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
 FetchContent_MakeAvailable(natsc)
@@ -207,7 +216,8 @@ add_library(
   src/core/metrics.cpp
   src/core/profiling.cpp # Phase D.1: Performance profiling
   src/core/message_pool.cpp # Phase D.2: Message pooling
-  src/core/agent_id_interning.cpp # Phase A2: Agent ID interning optimization (FIX: added <mutex>)
+  src/core/agent_id_interning.cpp # Phase A2: Agent ID interning optimization
+                                  # (FIX: added <mutex>)
   src/core/failure_injector.cpp # Phase 5.1: Chaos engineering - agent failures
   src/core/retry_policy.cpp # Phase 5.3: Chaos engineering - message retries
   src/core/heartbeat_monitor.cpp # Phase 5.4: Chaos engineering - heartbeat
@@ -222,37 +232,36 @@ add_library(
 
 target_include_directories(
   keystone_core
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${cista_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
+  PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+         $<BUILD_INTERFACE:${cista_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include/keystone>)
 
 # Link dependencies - note: keystone_core depends on keystone_concurrency
-# (circular dependency handled via shared libraries)
-# We'll link keystone_concurrency after it's defined
-target_link_libraries(keystone_core PUBLIC spdlog::spdlog fmt::fmt concurrentqueue::concurrentqueue)
+# (circular dependency handled via shared libraries) We'll link
+# keystone_concurrency after it's defined
+target_link_libraries(keystone_core PUBLIC spdlog::spdlog fmt::fmt
+                                           concurrentqueue::concurrentqueue)
 
 # Concurrency library (Phase A)
 add_library(
   keystone_concurrency
-  src/concurrency/task.cpp src/concurrency/thread_pool.cpp
-  src/concurrency/work_stealing_queue.cpp src/concurrency/logger.cpp
-  src/concurrency/pull_or_steal.cpp src/concurrency/work_stealing_scheduler.cpp
+  src/concurrency/task.cpp
+  src/concurrency/thread_pool.cpp
+  src/concurrency/work_stealing_queue.cpp
+  src/concurrency/logger.cpp
+  src/concurrency/pull_or_steal.cpp
+  src/concurrency/work_stealing_scheduler.cpp
   src/concurrency/scheduler_accessor.cpp)
 
 target_include_directories(
-  keystone_concurrency
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
+  keystone_concurrency PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                              $<INSTALL_INTERFACE:include/keystone>)
 
 # Link dependencies (including spdlog for logger.hpp)
 target_link_libraries(keystone_concurrency PUBLIC keystone_core)
 
-# Handle circular dependency: keystone_core uses Logger from keystone_concurrency
-# This works with shared libraries
+# Handle circular dependency: keystone_core uses Logger from
+# keystone_concurrency This works with shared libraries
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
 # Network library (Phase 8: Distributed communication)
@@ -269,12 +278,10 @@ if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
 
   target_include_directories(
     keystone_network
-    PUBLIC
-      $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-      $<BUILD_INTERFACE:${Protobuf_INCLUDE_DIRS}>
-      $<INSTALL_INTERFACE:include/keystone>
-  )
+    PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+           $<BUILD_INTERFACE:${Protobuf_INCLUDE_DIRS}>
+           $<INSTALL_INTERFACE:include/keystone>)
 
   target_link_libraries(
     keystone_network PUBLIC keystone_core protobuf::libprotobuf gRPC::grpc++
@@ -285,22 +292,19 @@ if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
 endif()
 
 # Agents library
-add_library(keystone_agents
-    src/agents/agent_core.cpp
-    src/agents/async_agent.cpp
-    src/agents/task_execution_strategy.cpp  # ARCH-007: Strategy pattern
-    src/agents/chief_architect_agent.cpp
-    src/agents/component_lead_agent.cpp
-    src/agents/module_lead_agent.cpp
-    src/agents/task_agent.cpp
-)
+add_library(
+  keystone_agents
+  src/agents/agent_core.cpp
+  src/agents/async_agent.cpp
+  src/agents/task_execution_strategy.cpp # ARCH-007: Strategy pattern
+  src/agents/chief_architect_agent.cpp
+  src/agents/component_lead_agent.cpp
+  src/agents/module_lead_agent.cpp
+  src/agents/task_agent.cpp)
 
 target_include_directories(
-  keystone_agents
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
+  keystone_agents PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                         $<INSTALL_INTERFACE:include/keystone>)
 
 target_link_libraries(keystone_agents PUBLIC keystone_core keystone_concurrency)
 
@@ -311,11 +315,8 @@ add_library(
   src/simulation/simulated_cluster.cpp)
 
 target_include_directories(
-  keystone_simulation
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
+  keystone_simulation PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                             $<INSTALL_INTERFACE:include/keystone>)
 
 target_link_libraries(keystone_simulation PUBLIC keystone_concurrency
                                                  keystone_core)
@@ -361,13 +362,12 @@ target_link_libraries(async_delegation_tests keystone_agents keystone_core
 
 gtest_discover_tests(async_delegation_tests)
 
-# E2E Tests - Async Agents (Coroutines)
-# DISABLED: Phase 6 async features not yet implemented
-# add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
-#                                   tests/e2e/full_async_hierarchy_test.cpp)
+# E2E Tests - Async Agents (Coroutines) DISABLED: Phase 6 async features not yet
+# implemented add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
+# tests/e2e/full_async_hierarchy_test.cpp)
 #
 # target_link_libraries(async_agents_tests keystone_agents keystone_core
-#                       keystone_concurrency GTest::gtest_main)
+# keystone_concurrency GTest::gtest_main)
 #
 # gtest_discover_tests(async_agents_tests)
 
@@ -390,22 +390,21 @@ if(ENABLE_GRPC)
   gtest_discover_tests(distributed_grpc_tests)
 endif()
 
-# E2E Tests - Multi-Component Hierarchy
-# DISABLED: Phase 4 multi-component features not yet implemented
-# add_executable(multi_component_tests tests/e2e/multi_component_test.cpp)
+# E2E Tests - Multi-Component Hierarchy DISABLED: Phase 4 multi-component
+# features not yet implemented add_executable(multi_component_tests
+# tests/e2e/multi_component_test.cpp)
 #
 # target_link_libraries(multi_component_tests keystone_agents keystone_core
-#                       keystone_concurrency GTest::gtest_main)
+# keystone_concurrency GTest::gtest_main)
 #
 # gtest_discover_tests(multi_component_tests)
 
-# E2E Tests - Chaos Engineering
-# DISABLED: Phase 5 chaos engineering features not yet implemented
-# add_executable(chaos_engineering_tests tests/e2e/chaos_engineering_test.cpp)
+# E2E Tests - Chaos Engineering DISABLED: Phase 5 chaos engineering features not
+# yet implemented add_executable(chaos_engineering_tests
+# tests/e2e/chaos_engineering_test.cpp)
 #
-# target_link_libraries(
-#   chaos_engineering_tests keystone_agents keystone_core keystone_concurrency
-#   keystone_simulation GTest::gtest_main)
+# target_link_libraries( chaos_engineering_tests keystone_agents keystone_core
+# keystone_concurrency keystone_simulation GTest::gtest_main)
 #
 # gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
 
@@ -418,8 +417,8 @@ add_executable(
   # tests/unit/test_message_bus_async.cpp
   # tests/unit/test_async_task_agent.cpp
   tests/unit/test_message_priority.cpp
-  tests/unit/test_agent_core.cpp  # Additional coverage for AgentCore
-  tests/unit/test_agent_id_interning.cpp  # Phase A2: Agent ID interning tests
+  tests/unit/test_agent_core.cpp # Additional coverage for AgentCore
+  tests/unit/test_agent_id_interning.cpp # Phase A2: Agent ID interning tests
   tests/unit/test_metrics.cpp
   tests/unit/test_deadline_scheduling.cpp
   tests/unit/test_profiling.cpp # Phase D: Profiling tests
@@ -433,10 +432,14 @@ add_executable(
   tests/unit/test_circuit_breaker.cpp # Phase 5.4: Chaos engineering - circuit
   # breaker
   tests/unit/test_agent_concepts.cpp # Issue #24: Agent concepts type safety
-  tests/unit/test_health_check_server.cpp # Phase 6.7: Health check endpoints (C4)
-  tests/unit/test_coordination_state.cpp # Stream B Phase B1: CoordinationState template tests (FIX: added mutexes)
-  tests/unit/test_task_cancellation.cpp # Phase 1.2 (Issue #52): Task cancellation notification
-  tests/unit/test_security_regression.cpp # PR #1: Security vulnerability regression tests
+  tests/unit/test_health_check_server.cpp # Phase 6.7: Health check endpoints
+                                          # (C4)
+  tests/unit/test_coordination_state.cpp # Stream B Phase B1: CoordinationState
+                                         # template tests (FIX: added mutexes)
+  tests/unit/test_task_cancellation.cpp # Phase 1.2 (Issue #52): Task
+                                        # cancellation notification
+  tests/unit/test_security_regression.cpp # PR #1: Security vulnerability
+                                          # regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
 )
@@ -444,25 +447,28 @@ add_executable(
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
 if(ENABLE_GRPC)
   target_sources(unit_tests PRIVATE tests/fixtures/grpc_test_fixture.cpp
-                                     tests/unit/test_grpc_tls.cpp)
+                                    tests/unit/test_grpc_tls.cpp)
   target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
-  target_link_libraries(unit_tests keystone_agents keystone_core
-                        keystone_concurrency keystone_network keystone_transport
-                        GTest::gtest_main)
+  target_link_libraries(
+    unit_tests
+    keystone_agents
+    keystone_core
+    keystone_concurrency
+    keystone_network
+    keystone_transport
+    GTest::gtest_main)
 else()
-  target_link_libraries(unit_tests keystone_agents keystone_core
-                        keystone_concurrency keystone_transport GTest::gtest_main)
+  target_link_libraries(
+    unit_tests keystone_agents keystone_core keystone_concurrency
+    keystone_transport GTest::gtest_main)
 endif()
 
 gtest_discover_tests(unit_tests)
 
-# Profiling Tests (Phase 2.3 - Issue #53)
-# Separate test suite for profiling tests (slow, opt-in)
+# Profiling Tests (Phase 2.3 - Issue #53) Separate test suite for profiling
+# tests (slow, opt-in)
 if(ENABLE_PROFILING)
-  add_executable(
-    profiling_tests
-    tests/unit/test_profiling.cpp
-  )
+  add_executable(profiling_tests tests/unit/test_profiling.cpp)
 
   target_compile_definitions(profiling_tests PRIVATE KEYSTONE_PROFILE=1)
 
@@ -472,30 +478,24 @@ if(ENABLE_PROFILING)
 
   message(STATUS "Profiling tests enabled (ENABLE_PROFILING=ON)")
 else()
-  message(STATUS "Profiling tests disabled. Use -DENABLE_PROFILING=ON to enable.")
+  message(
+    STATUS "Profiling tests disabled. Use -DENABLE_PROFILING=ON to enable.")
 endif()
 
-# Unit Tests - Agent Classes (Stream C Phase C2: Issue #45)
-# Comprehensive unit tests for all agent classes with mock infrastructure
+# Unit Tests - Agent Classes (Stream C Phase C2: Issue #45) Comprehensive unit
+# tests for all agent classes with mock infrastructure
 add_executable(
   agent_unit_tests
-  tests/unit/test_task_agent.cpp
-  tests/unit/test_chief_architect_agent.cpp
+  tests/unit/test_task_agent.cpp tests/unit/test_chief_architect_agent.cpp
   tests/unit/test_module_lead_agent.cpp
-  tests/unit/test_component_lead_agent.cpp
+  tests/unit/test_component_lead_agent.cpp)
+
+target_include_directories(
+  agent_unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests # For mocks/ directory
 )
 
-target_include_directories(agent_unit_tests PRIVATE
-  ${PROJECT_SOURCE_DIR}/tests  # For mocks/ directory
-)
-
-target_link_libraries(agent_unit_tests
-  keystone_agents
-  keystone_core
-  keystone_concurrency
-  GTest::gtest_main
-  GTest::gmock
-)
+target_link_libraries(agent_unit_tests keystone_agents keystone_core
+                      keystone_concurrency GTest::gtest_main GTest::gmock)
 
 gtest_discover_tests(agent_unit_tests)
 
@@ -534,11 +534,8 @@ gtest_discover_tests(simulation_unit_tests)
 add_library(keystone_transport src/transport/nats_connection.cpp)
 
 target_include_directories(
-  keystone_transport
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
+  keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                            $<INSTALL_INTERFACE:include/keystone>)
 
 target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog)
 
@@ -550,7 +547,8 @@ target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 gtest_discover_tests(transport_unit_tests)
 
 # Integration Tests (Phase C3: Registry integration tests)
-add_executable(registry_integration_tests tests/integration/test_registry_integration.cpp)
+add_executable(registry_integration_tests
+               tests/integration/test_registry_integration.cpp)
 
 target_link_libraries(registry_integration_tests keystone_agents keystone_core
                       GTest::gtest_main)
@@ -567,18 +565,17 @@ add_custom_target(
           async_delegation_tests
           # DISABLED: async_agents_tests (Phase 6)
           distributed_hierarchy_tests
-          # DISABLED: multi_component_tests (Phase 4)
-          # DISABLED: chaos_engineering_tests (Phase 5)
+          # DISABLED: multi_component_tests (Phase 4) DISABLED:
+          # chaos_engineering_tests (Phase 5)
           unit_tests
           concurrency_unit_tests
           simulation_unit_tests
           transport_unit_tests
-          # DISABLED: registry_integration_tests (ADR-006)
-          # DISABLED: nats_integration_tests (ADR-006, uses task_agent.hpp)
+          # DISABLED: registry_integration_tests (ADR-006) DISABLED:
+          # nats_integration_tests (ADR-006, uses task_agent.hpp)
   COMMENT "Running all ProjectKeystone tests with failure output")
 
-# Benchmarks
-# Phase 3.1: Re-enabled hierarchy benchmarks with unified async API
+# Benchmarks Phase 3.1: Re-enabled hierarchy benchmarks with unified async API
 add_executable(hierarchy_benchmarks benchmarks/hierarchy_performance.cpp)
 
 target_link_libraries(hierarchy_benchmarks keystone_agents keystone_core
@@ -597,16 +594,18 @@ target_link_libraries(distributed_benchmarks keystone_simulation
                       keystone_concurrency keystone_core benchmark::benchmark)
 
 # P2-06: String allocation profiling benchmarks
-add_executable(string_allocation_benchmarks benchmarks/string_allocation_profiling.cpp)
+add_executable(string_allocation_benchmarks
+               benchmarks/string_allocation_profiling.cpp)
 
 target_link_libraries(string_allocation_benchmarks keystone_core
                       benchmark::benchmark)
 
 # Phase A2: Registry performance benchmarks (agent ID interning optimization)
-add_executable(registry_performance_benchmarks benchmarks/registry_performance.cpp)
+add_executable(registry_performance_benchmarks
+               benchmarks/registry_performance.cpp)
 
-target_link_libraries(registry_performance_benchmarks keystone_agents keystone_core
-                      benchmark::benchmark)
+target_link_libraries(registry_performance_benchmarks keystone_agents
+                      keystone_core benchmark::benchmark)
 
 # P2-06: Simple profiling harness for valgrind massif
 add_executable(profile_allocations benchmarks/profile_allocations.cpp)
@@ -614,15 +613,19 @@ add_executable(profile_allocations benchmarks/profile_allocations.cpp)
 target_link_libraries(profile_allocations keystone_core)
 
 # Stream C1: Scheduler backoff benchmarks
-add_executable(scheduler_backoff_benchmarks benchmarks/scheduler_backoff_benchmark.cpp)
+add_executable(scheduler_backoff_benchmarks
+               benchmarks/scheduler_backoff_benchmark.cpp)
 
-target_link_libraries(scheduler_backoff_benchmarks keystone_concurrency keystone_core benchmark::benchmark)
+target_link_libraries(scheduler_backoff_benchmarks keystone_concurrency
+                      keystone_core benchmark::benchmark)
 
-# Phase 3.1: Re-enabled message bus performance benchmarks with unified async API
-add_executable(message_bus_performance_benchmarks benchmarks/message_bus_performance.cpp)
+# Phase 3.1: Re-enabled message bus performance benchmarks with unified async
+# API
+add_executable(message_bus_performance_benchmarks
+               benchmarks/message_bus_performance.cpp)
 
-target_link_libraries(message_bus_performance_benchmarks keystone_agents keystone_core
-                      benchmark::benchmark)
+target_link_libraries(message_bus_performance_benchmarks keystone_agents
+                      keystone_core benchmark::benchmark)
 
 # Phase 6.7 M1: Load testing for production readiness
 add_executable(hmas_load_test tests/load/hmas_load_test.cpp)
@@ -673,25 +676,17 @@ include(GNUInstallDirs)
 # Install runtime libraries (keystone package)
 install(
   TARGETS keystone_core keystone_concurrency keystone_agents keystone_simulation
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    COMPONENT keystone
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    COMPONENT keystone-dev
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    COMPONENT keystone
-)
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone-dev
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
 
 # Install network library if gRPC is enabled
 if(ENABLE_GRPC)
   install(
     TARGETS keystone_network
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      COMPONENT keystone
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      COMPONENT keystone-dev
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-      COMPONENT keystone
-  )
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone-dev
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
 endif()
 
 # ============================================================================
@@ -701,23 +696,24 @@ endif()
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "1")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+set(CPACK_PACKAGE_VERSION
+    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}"
+)
 
 # Install public headers (keystone-dev package)
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/include/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/keystone
   COMPONENT keystone-dev
-  FILES_MATCHING PATTERN "*.hpp"
-)
+  FILES_MATCHING
+  PATTERN "*.hpp")
 
 # Install generated proto headers if gRPC is enabled
 if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
   install(
     FILES ${GRPC_HDRS} ${PROTO_HDRS}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/keystone/proto
-    COMPONENT keystone-dev
-  )
+    COMPONENT keystone-dev)
 endif()
 
 # Configure and install CMake package configuration files (keystone-dev package)
@@ -727,34 +723,27 @@ configure_package_config_file(
   ${PROJECT_SOURCE_DIR}/cmake/KeystoneConfig.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfig.cmake
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Keystone
-  PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
-)
+  PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR)
 
 write_basic_package_version_file(
   ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfigVersion.cmake
   VERSION ${CPACK_PACKAGE_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
+  COMPATIBILITY SameMajorVersion)
 
 install(
-  FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfigVersion.cmake
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/KeystoneConfigVersion.cmake
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Keystone
-  COMPONENT keystone-dev
-)
+  COMPONENT keystone-dev)
 
-# Install documentation (keystone + keystone-doc packages)
-# Core documentation goes to keystone package
+# Install documentation (keystone + keystone-doc packages) Core documentation
+# goes to keystone package
 install(
-  FILES
-    ${PROJECT_SOURCE_DIR}/README.md
-    ${PROJECT_SOURCE_DIR}/CLAUDE.md
-    ${PROJECT_SOURCE_DIR}/LICENSE
+  FILES ${PROJECT_SOURCE_DIR}/README.md ${PROJECT_SOURCE_DIR}/CLAUDE.md
+        ${PROJECT_SOURCE_DIR}/LICENSE
   DESTINATION ${CMAKE_INSTALL_DOCDIR}
   COMPONENT keystone
-  OPTIONAL
-)
+  OPTIONAL)
 
 # Extended documentation goes to keystone-doc package
 install(
@@ -762,76 +751,57 @@ install(
   DESTINATION ${CMAKE_INSTALL_DOCDIR}
   COMPONENT keystone-doc
   FILES_MATCHING
-    PATTERN "*.md"
-    PATTERN "*.txt"
-    PATTERN "*.pdf"
-  PATTERN "issues" EXCLUDE
-)
+  PATTERN "*.md"
+  PATTERN "*.txt"
+  PATTERN "*.pdf"
+  PATTERN "issues" EXCLUDE)
 
 # Install test executables (keystone-test package)
 install(
-  TARGETS
-    basic_delegation_tests
-    module_coordination_tests
-    component_coordination_tests
-    async_delegation_tests
-    distributed_hierarchy_tests
-    unit_tests
-    concurrency_unit_tests
-    simulation_unit_tests
-    registry_integration_tests
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
-  COMPONENT keystone-test
-)
+  TARGETS basic_delegation_tests
+          module_coordination_tests
+          component_coordination_tests
+          async_delegation_tests
+          distributed_hierarchy_tests
+          unit_tests
+          concurrency_unit_tests
+          simulation_unit_tests
+          registry_integration_tests
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests COMPONENT keystone-test)
 
 # Install gRPC tests if enabled
 if(ENABLE_GRPC)
-  install(
-    TARGETS distributed_grpc_tests
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
-    COMPONENT keystone-test
-  )
+  install(TARGETS distributed_grpc_tests
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
+                  COMPONENT keystone-test)
 endif()
 
 # Install benchmarks (keystone-misc package)
 install(
-  TARGETS
-    message_pool_benchmarks
-    distributed_benchmarks
+  TARGETS message_pool_benchmarks distributed_benchmarks
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/benchmarks
-  COMPONENT keystone-misc
-  OPTIONAL
-)
+          COMPONENT keystone-misc
+          OPTIONAL)
 
 # Install load test (keystone-misc package)
-install(
-  TARGETS hmas_load_test
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
-  COMPONENT keystone-misc
-)
+install(TARGETS hmas_load_test RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
+                                       COMPONENT keystone-misc)
 
 # Install fuzz testing targets if enabled (keystone-misc package)
 if(ENABLE_FUZZING)
   install(
-    TARGETS
-      fuzz_message_serialization
-      fuzz_message_bus_routing
-      fuzz_work_stealing
-      fuzz_retry_policy
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/fuzz
-    COMPONENT keystone-misc
-  )
+    TARGETS fuzz_message_serialization fuzz_message_bus_routing
+            fuzz_work_stealing fuzz_retry_policy
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/fuzz COMPONENT keystone-misc)
 endif()
 
 # Install build scripts and Docker files (keystone-dev package)
 install(
-  FILES
-    ${PROJECT_SOURCE_DIR}/Dockerfile
-    ${PROJECT_SOURCE_DIR}/docker-compose.yaml
+  FILES ${PROJECT_SOURCE_DIR}/Dockerfile
+        ${PROJECT_SOURCE_DIR}/docker-compose.yaml
   DESTINATION ${CMAKE_INSTALL_DOCDIR}/build
   COMPONENT keystone-dev
-  OPTIONAL
-)
+  OPTIONAL)
 
 # Install proto files for development (keystone-dev package)
 if(ENABLE_GRPC)
@@ -839,8 +809,8 @@ if(ENABLE_GRPC)
     DIRECTORY ${PROJECT_SOURCE_DIR}/proto/
     DESTINATION ${CMAKE_INSTALL_DATADIR}/keystone/proto
     COMPONENT keystone-dev
-    FILES_MATCHING PATTERN "*.proto"
-  )
+    FILES_MATCHING
+    PATTERN "*.proto")
 endif()
 
 # ============================================================================
@@ -849,7 +819,8 @@ endif()
 
 set(CPACK_PACKAGE_NAME "ProjectKeystone")
 set(CPACK_PACKAGE_VENDOR "ProjectKeystone Development Team")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hierarchical Multi-Agent System (HMAS) in C++20")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+    "Hierarchical Multi-Agent System (HMAS) in C++20")
 # Version already defined earlier for CMake package config
 set(CPACK_PACKAGE_CONTACT "projectkeystone@example.com")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/projectkeystone/hmas")
@@ -859,41 +830,49 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
 
 # Component-based packaging
-set(CPACK_COMPONENTS_ALL keystone keystone-dev keystone-doc keystone-test keystone-misc)
+set(CPACK_COMPONENTS_ALL keystone keystone-dev keystone-doc keystone-test
+                         keystone-misc)
 
 # Component descriptions
 set(CPACK_COMPONENT_KEYSTONE_DISPLAY_NAME "Keystone Runtime Libraries")
 set(CPACK_COMPONENT_KEYSTONE_DESCRIPTION
-    "Core runtime libraries for ProjectKeystone HMAS. Includes message bus, agents, concurrency, and simulation libraries.")
+    "Core runtime libraries for ProjectKeystone HMAS. Includes message bus, agents, concurrency, and simulation libraries."
+)
 set(CPACK_COMPONENT_KEYSTONE_REQUIRED ON)
 set(CPACK_COMPONENT_KEYSTONE_GROUP "Runtime")
 
 set(CPACK_COMPONENT_KEYSTONE-DEV_DISPLAY_NAME "Keystone Development Files")
 set(CPACK_COMPONENT_KEYSTONE-DEV_DESCRIPTION
-    "Development files for building applications with ProjectKeystone. Includes headers, static libraries, CMake targets, and build documentation.")
+    "Development files for building applications with ProjectKeystone. Includes headers, static libraries, CMake targets, and build documentation."
+)
 set(CPACK_COMPONENT_KEYSTONE-DEV_GROUP "Development")
 set(CPACK_COMPONENT_KEYSTONE-DEV_DEPENDS keystone)
 
 set(CPACK_COMPONENT_KEYSTONE-DOC_DISPLAY_NAME "Keystone Documentation")
 set(CPACK_COMPONENT_KEYSTONE-DOC_DESCRIPTION
-    "Complete documentation for ProjectKeystone including architecture guides, API references, phase plans, and deployment guides.")
+    "Complete documentation for ProjectKeystone including architecture guides, API references, phase plans, and deployment guides."
+)
 set(CPACK_COMPONENT_KEYSTONE-DOC_GROUP "Documentation")
 
 set(CPACK_COMPONENT_KEYSTONE-TEST_DISPLAY_NAME "Keystone Test Suite")
 set(CPACK_COMPONENT_KEYSTONE-TEST_DESCRIPTION
-    "Comprehensive test suite for QA validation. Includes unit tests, E2E tests, and integration tests for all HMAS components.")
+    "Comprehensive test suite for QA validation. Includes unit tests, E2E tests, and integration tests for all HMAS components."
+)
 set(CPACK_COMPONENT_KEYSTONE-TEST_GROUP "Testing")
 set(CPACK_COMPONENT_KEYSTONE-TEST_DEPENDS keystone)
 
 set(CPACK_COMPONENT_KEYSTONE-MISC_DISPLAY_NAME "Keystone Miscellaneous Tools")
 set(CPACK_COMPONENT_KEYSTONE-MISC_DESCRIPTION
-    "Additional tools and utilities including benchmarks, load testing tools, and fuzz testing targets.")
+    "Additional tools and utilities including benchmarks, load testing tools, and fuzz testing targets."
+)
 set(CPACK_COMPONENT_KEYSTONE-MISC_GROUP "Tools")
 set(CPACK_COMPONENT_KEYSTONE-MISC_DEPENDS keystone)
 
 # Component groups
-set(CPACK_COMPONENT_GROUP_RUNTIME_DESCRIPTION "Runtime libraries and essential files")
-set(CPACK_COMPONENT_GROUP_DEVELOPMENT_DESCRIPTION "Development tools and headers")
+set(CPACK_COMPONENT_GROUP_RUNTIME_DESCRIPTION
+    "Runtime libraries and essential files")
+set(CPACK_COMPONENT_GROUP_DEVELOPMENT_DESCRIPTION
+    "Development tools and headers")
 set(CPACK_COMPONENT_GROUP_DOCUMENTATION_DESCRIPTION "Documentation and guides")
 set(CPACK_COMPONENT_GROUP_TESTING_DESCRIPTION "Test suites for QA")
 set(CPACK_COMPONENT_GROUP_TOOLS_DESCRIPTION "Benchmarking and utility tools")
@@ -910,17 +889,20 @@ set(CPACK_DEBIAN_KEYSTONE_PACKAGE_NAME "libkeystone0")
 set(CPACK_DEBIAN_KEYSTONE_PACKAGE_DEPENDS "libc6 (>= 2.34), libstdc++6 (>= 12)")
 
 set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_NAME "libkeystone-dev")
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_DEPENDS "libkeystone0 (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
+set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_DEPENDS
+    "libkeystone0 (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
 set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_SUGGESTS "ninja-build, clang-format")
 
 set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_NAME "keystone-doc")
 set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_ARCHITECTURE "all")
 
 set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_NAME "keystone-test")
-set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_DEPENDS "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_DEPENDS
+    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
 
 set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
-set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_DEPENDS "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_DEPENDS
+    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
 
 # RPM-specific settings
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
@@ -937,9 +919,12 @@ set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
 
 # RPM package dependencies
 set(CPACK_RPM_KEYSTONE_PACKAGE_REQUIRES "glibc >= 2.34")
-set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_REQUIRES "keystone = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
-set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_REQUIRES "keystone = ${CPACK_PACKAGE_VERSION}")
-set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_REQUIRES "keystone = ${CPACK_PACKAGE_VERSION}")
+set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_REQUIRES
+    "keystone = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
+set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_REQUIRES
+    "keystone = ${CPACK_PACKAGE_VERSION}")
+set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_REQUIRES
+    "keystone = ${CPACK_PACKAGE_VERSION}")
 
 # Archive settings (TGZ, ZIP)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
@@ -964,8 +949,7 @@ set(CPACK_SOURCE_IGNORE_FILES
     "\\.swp$"
     "\\.o$"
     "\\.a$"
-    "\\.so$"
-)
+    "\\.so$")
 
 include(CPack)
 
@@ -976,5 +960,6 @@ if(BUILD_EXAMPLES)
   message(STATUS "Building workflow examples...")
   add_subdirectory(examples/workflow-examples)
 else()
-  message(STATUS "Workflow examples disabled. Use -DBUILD_EXAMPLES=ON to enable.")
+  message(
+    STATUS "Workflow examples disabled. Use -DBUILD_EXAMPLES=ON to enable.")
 endif()
