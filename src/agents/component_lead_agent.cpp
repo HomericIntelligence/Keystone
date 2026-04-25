@@ -267,7 +267,6 @@ void ComponentLeadAgent::shutdown() {
   // Clean up component-specific resources
   result_aggregator_.reset();
 }
-#endif
 
 }  // namespace agents
 }  // namespace keystone

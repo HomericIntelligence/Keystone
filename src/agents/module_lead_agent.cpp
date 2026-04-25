@@ -270,7 +270,6 @@ void ModuleLeadAgent::shutdown() {
   // Clean up module-specific resources
   result_aggregator_.reset();
 }
-#endif
 
 }  // namespace agents
 }  // namespace keystone
