@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include <nats.h>
-
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
+
+#include <nats.h>
 
 namespace keystone {
 namespace transport {
@@ -204,7 +204,9 @@ class NatsConnection {
   // nats.c static callback shims — nats.c passes a void* user data pointer
   // which we cast back to NatsConnection*. Protected to allow test subclasses
   // to invoke them directly without a live nats.c connection.
-  static void onError(natsConnection* nc, natsSubscription* sub, natsStatus err,
+  static void onError(natsConnection* nc,
+                      natsSubscription* sub,
+                      natsStatus err,
                       void* closure) noexcept;
   static void onDisconnected(natsConnection* nc, void* closure) noexcept;
   static void onReconnected(natsConnection* nc, void* closure) noexcept;

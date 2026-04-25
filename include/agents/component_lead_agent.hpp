@@ -1,17 +1,17 @@
 #pragma once
 
+#include "agents/async_agent.hpp"
+#include "agents/coordination_state.hpp"
+#include "agents/lead_agent_base.hpp"
+
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "agents/async_agent.hpp"
-#include "agents/coordination_state.hpp"
-#include "agents/lead_agent_base.hpp"
-
 #ifdef ENABLE_GRPC
-#include "network/result_aggregator.hpp"
-#include "network/yaml_parser.hpp"
+#  include "network/result_aggregator.hpp"
+#  include "network/yaml_parser.hpp"
 #endif
 
 namespace keystone {
@@ -142,8 +142,7 @@ class ComponentLeadAgent : public LeadAgentBase<ComponentLeadState> {
    *
    * @param result_msg Message containing module result
    */
-  void processSubordinateResult(
-      const core::KeystoneMessage& result_msg) override;
+  void processSubordinateResult(const core::KeystoneMessage& result_msg) override;
 
   /**
    * @brief Convert state enum to string (HOOK METHOD)
