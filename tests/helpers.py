@@ -15,6 +15,7 @@ def make_agent(
     program: str = "",
     current_task_id: Optional[str] = None,
 ) -> Agent:
+    """Create an Agent test fixture with sensible defaults."""
     return Agent(
         id=id,
         name=name,
@@ -34,6 +35,7 @@ def make_task(
     dependencies: Optional[list[str]] = None,
     assigned_agent_id: Optional[str] = None,
 ) -> Task:
+    """Create a Task test fixture with sensible defaults."""
     return Task(
         id=id,
         title=title,
