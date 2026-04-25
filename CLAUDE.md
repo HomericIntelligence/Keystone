@@ -63,6 +63,13 @@ Keystone provides two complementary transports that are bridged transparently:
   agents from the local MessageBus onto the appropriate NATS subject, and vice versa.
   No component needs awareness of whether its peer is local or remote.
 
+### TaskClaimer and DAG Advancement
+
+- **TaskClaimer** (in ProjectAgamemnon) polls the `homeric-tasks` stream for ready
+  tasks pulled from Agamemnon's task queue.
+- It advances the DAG via `advance_dag_tracked()` after task execution, updating
+  dependency state and enabling downstream task readiness.
+
 ### Transport Decision Flow
 
 ```
@@ -98,7 +105,7 @@ manages NATS streams directly.
 | `homeric-myrmidon` | `hi.myrmidon.{type}.>` | PULL | Pipeline myrmidons |
 | `homeric-pipeline` | `hi.pipeline.>` | PUB/SUB | Odysseus, Argus |
 | `homeric-agents` | `hi.agents.>` | PUB/SUB | Argus |
-| `homeric-tasks` | `hi.tasks.>` | PUB/SUB | Agamemnon, Odysseus |
+| `homeric-tasks` | `hi.tasks.>` | PUB/SUB | Agamemnon, Odysseus, TaskClaimer |
 | `homeric-logs` | `hi.logs.>` | PUB | Argus/Loki, Odysseus |
 
 ---
@@ -159,6 +166,13 @@ cmake --preset ubsan          # Debug + UndefinedBehaviorSanitizer
 cmake --build --preset asan
 ctest --preset asan
 ```
+
+### Public Dependency Visibility
+
+**IMPORTANT**: `spdlog` and `concurrentqueue` must be linked as `PUBLIC` (not `PRIVATE`)
+on `keystone_core` and `keystone_concurrency` targets because their headers are exposed
+in the public API via `logger.hpp` and message queue types. Downstream consumers need
+transitive access to these headers at compile time.
 
 ### Build Output Structure
 
@@ -307,6 +321,7 @@ Before opening a PR:
 3. Formatting clean: `just format-check`
 4. clang-tidy clean: `just lint`
 5. No compilation warnings (`-Werror` is enforced)
+6. CHANGELOG.md updated for user-facing changes
 
 ---
 

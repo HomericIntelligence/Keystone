@@ -303,6 +303,7 @@ jobs:
 
   supply-chain-scanning:
     runs-on: ubuntu-latest
+    # dependency-review-action only supports pull_request events; skip on push/schedule
     timeout-minutes: 10
     # dependency-review-action only supports pull_request events; skip on push/schedule
     if: github.event_name == 'pull_request'
