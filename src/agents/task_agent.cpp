@@ -77,8 +77,11 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
     // Execute the bash command
     std::string result = executeBash(msg.command);
 
-    // Log the execution
-    command_log_.emplace_back(msg.command, result);
+    // Log the execution (lock guards concurrent processMessage coroutines)
+    {
+      std::lock_guard<std::mutex> lock(log_mutex_);
+      command_log_.emplace_back(msg.command, result);
+    }
 
     auto response = core::Response::createSuccess(msg, agent_id_, result);
     sendResponseMessage(msg, result);

@@ -46,12 +46,12 @@ class TaskAgent : public AsyncAgent {
   concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) override;
 
   /**
-   * @brief Get command execution history
+   * @brief Get a snapshot of command execution history
    *
-   * @return const std::vector<std::pair<std::string, std::string>>& History of
-   * (command, result) pairs
+   * @return std::vector<std::pair<std::string, std::string>> Copy of history
    */
-  const std::vector<std::pair<std::string, std::string>>& getCommandHistory() const {
+  std::vector<std::pair<std::string, std::string>> getCommandHistory() const {
+    std::lock_guard<std::mutex> lock(log_mutex_);
     return command_log_;
   }
 
@@ -166,6 +166,7 @@ class TaskAgent : public AsyncAgent {
   std::string executeBash(const std::string& command);
 
   std::vector<std::pair<std::string, std::string>> command_log_;
+  mutable std::mutex log_mutex_;
 
   // Phase 5: Chaos Engineering failure state
   std::atomic<bool> failed_{false};
