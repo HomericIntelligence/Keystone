@@ -17,3 +17,4 @@
 - [ ] Code formatted (`make format.native`)
 - [ ] On feature branch (not main)
 - [ ] Commit messages follow conventional commits
+- [ ] CHANGELOG.md is managed by release-please — do not edit manually
