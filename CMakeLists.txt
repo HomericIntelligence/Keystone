@@ -445,6 +445,8 @@ add_executable(
                                           # regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
+  tests/unit/test_subject_validator.cpp # Issue #280: NATS wildcard-aware token
+                                        # validation
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
