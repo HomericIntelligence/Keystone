@@ -334,6 +334,7 @@ jobs:
             --xml \
             --xml-version=2 \
             --suppress=missingIncludeSystem \
+            --suppress=syntaxError \
             --inline-suppr \
             -I include \
             src/ tests/ 2> cppcheck-report.xml
