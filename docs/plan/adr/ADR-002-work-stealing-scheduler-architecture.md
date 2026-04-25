@@ -91,9 +91,9 @@ void WorkStealingScheduler::setCPUAffinity(size_t worker_index) {
 
 ```cpp
 // Start with 1μs, double each iteration up to 1ms
-size_t backoff_shift = std::min(idle_count, Config::SCHEDULER_MAX_BACKOFF_SHIFT);
+size_t backoff_shift = std::min(idle_count, WorkStealingScheduler::SCHEDULER_MAX_BACKOFF_SHIFT);
 size_t sleep_us = std::min(1UL << backoff_shift,
-                           Config::SCHEDULER_MAX_BACKOFF_MICROSECONDS);
+                           WorkStealingScheduler::SCHEDULER_MAX_BACKOFF_MICROSECONDS);
 std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
 ```
 
@@ -232,7 +232,7 @@ worker_id = hash(agent_id) % num_workers;
 // FIX P2-10: DoS prevention
 static constexpr size_t MAX_WORKER_THREADS = 256;
 
-if (num_workers_ > Config::MAX_WORKER_THREADS) {
+if (num_workers_ > WorkStealingScheduler::MAX_WORKER_THREADS) {
   throw std::invalid_argument("Too many worker threads");
 }
 ```
