@@ -128,7 +128,7 @@ jobs:
 
       # Filesystem scan covers C++ headers and Conan lock files for known CVEs
       - name: Run Trivy filesystem scan (Conan + OS packages) — SARIF
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -139,7 +139,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Trivy filesystem scan (Conan + OS packages) — JSON
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -214,7 +214,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner (table format)
         if: steps.docker_build.outcome == 'success'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: 'projectkeystone:scan'
           format: 'table'
@@ -224,7 +224,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner (SARIF format)
         if: steps.docker_build.outcome == 'success'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: 'projectkeystone:scan'
           format: 'sarif'
@@ -241,7 +241,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner (JSON format)
         if: steps.docker_build.outcome == 'success'
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: 'projectkeystone:scan'
           format: 'json'
