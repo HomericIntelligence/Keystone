@@ -152,7 +152,7 @@ async def test_sequential_calls_same_team_both_execute() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Issue #295 - coalesced count metrics
+# Issue #295 — coalesced count metrics
 # ---------------------------------------------------------------------------
 
 
@@ -232,7 +232,7 @@ async def test_get_metrics_returns_all_coalesced_teams() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Issue #296 - cleanup_idle_teams
+# Issue #296 — cleanup_idle_teams
 # ---------------------------------------------------------------------------
 
 
@@ -292,7 +292,7 @@ async def test_cleanup_idle_teams_empty_is_noop() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Issue #300 - startup_scan
+# Issue #300 — startup_scan
 # ---------------------------------------------------------------------------
 
 
