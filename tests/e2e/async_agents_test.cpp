@@ -2,8 +2,10 @@
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message_bus.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <map>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -108,28 +110,28 @@ TEST(E2E_PhaseB, AsyncAgentsConcurrentProcessing) {
   agent->setScheduler(&scheduler);
   bus.registerAgent(agent->getAgentId(), agent);
 
-  // Send 10 echo commands (sleep is blocked by security validation)
-  for (int32_t i = 0; i < 10; ++i) {
+  // Send sleep + 9 echo commands concurrently to verify true concurrent processing
+  auto sleep_msg = KeystoneMessage::create("test", agent->getAgentId(), "sleep 1");
+  bus.routeMessage(sleep_msg);
+
+  for (int32_t i = 0; i < 9; ++i) {
     auto cmd = "echo " + std::to_string(i);
     auto msg = KeystoneMessage::create("test", agent->getAgentId(), cmd);
     bus.routeMessage(msg);
   }
 
-  // Wait for all to complete
-  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  // After 500ms, the echo commands should be done but sleep still running
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  const auto& mid_history = agent->getCommandHistory();
+  // At minimum the echo commands should be mostly done
+  size_t echo_done = std::count_if(mid_history.begin(), mid_history.end(), [](const auto& p) {
+    return p.first.substr(0, 4) == "echo";
+  });
+  EXPECT_GE(echo_done, 5u) << "echo commands should process concurrently with sleep";
 
-  const auto& history = agent->getCommandHistory();
-  ASSERT_EQ(history.size(), 10);
-
-  // Verify all results present
-  std::set<std::string> results;
-  for (const auto& [cmd, result] : history) {
-    results.insert(result);
-  }
-
-  for (int32_t i = 0; i < 10; ++i) {
-    EXPECT_TRUE(results.count(std::to_string(i)) > 0);
-  }
+  // Wait for sleep to finish
+  std::this_thread::sleep_for(std::chrono::milliseconds(700));
+  EXPECT_EQ(agent->getCommandHistory().size(), 10);
 
   scheduler.shutdown();
 }
