@@ -139,6 +139,7 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     echo -e "${YELLOW}Filtering coverage data...${NC}"
     lcov --remove "$COVERAGE_INFO" \
         '/usr/*' \
+        "${HOME}/.conan2/*" \
         '*/third_party/*' \
         '*/tests/*' \
         '*/_deps/*' \
@@ -147,7 +148,8 @@ if [[ "$HTML_ONLY" == "false" ]]; then
         '*/concurrentqueue/*' \
         '*/cista/*' \
         '*/spdlog/*' \
-        --output-file "$COVERAGE_FILTERED"
+        --output-file "$COVERAGE_FILTERED" \
+        --ignore-errors inconsistent,unused
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to filter coverage data${NC}"
