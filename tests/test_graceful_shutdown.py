@@ -50,13 +50,11 @@ class SlowTaskClaimer(TaskClaimer):
 
 
 class TestDrainEmpty:
-    @pytest.mark.asyncio
     async def test_drain_returns_true_immediately_when_no_inflight(self) -> None:
         claimer = make_claimer()
         result = await claimer.drain(timeout=5.0)
         assert result is True
 
-    @pytest.mark.asyncio
     async def test_inflight_count_zero_initially(self) -> None:
         claimer = make_claimer()
         assert claimer.in_flight_count == 0
@@ -68,14 +66,12 @@ class TestDrainEmpty:
 
 
 class TestInflightTracking:
-    @pytest.mark.asyncio
     async def test_inflight_count_increases_when_task_dispatched(self) -> None:
         claimer = SlowTaskClaimer(delay=0.1)
         task = claimer.advance_dag_tracked("team-1")
         assert claimer.in_flight_count == 1
         await task
 
-    @pytest.mark.asyncio
     async def test_inflight_count_decreases_after_task_completes(self) -> None:
         claimer = SlowTaskClaimer(delay=0.0)
         task = claimer.advance_dag_tracked("team-1")
@@ -84,7 +80,6 @@ class TestInflightTracking:
         await asyncio.sleep(0)
         assert claimer.in_flight_count == 0
 
-    @pytest.mark.asyncio
     async def test_multiple_inflight_tracked(self) -> None:
         claimer = SlowTaskClaimer(delay=0.1)
         t1 = claimer.advance_dag_tracked("team-1")
@@ -92,7 +87,6 @@ class TestInflightTracking:
         assert claimer.in_flight_count == 2
         await asyncio.gather(t1, t2)
 
-    @pytest.mark.asyncio
     async def test_inflight_removed_after_exception(self) -> None:
         claimer = make_claimer()
 
@@ -113,7 +107,6 @@ class TestInflightTracking:
 
 
 class TestDrainCompletes:
-    @pytest.mark.asyncio
     async def test_inflight_advance_dag_completes_before_drain_returns(self) -> None:
         """Core success criterion: drain() waits for in-flight work to finish."""
         claimer = SlowTaskClaimer(delay=0.05)
@@ -125,7 +118,6 @@ class TestDrainCompletes:
         assert result is True
         assert claimer.in_flight_count == 0
 
-    @pytest.mark.asyncio
     async def test_multiple_inflight_all_complete_before_drain_returns(self) -> None:
         claimer = SlowTaskClaimer(delay=0.05)
         for team_id in ("team-1", "team-2", "team-3"):
@@ -137,7 +129,6 @@ class TestDrainCompletes:
         assert result is True
         assert claimer.in_flight_count == 0
 
-    @pytest.mark.asyncio
     async def test_advance_dag_called_with_correct_team_id(self) -> None:
         claimer = SlowTaskClaimer(delay=0.0)
         claimer.advance_dag_tracked("team-42")
@@ -151,7 +142,6 @@ class TestDrainCompletes:
 
 
 class TestDrainTimeout:
-    @pytest.mark.asyncio
     async def test_drain_timeout_returns_false(self) -> None:
         """drain() returns False when in-flight tasks outlast the timeout."""
         claimer = SlowTaskClaimer(delay=10.0)
@@ -166,7 +156,6 @@ class TestDrainTimeout:
         except (asyncio.CancelledError, Exception):
             pass
 
-    @pytest.mark.asyncio
     async def test_drain_timeout_logs_warning(self) -> None:
         claimer = SlowTaskClaimer(delay=10.0)
         task = claimer.advance_dag_tracked("team-slow")
@@ -203,7 +192,6 @@ class TestNATSListenerShutdown:
         listener.begin_shutdown()
         assert listener.shutting_down is True
 
-    @pytest.mark.asyncio
     async def test_new_events_dropped_after_begin_shutdown(self) -> None:
         """After begin_shutdown(), _on_task_event must not call advance_dag."""
         claimer = SlowTaskClaimer(delay=0.0)
@@ -215,7 +203,6 @@ class TestNATSListenerShutdown:
         assert claimer.in_flight_count == 0
         assert claimer.calls == []
 
-    @pytest.mark.asyncio
     async def test_events_dispatched_before_shutdown(self) -> None:
         claimer = SlowTaskClaimer(delay=0.0)
         listener = NATSListener(claimer)
@@ -225,7 +212,6 @@ class TestNATSListenerShutdown:
 
         assert "team-1" in claimer.calls
 
-    @pytest.mark.asyncio
     async def test_event_dropped_during_shutdown_logs_info(self) -> None:
         claimer = make_claimer()
         listener = NATSListener(claimer)
@@ -239,7 +225,6 @@ class TestNATSListenerShutdown:
             call_args = mock_logger.info.call_args
             assert call_args[0][0] == "nats_event_dropped_during_shutdown"
 
-    @pytest.mark.asyncio
     async def test_inflight_before_shutdown_completes(self) -> None:
         """Events in-flight at shutdown time must still complete."""
         claimer = SlowTaskClaimer(delay=0.05)
@@ -264,7 +249,6 @@ class TestNATSListenerShutdown:
 
 
 class TestShutdownSequence:
-    @pytest.mark.asyncio
     async def test_full_shutdown_sequence_completes_inflight(self) -> None:
         """Full sequence: begin_shutdown → drain → stop, all in-flight complete."""
         claimer = SlowTaskClaimer(delay=0.05)
@@ -290,7 +274,6 @@ class TestShutdownSequence:
         assert claimer.in_flight_count == 0
         assert "team-c" not in claimer.calls
 
-    @pytest.mark.asyncio
     async def test_stop_called_even_when_drain_times_out(self) -> None:
         """listener.stop() must be called even if drain times out."""
         claimer = SlowTaskClaimer(delay=10.0)

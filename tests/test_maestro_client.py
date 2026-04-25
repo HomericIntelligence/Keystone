@@ -1,7 +1,6 @@
 """Tests for MaestroClient._agent_from_api() and get_agents()."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from src.keystone.maestro_client import _agent_from_api, MaestroClient
@@ -92,14 +91,12 @@ class TestGetAgents:
             "deletedAt": deleted_at,
         }
 
-    @pytest.mark.asyncio
     async def test_get_agents_returns_active_agents(self) -> None:
         client = self._make_client([self._raw_entry("a1")])
         agents = await client.get_agents()
         assert len(agents) == 1
         assert agents[0].id == "a1"
 
-    @pytest.mark.asyncio
     async def test_get_agents_filters_soft_deleted(self) -> None:
         client = self._make_client([
             self._raw_entry("a1"),
@@ -109,7 +106,6 @@ class TestGetAgents:
         assert len(agents) == 1
         assert agents[0].id == "a1"
 
-    @pytest.mark.asyncio
     async def test_get_agents_populates_current_task_id(self) -> None:
         client = self._make_client([
             self._raw_entry("a1", current_task_id="task-99"),
@@ -117,7 +113,6 @@ class TestGetAgents:
         agents = await client.get_agents()
         assert agents[0].current_task_id == "task-99"
 
-    @pytest.mark.asyncio
     async def test_get_agents_nested_agent_key_soft_delete(self) -> None:
         """Handles responses where agent data is nested under 'agent' key."""
         inner = self._raw_entry("a1", deleted_at="2026-01-01T00:00:00Z")
