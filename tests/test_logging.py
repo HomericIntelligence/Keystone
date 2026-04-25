@@ -6,17 +6,13 @@ import json
 import logging
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from io import StringIO
 from unittest.mock import patch
-
-import pytest
 
 from keystone.logging import (
     JsonFormatter,
     KeystoneLogger,
-    _BASELINE_ATTRS,
-    _RESERVED_FIELDS,
     configure_logging,
     get_logger,
 )
