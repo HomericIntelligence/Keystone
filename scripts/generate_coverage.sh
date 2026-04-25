@@ -57,6 +57,28 @@ fi
 echo -e "${BLUE}=== ProjectKeystone Code Coverage Generator ===${NC}"
 echo ""
 
+# Resolve gcov tool: Clang-compiled .gcda files need llvm-cov gcov, not system gcov.
+# lcov passes --gcov-tool as the executable; llvm-cov needs "gcov" as its first argument,
+# so we create a small wrapper that forwards all args to "llvm-cov gcov".
+LLVM_COV_BIN=""
+for ver in "" "-18" "-17" "-16" "-15"; do
+    if command -v "llvm-cov${ver}" &>/dev/null; then
+        LLVM_COV_BIN="llvm-cov${ver}"
+        break
+    fi
+done
+
+GCOV_TOOL_ARG=""
+if [[ -n "$LLVM_COV_BIN" ]]; then
+    LLVM_GCOV_WRAPPER="/tmp/llvm-gcov-wrapper-$$.sh"
+    printf '#!/bin/bash\nexec %s gcov "$@"\n' "$LLVM_COV_BIN" > "$LLVM_GCOV_WRAPPER"
+    chmod +x "$LLVM_GCOV_WRAPPER"
+    GCOV_TOOL_ARG="--gcov-tool $LLVM_GCOV_WRAPPER"
+    echo -e "${BLUE}Using gcov tool: $LLVM_COV_BIN gcov (via wrapper)${NC}"
+else
+    echo -e "${YELLOW}Warning: llvm-cov not found, falling back to system gcov (may cause version mismatch)${NC}"
+fi
+
 # Create coverage directory
 mkdir -p "$COVERAGE_DIR"
 
@@ -92,19 +114,19 @@ if [[ "$HTML_ONLY" == "false" ]]; then
 
     # Reset coverage counters
     echo -e "${YELLOW}Resetting coverage counters...${NC}"
-    lcov --zerocounters --directory .
+    lcov --zerocounters --directory . $GCOV_TOOL_ARG
 
     # Run tests (continue even if some fail to get partial coverage)
     echo -e "${YELLOW}Running tests...${NC}"
     ctest --output-on-failure || echo -e "${YELLOW}Warning: Some tests failed, but continuing with coverage generation${NC}"
 
-    # Capture coverage data (ignore errors from multi-threaded tests and gcov version skew).
-    # lcov 2.0 on Ubuntu 24.04: use --ignore-errors source,gcov,gcov to suppress both the
-    # gcov symlink-collision warning and the Perl "append_tracefile" crash it triggers when
-    # multiple test targets compile the same source file (e.g. monitoring_unit_tests + unit_tests).
+    # Capture coverage data.
+    # Use llvm-cov gcov wrapper so Clang-built .gcda files are processed correctly
+    # (system gcov reports version mismatch '4.8*' vs 'B33*' for Clang-generated data).
     echo -e "${YELLOW}Capturing coverage data...${NC}"
     lcov --capture --directory . --output-file "$COVERAGE_INFO" \
-        --ignore-errors negative,mismatch,version,gcov,gcov,source
+        $GCOV_TOOL_ARG \
+        --ignore-errors negative,mismatch,source
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to capture coverage data${NC}"
@@ -162,6 +184,9 @@ elif command -v open &> /dev/null; then
     echo -e "${YELLOW}Opening report in browser...${NC}"
     open "$HTML_OUTPUT_DIR/index.html" 2>/dev/null &
 fi
+
+# Clean up temporary gcov wrapper
+[[ -n "$LLVM_GCOV_WRAPPER" ]] && rm -f "$LLVM_GCOV_WRAPPER"
 
 # Check if coverage meets threshold (85%)
 THRESHOLD=85.0
