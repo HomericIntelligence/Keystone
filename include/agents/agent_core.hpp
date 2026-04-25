@@ -225,7 +225,6 @@ class AgentCore {
   // THREAD-SAFE: Atomic for lock-free read/write from concurrent getMessage() and setter
   std::atomic<int64_t> low_priority_check_interval_ns_;
 
-  // FIX M1: Backpressure - Queue size limits to prevent memory exhaustion
   std::atomic<bool> backpressure_applied_{false};  ///< Flag when backpressure is active
 
   // Phase 1.2 (Issue #52): Cancellation tracking
