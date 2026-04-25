@@ -10,6 +10,7 @@ from datetime import datetime
 from io import StringIO
 from unittest.mock import patch
 
+
 from keystone.logging import (
     JsonFormatter,
     KeystoneLogger,
