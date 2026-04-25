@@ -320,18 +320,6 @@ target_include_directories(
 target_link_libraries(keystone_simulation PUBLIC keystone_concurrency
                                                  keystone_core)
 
-# Transport library — NATS connection with reconnection callbacks (issue #88)
-add_library(keystone_transport src/transport/nats_connection.cpp)
-
-target_include_directories(
-  keystone_transport
-  PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/keystone>
-)
-
-target_link_libraries(keystone_transport PUBLIC keystone_core nats)
-
 # E2E Tests - Basic Delegation
 add_executable(basic_delegation_tests tests/e2e/basic_delegation_test.cpp)
 
@@ -467,11 +455,6 @@ else()
 endif()
 
 gtest_discover_tests(unit_tests)
-
-# Transport unit tests — standalone, no agents/concurrency dependency (issue #88)
-add_executable(transport_tests tests/unit/test_nats_connection.cpp)
-target_link_libraries(transport_tests keystone_transport GTest::gtest_main)
-gtest_discover_tests(transport_tests)
 
 # Profiling Tests (Phase 2.3 - Issue #53)
 # Separate test suite for profiling tests (slow, opt-in)
