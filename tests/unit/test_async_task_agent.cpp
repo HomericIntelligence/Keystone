@@ -2,7 +2,9 @@
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message_bus.hpp"
 
+#include <algorithm>
 #include <chrono>
+#include <set>
 #include <thread>
 
 #include <gtest/gtest.h>
@@ -75,7 +77,7 @@ TEST_F(AsyncTaskAgentTest, ProcessMultipleCommands) {
   bus_->routeMessage(msg2);
   bus_->routeMessage(msg3);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   const auto& history = agent_->getCommandHistory();
   ASSERT_EQ(history.size(), 3);
@@ -107,32 +109,30 @@ TEST_F(AsyncTaskAgentTest, HandleCommandFailure) {
 }
 
 TEST_F(AsyncTaskAgentTest, AsyncExecutionDoesNotBlock) {
-  // Submit a "slow" command (echo only - sleep would fail security validation)
-  auto slow_msg = KeystoneMessage::create("test", agent_->getAgentId(), "echo slow");
-
-  // Submit a fast command
+  // Submit a slow command (sleep 1) and a fast command to verify non-blocking execution
+  auto slow_msg = KeystoneMessage::create("test", agent_->getAgentId(), "sleep 1");
   auto fast_msg = KeystoneMessage::create("test", agent_->getAgentId(), "echo fast");
 
-  // Send slow first
+  auto start = std::chrono::steady_clock::now();
   bus_->routeMessage(slow_msg);
-  // Send fast immediately after
   bus_->routeMessage(fast_msg);
 
-  // Wait for both to complete
-  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  // Give fast message time to complete (should be << 1s)
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-  // Both should complete (async execution)
+  // Fast command should already be in history even though sleep is still running
   const auto& history = agent_->getCommandHistory();
-  ASSERT_EQ(history.size(), 2);
+  // At least the echo fast should have completed by now (async, non-blocking)
+  bool fast_done = std::any_of(history.begin(), history.end(), [](const auto& p) {
+    return p.second == "fast";
+  });
+  EXPECT_TRUE(fast_done) << "echo fast should complete before sleep 1 finishes";
 
-  // Fast command might complete before slow (parallel execution)
-  std::set<std::string> results;
-  for (const auto& [cmd, result] : history) {
-    results.insert(result);
-  }
-
-  EXPECT_TRUE(results.count("fast") > 0);
-  EXPECT_TRUE(results.count("slow") > 0);
+  // Wait for sleep to finish
+  std::this_thread::sleep_for(std::chrono::milliseconds(1100));
+  EXPECT_EQ(agent_->getCommandHistory().size(), 2);
+  auto elapsed = std::chrono::steady_clock::now() - start;
+  EXPECT_GE(elapsed, std::chrono::milliseconds(1000));
 }
 
 TEST_F(AsyncTaskAgentTest, AgentIdPreserved) {

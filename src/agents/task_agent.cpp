@@ -138,7 +138,18 @@ void TaskAgent::validateCommand(const std::string& command) {
     return;  // SAFE: Simple text echo
   }
 
-  // Pattern 3: Whitelisted commands with no arguments
+  // Pattern 3: sleep with max duration (prevent DoS via long sleeps)
+  static const std::regex sleep_pattern(R"(^sleep ([0-9]+(?:\.[0-9]+)?)$)");
+  std::smatch sleep_match;
+  if (std::regex_match(command, sleep_match, sleep_pattern)) {
+    double duration = std::stod(sleep_match[1].str());
+    if (duration > 10.0) {
+      throw std::runtime_error("sleep duration exceeds maximum allowed (10s)");
+    }
+    return;  // SAFE: short sleep
+  }
+
+  // Pattern 4: Whitelisted commands with no arguments
   std::istringstream iss(command);
   std::string base_command;
   iss >> base_command;
@@ -162,7 +173,8 @@ void TaskAgent::validateCommand(const std::string& command) {
   ss << "Allowed patterns:\n";
   ss << "  1. Arithmetic: echo $((expression))\n";
   ss << "  2. Simple echo: echo <text>\n";
-  ss << "  3. Whitelisted commands: ";
+  ss << "  3. sleep <N> where N <= 10\n";
+  ss << "  4. Whitelisted commands: ";
   bool first = true;
   for (const auto& cmd : ALLOWED_COMMANDS) {
     if (!first)

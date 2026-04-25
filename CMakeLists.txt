@@ -365,14 +365,23 @@ target_link_libraries(async_delegation_tests keystone_agents keystone_core
 
 gtest_discover_tests(async_delegation_tests)
 
-# E2E Tests - Async Agents (Coroutines) DISABLED: Phase 6 async features not yet
-# implemented add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
-# tests/e2e/full_async_hierarchy_test.cpp)
+# E2E Tests - Async Agents (Coroutines)
+# ENABLED: sleep ≤10s now allowed by validateCommand() (Issue #377)
+add_executable(async_agents_tests tests/e2e/async_agents_test.cpp)
+
+target_link_libraries(async_agents_tests keystone_agents keystone_core
+                      keystone_concurrency GTest::gtest_main)
+
+gtest_discover_tests(async_agents_tests)
+
+# E2E Tests - Full Async 4-Layer Hierarchy (Phase 6 full coroutines)
+# DISABLED: full coroutine hierarchy not yet implemented
+# add_executable(full_async_hierarchy_tests tests/e2e/full_async_hierarchy_test.cpp)
 #
-# target_link_libraries(async_agents_tests keystone_agents keystone_core
-# keystone_concurrency GTest::gtest_main)
+# target_link_libraries(full_async_hierarchy_tests keystone_agents keystone_core
+#                       keystone_concurrency GTest::gtest_main)
 #
-# gtest_discover_tests(async_agents_tests)
+# gtest_discover_tests(full_async_hierarchy_tests)
 
 # E2E Tests - Distributed Hierarchy
 add_executable(distributed_hierarchy_tests
