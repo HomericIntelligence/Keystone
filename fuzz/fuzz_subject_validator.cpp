@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "core/subject_validator.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>

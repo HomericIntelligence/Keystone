@@ -11,13 +11,13 @@
 // Build with: cmake -DENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++ ..
 // Run with: ./fuzz_message_serialization -max_len=4096 -runs=1000000
 
+#include "core/message.hpp"
+#include "core/message_serializer.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#include "core/message.hpp"
-#include "core/message_serializer.hpp"
 
 using namespace keystone;
 using namespace keystone::core;
@@ -53,14 +53,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     try {
       // Split input into 4 parts for msg_id, sender, receiver, command
       size_t quarter = size / 4;
-      std::string msg_id(reinterpret_cast<const char*>(data),
-                         std::min(quarter, size_t(256)));
+      std::string msg_id(reinterpret_cast<const char*>(data), std::min(quarter, size_t(256)));
       std::string sender(reinterpret_cast<const char*>(data + quarter),
                          std::min(quarter, size_t(256)));
       std::string receiver(reinterpret_cast<const char*>(data + 2 * quarter),
                            std::min(quarter, size_t(256)));
-      std::string command(reinterpret_cast<const char*>(data + 3 * quarter),
-                          size - 3 * quarter);
+      std::string command(reinterpret_cast<const char*>(data + 3 * quarter), size - 3 * quarter);
 
       auto msg = KeystoneMessage::create(sender, receiver, command);
 
