@@ -153,11 +153,13 @@ Only move to next phase when:
 ### Naming Conventions
 
 ```cpp
-// snake_case for functions and variables
-void process_message(const KeystoneMessage& msg);
+// camelBack for functions
+void processMessage(const KeystoneMessage& msg);
+
+// lower_case for variables, members, parameters
 std::string agent_id;
 
-// PascalCase for types
+// PascalCase for types and classes
 class ChiefArchitectAgent;
 struct KeystoneMessage;
 
@@ -266,6 +268,7 @@ External stakeholders when:
 **ALL code changes MUST follow this workflow:**
 
 1. **Create a Feature Branch FIRST**
+
    ```bash
    git checkout -b feat/descriptive-name-$(date +%Y%m%d-%H%M%S)
    # OR for fixes:
@@ -275,11 +278,13 @@ External stakeholders when:
 2. **Coordinate Implementation** via Task tool with implementation-engineer
 
 3. **Verify All Tests Pass**
+
    ```bash
    make test.debug.asan  # Must show 100% pass rate
    ```
 
 4. **Commit to Feature Branch**
+
    ```bash
    git add <files>
    git commit -m "feat: Phase X - Descriptive message (TDD)"
@@ -287,6 +292,7 @@ External stakeholders when:
    ```
 
 5. **Create Pull Request**
+
    ```bash
    gh pr create --title "feat: Phase X - Brief description" \
                 --body "## Summary
@@ -331,6 +337,7 @@ External stakeholders when:
 ### Verification Checklist
 
 Before creating PR:
+
 1. ✅ On feature branch: `git branch --show-current`
 2. ✅ All tests pass: `make test.debug.asan` shows 100%
 3. ✅ Code formatted: `make format`
