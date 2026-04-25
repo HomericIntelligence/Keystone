@@ -55,6 +55,24 @@ class TestOnTaskEventInvalidIds:
         claimer.advance_dag_tracked.assert_not_called()
 
 
+class TestParseSubject:
+    def test_valid_subject_extracts_team_and_task(self) -> None:
+        result = NATSListener._parse_subject("hi.tasks.team-1.task-2.completed")
+        assert result == ("team-1", "task-2")
+
+    def test_short_subject_raises_value_error(self) -> None:
+        with pytest.raises(ValueError):
+            NATSListener._parse_subject("hi.tasks.team-1.task-2")
+
+    def test_long_subject_raises_value_error(self) -> None:
+        with pytest.raises(ValueError):
+            NATSListener._parse_subject("hi.tasks.team-1.task-2.completed.extra")
+
+    def test_empty_subject_raises(self) -> None:
+        with pytest.raises(ValueError):
+            NATSListener._parse_subject("")
+
+
 class TestOnTaskEventShutdown:
     async def test_event_dropped_during_shutdown(self) -> None:
         listener, claimer = _make_listener()
