@@ -16,6 +16,28 @@ Before you begin, ensure you have:
 
 For the full technology stack, see [CLAUDE.md](CLAUDE.md#language-and-technology-stack).
 
+### Installing Prerequisites
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt-get install -y cmake ninja-build clang-18 clang++-18 libc++-18-dev
+pip install conan>=2.0.0
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install cmake ninja llvm conan
+```
+
+**`just` (all platforms):**
+
+```bash
+cargo install just
+# or: brew install just / apt-get install just
+```
+
 ## Branch Strategy
 
 **Never commit directly to `main`.**
@@ -164,6 +186,14 @@ language to the implementation.
 Default to **no comments**. Add one only when the *why* is non-obvious: a hidden
 constraint, a subtle invariant, or a workaround for a specific upstream bug. If
 removing a comment wouldn't confuse a future reader, don't write it.
+
+## Python Conventions
+
+**TaskEvent Field Naming (camelCase):** The `TaskEvent` model in `src/keystone/models.py`
+uses camelCase field names (`newStatus`, `taskId`, `teamId`) to match the JSON payload
+schema directly. This intentionally violates PEP 8 to avoid an unnecessary alias layer.
+Fields are marked with `# noqa: N815` to suppress linter warnings. This is a deliberate
+design choice to keep deserialization transparent.
 
 ## Formatting and Linting
 
