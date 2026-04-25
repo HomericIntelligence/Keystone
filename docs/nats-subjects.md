@@ -38,6 +38,7 @@ hi.tasks.{teamId}.{taskId}.{verb}
 | `verb` | Event type | `created`, `updated`, `completed`, `failed` |
 
 **Examples:**
+
 - `hi.tasks.team1.task-abc123.completed`
 - `hi.tasks.research.task-xyz.updated`
 - `hi.tasks.pipeline.task-001.failed`
@@ -160,6 +161,10 @@ if payload.data.status is present → use it
 else if payload.status is present → use it, emit warning
 else → treat as missing status
 ```
+
+> **Deprecation**: This flat-format fallback (`payload["status"]`) is deprecated
+> as of v0.2.0 and will be removed in v0.3.0. All publishers must migrate to the
+> nested `payload["data"]["status"]` format before v0.3.0.
 
 ---
 
