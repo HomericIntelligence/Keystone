@@ -253,8 +253,7 @@ TEST_F(ModuleLeadAgentTest, SingleTaskFailureTransitionsToError) {
   failure_msg.action_type = core::ActionType::TASK_FAILED;
 
   // Initialize coordination for 1 expected result (single number → single task)
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 42"))
-      .get();
+  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 42")).get();
 
   // Deliver failure
   module->processMessage(failure_msg).get();
