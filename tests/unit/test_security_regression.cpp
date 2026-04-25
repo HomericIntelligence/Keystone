@@ -171,7 +171,7 @@ TEST(SecurityRegressionTest, AgentIdInterningOverflow) {
 TEST(SecurityRegressionTest, ConfigWatermarkValidation) {
   // Test that watermark configuration is validated at compile time
 
-  size_t watermark = core::Config::getQueueLowWatermark();
+  size_t watermark = static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE * core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
   size_t max_size = core::Config::AGENT_MAX_QUEUE_SIZE;
 
   // Watermark must be less than max size
@@ -246,7 +246,7 @@ TEST(SecurityRegressionTest, StaticAssertCompileTime) {
   // Verify that static_assert validations don't affect runtime
 
   // Config watermark validation (compile-time check)
-  size_t watermark = core::Config::getQueueLowWatermark();
+  size_t watermark = static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE * core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
   EXPECT_GT(watermark, 0u);
 
   // If static_assert failed, this code wouldn't compile
