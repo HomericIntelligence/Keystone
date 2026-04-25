@@ -127,11 +127,23 @@ class TestValidateNoCycles:
         walker = DAGWalker(tasks=tasks, agents=[])
         assert walker.validate_no_cycles() is True
 
-    def test_external_dependency_ignored(self) -> None:
-        """Dependencies referencing task IDs not in the graph are silently ignored."""
+    def test_external_dependency_raises(self) -> None:
+        """Dependencies referencing task IDs not in the graph raise ValueError (Issue #233)."""
         t1 = make_task(id="t1", dependencies=["external-task-not-in-graph"])
         walker = DAGWalker(tasks=[t1], agents=[])
-        assert walker.validate_no_cycles() is True
+        with pytest.raises(ValueError, match="Unknown dependency"):
+            walker.validate_no_cycles()
+
+    def test_validate_no_cycles_reports_cycle_path(self) -> None:
+        """_find_cycle_path() returns the task IDs involved in the cycle (Issue #229)."""
+        # A -> B -> A forms a 2-node cycle
+        t_a = make_task(id="A", dependencies=["B"])
+        t_b = make_task(id="B", dependencies=["A"])
+        walker = DAGWalker(tasks=[t_a, t_b], agents=[])
+        cycle_path = walker._find_cycle_path()
+        assert len(cycle_path) >= 2
+        assert "A" in cycle_path
+        assert "B" in cycle_path
 
 
 class TestAdvanceDag:
@@ -189,7 +201,6 @@ class TestAdvanceDag:
         assignments = await walker.advance_dag()
         assert assignments == []
 
-    @pytest.mark.asyncio
     async def test_advance_dag_calls_client_assign_task(self) -> None:
         """advance_dag() must call client.assign_task(task_id, agent_id) when a client is set."""
         task = make_task()
@@ -265,3 +276,22 @@ class TestAdvanceDag:
             task2.id,
             agent2.id,
         ) in awaited_calls
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_raises_on_cycle(self) -> None:
+        """advance_dag() raises ValueError when the DAG contains a cycle (Issue #228)."""
+        t_a = make_task(id="A", dependencies=["B"])
+        t_b = make_task(id="B", dependencies=["A"])
+        agent = make_agent()
+        walker = DAGWalker(tasks=[t_a, t_b], agents=[agent])
+        with pytest.raises(ValueError, match="Cycle detected in task DAG"):
+            await walker.advance_dag()
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_raises_on_unknown_dependency(self) -> None:
+        """advance_dag() raises ValueError when a task references an unknown dep ID (Issue #233)."""
+        task = make_task(id="t1", dependencies=["nonexistent-id"])
+        agent = make_agent()
+        walker = DAGWalker(tasks=[task], agents=[agent])
+        with pytest.raises(ValueError, match="Unknown dependency"):
+            await walker.advance_dag()
