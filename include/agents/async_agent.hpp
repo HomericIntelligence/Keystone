@@ -21,7 +21,7 @@ namespace agents {
  * with a single async-by-default base class, enabling polymorphic collections
  * and runtime execution model flexibility.
  */
-class AsyncAgent : public AgentCore {
+class AsyncAgent : public AgentCore, public std::enable_shared_from_this<AsyncAgent> {
  public:
   /**
    * @brief Construct a new Async Agent
