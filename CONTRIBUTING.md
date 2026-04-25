@@ -16,6 +16,28 @@ Before you begin, ensure you have:
 
 For the full technology stack, see [CLAUDE.md](CLAUDE.md#language-and-technology-stack).
 
+### Installing Prerequisites
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt-get install -y cmake ninja-build clang-18 clang++-18 libc++-18-dev
+pip install conan>=2.0.0
+```
+
+**macOS (Homebrew):**
+
+```bash
+brew install cmake ninja llvm conan
+```
+
+**`just` (all platforms):**
+
+```bash
+cargo install just
+# or: brew install just / apt-get install just
+```
+
 ## Branch Strategy
 
 **Never commit directly to `main`.**
@@ -130,6 +152,16 @@ To run a specific preset manually:
 cmake --preset asan && cmake --build --preset asan && ctest --preset asan --output-on-failure
 cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan --output-on-failure
 ```
+
+## Python Conventions
+
+### TaskEvent camelCase Fields
+
+The `TaskEvent` model in `src/keystone/models.py` uses camelCase field names
+(`newStatus`, `taskId`, `teamId`) to match the JSON payload schema directly,
+avoiding an additional alias layer. This intentionally violates PEP 8 to maintain
+1:1 correspondence with the incoming NATS message format and reduce serialization
+overhead.
 
 ## Code Standards
 
