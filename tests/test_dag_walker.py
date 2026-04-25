@@ -133,7 +133,6 @@ class TestValidateNoCycles:
 
 
 class TestAdvanceDag:
-    @pytest.mark.asyncio
     async def test_assigns_ready_task_to_available_agent(self) -> None:
         task = make_task()
         agent = make_agent()
@@ -144,7 +143,6 @@ class TestAdvanceDag:
         assert agent.current_task_id == task.id
         assert task.assigned_agent_id == agent.id
 
-    @pytest.mark.asyncio
     async def test_multiple_assignments_use_different_agents(self) -> None:
         task1 = make_task(id="t1")
         task2 = make_task(id="t2")
@@ -156,7 +154,6 @@ class TestAdvanceDag:
         assigned_agents = {a.id for _, a in assignments}
         assert assigned_agents == {"a1", "a2"}
 
-    @pytest.mark.asyncio
     async def test_busy_agent_not_double_assigned(self) -> None:
         """A single idle agent with two ready tasks should only get one assignment."""
         task1 = make_task(id="t1")
@@ -167,7 +164,6 @@ class TestAdvanceDag:
         assert len(assignments) == 1
         assert agent.current_task_id is not None
 
-    @pytest.mark.asyncio
     async def test_agent_marked_busy_immediately(self) -> None:
         task1 = make_task(id="t1")
         task2 = make_task(id="t2")
@@ -176,7 +172,6 @@ class TestAdvanceDag:
         await walker.advance_dag()
         assert sum(1 for t in walker.tasks if t.assigned_agent_id is not None) == 1
 
-    @pytest.mark.asyncio
     async def test_no_available_agents_no_assignments(self) -> None:
         task = make_task()
         agent = make_agent(current_task_id="other-task")
@@ -184,7 +179,6 @@ class TestAdvanceDag:
         assignments = await walker.advance_dag()
         assert assignments == []
 
-    @pytest.mark.asyncio
     async def test_no_ready_tasks_no_assignments(self) -> None:
         dep = make_task(id="dep", status="in_progress")
         task = make_task(id="t1", dependencies=["dep"])
