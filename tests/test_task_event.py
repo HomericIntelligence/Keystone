@@ -83,8 +83,8 @@ class TestTaskEventMissingFields:
         assert event.teamId is None
 
     def test_unknown_fields_ignored(self) -> None:
-        event = TaskEvent.model_validate({"status": "done", "unknownField": "ignored"})
-        assert event.effective_status == "done"
+        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+            TaskEvent.model_validate({"status": "done", "unknownField": "ignored"})
 
     def test_task_id_and_team_id_populated(self) -> None:
         event = TaskEvent.model_validate({"taskId": "t-42", "teamId": "team-1", "status": "completed"})
