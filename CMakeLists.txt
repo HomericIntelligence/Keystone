@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
-# SPDX-License-Identifier: BSD-3-Clause
-project(ProjectKeystone CXX)
+project(
+  ProjectKeystone
+  VERSION 0.1.0
+  LANGUAGES CXX)
 
 # C++20 standard required
 set(CMAKE_CXX_STANDARD 20)
@@ -239,9 +241,7 @@ target_include_directories(
 
 # Link dependencies - note: keystone_core depends on keystone_concurrency
 # (circular dependency handled via shared libraries) We'll link
-# keystone_concurrency after it's defined spdlog is PUBLIC because logger.hpp
-# exposes spdlog types in the public API; transitive consumers of keystone_core
-# need spdlog headers
+# keystone_concurrency after it's defined
 target_link_libraries(keystone_core PUBLIC spdlog::spdlog fmt::fmt
                                            concurrentqueue::concurrentqueue)
 
@@ -365,23 +365,14 @@ target_link_libraries(async_delegation_tests keystone_agents keystone_core
 
 gtest_discover_tests(async_delegation_tests)
 
-# E2E Tests - Async Agents (Coroutines)
-# ENABLED: sleep ≤10s now allowed by validateCommand() (Issue #377)
-add_executable(async_agents_tests tests/e2e/async_agents_test.cpp)
-
-target_link_libraries(async_agents_tests keystone_agents keystone_core
-                      keystone_concurrency GTest::gtest_main)
-
-gtest_discover_tests(async_agents_tests)
-
-# E2E Tests - Full Async 4-Layer Hierarchy (Phase 6 full coroutines)
-# DISABLED: full coroutine hierarchy not yet implemented
-# add_executable(full_async_hierarchy_tests tests/e2e/full_async_hierarchy_test.cpp)
+# E2E Tests - Async Agents (Coroutines) DISABLED: Phase 6 async features not yet
+# implemented add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
+# tests/e2e/full_async_hierarchy_test.cpp)
 #
-# target_link_libraries(full_async_hierarchy_tests keystone_agents keystone_core
-#                       keystone_concurrency GTest::gtest_main)
+# target_link_libraries(async_agents_tests keystone_agents keystone_core
+# keystone_concurrency GTest::gtest_main)
 #
-# gtest_discover_tests(full_async_hierarchy_tests)
+# gtest_discover_tests(async_agents_tests)
 
 # E2E Tests - Distributed Hierarchy
 add_executable(distributed_hierarchy_tests
@@ -454,6 +445,8 @@ add_executable(
                                           # regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
+  tests/unit/test_subject_validator.cpp # Issue #280: NATS wildcard-aware token
+                                        # validation
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
@@ -671,11 +664,18 @@ if(ENABLE_FUZZING)
   target_link_options(fuzz_retry_policy PRIVATE ${FUZZING_FLAGS})
   target_link_libraries(fuzz_retry_policy keystone_core)
 
+  # Fuzz test: Subject validator
+  add_executable(fuzz_subject_validator fuzz/fuzz_subject_validator.cpp)
+  target_compile_options(fuzz_subject_validator PRIVATE ${FUZZING_FLAGS})
+  target_link_options(fuzz_subject_validator PRIVATE ${FUZZING_FLAGS})
+  target_link_libraries(fuzz_subject_validator keystone_core)
+
   message(STATUS "Fuzz testing targets enabled:")
   message(STATUS "  - fuzz_message_serialization")
   message(STATUS "  - fuzz_message_bus_routing")
   message(STATUS "  - fuzz_work_stealing")
   message(STATUS "  - fuzz_retry_policy")
+  message(STATUS "  - fuzz_subject_validator")
   message(STATUS "Run with: ./<fuzz_target> -max_len=4096 -runs=1000000")
 endif()
 
@@ -705,12 +705,10 @@ endif()
 # Version Information (needed early for CMake package config)
 # ============================================================================
 
-set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "1")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_PACKAGE_VERSION
-    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}"
-)
+set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 
 # Install public headers (keystone-dev package)
 install(
@@ -803,7 +801,7 @@ install(TARGETS hmas_load_test RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
 if(ENABLE_FUZZING)
   install(
     TARGETS fuzz_message_serialization fuzz_message_bus_routing
-            fuzz_work_stealing fuzz_retry_policy
+            fuzz_work_stealing fuzz_retry_policy fuzz_subject_validator
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/fuzz COMPONENT keystone-misc)
 endif()
 
