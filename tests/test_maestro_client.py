@@ -131,3 +131,152 @@ class TestGetAgents:
         client = MaestroClient(http)
         agents = await client.get_agents()
         assert agents == []
+
+
+class TestAssignTask:
+    def _make_client(self) -> tuple[MaestroClient, AsyncMock]:
+        resp = MagicMock()
+        http = MagicMock()
+        put_mock = AsyncMock(return_value=resp)
+        http.put = put_mock
+        client = MaestroClient(http)
+        return client, put_mock
+
+    @pytest.mark.asyncio
+    async def test_assign_task_calls_put_with_correct_args(self) -> None:
+        client, put_mock = self._make_client()
+        await client.assign_task("task-123", "agent-456")
+        put_mock.assert_called_once_with(
+            "/api/tasks/task-123/assign",
+            json={"agentId": "agent-456"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_assign_task_task_id_in_url(self) -> None:
+        client, put_mock = self._make_client()
+        await client.assign_task("task-abc", "agent-xyz")
+        call_args = put_mock.call_args
+        assert "/api/tasks/task-abc/assign" in call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_assign_task_agent_id_in_body(self) -> None:
+        client, put_mock = self._make_client()
+        await client.assign_task("task-1", "agent-999")
+        call_kwargs = put_mock.call_args[1]
+        assert call_kwargs["json"] == {"agentId": "agent-999"}
+
+    @pytest.mark.asyncio
+    async def test_assign_task_different_ids(self) -> None:
+        client, put_mock = self._make_client()
+        await client.assign_task("task-XYZ", "agent-ABC")
+        put_mock.assert_called_once_with(
+            "/api/tasks/task-XYZ/assign",
+            json={"agentId": "agent-ABC"},
+        )
+
+
+class TestGetTasks:
+    def _make_client(self, raw_tasks: list) -> MaestroClient:
+        resp = MagicMock()
+        resp.json.return_value = {"tasks": raw_tasks}
+        http = MagicMock()
+        http.get = AsyncMock(return_value=resp)
+        return MaestroClient(http)
+
+    def _raw_task(
+        self,
+        id: str = "t1",
+        title: str = "Task One",
+        status: str = "pending",
+        dependencies: list | None = None,
+        assigned_agent_id: str | None = None,
+    ) -> dict:
+        return {
+            "id": id,
+            "title": title,
+            "status": status,
+            "dependencies": dependencies or [],
+            "assignedAgentId": assigned_agent_id,
+        }
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_returns_list(self) -> None:
+        client = self._make_client([self._raw_task("t1"), self._raw_task("t2")])
+        tasks = await client.get_tasks()
+        assert len(tasks) == 2
+        assert tasks[0].id == "t1"
+        assert tasks[1].id == "t2"
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_handles_dict_with_tasks_key(self) -> None:
+        client = self._make_client([self._raw_task("t-wrap")])
+        tasks = await client.get_tasks()
+        assert len(tasks) == 1
+        assert tasks[0].id == "t-wrap"
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_returns_empty_list(self) -> None:
+        client = self._make_client([])
+        tasks = await client.get_tasks()
+        assert tasks == []
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_populates_title(self) -> None:
+        client = self._make_client([self._raw_task("t1", title="My Task")])
+        tasks = await client.get_tasks()
+        assert tasks[0].title == "My Task"
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_populates_status(self) -> None:
+        client = self._make_client([self._raw_task("t1", status="completed")])
+        tasks = await client.get_tasks()
+        assert tasks[0].status == "completed"
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_handles_list_response_directly(self) -> None:
+        raw = [self._raw_task("t1")]
+        resp = MagicMock()
+        resp.json.return_value = raw
+        http = MagicMock()
+        http.get = AsyncMock(return_value=resp)
+        client = MaestroClient(http)
+        tasks = await client.get_tasks()
+        assert len(tasks) == 1
+        assert tasks[0].id == "t1"
+
+    @pytest.mark.asyncio
+    async def test_get_tasks_assigned_agent_id(self) -> None:
+        client = self._make_client([
+            self._raw_task("t1", assigned_agent_id="agent-42")
+        ])
+        tasks = await client.get_tasks()
+        assert tasks[0].assigned_agent_id == "agent-42"
+
+
+class TestWithRetries:
+    def _make_client(self) -> MaestroClient:
+        http = MagicMock()
+        return MaestroClient(http)
+
+    @pytest.mark.asyncio
+    async def test_with_retries_calls_fn_and_returns_result(self) -> None:
+        client = self._make_client()
+        expected = object()
+        fn = AsyncMock(return_value=expected)
+        result = await client._with_retries(fn)
+        fn.assert_called_once()
+        assert result is expected
+
+    @pytest.mark.asyncio
+    async def test_with_retries_propagates_exception(self) -> None:
+        client = self._make_client()
+        fn = AsyncMock(side_effect=RuntimeError("connection failed"))
+        with pytest.raises(RuntimeError, match="connection failed"):
+            await client._with_retries(fn)
+
+    @pytest.mark.asyncio
+    async def test_with_retries_returns_none_on_none_result(self) -> None:
+        client = self._make_client()
+        fn = AsyncMock(return_value=None)
+        result = await client._with_retries(fn)
+        assert result is None
