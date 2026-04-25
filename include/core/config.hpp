@@ -99,3 +99,50 @@ struct Config {
   static constexpr size_t METRICS_QUEUE_DEPTH_CRITICAL = 10000;
 
   // ========================================================================
+  // Task / Coordination Configuration
+  // ========================================================================
+
+  /**
+   * @brief Default task execution timeout (25 minutes in milliseconds)
+   *
+   * Used as fallback when no explicit deadline is specified in a task spec.
+   * 25 minutes allows for complex multi-level coordination chains while
+   * preventing indefinite hangs.
+   */
+  static constexpr int DEFAULT_TASK_TIMEOUT_MS = 25 * 60 * 1000;
+
+  // ========================================================================
+  // HTTP Server Configuration (PrometheusExporter)
+  // ========================================================================
+
+  /**
+   * @brief HTTP request buffer size
+   *
+   * Maximum size of HTTP request that can be read in one call.
+   * Requests larger than this are truncated.
+   *
+   * Default: 1024 bytes (sufficient for GET /metrics requests)
+   */
+  static constexpr size_t HTTP_REQUEST_BUFFER_SIZE = 1024;
+
+  /**
+   * @brief HTTP socket read timeout
+   *
+   * Prevents slowloris attacks by limiting time spent waiting for data.
+   *
+   * Default: 5 seconds
+   */
+  static constexpr std::chrono::seconds HTTP_READ_TIMEOUT{5};
+
+  /**
+   * @brief Maximum concurrent HTTP connections
+   *
+   * Listen backlog size for the HTTP server.
+   *
+   * Default: 10 connections
+   */
+  static constexpr int HTTP_MAX_PENDING_CONNECTIONS = 10;
+};
+
+}  // namespace core
+}  // namespace keystone
