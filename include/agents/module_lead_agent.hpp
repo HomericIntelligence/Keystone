@@ -1,17 +1,17 @@
 #pragma once
 
-#include "agents/async_agent.hpp"
-#include "agents/coordination_state.hpp"
-#include "agents/lead_agent_base.hpp"
-
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "agents/async_agent.hpp"
+#include "agents/coordination_state.hpp"
+#include "agents/lead_agent_base.hpp"
+
 #ifdef ENABLE_GRPC
-#  include "network/result_aggregator.hpp"
-#  include "network/yaml_parser.hpp"
+#include "network/result_aggregator.hpp"
+#include "network/yaml_parser.hpp"
 #endif
 
 namespace keystone {
@@ -32,7 +32,8 @@ enum class ModuleLeadState {
  * @brief Level 2 Module Lead Agent
  *
  * Coordinates multiple TaskAgents to accomplish module-level goals.
- * Uses Template Method Pattern from LeadAgentBase to eliminate code duplication.
+ * Uses Template Method Pattern from LeadAgentBase to eliminate code
+ * duplication.
  *
  * Responsibilities:
  * - Decompose module goals into individual tasks
@@ -64,7 +65,8 @@ class ModuleLeadAgent : public LeadAgentBase<ModuleLeadState> {
   /**
    * @brief Synthesize results from all completed tasks
    *
-   * Public API for manual result synthesis (typically called after all results received)
+   * Public API for manual result synthesis (typically called after all results
+   * received)
    *
    * @return std::string Synthesized module-level result
    */
@@ -140,7 +142,8 @@ class ModuleLeadAgent : public LeadAgentBase<ModuleLeadState> {
    *
    * @param result_msg Message containing task result
    */
-  void processSubordinateResult(const core::KeystoneMessage& result_msg) override;
+  void processSubordinateResult(
+      const core::KeystoneMessage& result_msg) override;
 
   /**
    * @brief Convert state enum to string (HOOK METHOD)
@@ -155,14 +158,6 @@ class ModuleLeadAgent : public LeadAgentBase<ModuleLeadState> {
   std::vector<std::string> available_task_agents_;
 
 #ifdef ENABLE_GRPC
-  /**
-   * @brief Mark spec as FAILED and submit the error result via gRPC if possible
-   *
-   * @param spec  Task spec to update (modified in place)
-   * @param error Human-readable error message
-   */
-  void submitFailureResult(network::HierarchicalTaskSpec& spec, const std::string& error);
-
   // Result aggregator (module-specific, not in template)
   std::unique_ptr<network::ResultAggregator> result_aggregator_;
 #endif
