@@ -12,7 +12,7 @@ invisible plumbing beneath every other component.
 
 > **Note**: The 4-layer HMAS hierarchy (L0 ChiefArchitectAgent → L1 ComponentLeadAgent →
 > L2 ModuleLeadAgent → L3 TaskAgent) was extracted from this repository and merged into
-> **ProjectAgamemnon** per ADR-006 (full decoupling from ai-maestro). Keystone retains
+> **ProjectAgamemnon** per ADR-015 (full decoupling from ai-maestro). Keystone retains
 > only transport primitives.
 
 ---
