@@ -1,6 +1,8 @@
 """Tests for DAGWalker — cycle detection, ready tasks, available agents, and advance_dag."""
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import pytest
 
 from src.keystone.dag_walker import DAGWalker
@@ -186,3 +188,80 @@ class TestAdvanceDag:
         walker = DAGWalker(tasks=[dep, task], agents=[agent])
         assignments = await walker.advance_dag()
         assert assignments == []
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_calls_client_assign_task(self) -> None:
+        """advance_dag() must call client.assign_task(task_id, agent_id) when a client is set."""
+        task = make_task()
+        agent = make_agent()
+        mock_client = AsyncMock()
+        walker = DAGWalker(tasks=[task], agents=[agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 1
+        mock_client.assign_task.assert_awaited_once_with(task.id, agent.id)
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_no_client_no_api_call(self) -> None:
+        """advance_dag() must succeed and return assignments when no client is provided."""
+        task = make_task()
+        agent = make_agent()
+        walker = DAGWalker(tasks=[task], agents=[agent], client=None)
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 1
+        assert assignments[0] == (task, agent)
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_marks_agent_busy(self) -> None:
+        """advance_dag() must set agent.current_task_id after assignment."""
+        task = make_task()
+        agent = make_agent()
+        walker = DAGWalker(tasks=[task], agents=[agent])
+
+        await walker.advance_dag()
+
+        assert agent.current_task_id == task.id
+        assert task.assigned_agent_id == agent.id
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_no_ready_tasks_returns_empty_with_client(self) -> None:
+        """advance_dag() must return [] and never call assign_task when no tasks are ready."""
+        dep = make_task(id="dep", status="in_progress")
+        task = make_task(id="t1", dependencies=["dep"])
+        agent = make_agent()
+        mock_client = AsyncMock()
+        walker = DAGWalker(tasks=[dep, task], agents=[agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        assert assignments == []
+        mock_client.assign_task.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_advance_dag_client_called_for_each_assignment(self) -> None:
+        """assign_task() must be called once per task-agent pair when multiple assignments occur."""
+        task1 = make_task(id="t1")
+        task2 = make_task(id="t2")
+        agent1 = make_agent(id="a1")
+        agent2 = make_agent(id="a2")
+        mock_client = AsyncMock()
+        walker = DAGWalker(
+            tasks=[task1, task2], agents=[agent1, agent2], client=mock_client
+        )
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 2
+        assert mock_client.assign_task.await_count == 2
+        awaited_calls = {call.args for call in mock_client.assign_task.await_args_list}
+        assert (task1.id, agent1.id) in awaited_calls or (
+            task1.id,
+            agent2.id,
+        ) in awaited_calls
+        assert (task2.id, agent1.id) in awaited_calls or (
+            task2.id,
+            agent2.id,
+        ) in awaited_calls
