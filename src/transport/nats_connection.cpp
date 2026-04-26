@@ -5,9 +5,11 @@
 
 #include "transport/nats_connection.hpp"
 
+#include <cerrno>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 #include <nats.h>
 #include <spdlog/spdlog.h>
@@ -20,6 +22,56 @@ namespace {
 std::string getEnvVar(const char* name) {
   const char* value = std::getenv(name);  // NOLINT(concurrency-mt-unsafe)
   return value != nullptr ? std::string(value) : std::string{};
+}
+
+// NATS error code categorization per ADR-014
+enum class NatsErrorCategory {
+  kConfigError,  // Configuration error — requires manual intervention
+  kTransient,    // Transient error — retry with backoff
+  kPermanent,    // Permanent error — fail fast
+};
+
+/**
+ * @brief Classify a NATS error code by semantic category (per ADR-014).
+ *
+ * @param status NATS error code from nats.c
+ * @return Error category (config, transient, or permanent)
+ */
+NatsErrorCategory categorizeNatsError(natsStatus status) {
+  switch (status) {
+    // Configuration errors
+    case NATS_ERR:
+    case NATS_INVALID_ARG:
+      return NatsErrorCategory::kConfigError;
+
+    // Transient errors
+    case NATS_NO_SERVERS:
+    case NATS_NOT_CONNECTED:
+    case NATS_TIMEOUT:
+    case NATS_CONN_CLOSED:
+    case NATS_NO_MEMORY:
+    case NATS_STALE_CONNECTION:
+    case NATS_PROTOCOL_ERROR:
+    case NATS_IO_ERROR:
+    case NATS_ILLEGAL_STATE:
+      return NatsErrorCategory::kTransient;
+
+    // Permanent errors
+    case NATS_AUTH_REQUIRED:
+    case NATS_AUTHORIZATION_ERR:
+    case NATS_INSUFFICIENT_RESOURCES:
+    case NATS_NOT_ALLOWED:
+    case NATS_DRAINING:
+    case NATS_FAILED_TO_CONNECT:
+    case NATS_SECURE_CONN_WANTED:
+    case NATS_INVALID_SUBJECT:
+    case NATS_MAX_PAYLOAD_EXCEEDED:
+    case NATS_PERMISSIONS_ERR:
+      return NatsErrorCategory::kPermanent;
+
+    default:
+      return NatsErrorCategory::kTransient;
+  }
 }
 
 }  // namespace
@@ -319,6 +371,87 @@ void NatsConnection::onClosed(natsConnection* /*nc*/, void* closure) noexcept {
   if (cb) {
     cb();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Exception mapping (ADR-014: exception contract)
+// ---------------------------------------------------------------------------
+
+void NatsConnection::throwForNatsStatus(natsStatus status, const std::string& context) {
+  if (status == NATS_OK) {
+    return;  // No error
+  }
+
+  const char* nats_text = natsStatus_GetText(status);
+  std::string error_msg = context + ": " + (nats_text != nullptr ? nats_text : "unknown error") +
+                          " (nats_status=" + std::to_string(static_cast<int>(status)) + ")";
+
+  NatsErrorCategory category = categorizeNatsError(status);
+
+  switch (category) {
+    case NatsErrorCategory::kConfigError:
+      throw std::domain_error(error_msg);
+
+    case NatsErrorCategory::kTransient:
+      throw std::system_error(std::error_code(EAGAIN, std::generic_category()), error_msg);
+
+    case NatsErrorCategory::kPermanent:
+      throw std::runtime_error(error_msg);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pull-based fetch for durable consumers (rate-limiting pattern)
+// ---------------------------------------------------------------------------
+
+natsMsg* NatsConnection::fetch(std::string_view subject,
+                               std::string_view consumer_name,
+                               int64_t timeout_ms) {
+  jsCtx* js = jsContext();
+  if (js == nullptr) {
+    throw std::runtime_error("NatsConnection::fetch: not connected to NATS (jsContext is null)");
+  }
+
+  if (subject.empty() || consumer_name.empty()) {
+    throw std::domain_error("NatsConnection::fetch: subject and consumer_name must not be empty");
+  }
+
+  // Subscribe to the subject with durable consumer semantics
+  jsSubOptions sub_opts;
+  jsSubOptions_Init(&sub_opts);
+  sub_opts.Config.Durable = const_cast<char*>(consumer_name.data());
+  sub_opts.Config.MaxAckPending = 1;  // Rate-limiting per CLAUDE.md
+
+  natsSubscription* sub = nullptr;
+  natsStatus s = js_Subscribe(
+      &sub, js, std::string(subject).c_str(), nullptr, nullptr, nullptr, &sub_opts, nullptr);
+
+  if (s != NATS_OK) {
+    throwForNatsStatus(s, "NatsConnection::fetch subscribe");
+  }
+
+  if (sub == nullptr) {
+    throw std::runtime_error("NatsConnection::fetch: subscription returned null");
+  }
+
+  // Fetch a single message with timeout
+  natsMsg* msg = nullptr;
+  s = natsSubscription_Fetch(&msg, sub, 1, timeout_ms);
+
+  // Clean up subscription (durable consumer state persists in NATS)
+  natsSubscription_Unsubscribe(sub);
+  natsSubscription_Destroy(sub);
+
+  if (s != NATS_OK) {
+    // NATS_TIMEOUT is not an error in fetch semantics — it's normal when
+    // no message is available. Return nullptr instead of throwing.
+    if (s == NATS_TIMEOUT) {
+      return nullptr;
+    }
+    throwForNatsStatus(s, "NatsConnection::fetch");
+  }
+
+  return msg;
 }
 
 }  // namespace transport
