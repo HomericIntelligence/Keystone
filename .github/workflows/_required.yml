@@ -31,7 +31,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     steps:
       - name: Checkout code
@@ -122,6 +122,59 @@ jobs:
           name: cppcheck-report
           path: cppcheck-report.xml
           retention-days: 30
+
+      - name: Install build dependencies (with static analysis)
+        uses: ./.github/actions/install-build-deps
+        with:
+          include-static-analysis: "true"
+
+      - name: Cache Conan packages (clang-tidy)
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent (clang-tidy)
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.clang-tidy/_deps
+          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-clang-tidy-${{ runner.os }}-
+
+      - name: Configure CMake with clang-tidy
+        run: |
+          CONAN_TOOLCHAIN=""
+          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
+            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
+          fi
+          cmake -S . -B build/x86.debug.clang-tidy \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DENABLE_CLANG_TIDY=ON \
+            $CONAN_TOOLCHAIN
+
+      - name: Build with clang-tidy
+        run: cmake --build build/x86.debug.clang-tidy -j$(nproc) 2>&1 | tee clang-tidy-output.txt
+        continue-on-error: true
+
+      - name: Fail on clang-tidy errors
+        run: |
+          # Only fail on errors that reference actual source files (src/ or include/).
+          REAL_ERRORS=$(grep -E "error:" clang-tidy-output.txt \
+            | grep -v "no input files\|no such file or directory\|unable to handle compilation" \
+            || true)
+          if [ -n "$REAL_ERRORS" ]; then
+            echo "::error::clang-tidy reported errors in source files"
+            echo "$REAL_ERRORS"
+            exit 1
+          fi
+          echo "clang-tidy passed"
+
+      - name: Run mypy (Python typecheck)
+        run: mypy conanfile.py
 
   # ============================================================
   # 2. unit-tests
@@ -326,101 +379,7 @@ jobs:
         run: sccache --show-stats
 
   # ============================================================
-  # 5. typecheck
-  #    clang-tidy (C++ static analysis) + mypy (Python)
-  # ============================================================
-  typecheck:
-    name: typecheck
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    needs: lint
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install build dependencies (with static analysis)
-        uses: ./.github/actions/install-build-deps
-        with:
-          include-static-analysis: "true"
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install mypy
-        run: pip install "mypy>=1.8.0,<2" "conan>=2.0.0"
-
-      - name: Cache Conan packages (clang-tidy)
-        uses: actions/cache@v5
-        with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-${{ runner.os }}-
-
-      - name: Cache FetchContent (clang-tidy)
-        uses: actions/cache@v5
-        with:
-          path: build/x86.debug.clang-tidy/_deps
-          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-clang-tidy-${{ runner.os }}-
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps.native
-
-      - name: Configure CMake with clang-tidy
-        run: |
-          CONAN_TOOLCHAIN=""
-          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
-            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
-          fi
-          cmake -S . -B build/x86.debug.clang-tidy \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DENABLE_CLANG_TIDY=ON \
-            $CONAN_TOOLCHAIN
-
-      - name: Build with clang-tidy
-        run: cmake --build build/x86.debug.clang-tidy -j$(nproc) 2>&1 | tee clang-tidy-output.txt
-        continue-on-error: true
-
-      - name: Fail on clang-tidy errors
-        run: |
-          # Filter out CMake integration false positives: clang-tidy is invoked on
-          # generated cmake files and non-source inputs, producing "no input files"
-          # and "no such file or directory" diagnostics that are not real code errors.
-          # Only fail on errors that reference actual source files (src/ or include/).
-          REAL_ERRORS=$(grep -E "error:" clang-tidy-output.txt \
-            | grep -v "no input files\|no such file or directory\|unable to handle compilation" \
-            || true)
-          if [ -n "$REAL_ERRORS" ]; then
-            echo "::error::clang-tidy reported errors in source files"
-            echo "$REAL_ERRORS"
-            exit 1
-          fi
-          echo "clang-tidy passed"
-
-      - name: Run mypy (Python typecheck)
-        run: mypy conanfile.py
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-  # ============================================================
-  # 6. schema-validation
+  # 5. schema-validation
   # ============================================================
   schema-validation:
     name: schema-validation
