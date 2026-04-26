@@ -164,8 +164,8 @@ std::optional<WorkItem> WorkStealingQueue::pop() {
     // Restore bottom so the queue appears empty regardless of CAS outcome.
     bottom_.store(b + 1, std::memory_order_relaxed);
     // Try to claim the item by advancing top_ past b.
-    if (top_.compare_exchange_strong(t, t + 1, std::memory_order_acq_rel,
-                                     std::memory_order_acquire)) {
+    if (top_.compare_exchange_strong(
+            t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
       return item;
     }
     // A thief already incremented top_ — the item belongs to the thief.
