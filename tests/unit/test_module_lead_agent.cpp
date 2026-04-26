@@ -11,6 +11,7 @@
  * Total: 12 tests
  */
 
+#include "agents/component_lead_agent.hpp"
 #include "agents/module_lead_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
@@ -335,6 +336,135 @@ TEST_F(ModuleLeadAgentTest, SuccessResultAfterFailureStillCountsTowardCompletion
 
   auto state = module->getCurrentState();
   EXPECT_NE(state, agents::ModuleLeadAgent::State::WAITING_FOR_TASKS);
+}
+
+// ============================================================================
+// Issue #184: isSubordinateResult does not intercept TASK_FAILED messages
+// ============================================================================
+
+TEST_F(ModuleLeadAgentTest, TaskFailedNotTreatedAsSuccessResult) {
+  // A TASK_FAILED message with command == "response" must NOT be processed by
+  // processSubordinateResult() — it must reach processSubordinateFailure()
+  // so the failure is recorded rather than silently counted as a success.
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Prime coordination for 1 task
+  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 7")).get();
+
+  // Send a TASK_FAILED with command == "response" (the ambiguous case from #184)
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "task failed badly");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  // Must be in ERROR, not SYNTHESIZING — the failure was not treated as success
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
+}
+
+// ============================================================================
+// Issue #185: processSubordinateFailure propagates failure upward
+// ============================================================================
+
+TEST_F(ModuleLeadAgentTest, FailurePropagatedUpwardToRequester) {
+  // When all subordinates have reported terminal events and at least one has
+  // failed, processSubordinateFailure() must send a TASK_FAILED message to
+  // the requester so the ComponentLeadAgent does not permanently stall.
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  auto task1 = std::make_shared<agents::TaskAgent>("task_1");
+
+  component->setMessageBus(bus_.get());
+  module->setMessageBus(bus_.get());
+  task1->setMessageBus(bus_.get());
+
+  bus_->registerAgent(component->getAgentId(), component);
+  bus_->registerAgent(module->getAgentId(), module);
+  bus_->registerAgent(task1->getAgentId(), task1);
+
+  // Configure component → module → task hierarchy
+  component->setAvailableModuleLeads({"module_1"});
+  module->setAvailableTaskAgents({"task_1"});
+
+  // ComponentLeadAgent receives a goal and delegates to module_1
+  // Use a goal pattern that decomposes to exactly 1 module
+  component
+      ->processMessage(core::KeystoneMessage::create("chief",
+                                                     "component_1",
+                                                     "Implement Core component: Messaging(42)"))
+      .get();
+
+  // module_1 should have received a goal — prime module coordination for 1 task
+  // Sender must be component_1 so requester_id_ is set correctly for upward propagation.
+  module->processMessage(core::KeystoneMessage::create("component_1", "module_1", "Calculate: 42"))
+      .get();
+
+  // Deliver a TASK_FAILED to the module from task_1
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "execution failed");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  // module_1 must be in ERROR
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
+
+  // component_1 inbox should contain a TASK_FAILED message from module_1
+  bool received_failure = false;
+  std::optional<core::KeystoneMessage> msg;
+  while ((msg = component->getMessage()).has_value()) {
+    if (msg->action_type == core::ActionType::TASK_FAILED) {
+      received_failure = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(received_failure) << "ComponentLeadAgent did not receive TASK_FAILED from module";
+}
+
+TEST_F(ModuleLeadAgentTest, FailureNotPropagatedUntilAllTerminal) {
+  // Upward propagation must be deferred until ALL subordinates have reported
+  // (success or failure) — partial failure must not immediately fire upward.
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  // Register a dummy parent to capture upward messages
+  auto parent = std::make_shared<agents::ModuleLeadAgent>("parent_lead");
+  parent->setMessageBus(bus_.get());
+  bus_->registerAgent(parent->getAgentId(), parent);
+
+  std::vector<std::string> task_ids = {"task_1", "task_2"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Prime module with a 2-task goal, setting parent as requester
+  module
+      ->processMessage(
+          core::KeystoneMessage::create("parent_lead", "module_1", "Calculate: 10 + 20"))
+      .get();
+
+  // First task fails — only 1 of 2 done, upward propagation must NOT fire yet
+  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  module->processMessage(failure_msg).get();
+
+  // No TASK_FAILED should have been delivered to parent yet
+  bool premature_failure = false;
+  std::optional<core::KeystoneMessage> msg;
+  while ((msg = parent->getMessage()).has_value()) {
+    if (msg->action_type == core::ActionType::TASK_FAILED) {
+      premature_failure = true;
+    }
+  }
+  EXPECT_FALSE(premature_failure) << "TASK_FAILED was sent upward before all subtasks terminated";
+
+  // Second task succeeds — all done, now upward failure message must arrive
+  auto success_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "20");
+  module->processMessage(success_msg).get();
+
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
 }
 
 TEST_F(ModuleLeadAgentTest, ConcurrentCoordination) {

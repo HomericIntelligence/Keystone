@@ -150,6 +150,18 @@ class LeadAgentBase : public AsyncAgent {
     bool all_done = coordination_.recordFailure(error);
     if (all_done) {
       coordination_.transitionTo(error_state_, stateToString(error_state_));
+
+      // Propagate failure upward to grandparent (Issue #185).
+      // When all subordinates have reported terminal events and at least one
+      // has failed, send a TASK_FAILED message to our own requester so the
+      // ComponentLeadAgent (or ChiefArchitect) above us does not remain
+      // permanently stuck in WAITING_FOR_MODULES / WAITING_FOR_TASKS.
+      const std::string& parent_id = coordination_.getRequesterId();
+      if (!parent_id.empty()) {
+        auto failed_msg = core::KeystoneMessage::create(
+            agent_id_, parent_id, core::ActionType::TASK_FAILED, failure_msg.session_id, error);
+        sendMessage(failed_msg);
+      }
     }
   }
 
