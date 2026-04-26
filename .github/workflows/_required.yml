@@ -716,7 +716,7 @@ jobs:
 
       # ---------- CodeQL C/C++ ----------
       - name: Initialize CodeQL (c-cpp)
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: c-cpp
           build-mode: manual
@@ -745,20 +745,20 @@ jobs:
           cmake --build build/codeql
 
       - name: Perform CodeQL Analysis (c-cpp)
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:c-cpp"
 
       # ---------- CodeQL Python ----------
       - name: Initialize CodeQL (python)
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: python
           build-mode: none
           queries: security-and-quality
 
       - name: Perform CodeQL Analysis (python)
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:python"
 
