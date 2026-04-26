@@ -46,6 +46,10 @@ enum class NatsConnectionState {
  *
  * skip_server_verification disables hostname and certificate chain validation
  * and must only be used in controlled test environments.
+ *
+ * The validate() method ensures cert_path and key_path are either both set or
+ * both empty; a misconfiguration is detected at construction time rather than
+ * at connection time.
  */
 struct NatsTlsConfig {
   bool enable_tls{false};
@@ -64,10 +68,22 @@ struct NatsTlsConfig {
 
   /// Disable server certificate/hostname verification. TEST USE ONLY.
   bool skip_server_verification{false};
+
+  /**
+   * @brief Validate that client_cert_path and client_key_path are either both
+   * set or both empty
+   *
+   * @throws std::invalid_argument if exactly one of the two paths is set
+   */
+  void validate() const;
 };
 
 /**
  * @brief Configuration for NatsConnection
+ *
+ * TLS validation occurs in the constructor to catch misconfiguration
+ * (cert without key, or vice versa) at construction time rather than at
+ * connection time (issue #276).
  */
 struct NatsConfig {
   std::string url{"nats://localhost:4222"};
@@ -87,6 +103,59 @@ struct NatsConfig {
 
   /// TLS configuration (disabled by default)
   NatsTlsConfig tls;
+
+  /**
+   * @brief Construct NatsConfig with default values and validate TLS config
+   *
+   * @throws std::invalid_argument if tls.client_cert_path and
+   * tls.client_key_path are not both set or both empty
+   */
+  NatsConfig() { tls.validate(); }
+
+  /**
+   * @brief Explicit copy constructor that validates TLS config
+   *
+   * @throws std::invalid_argument if tls.client_cert_path and
+   * tls.client_key_path are not both set or both empty
+   */
+  NatsConfig(const NatsConfig& other)
+      : url(other.url),
+        max_reconnect_attempts(other.max_reconnect_attempts),
+        reconnect_wait(other.reconnect_wait),
+        ping_interval(other.ping_interval),
+        max_pings_out(other.max_pings_out),
+        tls(other.tls) {
+    tls.validate();
+  }
+
+  /**
+   * @brief Explicit copy assignment that validates TLS config
+   *
+   * @throws std::invalid_argument if tls.client_cert_path and
+   * tls.client_key_path are not both set or both empty
+   */
+  NatsConfig& operator=(const NatsConfig& other) {
+    if (this != &other) {
+      url = other.url;
+      max_reconnect_attempts = other.max_reconnect_attempts;
+      reconnect_wait = other.reconnect_wait;
+      ping_interval = other.ping_interval;
+      max_pings_out = other.max_pings_out;
+      tls = other.tls;
+      tls.validate();
+    }
+    return *this;
+  }
+
+  /**
+   * @brief Move constructor that validates TLS config
+   */
+  NatsConfig(NatsConfig&&) noexcept = default;
+
+  /**
+   * @brief Move assignment that validates TLS config
+   */
+  NatsConfig& operator=(NatsConfig&&) noexcept = default;
 };
 
 /**

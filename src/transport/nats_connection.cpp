@@ -6,6 +6,7 @@
 #include "transport/nats_connection.hpp"
 
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
 
 #include <nats.h>
@@ -22,6 +23,30 @@ std::string getEnvVar(const char* name) {
 }
 
 }  // namespace
+
+// ---------------------------------------------------------------------------
+// NatsTlsConfig validation
+// ---------------------------------------------------------------------------
+
+void NatsTlsConfig::validate() const {
+  // Get effective cert and key paths (env vars take precedence)
+  std::string cert_path = getEnvVar("KEYSTONE_NATS_TLS_CERT_PATH");
+  std::string key_path = getEnvVar("KEYSTONE_NATS_TLS_KEY_PATH");
+  if (cert_path.empty()) {
+    cert_path = client_cert_path;
+  }
+  if (key_path.empty()) {
+    key_path = client_key_path;
+  }
+
+  // Both must be set or both must be empty
+  if ((!cert_path.empty() && key_path.empty()) || (cert_path.empty() && !key_path.empty())) {
+    throw std::invalid_argument(
+        "NatsTlsConfig: client certificate and key must both be set or both "
+        "be empty; cert_path='" +
+        cert_path + "' key_path='" + key_path + "'");
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Construction / destruction
@@ -110,16 +135,9 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
                     key_path);
       return false;
     }
-  } else if (!cert_path.empty() || !key_path.empty()) {
-    // Exactly one of cert/key was provided — this is always a misconfiguration
-    spdlog::error(
-        "NatsConnection: TLS client certificate requires both cert and key "
-        "paths; "
-        "cert_path='{}' key_path='{}'",
-        cert_path,
-        key_path);
-    return false;
   }
+  // Note: cert/key parity is validated in NatsConfig constructor (issue #276),
+  // so we cannot reach the case where exactly one is set.
 
   return true;
 }

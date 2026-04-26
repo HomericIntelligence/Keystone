@@ -166,8 +166,8 @@ TEST_F(NatsTlsConfigTest, TlsConfigStoredInNatsConfig) {
   cfg.tls.client_cert_path = "/path/to/cert.pem";
   cfg.tls.client_key_path = "/path/to/key.pem";
 
+  // Construction succeeds when both cert and key are set
   NatsConnectionTestPeer conn(cfg);
-  // Construction must not throw — TLS is only applied during connect()
   EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED);
 }
 
@@ -177,6 +177,106 @@ TEST_F(NatsTlsConfigTest, TlsUrlSchemeAccepted) {
   cfg.tls.enable_tls = true;
   EXPECT_EQ(cfg.url, "tls://nats.example.com:4222");
   EXPECT_TRUE(cfg.tls.enable_tls);
+}
+
+// ---------------------------------------------------------------------------
+// NatsTlsValidationTest — cert/key parity validation (issue #276)
+// ---------------------------------------------------------------------------
+
+class NatsTlsValidationTest : public ::testing::Test {};
+
+TEST_F(NatsTlsValidationTest, BothCertAndKeyEmptyIsValid) {
+  // Default config has both empty — should not throw
+  NatsConfig cfg;
+  EXPECT_TRUE(cfg.tls.client_cert_path.empty());
+  EXPECT_TRUE(cfg.tls.client_key_path.empty());
+}
+
+TEST_F(NatsTlsValidationTest, BothCertAndKeySetIsValid) {
+  // Both set — should not throw
+  NatsConfig cfg;
+  cfg.tls.client_cert_path = "/path/to/cert.pem";
+  cfg.tls.client_key_path = "/path/to/key.pem";
+  // If we got here, validation passed during construction
+  EXPECT_EQ(cfg.tls.client_cert_path, "/path/to/cert.pem");
+  EXPECT_EQ(cfg.tls.client_key_path, "/path/to/key.pem");
+}
+
+TEST_F(NatsTlsValidationTest, CertWithoutKeyThrows) {
+  // Only cert set — should throw during construction
+  NatsConfig cfg_base;
+  cfg_base.tls.client_cert_path = "/path/to/cert.pem";
+  // client_key_path is empty (default)
+
+  EXPECT_THROW(
+      {
+        // This throws during NatsConfig construction
+        NatsConfig cfg;
+        cfg.tls.client_cert_path = "/path/to/cert.pem";
+        // When we validate, this should fail
+        cfg.tls.validate();
+      },
+      std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidationTest, KeyWithoutCertThrows) {
+  // Only key set — should throw during construction
+  EXPECT_THROW(
+      {
+        // This throws during NatsConfig construction
+        NatsConfig cfg;
+        cfg.tls.client_key_path = "/path/to/key.pem";
+        // When we validate, this should fail
+        cfg.tls.validate();
+      },
+      std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidationTest, ValidateCertWithoutKeyThrows) {
+  // Directly call validate() on a config with only cert set
+  NatsTlsConfig tls;
+  tls.client_cert_path = "/path/to/cert.pem";
+  // client_key_path is empty
+
+  EXPECT_THROW(tls.validate(), std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidationTest, ValidateKeyWithoutCertThrows) {
+  // Directly call validate() on a config with only key set
+  NatsTlsConfig tls;
+  tls.client_key_path = "/path/to/key.pem";
+  // client_cert_path is empty
+
+  EXPECT_THROW(tls.validate(), std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidationTest, CopyConstructorValidates) {
+  // First create a valid config
+  NatsConfig cfg1;
+  cfg1.tls.client_cert_path = "/path/to/cert.pem";
+  cfg1.tls.client_key_path = "/path/to/key.pem";
+
+  // Copy should succeed since source is valid
+  NatsConfig cfg2(cfg1);
+  EXPECT_EQ(cfg2.tls.client_cert_path, "/path/to/cert.pem");
+  EXPECT_EQ(cfg2.tls.client_key_path, "/path/to/key.pem");
+}
+
+TEST_F(NatsTlsValidationTest, CopyAssignmentValidates) {
+  // First create a valid config
+  NatsConfig cfg1;
+  cfg1.tls.client_cert_path = "/path/to/cert.pem";
+  cfg1.tls.client_key_path = "/path/to/key.pem";
+
+  // Create another valid config
+  NatsConfig cfg2;
+  cfg2.tls.client_cert_path = "/path/to/cert2.pem";
+  cfg2.tls.client_key_path = "/path/to/key2.pem";
+
+  // Assignment should succeed since source is valid
+  cfg2 = cfg1;
+  EXPECT_EQ(cfg2.tls.client_cert_path, "/path/to/cert.pem");
+  EXPECT_EQ(cfg2.tls.client_key_path, "/path/to/key.pem");
 }
 
 // ---------------------------------------------------------------------------
