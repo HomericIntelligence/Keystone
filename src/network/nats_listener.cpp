@@ -202,8 +202,7 @@ void NATSListener::pull_loop() noexcept {
 
     if (s != NATS_OK) {
       // Error in fetch (connection issue, etc.)
-      spdlog::error("NATSListener: natsSubscription_Fetch failed status={}",
-                    static_cast<int>(s));
+      spdlog::error("NATSListener: natsSubscription_Fetch failed status={}", static_cast<int>(s));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       continue;
     }
@@ -226,8 +225,7 @@ void NATSListener::handle_message(natsMsg* msg) noexcept {
   auto finish = [&]() {
     // Only ack/nak if not already done (for safety)
     if (msg != nullptr) {
-      natsStatus ack_s =
-          should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
+      natsStatus ack_s = should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
       if (ack_s != NATS_OK) {
         spdlog::warn("NATSListener: ack/nak failed status={}", static_cast<int>(ack_s));
       }
