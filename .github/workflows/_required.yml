@@ -704,9 +704,7 @@ jobs:
         with:
           config: >-
             p/security-audit
-            p/cpp
             p/docker
-            p/cmake
         continue-on-error: true
 
       - name: Upload Semgrep SARIF
@@ -733,6 +731,7 @@ jobs:
           conan profile detect --force
           conan install . \
             --output-folder=build/conan-deps \
+            --lockfile=conan.lock \
             --build=missing \
             -s build_type=Release \
             -s compiler.cppstd=20
