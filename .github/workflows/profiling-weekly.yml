@@ -34,7 +34,7 @@ jobs:
             fetchcontent-profiling-${{ runner.os }}-
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
 
       - name: Configure sccache
         run: echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV

@@ -78,6 +78,25 @@ typecheck:
     mypy conanfile.py
 
 
+# Check that the tests/ directory structure matches what is documented in CLAUDE.md
+check-docs-tree:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ACTUAL=$(find tests/ -maxdepth 1 -mindepth 1 -type d | sed 's|tests/||' | sort)
+    DOCUMENTED=$(grep -A20 'Test Structure' CLAUDE.md | grep '├──\|└──' | sed 's/.*── //;s|/.*||' | sort)
+    DIFF=$(diff <(echo "$DOCUMENTED") <(echo "$ACTUAL") || true)
+    if [ -n "$DIFF" ]; then
+        echo "CLAUDE.md 'Test Structure' block is out of sync with actual tests/ subdirectories."
+        echo "Diff (documented vs actual):"
+        echo "$DIFF"
+        exit 1
+    fi
+    echo "CLAUDE.md Test Structure block matches actual tests/ layout."
+
+# Regenerate conan.lock from conanfile.py
+update-conan-lock:
+    conan lock create conanfile.py --lockfile-out conan.lock
+
 clean:
   make clean
 
