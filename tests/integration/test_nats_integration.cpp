@@ -148,11 +148,13 @@ TEST_F(NatsIntegrationTest, PipelineLocalEventTriggersAgentProcessing) {
  */
 TEST_F(NatsIntegrationTest, PipelineStartupScanPopulatesRegistry) {
   // Simulate startup: register a set of well-known myrmidon agents.
+  // Agent IDs use alphanumeric + hyphen/underscore format (dots are not
+  // permitted in agent_id tokens — dots are the NATS subject separator).
   const std::vector<std::string> known_agents = {
-      "myrmidon.research.0",
-      "myrmidon.pipeline.0",
-      "myrmidon.pipeline.1",
-      "myrmidon.tasks.0",
+      "myrmidon-research-0",
+      "myrmidon-pipeline-0",
+      "myrmidon-pipeline-1",
+      "myrmidon-tasks-0",
   };
 
   std::vector<std::shared_ptr<TaskAgent>> agents;
@@ -172,11 +174,10 @@ TEST_F(NatsIntegrationTest, PipelineStartupScanPopulatesRegistry) {
   // Registry count must match.
   EXPECT_EQ(bus_->listAgents().size(), known_agents.size());
 
-  // Verify subjects reflect the NATS subject schema convention.
-  // (agent IDs use the dot-separated subject naming pattern)
+  // Verify agents follow the safe-identifier naming convention.
   for (const auto& id : bus_->listAgents()) {
-    EXPECT_NE(id.find('.'), std::string::npos)
-        << "Agent ID should follow subject naming convention: " << id;
+    EXPECT_NE(id.find('-'), std::string::npos)
+        << "Agent ID should use hyphen-separated naming convention: " << id;
   }
 }
 
@@ -400,7 +401,7 @@ TEST_F(NatsServerTest, NatsConnectionSucceeds) {
  */
 TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
   // Register a pipeline agent that will handle the routed event.
-  auto agent = std::make_shared<TaskAgent>("hi.myrmidon.pipeline.0");
+  auto agent = std::make_shared<TaskAgent>("myrmidon-pipeline-0");
   agent->setMessageBus(bus_.get());
   bus_->registerAgent(agent->getAgentId(), agent);
 
@@ -410,11 +411,8 @@ TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
   const std::string nats_payload =
       R"({"task_id":"t-002","action":"advance_dag","dag_id":"dag-prod-01","priority":"HIGH"})";
 
-  auto bridged_msg = KeystoneMessage::create("nats.bridge:" + nats_subject,
-                                             "hi.myrmidon.pipeline.0",
-                                             ActionType::EXECUTE,
-                                             "nats-e2e-session",
-                                             nats_payload);
+  auto bridged_msg = KeystoneMessage::create(
+      "nats-bridge", "myrmidon-pipeline-0", ActionType::EXECUTE, "nats-e2e-session", nats_payload);
   bridged_msg.priority = Priority::HIGH;
   bridged_msg.task_id = "t-002";
 
@@ -444,14 +442,14 @@ TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
  * action is delivered — the same sequence triggered by SIGTERM in production.
  */
 TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
-  auto agent = std::make_shared<TaskAgent>("hi.myrmidon.tasks.0");
+  auto agent = std::make_shared<TaskAgent>("myrmidon-tasks-0");
   agent->setMessageBus(bus_.get());
   bus_->registerAgent(agent->getAgentId(), agent);
 
   constexpr int32_t kPending = 3;
   for (int32_t i = 0; i < kPending; ++i) {
-    auto work = KeystoneMessage::create("nats.bridge:hi.tasks.execute",
-                                        "hi.myrmidon.tasks.0",
+    auto work = KeystoneMessage::create("nats-bridge",
+                                        "myrmidon-tasks-0",
                                         ActionType::EXECUTE,
                                         "drain-session",
                                         "pending-task-" + std::to_string(i));
@@ -459,8 +457,8 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
   }
 
   // Shutdown signal arrives after the work messages (e.g., from SIGTERM handler).
-  auto shutdown = KeystoneMessage::create("nats.bridge:hi.agents.shutdown",
-                                          "hi.myrmidon.tasks.0",
+  auto shutdown = KeystoneMessage::create("nats-bridge",
+                                          "myrmidon-tasks-0",
                                           ActionType::SHUTDOWN,
                                           "drain-session");
   EXPECT_TRUE(bus_->routeMessage(shutdown));
@@ -492,24 +490,18 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
  * routed to it by the transparent bridge, with proper isolation.
  */
 TEST_F(NatsServerTest, NatsMultiAgentRouting) {
-  auto agent1 = std::make_shared<TaskAgent>("myrmidon.pipeline.0");
-  auto agent2 = std::make_shared<TaskAgent>("myrmidon.research.0");
+  auto agent1 = std::make_shared<TaskAgent>("myrmidon-pipeline-0");
+  auto agent2 = std::make_shared<TaskAgent>("myrmidon-research-0");
   agent1->setMessageBus(bus_.get());
   agent2->setMessageBus(bus_.get());
   bus_->registerAgent(agent1->getAgentId(), agent1);
   bus_->registerAgent(agent2->getAgentId(), agent2);
 
   // Route two different messages to two different agents
-  auto msg1 = KeystoneMessage::create("nats.bridge:hi.pipeline.execute",
-                                      "myrmidon.pipeline.0",
-                                      ActionType::EXECUTE,
-                                      "session-multi",
-                                      "pipeline-work");
-  auto msg2 = KeystoneMessage::create("nats.bridge:hi.research.execute",
-                                      "myrmidon.research.0",
-                                      ActionType::EXECUTE,
-                                      "session-multi",
-                                      "research-work");
+  auto msg1 = KeystoneMessage::create(
+      "nats-bridge", "myrmidon-pipeline-0", ActionType::EXECUTE, "session-multi", "pipeline-work");
+  auto msg2 = KeystoneMessage::create(
+      "nats-bridge", "myrmidon-research-0", ActionType::EXECUTE, "session-multi", "research-work");
 
   EXPECT_TRUE(bus_->routeMessage(msg1));
   EXPECT_TRUE(bus_->routeMessage(msg2));
@@ -538,12 +530,8 @@ TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
   const std::string nats_payload =
       R"({"result":"task succeeded","output":{"code":0,"message":"ok"}})";
 
-  auto msg = KeystoneMessage::create("nats.bridge:" +
-                                         nats_subject,  // sender includes subject for tracing
-                                     "schema_validator",
-                                     ActionType::EXECUTE,
-                                     "schema-session",
-                                     nats_payload);
+  auto msg = KeystoneMessage::create(
+      "nats-bridge", "schema_validator", ActionType::EXECUTE, "schema-session", nats_payload);
 
   EXPECT_TRUE(bus_->routeMessage(msg));
 
@@ -552,6 +540,5 @@ TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
 
   auto m = agent->getMessage();
   ASSERT_TRUE(m.has_value());
-  EXPECT_TRUE(m->sender_id.find("nats.bridge:") != std::string::npos)
-      << "Sender should contain nats.bridge: prefix for traceability";
+  EXPECT_EQ(m->sender_id, "nats-bridge") << "Sender should be the transparent bridge agent ID";
 }
