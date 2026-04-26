@@ -222,8 +222,7 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
 
   // Issue #206/#333: NATS publisher for transparent bridge forwarding
   mutable std::mutex nats_publisher_mutex_;
-  std::function<void(std::string_view subject, std::span<const std::byte> payload)>
-      nats_publisher_;
+  std::function<void(std::string_view subject, std::span<const std::byte> payload)> nats_publisher_;
 };
 
 }  // namespace core

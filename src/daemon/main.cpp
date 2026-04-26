@@ -77,21 +77,22 @@ int main() {
 
   // Wire NatsConnection into MessageBus for transparent off-host forwarding (Issue #206).
   // When a message cannot be delivered locally, MessageBus will forward it via NATS.
-  message_bus.setNatsPublisher([&nats_conn](std::string_view subject, std::span<const std::byte> payload) {
-    // Publish message to NATS subject for off-host delivery.
-    // This callback is invoked when local routing fails.
-    natsConnection* nc = nats_conn.handle();
-    if (nc != nullptr) {
-      natsStatus s = natsConnection_Publish(nc,
-                                            subject.data(),
-                                            reinterpret_cast<const char*>(payload.data()),
-                                            static_cast<int>(payload.size()));
-      if (s != NATS_OK) {
-        std::cerr << "keystone-daemon: natsConnection_Publish failed subject=" << subject
-                  << " status=" << static_cast<int>(s) << '\n';
-      }
-    }
-  });
+  message_bus.setNatsPublisher(
+      [&nats_conn](std::string_view subject, std::span<const std::byte> payload) {
+        // Publish message to NATS subject for off-host delivery.
+        // This callback is invoked when local routing fails.
+        natsConnection* nc = nats_conn.handle();
+        if (nc != nullptr) {
+          natsStatus s = natsConnection_Publish(nc,
+                                                subject.data(),
+                                                reinterpret_cast<const char*>(payload.data()),
+                                                static_cast<int>(payload.size()));
+          if (s != NATS_OK) {
+            std::cerr << "keystone-daemon: natsConnection_Publish failed subject=" << subject
+                      << " status=" << static_cast<int>(s) << '\n';
+          }
+        }
+      });
 
   // Attempt to connect to NATS; log a warning but continue if unavailable so
   // the health endpoint remains reachable.
