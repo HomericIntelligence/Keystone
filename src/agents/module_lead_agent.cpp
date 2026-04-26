@@ -245,13 +245,29 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
 
       coordination_.trackPendingSubordinate(child_spec.metadata.task_id,
                                             available_task_agents_[agent_index]);
+
+      // Poll for task result in background (gRPC async result handling for Issue #186)
+      // If the task fails, record it to prevent DAG deadlock
+      std::thread([this, coordinator_client, task_id = response.task_id(), deadline_ms]() {
+        try {
+          auto result = coordinator_client->getTaskResult(task_id, deadline_ms);
+          if (!result.success()) {
+            coordination_.recordFailure(result.error());
+            // Transition to ERROR if all results are now in
+            State current_state = coordination_.getCurrentState();
+            if (coordination_.isComplete() && current_state == State::WAITING_FOR_TASKS) {
+              coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
+            }
+          }
+        } catch (const std::exception& e) {
+          concurrency::Logger::error("Failed to get result for task {}: {}", task_id,
+                                     e.what());
+        }
+      }).detach();
     } catch (const std::exception& e) {
       concurrency::Logger::error("Failed to submit task: {}", e.what());
     }
   }
-
-  // Wait for results (in a real implementation, this would be async)
-  // For now, we'll rely on processTaskResult being called externally
 }
 
 void ModuleLeadAgent::startHeartbeat() {
