@@ -56,8 +56,6 @@ struct WorkItem {
            (type == Type::Coroutine && handle != nullptr);
   }
 
- private:
-  // FIX P3-02: Private default constructor prevents accidental creation of invalid WorkItems
   WorkItem() : type(Type::Function), func(nullptr), handle(nullptr), correlation_id("") {}
 };
 
