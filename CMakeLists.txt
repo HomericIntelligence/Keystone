@@ -557,7 +557,9 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 gtest_discover_tests(simulation_unit_tests)
 
 # Transport library — NATS connection with TLS support (issue #122)
-add_library(keystone_transport src/transport/nats_connection.cpp)
+# and NATSListener pull-based fetch loop (issues #178, #205, #307)
+add_library(keystone_transport src/transport/nats_connection.cpp
+                               src/network/nats_listener.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
