@@ -134,5 +134,17 @@ std::vector<std::string> MessageBus::listAgents() const {
   return agent_ids;
 }
 
+void MessageBus::setNatsPublisher(
+    std::function<void(std::string_view subject, std::span<const std::byte> payload)> publisher) {
+  std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
+  nats_publisher_ = std::move(publisher);
+}
+
+std::function<void(std::string_view subject, std::span<const std::byte> payload)>
+MessageBus::getNatsPublisher() const {
+  std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
+  return nats_publisher_;
+}
+
 }  // namespace core
 }  // namespace keystone

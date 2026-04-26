@@ -7,8 +7,11 @@
 #include "message.hpp"
 
 #include <atomic>
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -177,6 +180,33 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
    */
   std::vector<std::string> listAgents() const override;
 
+  // ========================================================================
+  // Bridge wiring for transparent NATS forwarding (Issues #206, #333)
+  // ========================================================================
+
+  /**
+   * @brief Set NATS publisher callback for off-host message forwarding
+   *
+   * When set, MessageBus will forward messages destined for off-host agents
+   * via the provided publisher function. This enables transparent bridging
+   * between local MessageBus and NATS JetStream.
+   *
+   * The publisher is called on the caller's thread after local agent lookup
+   * fails. It must be safe to call repeatedly and must not block indefinitely.
+   *
+   * @param publisher Callback function: (subject, payload) -> void
+   *                  Called when message needs off-host forwarding.
+   *                  Can be null to disable NATS forwarding.
+   */
+  void setNatsPublisher(
+      std::function<void(std::string_view subject, std::span<const std::byte> payload)> publisher);
+
+  /**
+   * @brief Get current NATS publisher callback (may be nullptr)
+   */
+  std::function<void(std::string_view subject, std::span<const std::byte> payload)>
+  getNatsPublisher() const;
+
  private:
   mutable std::mutex registry_mutex_;
 
@@ -189,6 +219,11 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
 
   // FIX C5: Atomic scheduler pointer for thread-safe access without registry_mutex
   std::atomic<concurrency::WorkStealingScheduler*> scheduler_{nullptr};
+
+  // Issue #206/#333: NATS publisher for transparent bridge forwarding
+  mutable std::mutex nats_publisher_mutex_;
+  std::function<void(std::string_view subject, std::span<const std::byte> payload)>
+      nats_publisher_;
 };
 
 }  // namespace core
