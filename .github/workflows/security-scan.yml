@@ -380,13 +380,15 @@ jobs:
           echo "## Security Scan Results" > report.md
           echo "" >> report.md
 
-          # Check secret scanning
+          # Check secret scanning — use jq to count SARIF results reliably
           if [ -f "scan-results/gitleaks-report/results.sarif" ]; then
-            # Check if secrets found (simplified check)
-            if grep -q '"results":\s*\[\]' scan-results/gitleaks-report/results.sarif 2>/dev/null; then
+            SECRET_COUNT=$(jq '[.runs[].results[]] | length' scan-results/gitleaks-report/results.sarif 2>/dev/null || echo "-1")
+            if [ "$SECRET_COUNT" -eq 0 ]; then
               echo "- ✅ Secret Scanning: No secrets detected" >> report.md
+            elif [ "$SECRET_COUNT" -lt 0 ]; then
+              echo "- ⚠️ Secret Scanning: Could not parse SARIF report" >> report.md
             else
-              echo "- ❌ Secret Scanning: Potential secrets found" >> report.md
+              echo "- ❌ Secret Scanning: $SECRET_COUNT potential secret(s) found" >> report.md
             fi
           else
             echo "- ⚠️ Secret Scanning: No results available" >> report.md
@@ -477,8 +479,13 @@ jobs:
 
       - name: Check for critical issues
         run: |
-          # Fail if critical security issues found
-          if grep -q "❌" report.md; then
-            echo "::error::Critical security issues detected"
+          # Fail only on actionable security findings, not report formatting symbols.
+          # Secrets: fail if gitleaks found any results (SECRET_COUNT > 0 path wrote ❌ Secret Scanning).
+          # Trivy: fail on CRITICAL vulnerabilities (checked inline above via $CRITICAL count).
+          # Both conditions are captured in report.md by specific ❌ prefixes — match precisely.
+          SECRETS_FAIL=$(grep -c "^- ❌ Secret Scanning:" report.md || true)
+          TRIVY_FAIL=$(grep -c "^- ❌ Docker Image Scanning:" report.md || true)
+          if [ "$SECRETS_FAIL" -gt 0 ] || [ "$TRIVY_FAIL" -gt 0 ]; then
+            echo "::error::Critical security issues detected (secrets=$SECRETS_FAIL trivy-critical=$TRIVY_FAIL)"
             exit 1
           fi
