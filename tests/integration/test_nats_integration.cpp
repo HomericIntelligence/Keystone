@@ -788,8 +788,9 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
   (void)consumer_s;  // OK if already exists
 
   // Publish a malformed message
-  natsStatus pub_s =
-      natsConnection_PublishString(conn.handle(), "hi.tasks.bad", "{}");  // Only 3 parts, malformed
+  natsStatus pub_s = natsConnection_PublishString(conn.handle(),
+                                                  "hi.tasks.bad",
+                                                  "{}");  // Only 3 parts, malformed
   ASSERT_EQ(pub_s, NATS_OK);
 
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
