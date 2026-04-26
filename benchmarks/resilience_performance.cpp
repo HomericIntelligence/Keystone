@@ -13,6 +13,7 @@
 #include "core/retry_policy.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <thread>
 
 #include <benchmark/benchmark.h>
@@ -65,13 +66,13 @@ BENCHMARK(BM_RetryPolicy_BackoffCalculation);
 
 // Benchmark: Exponential backoff sequence
 static void BM_RetryPolicy_FullSequence(benchmark::State& state) {
-  int max_retries = state.range(0);
+  int32_t max_retries = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
     auto policy =
         RetryPolicy(max_retries, std::chrono::milliseconds(10), 2.0, std::chrono::seconds(10));
 
-    for (int attempt = 0; attempt < max_retries; ++attempt) {
+    for (int32_t attempt = 0; attempt < max_retries; ++attempt) {
       if (!policy.shouldRetry(attempt))
         break;
       auto delay = policy.getBackoffDelay(attempt);
@@ -91,7 +92,7 @@ static void BM_RetryPolicy_VaryingMultiplier(benchmark::State& state) {
       RetryPolicy(20, std::chrono::milliseconds(100), multiplier, std::chrono::seconds(30));
 
   for (auto _ : state) {
-    for (int attempt = 0; attempt < 10; ++attempt) {
+    for (int32_t attempt = 0; attempt < 10; ++attempt) {
       auto delay = policy.getBackoffDelay(attempt);
       benchmark::DoNotOptimize(delay);
     }
@@ -155,7 +156,7 @@ BENCHMARK(BM_CircuitBreaker_RecordFailure);
 
 // Benchmark: State transition (closed -> open)
 static void BM_CircuitBreaker_StateTransition(benchmark::State& state) {
-  int failure_threshold = state.range(0);
+  int32_t failure_threshold = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
     auto cb = CircuitBreaker("test",
@@ -164,7 +165,7 @@ static void BM_CircuitBreaker_StateTransition(benchmark::State& state) {
                              std::chrono::seconds(5));
 
     // Trigger failures to open circuit
-    for (int i = 0; i < failure_threshold; ++i) {
+    for (int32_t i = 0; i < failure_threshold; ++i) {
       cb.recordFailure();
     }
 
@@ -261,11 +262,11 @@ BENCHMARK(BM_HeartbeatMonitor_IsAgentAlive);
 
 // Benchmark: getDeadAgents
 static void BM_HeartbeatMonitor_GetDeadAgents(benchmark::State& state) {
-  int num_agents = state.range(0);
+  int32_t num_agents = static_cast<int32_t>(state.range(0));
 
   HeartbeatMonitor monitor(std::chrono::milliseconds(100));
 
-  for (int i = 0; i < num_agents; ++i) {
+  for (int32_t i = 0; i < num_agents; ++i) {
     monitor.registerAgent("agent-" + std::to_string(i));
   }
 
@@ -287,12 +288,12 @@ static void BM_HeartbeatMonitor_ConcurrentHeartbeat(benchmark::State& state) {
   static std::atomic<bool> initialized{false};
 
   if (!initialized.exchange(true)) {
-    for (int i = 0; i < 100; ++i) {
+    for (int32_t i = 0; i < 100; ++i) {
       monitor.registerAgent("agent-" + std::to_string(i));
     }
   }
 
-  int agent_idx = state.thread_index() % 100;
+  int32_t agent_idx = static_cast<int32_t>(state.thread_index()) % 100;
   std::string agent_id = "agent-" + std::to_string(agent_idx);
 
   for (auto _ : state) {

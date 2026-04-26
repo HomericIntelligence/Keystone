@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -84,7 +85,7 @@ static void BM_4LayerHierarchy_MessageFlow(benchmark::State& state) {
   module2->setMessageBus(&bus);
 
   std::vector<std::shared_ptr<TaskAgent>> tasks;
-  for (int i = 1; i <= 6; ++i) {
+  for (int32_t i = 1; i <= 6; ++i) {
     auto task = std::make_shared<TaskAgent>("task" + std::to_string(i));
     bus.registerAgent(task->getAgentId(), task);
     task->setMessageBus(&bus);
@@ -107,20 +108,20 @@ BENCHMARK(BM_4LayerHierarchy_MessageFlow);
 
 // Benchmark: Task Agent Registry Lookup Scalability
 static void BM_TaskAgent_RegistryLookup(benchmark::State& state) {
-  int num_agents = state.range(0);
+  int32_t num_agents = static_cast<int32_t>(state.range(0));
 
   MessageBus bus;
   std::vector<std::shared_ptr<TaskAgent>> agents;
 
   // Register N task agents
-  for (int i = 0; i < num_agents; ++i) {
+  for (int32_t i = 0; i < num_agents; ++i) {
     auto agent = std::make_shared<TaskAgent>("task" + std::to_string(i));
     bus.registerAgent(agent->getAgentId(), agent);
     agents.push_back(agent);
   }
 
   // Benchmark lookup operations
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "task" + std::to_string(lookup_idx % num_agents);
     benchmark::DoNotOptimize(bus.hasAgent(agent_id));
@@ -134,15 +135,15 @@ BENCHMARK(BM_TaskAgent_RegistryLookup)->Range(10, 1000);
 
 // Benchmark: Scheduler Submission Rate (Work-Stealing)
 static void BM_Scheduler_SubmissionRate(benchmark::State& state) {
-  const int num_workers = state.range(0);
+  const int32_t num_workers = static_cast<int32_t>(state.range(0));
 
   WorkStealingScheduler scheduler(num_workers);
   scheduler.start();
 
   // Warmup: get workers ready
-  for (int i = 0; i < num_workers; ++i) {
+  for (int32_t i = 0; i < num_workers; ++i) {
     scheduler.submit([]() {
-      volatile int x = 42;
+      volatile int32_t x = 42;
       (void)x;
     });
   }
@@ -151,8 +152,8 @@ static void BM_Scheduler_SubmissionRate(benchmark::State& state) {
   // Benchmark submission rate
   for (auto _ : state) {
     scheduler.submit([]() {
-      volatile int sum = 0;
-      for (int j = 0; j < 10; ++j) {
+      volatile int32_t sum = 0;
+      for (int32_t j = 0; j < 10; ++j) {
         sum += j;
       }
     });
@@ -189,7 +190,7 @@ BENCHMARK(BM_Agent_MessageProcessing);
 
 // Benchmark: Component Leadership with Multiple Modules
 static void BM_ComponentLead_MultiModule(benchmark::State& state) {
-  const int num_modules = state.range(0);
+  const int32_t num_modules = static_cast<int32_t>(state.range(0));
 
   MessageBus bus;
   auto comp_lead = std::make_shared<ComponentLeadAgent>("comp_lead");
@@ -197,7 +198,7 @@ static void BM_ComponentLead_MultiModule(benchmark::State& state) {
   comp_lead->setMessageBus(&bus);
 
   std::vector<std::shared_ptr<ModuleLeadAgent>> modules;
-  for (int i = 0; i < num_modules; ++i) {
+  for (int32_t i = 0; i < num_modules; ++i) {
     auto module = std::make_shared<ModuleLeadAgent>("module" + std::to_string(i));
     bus.registerAgent(module->getAgentId(), module);
     module->setMessageBus(&bus);
@@ -219,7 +220,7 @@ BENCHMARK(BM_ComponentLead_MultiModule)->Range(2, 16);
 
 // Benchmark: Module Leadership with Multiple Tasks
 static void BM_ModuleLead_MultiTask(benchmark::State& state) {
-  const int num_tasks = state.range(0);
+  const int32_t num_tasks = static_cast<int32_t>(state.range(0));
 
   MessageBus bus;
   auto module = std::make_shared<ModuleLeadAgent>("module");
@@ -227,7 +228,7 @@ static void BM_ModuleLead_MultiTask(benchmark::State& state) {
   module->setMessageBus(&bus);
 
   std::vector<std::shared_ptr<TaskAgent>> tasks;
-  for (int i = 0; i < num_tasks; ++i) {
+  for (int32_t i = 0; i < num_tasks; ++i) {
     auto task = std::make_shared<TaskAgent>("task" + std::to_string(i));
     bus.registerAgent(task->getAgentId(), task);
     task->setMessageBus(&bus);
