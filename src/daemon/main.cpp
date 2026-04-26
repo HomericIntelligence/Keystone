@@ -1,15 +1,26 @@
 #include "monitoring/health_check_server.hpp"
 #include "monitoring/nats_status.hpp"
+#include "network/nats_listener.hpp"
+#include "transport/nats_connection.hpp"
 
 #include <atomic>
+#include <chrono>
 #include <csignal>
+#include <cstdlib>
 #include <iostream>
+#include <string>
+#include <thread>
 
 namespace {
 std::atomic<bool> g_stop{false};
 
 void signalHandler(int /*sig*/) {
   g_stop.store(true, std::memory_order_release);
+}
+
+std::string envOr(const char* name, std::string def) {
+  const char* v = std::getenv(name);  // NOLINT(concurrency-mt-unsafe)
+  return (v != nullptr && v[0] != '\0') ? std::string(v) : std::move(def);
 }
 }  // namespace
 
@@ -29,9 +40,62 @@ int main() {
                "http://0.0.0.0:"
             << health_server.getPort() << "/v1/health\n";
 
+  // -------------------------------------------------------------------------
+  // Wire NATSListener into the daemon startup path (Issue #180).
+  //
+  // Configuration is drawn from environment variables so the binary stays
+  // zero-config by default:
+  //   KEYSTONE_NATS_URL      — NATS server URL   (default: nats://localhost:4222)
+  //   KEYSTONE_NATS_SUBJECT  — subject pattern   (default: hi.tasks.>)
+  //   KEYSTONE_NATS_DURABLE  — durable consumer  (default: keystone-daemon)
+  // -------------------------------------------------------------------------
+
+  keystone::transport::NatsConfig nats_cfg;
+  nats_cfg.url = envOr("KEYSTONE_NATS_URL", "nats://localhost:4222");
+
+  keystone::network::NATSListenerConfig listener_cfg;
+  listener_cfg.subject = envOr("KEYSTONE_NATS_SUBJECT", "hi.tasks.>");
+  listener_cfg.durable_name = envOr("KEYSTONE_NATS_DURABLE", "keystone-daemon");
+  listener_cfg.max_ack_pending = 1;
+
+  // DAG-advance callback: log the event (production code would call the real
+  // DAG advancer once it is wired in from ProjectAgamemnon).
+  auto dag_advance = [](std::string_view team_id, std::string_view task_id) {
+    std::cout << "keystone-daemon: dag_advance team=" << team_id << " task=" << task_id << '\n';
+  };
+
+  keystone::transport::NatsConnection nats_conn(nats_cfg);
+  keystone::network::NATSListener listener(listener_cfg, dag_advance);
+
+  // Attempt to connect to NATS; log a warning but continue if unavailable so
+  // the health endpoint remains reachable.
+  if (nats_conn.connect()) {
+    jsCtx* js = nats_conn.jsContext();
+    if (js != nullptr) {
+      natsStatus s = listener.start(js);
+      if (s != NATS_OK) {
+        std::cerr << "keystone-daemon: NATSListener::start failed status=" << static_cast<int>(s)
+                  << " (continuing without NATS)\n";
+      } else {
+        std::cout << "keystone-daemon: NATSListener active subject=" << listener_cfg.subject
+                  << '\n';
+      }
+    } else {
+      std::cerr
+          << "keystone-daemon: failed to obtain JetStream context (continuing without NATS)\n";
+    }
+  } else {
+    std::cerr << "keystone-daemon: NATS unavailable at " << nats_cfg.url
+              << " (continuing without NATS)\n";
+  }
+
   while (!g_stop.load(std::memory_order_acquire)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
+
+  // Graceful shutdown: stop NATSListener before closing the connection.
+  listener.stop();
+  nats_conn.disconnect();
 
   health_server.stop();
   std::cout << "Keystone daemon stopped.\n";

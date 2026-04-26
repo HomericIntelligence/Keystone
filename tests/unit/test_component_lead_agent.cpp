@@ -7,8 +7,9 @@
  * - Module Decomposition (4 tests)
  * - Coordination (4 tests)
  * - State Machine (2 tests)
+ * - Failure Handling / DAG Deadlock Prevention (4 tests) — Issue #183
  *
- * Total: 12 tests
+ * Total: 16 tests
  */
 
 #include "agents/component_lead_agent.hpp"
@@ -249,4 +250,123 @@ TEST_F(ComponentLeadAgentTest, ConcurrentCoordination) {
     ++count;
   }
   EXPECT_EQ(count, 50);
+}
+
+// ============================================================================
+// Issue #183: DAG Deadlock Prevention — Failure Handling Tests (4 tests)
+// Mirrors the ModuleLeadAgent failure-handling tests added for Issue #87.
+// ============================================================================
+
+TEST_F(ComponentLeadAgentTest, SingleModuleFailureTransitionsToError) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  component->setMessageBus(bus_.get());
+  bus_->registerAgent(component->getAgentId(), component);
+
+  std::vector<std::string> module_ids = {"module_1"};
+  component->setAvailableModuleLeads(module_ids);
+
+  // Decompose "Messaging(10)" into 1 module goal, which initialises coordination
+  // for 1 expected result.
+  component
+      ->processMessage(
+          core::KeystoneMessage::create("chief", "component_1", "Build Core: Messaging(10)"))
+      .get();
+
+  // Simulate the single module reporting failure
+  auto failure_msg =
+      core::KeystoneMessage::create("module_1", "component_1", "response", "compile error");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  component->processMessage(failure_msg).get();
+
+  // Agent must be in ERROR state — DAG is not deadlocked
+  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+}
+
+TEST_F(ComponentLeadAgentTest, SynthesizeAfterModuleFailureReturnsErrorMessage) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  component->setMessageBus(bus_.get());
+  bus_->registerAgent(component->getAgentId(), component);
+
+  std::vector<std::string> module_ids = {"module_1", "module_2"};
+  component->setAvailableModuleLeads(module_ids);
+
+  // Decompose into 2 module goals
+  component
+      ->processMessage(core::KeystoneMessage::create(
+          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20)"))
+      .get();
+
+  // One success
+  auto success_msg =
+      core::KeystoneMessage::create("module_1", "component_1", "module_result", "messaging done");
+  component->processMessage(success_msg).get();
+
+  // One failure
+  auto failure_msg =
+      core::KeystoneMessage::create("module_2", "component_1", "response", "linker error");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  component->processMessage(failure_msg).get();
+
+  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+
+  // synthesizeComponentResult() must surface the error, not silently succeed
+  auto result = component->synthesizeComponentResult();
+  EXPECT_NE(result.find("ERROR"), std::string::npos);
+}
+
+TEST_F(ComponentLeadAgentTest, ModuleFailureBeforeAllResultsDoesNotDeadlock) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  component->setMessageBus(bus_.get());
+  bus_->registerAgent(component->getAgentId(), component);
+
+  std::vector<std::string> module_ids = {"module_1", "module_2", "module_3"};
+  component->setAvailableModuleLeads(module_ids);
+
+  // Decompose into 3 module goals
+  component
+      ->processMessage(core::KeystoneMessage::create(
+          "chief",
+          "component_1",
+          "Build Core: Messaging(10) and Concurrency(20) and Storage(30)"))
+      .get();
+
+  // First module fails immediately — must not leave the other two permanently pending
+  auto failure_msg =
+      core::KeystoneMessage::create("module_1", "component_1", "response", "fatal error");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  component->processMessage(failure_msg).get();
+
+  // State must not remain stuck in WAITING_FOR_MODULES after a terminal event
+  auto state = component->getCurrentState();
+  EXPECT_TRUE(state == agents::ComponentLeadAgent::State::ERROR ||
+              state == agents::ComponentLeadAgent::State::WAITING_FOR_MODULES);
+}
+
+TEST_F(ComponentLeadAgentTest, SuccessResultAfterModuleFailureStillCountsTowardCompletion) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  component->setMessageBus(bus_.get());
+  bus_->registerAgent(component->getAgentId(), component);
+
+  std::vector<std::string> module_ids = {"module_1", "module_2"};
+  component->setAvailableModuleLeads(module_ids);
+
+  // Decompose into 2 module goals
+  component
+      ->processMessage(core::KeystoneMessage::create(
+          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20)"))
+      .get();
+
+  // Failure arrives first
+  auto failure_msg =
+      core::KeystoneMessage::create("module_1", "component_1", "response", "timeout");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  component->processMessage(failure_msg).get();
+
+  // Then a success — all results are now terminal; agent must not remain WAITING
+  auto success_msg =
+      core::KeystoneMessage::create("module_2", "component_1", "module_result", "concurrency done");
+  component->processMessage(success_msg).get();
+
+  auto state = component->getCurrentState();
+  EXPECT_NE(state, agents::ComponentLeadAgent::State::WAITING_FOR_MODULES);
 }
