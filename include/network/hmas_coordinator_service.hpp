@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/i_message_router.hpp"
 #include "network/service_registry.hpp"
 #include "network/task_phase_utils.hpp"
 #include "network/task_router.hpp"
@@ -104,12 +105,21 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// @return Number of tasks cleaned up
   int32_t cleanupOldTasks(int64_t age_threshold_ms = 3600000);  // Default: 1 hour
 
+  /// Set the message router used to notify agents of task lifecycle events.
+  /// When set, CancelTask sends a CANCEL_TASK KeystoneMessage to the assigned agent.
+  /// @param router Pointer to IMessageRouter (must outlive this object; may be nullptr)
+  void setMessageRouter(core::IMessageRouter* router);
+
  private:
   /// Generate unique task ID
   std::string generateTaskId() const;
 
   std::shared_ptr<ServiceRegistry> registry_;
   std::shared_ptr<TaskRouter> router_;
+
+  /// Optional message router for agent notifications (e.g., cancellation).
+  /// Not owned by this object.
+  core::IMessageRouter* message_router_{nullptr};
 
   /// Active tasks map: task_id -> TaskState
   std::unordered_map<std::string, TaskState> active_tasks_;

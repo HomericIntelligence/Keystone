@@ -74,8 +74,18 @@ inline hmas::TaskPhase stringToPhase(const std::string& phase_str) {
     return hmas::TASK_PHASE_CANCELLED;
   if (phase_str == "ERROR")
     return hmas::TASK_PHASE_ERROR;
-
+  if (phase_str == "UNSPECIFIED")
+    return hmas::TASK_PHASE_UNSPECIFIED;
   return hmas::TASK_PHASE_UNSPECIFIED;
+}
+
+/// Returns true if the string maps to a known (non-UNSPECIFIED) TaskPhase value.
+inline bool isKnownPhaseString(const std::string& phase_str) {
+  if (phase_str.empty())
+    return false;
+  if (phase_str == "UNSPECIFIED")
+    return false;
+  return stringToPhase(phase_str) != hmas::TASK_PHASE_UNSPECIFIED;
 }
 
 }  // namespace keystone::network
