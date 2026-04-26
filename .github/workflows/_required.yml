@@ -2,8 +2,8 @@ name: Required Checks
 
 # Canonical status-check umbrella for the org-wide homeric-main-baseline ruleset.
 # Each job name is the exact context string registered in the branch protection rule.
-# This workflow is intentionally lightweight: it runs fast representative validators
-# and defers the full sanitiser matrix to ci.yml.
+# All jobs from ci.yml, security-scan.yml, codeql-analysis.yml, and dependency-audit.yml
+# are consolidated here so every check is individually required.
 
 on:
   push:
@@ -20,12 +20,7 @@ permissions:
   contents: read
   pull-requests: write
   security-events: write
-
-# ---------------------------------------------------------------------------
-# Shared setup fragments (referenced via YAML anchors are not supported by
-# GitHub Actions, so common steps are inlined or extracted to the composite
-# action already in the repo).
-# ---------------------------------------------------------------------------
+  actions: read
 
 jobs:
   # ============================================================
@@ -59,6 +54,36 @@ jobs:
 
       - name: Clang-format check (C++)
         run: just format-check
+
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
+        with:
+          extra_args: --show-diff-on-failure
+
+      - name: Check CMake dependency graph for cycles
+        run: |
+          cmake -S . -B build/graphviz -G Ninja --graphviz=build/graphviz/deps.dot -DCMAKE_BUILD_TYPE=Debug 2>/dev/null || true
+          if [ -f build/graphviz/deps.dot ]; then
+            echo "CMake dependency graph generated successfully"
+            python3 << 'EOF'
+          import re, sys
+          content = open("build/graphviz/deps.dot").read()
+          edges = re.findall(r'"([^"]+)" -> "([^"]+)"', content)
+          adj = {}
+          for src, dst in edges:
+              adj.setdefault(src, []).append(dst)
+          visited, in_stack = set(), set()
+          def has_cycle(node):
+              if node in in_stack: return True
+              if node in visited: return False
+              visited.add(node); in_stack.add(node)
+              if any(has_cycle(n) for n in adj.get(node, [])): return True
+              in_stack.discard(node); return False
+          if any(has_cycle(n) for n in list(adj)):
+              print("CYCLE DETECTED in CMake dependency graph!"); sys.exit(1)
+          print("No cycles detected in CMake dependency graph")
+          EOF
+          fi
 
   # ============================================================
   # 2. unit-tests
@@ -200,6 +225,7 @@ jobs:
 
   # ============================================================
   # 4. security/dependency-scan
+  #    (merged with dependency-audit.yml Trivy scans)
   # ============================================================
   security-dependency-scan:
     name: security/dependency-scan
@@ -261,11 +287,15 @@ jobs:
           fi
           CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' dep-scan.json 2>/dev/null || echo "0")
           HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' dep-scan.json 2>/dev/null || echo "0")
+          MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' dep-scan.json 2>/dev/null || echo "0")
+          LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' dep-scan.json 2>/dev/null || echo "0")
           echo "## Dependency Scan (Required Checks)" >> "$GITHUB_STEP_SUMMARY"
           echo "| Severity | Count |"                >> "$GITHUB_STEP_SUMMARY"
           echo "|----------|-------|"                >> "$GITHUB_STEP_SUMMARY"
           echo "| Critical | $CRITICAL |"            >> "$GITHUB_STEP_SUMMARY"
           echo "| High     | $HIGH |"                >> "$GITHUB_STEP_SUMMARY"
+          echo "| Medium   | $MEDIUM |"              >> "$GITHUB_STEP_SUMMARY"
+          echo "| Low      | $LOW |"                 >> "$GITHUB_STEP_SUMMARY"
           if [ "$CRITICAL" -gt 0 ]; then
             echo "::error::$CRITICAL critical vulnerabilities found"
             exit 1
@@ -273,6 +303,7 @@ jobs:
 
   # ============================================================
   # 5. security/secrets-scan
+  #    (upgraded to gitleaks binary from security-scan.yml)
   # ============================================================
   security-secrets-scan:
     name: security/secrets-scan
@@ -285,18 +316,28 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION=8.30.1
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${OS}_${ARCH}.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
       - name: Run Gitleaks
         run: |
-          wget -q https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz
-          echo "79a3ab579b53f71efd634f3aaf7e04a0fa0cf206b7ed434638d1547a2470a66e  gitleaks_8.30.0_linux_x64.tar.gz" | sha256sum --check
-          tar -xzf gitleaks_8.30.0_linux_x64.tar.gz
-          chmod +x gitleaks
-          if [ -f .gitleaks.toml ]; then
-            ./gitleaks detect --source=. --config=.gitleaks.toml --verbose --exit-code=1
-          else
-            ./gitleaks detect --source=. --verbose --exit-code=1
-          fi
+          gitleaks detect --source . --report-format sarif --report-path results.sarif --exit-code 0
         continue-on-error: true
+
+      - name: Upload Gitleaks results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-report
+          path: results.sarif
+          retention-days: 90
 
   # ============================================================
   # 6. build
@@ -534,3 +575,800 @@ jobs:
 
           print(f"\nAll versions agree: {unique.pop()}")
           PYEOF
+
+  # ============================================================
+  # 10. python-tests
+  # ============================================================
+  python-tests:
+    name: python-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run pytest with coverage
+        run: pytest
+
+      - name: Run version bounds test
+        run: python3 -m pytest tests/test_version_bounds.py -v
+
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-coverage
+          path: coverage.xml
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ============================================================
+  # 11. test-asan
+  # ============================================================
+  test-asan:
+    name: Test (asan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.asan/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build with AddressSanitizer
+        run: make compile.debug.asan.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run tests with AddressSanitizer
+        run: make test.debug.asan.native
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-asan
+          path: build/x86.debug.asan/Testing/
+          retention-days: 7
+
+  # ============================================================
+  # 12. test-ubsan
+  # ============================================================
+  test-ubsan:
+    name: Test (ubsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.ubsan/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build with UndefinedBehaviorSanitizer
+        run: make compile.debug.ubsan.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run tests with UndefinedBehaviorSanitizer
+        run: make test.debug.ubsan.native
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-ubsan
+          path: build/x86.debug.ubsan/Testing/
+          retention-days: 7
+
+  # ============================================================
+  # 13. test-tsan
+  # ============================================================
+  test-tsan:
+    name: Test (tsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.tsan/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build with ThreadSanitizer
+        run: make compile.debug.tsan.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run tests with ThreadSanitizer
+        run: make test.debug.tsan.native
+        env:
+          TSAN_OPTIONS: suppressions=${{ github.workspace }}/tsan.supp:second_deadlock_stack=1
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-tsan
+          path: build/x86.debug.tsan/Testing/
+          retention-days: 7
+
+  # ============================================================
+  # 14. test-lsan
+  # ============================================================
+  test-lsan:
+    name: Test (lsan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.lsan/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build with LeakSanitizer
+        run: make compile.debug.lsan.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run tests with LeakSanitizer
+        run: make test.debug.lsan.native
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-lsan
+          path: build/x86.debug.lsan/Testing/
+          retention-days: 7
+
+  # ============================================================
+  # 15. benchmarks
+  # ============================================================
+  benchmarks:
+    name: benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.release/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build release
+        run: make compile.release.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run benchmarks
+        run: make benchmark.native || true  # Don't fail on benchmark results
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: build/reports/benchmarks/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  # ============================================================
+  # 16. coverage
+  # ============================================================
+  coverage:
+    name: coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+        with:
+          include-coverage: 'true'
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.debug.coverage/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install project dependencies
+        run: make deps.native
+
+      - name: Build with coverage
+        run: make compile.debug.coverage.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Run tests for coverage
+        run: make test.debug.coverage.native
+
+      - name: Generate coverage report
+        run: |
+          chmod +x scripts/generate_coverage.sh
+          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: build/coverage/html/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: build/coverage/coverage_filtered.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # ============================================================
+  # 17. sast-scanning
+  # ============================================================
+  sast-scanning:
+    name: sast-scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/cpp
+            p/docker
+            p/cmake
+        continue-on-error: true
+
+      - name: Upload Semgrep SARIF
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+
+  # ============================================================
+  # 18. supply-chain-scanning
+  # ============================================================
+  supply-chain-scanning:
+    name: supply-chain-scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # dependency-review-action only supports pull_request events; skip on push/schedule
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+  # ============================================================
+  # 19. cpp-static-analysis
+  # ============================================================
+  cpp-static-analysis:
+    name: cpp-static-analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-tidy-14
+
+      - name: Run cppcheck security analysis
+        run: |
+          cppcheck \
+            --enable=all \
+            --xml \
+            --xml-version=2 \
+            --suppress=missingIncludeSystem \
+            --suppress=syntaxError \
+            --inline-suppr \
+            -I include \
+            src/ tests/ 2> cppcheck-report.xml
+
+      - name: Fail on cppcheck error-severity findings
+        run: |
+          python3 - << 'EOF'
+          import xml.etree.ElementTree as ET, sys
+          tree = ET.parse("cppcheck-report.xml")
+          errors = [e for e in tree.getroot().find("errors")
+                    if e.get("severity") == "error"]
+          if errors:
+              for e in errors:
+                  loc = e.find("location")
+                  f = loc.get("file","?") if loc is not None else "?"
+                  l = loc.get("line","?") if loc is not None else "?"
+                  print(f"CPPCHECK ERROR: {e.get('id')} at {f}:{l} — {e.get('msg')}")
+              sys.exit(1)
+          EOF
+
+      - name: Upload cppcheck results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.xml
+          retention-days: 30
+
+  # ============================================================
+  # 20. docker-image-scanning
+  # ============================================================
+  docker-image-scanning:
+    name: docker-image-scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image for scanning
+        id: docker_build
+        run: |
+          docker build --target production -t projectkeystone:scan .
+        continue-on-error: true
+
+      - name: Warn if Docker build failed
+        if: steps.docker_build.outcome == 'failure'
+        run: |
+          echo "::warning::Docker build failed — skipping image scan. Fix the Dockerfile to enable Trivy container scanning."
+
+      - name: Run Trivy vulnerability scanner (table format)
+        if: steps.docker_build.outcome == 'success'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 'projectkeystone:scan'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner (SARIF format)
+        if: steps.docker_build.outcome == 'success'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 'projectkeystone:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security tab
+        if: steps.docker_build.outcome == 'success' && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container-scan'
+
+      - name: Run Trivy vulnerability scanner (JSON format)
+        if: steps.docker_build.outcome == 'success'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: 'projectkeystone:scan'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        continue-on-error: true
+
+      - name: Parse Trivy results
+        id: trivy-summary
+        if: always()
+        run: |
+          if [ -f trivy-results.json ]; then
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
+            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' trivy-results.json)
+            LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' trivy-results.json)
+            echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+            echo "high=$HIGH" >> $GITHUB_OUTPUT
+            echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
+            echo "low=$LOW" >> $GITHUB_OUTPUT
+            echo "### Trivy Scan Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Critical**: $CRITICAL" >> $GITHUB_STEP_SUMMARY
+            echo "- **High**: $HIGH" >> $GITHUB_STEP_SUMMARY
+            echo "- **Medium**: $MEDIUM" >> $GITHUB_STEP_SUMMARY
+            echo "- **Low**: $LOW" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "critical=0" >> $GITHUB_OUTPUT
+            echo "high=0" >> $GITHUB_OUTPUT
+            echo "medium=0" >> $GITHUB_OUTPUT
+            echo "low=0" >> $GITHUB_OUTPUT
+            echo "### Trivy Scan Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "Docker build failed — no image to scan." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Trivy scan results
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: trivy-scan-results
+          path: |
+            trivy-results.sarif
+            trivy-results.json
+          retention-days: 90
+
+      - name: Check for critical vulnerabilities
+        if: always()
+        run: |
+          CRITICAL="${{ steps.trivy-summary.outputs.critical }}"
+          HIGH="${{ steps.trivy-summary.outputs.high }}"
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::Found $CRITICAL critical vulnerabilities in Docker image"
+            echo "::warning::Review the Trivy scan results in the Security tab"
+          fi
+          # Threshold of 10: allows common base-image HIGH vulns while blocking systemic exposure
+          if [ "$HIGH" -gt 10 ]; then
+            echo "::warning::Found $HIGH high-severity vulnerabilities in Docker image"
+          fi
+
+  # ============================================================
+  # 21. Analyze (CodeQL matrix — c-cpp and python)
+  # ============================================================
+  codeql:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: c-cpp
+            build-mode: manual
+          - language: python
+            build-mode: none
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+
+      # C++ manual build steps -- only run for c-cpp
+      - name: Install build dependencies
+        if: matrix.language == 'c-cpp'
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            cmake ninja-build \
+            clang-18 clang++-18 \
+            libc++-18-dev libc++abi-18-dev \
+            libssl-dev
+          pip install conan --break-system-packages
+          conan profile detect --force
+          conan install . \
+            --output-folder=build/conan-deps \
+            --build=missing \
+            -s build_type=Release \
+            -s compiler.cppstd=20
+
+      - name: Build for CodeQL analysis
+        if: matrix.language == 'c-cpp'
+        run: |
+          cmake -S . -B build/codeql \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake
+          cmake --build build/codeql
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # ============================================================
+  # 22. security-report
+  # ============================================================
+  security-report:
+    name: security-report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [security-secrets-scan, sast-scanning, security-dependency-scan, docker-image-scanning, cpp-static-analysis]
+    if: always()
+
+    steps:
+      - name: Download all scan results
+        uses: actions/download-artifact@v8
+        with:
+          path: scan-results/
+        continue-on-error: true
+
+      - name: Generate security report
+        id: report
+        run: |
+          echo "## Security Scan Results" > report.md
+          echo "" >> report.md
+
+          # Check secret scanning — use jq to count SARIF results reliably
+          if [ -f "scan-results/gitleaks-report/results.sarif" ]; then
+            SECRET_COUNT=$(jq '[.runs[].results[]] | length' scan-results/gitleaks-report/results.sarif 2>/dev/null || echo "-1")
+            if [ "$SECRET_COUNT" -eq 0 ]; then
+              echo "- ✅ Secret Scanning: No secrets detected" >> report.md
+            elif [ "$SECRET_COUNT" -lt 0 ]; then
+              echo "- ⚠️ Secret Scanning: Could not parse SARIF report" >> report.md
+            else
+              echo "- ❌ Secret Scanning: $SECRET_COUNT potential secret(s) found" >> report.md
+            fi
+          else
+            echo "- ⚠️ Secret Scanning: No results available" >> report.md
+          fi
+
+          # Check SAST
+          echo "- ✅ SAST: Completed (check Security tab for details)" >> report.md
+
+          # Check dependency scanning
+          echo "- ✅ Dependency Scanning: Completed" >> report.md
+
+          # Check C++ static analysis
+          if [ -f "scan-results/cppcheck-report/cppcheck-report.xml" ]; then
+            echo "- ✅ C++ Static Analysis: Completed" >> report.md
+          else
+            echo "- ⚠️ C++ Static Analysis: No results" >> report.md
+          fi
+
+          # Check Docker image scanning (Trivy)
+          if [ -f "scan-results/trivy-scan-results/trivy-results.json" ]; then
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
+            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' scan-results/trivy-scan-results/trivy-results.json 2>/dev/null || echo "0")
+
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo "- ❌ Docker Image Scanning: $CRITICAL critical, $HIGH high, $MEDIUM medium vulnerabilities" >> report.md
+            elif [ "$HIGH" -gt 10 ]; then
+              echo "- ⚠️ Docker Image Scanning: $HIGH high, $MEDIUM medium vulnerabilities" >> report.md
+            else
+              echo "- ✅ Docker Image Scanning: $HIGH high, $MEDIUM medium vulnerabilities (acceptable)" >> report.md
+            fi
+          else
+            echo "- ⚠️ Docker Image Scanning: No results" >> report.md
+          fi
+
+          echo "" >> report.md
+          echo "### Recommendations" >> report.md
+          echo "- Review findings in the GitHub Security tab" >> report.md
+          echo "- Check artifact uploads for detailed reports" >> report.md
+          echo "- Address critical Docker vulnerabilities immediately" >> report.md
+          echo "" >> report.md
+          echo "---" >> report.md
+          echo "*Workflow: [${{ github.workflow }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*" >> report.md
+
+          cat report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-report
+          path: report.md
+          retention-days: 90
+
+      - name: Check for critical issues
+        run: |
+          # Fail only on actionable security findings, not report formatting symbols.
+          # Secrets: fail if gitleaks found any results (SECRET_COUNT > 0 path wrote ❌ Secret Scanning).
+          # Trivy: fail on CRITICAL vulnerabilities (checked inline above via $CRITICAL count).
+          # Both conditions are captured in report.md by specific ❌ prefixes — match precisely.
+          SECRETS_FAIL=$(grep -c "^- ❌ Secret Scanning:" report.md || true)
+          TRIVY_FAIL=$(grep -c "^- ❌ Docker Image Scanning:" report.md || true)
+          if [ "$SECRETS_FAIL" -gt 0 ] || [ "$TRIVY_FAIL" -gt 0 ]; then
+            echo "::error::Critical security issues detected (secrets=$SECRETS_FAIL trivy-critical=$TRIVY_FAIL)"
+            exit 1
+          fi
