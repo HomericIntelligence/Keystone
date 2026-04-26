@@ -126,78 +126,6 @@ jobs:
           path: cppcheck-report.xml
           retention-days: 30
 
-      - name: Install build dependencies (with static analysis)
-        uses: ./.github/actions/install-build-deps
-        with:
-          include-static-analysis: "true"
-
-      - name: Cache Conan packages (clang-tidy)
-        uses: actions/cache@v5
-        with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-${{ runner.os }}-
-
-      - name: Cache FetchContent (clang-tidy)
-        uses: actions/cache@v5
-        with:
-          path: build/x86.debug.clang-tidy/_deps
-          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-clang-tidy-${{ runner.os }}-
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps.native
-
-      - name: Configure CMake with clang-tidy
-        run: |
-          CONAN_TOOLCHAIN=""
-          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
-            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
-          fi
-          cmake -S . -B build/x86.debug.clang-tidy \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DENABLE_CLANG_TIDY=ON \
-            $CONAN_TOOLCHAIN
-
-      - name: Build with clang-tidy
-        run: cmake --build build/x86.debug.clang-tidy -j$(nproc) 2>&1 | tee clang-tidy-output.txt
-        continue-on-error: true
-
-      - name: Fail on clang-tidy errors
-        run: |
-          # Filter out CMake integration false positives: clang-tidy is invoked on
-          # generated cmake files and non-source inputs, producing "no input files"
-          # and "no such file or directory" diagnostics that are not real code errors.
-          # Only fail on errors that reference actual source files (src/ or include/).
-          REAL_ERRORS=$(grep -E "error:" clang-tidy-output.txt \
-            | grep -v "no input files\|no such file or directory\|unable to handle compilation" \
-            || true)
-          if [ -n "$REAL_ERRORS" ]; then
-            echo "::error::clang-tidy reported errors in source files"
-            echo "$REAL_ERRORS"
-            exit 1
-          fi
-          echo "clang-tidy passed"
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-      - name: Run mypy (Python typecheck)
-        run: mypy conanfile.py
-
   # ============================================================
   # 2. unit-tests
   #    C++ unit tests + Python pytest
@@ -291,15 +219,10 @@ jobs:
   #    + all sanitizer builds (asan, ubsan, tsan, lsan) as matrix
   # ============================================================
   integration-tests:
-    name: integration-tests (${{ matrix.sanitizer }})
+    name: integration-tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 90
     needs: lint
-
-    strategy:
-      fail-fast: false
-      matrix:
-        sanitizer: [asan, ubsan, tsan, lsan]
 
     steps:
       - name: Checkout code
@@ -316,14 +239,6 @@ jobs:
           restore-keys: |
             conan-${{ runner.os }}-
 
-      - name: Cache FetchContent downloads
-        uses: actions/cache@v5
-        with:
-          path: build/x86.debug.${{ matrix.sanitizer }}/_deps
-          key: fetchcontent-${{ matrix.sanitizer }}-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-${{ matrix.sanitizer }}-${{ runner.os }}-
-
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
 
@@ -336,24 +251,30 @@ jobs:
       - name: Install Conan dependencies
         run: make deps.native
 
-      - name: Build with ${{ matrix.sanitizer }}
-        run: make compile.debug.${{ matrix.sanitizer }}.native
+      - name: Build + test (ASan)
+        run: make compile.debug.asan.native && make test.debug.asan.native
+
+      - name: Build + test (UBSan)
+        run: make compile.debug.ubsan.native && make test.debug.ubsan.native
+
+      - name: Build + test (TSan)
+        run: make compile.debug.tsan.native && make test.debug.tsan.native
+        env:
+          TSAN_OPTIONS: "suppressions=${{ github.workspace }}/tsan.supp:second_deadlock_stack=1"
+
+      - name: Build + test (LSan)
+        run: make compile.debug.lsan.native && make test.debug.lsan.native
 
       - name: Show sccache stats
         if: always()
         run: sccache --show-stats
 
-      - name: Run all tests with ${{ matrix.sanitizer }}
-        run: make test.debug.${{ matrix.sanitizer }}.native
-        env:
-          TSAN_OPTIONS: ${{ matrix.sanitizer == 'tsan' && format('suppressions={0}/tsan.supp:second_deadlock_stack=1', github.workspace) || '' }}
-
       - name: Upload test logs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: integration-test-logs-${{ matrix.sanitizer }}
-          path: build/x86.debug.${{ matrix.sanitizer }}/Testing/
+          name: integration-test-logs
+          path: build/x86.debug.*/Testing/
           retention-days: 7
 
   # ============================================================
@@ -408,86 +329,33 @@ jobs:
         run: sccache --show-stats
 
   # ============================================================
-  # 5. benchmarks
+  # 5. typecheck
+  #    clang-tidy (C++ static analysis) + mypy (Python)
   # ============================================================
-  benchmarks:
-    name: benchmarks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: build
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install build dependencies
-        uses: ./.github/actions/install-build-deps
-
-      - name: Cache Conan packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-${{ runner.os }}-
-
-      - name: Cache FetchContent downloads
-        uses: actions/cache@v5
-        with:
-          path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps.native
-
-      - name: Build release
-        run: make compile.release.native
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-      - name: Run benchmarks
-        run: make benchmark.native || true
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v7
-        with:
-          name: benchmark-results
-          path: build/reports/benchmarks/
-          retention-days: 30
-          if-no-files-found: ignore
-
-  # ============================================================
-  # 6. coverage
-  # ============================================================
-  coverage:
-    name: coverage
+  typecheck:
+    name: typecheck
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    needs: build
+    needs: lint
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install build dependencies
+      - name: Install build dependencies (with static analysis)
         uses: ./.github/actions/install-build-deps
         with:
-          include-coverage: "true"
+          include-static-analysis: "true"
 
-      - name: Cache Conan packages
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install mypy
+        run: pip install "mypy>=1.8.0,<2" "conan>=2.0.0"
+
+      - name: Cache Conan packages (clang-tidy)
         uses: actions/cache@v5
         with:
           path: ~/.conan2
@@ -495,13 +363,13 @@ jobs:
           restore-keys: |
             conan-${{ runner.os }}-
 
-      - name: Cache FetchContent downloads
+      - name: Cache FetchContent (clang-tidy)
         uses: actions/cache@v5
         with:
-          path: build/x86.debug.coverage/_deps
-          key: fetchcontent-coverage-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          path: build/x86.debug.clang-tidy/_deps
+          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-coverage-${{ runner.os }}-
+            fetchcontent-clang-tidy-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@v0.0.10
@@ -515,41 +383,47 @@ jobs:
       - name: Install Conan dependencies
         run: make deps.native
 
-      - name: Build with coverage
-        run: make compile.debug.coverage.native
+      - name: Configure CMake with clang-tidy
+        run: |
+          CONAN_TOOLCHAIN=""
+          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
+            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
+          fi
+          cmake -S . -B build/x86.debug.clang-tidy \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DENABLE_CLANG_TIDY=ON \
+            $CONAN_TOOLCHAIN
+
+      - name: Build with clang-tidy
+        run: cmake --build build/x86.debug.clang-tidy -j$(nproc) 2>&1 | tee clang-tidy-output.txt
+        continue-on-error: true
+
+      - name: Fail on clang-tidy errors
+        run: |
+          # Filter out CMake integration false positives: clang-tidy is invoked on
+          # generated cmake files and non-source inputs, producing "no input files"
+          # and "no such file or directory" diagnostics that are not real code errors.
+          # Only fail on errors that reference actual source files (src/ or include/).
+          REAL_ERRORS=$(grep -E "error:" clang-tidy-output.txt \
+            | grep -v "no input files\|no such file or directory\|unable to handle compilation" \
+            || true)
+          if [ -n "$REAL_ERRORS" ]; then
+            echo "::error::clang-tidy reported errors in source files"
+            echo "$REAL_ERRORS"
+            exit 1
+          fi
+          echo "clang-tidy passed"
+
+      - name: Run mypy (Python typecheck)
+        run: mypy conanfile.py
 
       - name: Show sccache stats
         if: always()
         run: sccache --show-stats
 
-      - name: Run tests for coverage
-        run: make test.debug.coverage.native
-
-      - name: Generate coverage report
-        run: |
-          chmod +x scripts/generate_coverage.sh
-          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: build/coverage/html/
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: build/coverage/coverage_filtered.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   # ============================================================
-  # 7. schema-validation
+  # 6. schema-validation
   # ============================================================
   schema-validation:
     name: schema-validation
@@ -579,7 +453,7 @@ jobs:
           [ -z "${FAILED}" ] || exit 1
 
   # ============================================================
-  # 8. deps/version-sync
+  # 7. deps/version-sync
   # ============================================================
   deps-version-sync:
     name: deps/version-sync
@@ -645,7 +519,7 @@ jobs:
           PYEOF
 
   # ============================================================
-  # 9. security/dependency-scan
+  # 8. security/dependency-scan
   #    pip-audit + Trivy FS + supply-chain dependency-review
   #    + Docker image scan (Trivy container)
   # ============================================================
@@ -779,7 +653,7 @@ jobs:
           if-no-files-found: ignore
 
   # ============================================================
-  # 10. security/secrets-scan
+  # 9. security/secrets-scan
   #     gitleaks + Semgrep SAST + CodeQL (c-cpp + python)
   #     + aggregation report gate
   # ============================================================
