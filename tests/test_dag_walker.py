@@ -1,6 +1,7 @@
 """Tests for DAGWalker — cycle detection, ready tasks, available agents, and advance_dag."""
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -206,6 +207,8 @@ class TestAdvanceDag:
         task = make_task()
         agent = make_agent()
         mock_client = AsyncMock()
+        # Return the same agent list so the fresh-agent refresh (issue #196) is a no-op.
+        mock_client.get_agents = AsyncMock(return_value=[agent])
         walker = DAGWalker(tasks=[task], agents=[agent], client=mock_client)
 
         assignments = await walker.advance_dag()
@@ -259,6 +262,8 @@ class TestAdvanceDag:
         agent1 = make_agent(id="a1")
         agent2 = make_agent(id="a2")
         mock_client = AsyncMock()
+        # Return the same agents so the fresh-agent refresh (issue #196) is a no-op.
+        mock_client.get_agents = AsyncMock(return_value=[agent1, agent2])
         walker = DAGWalker(
             tasks=[task1, task2], agents=[agent1, agent2], client=mock_client
         )
@@ -295,3 +300,164 @@ class TestAdvanceDag:
         walker = DAGWalker(tasks=[task], agents=[agent])
         with pytest.raises(ValueError, match="Unknown dependency"):
             await walker.advance_dag()
+
+
+class TestAdvanceDagFreshAgents:
+    """Tests for issue #196 — advance_dag() calls get_agents() for a fresh agent list."""
+
+    async def test_advance_dag_calls_get_agents_when_available(self) -> None:
+        """advance_dag() calls client.get_agents() and uses the returned list."""
+        task = make_task()
+        stale_agent = make_agent(id="stale", current_task_id="busy")
+        fresh_agent = make_agent(id="fresh")
+        mock_client = AsyncMock()
+        mock_client.get_agents = AsyncMock(return_value=[fresh_agent])
+        walker = DAGWalker(tasks=[task], agents=[stale_agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        mock_client.get_agents.assert_awaited_once()
+        assert len(assignments) == 1
+        assert assignments[0][1].id == "fresh"
+
+    async def test_advance_dag_skips_get_agents_when_no_client(self) -> None:
+        """advance_dag() works without a client — uses self.agents unchanged."""
+        task = make_task()
+        agent = make_agent()
+        walker = DAGWalker(tasks=[task], agents=[agent], client=None)
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 1
+        assert assignments[0][1] is agent
+
+    async def test_advance_dag_skips_get_agents_when_client_lacks_method(self) -> None:
+        """advance_dag() falls back to self.agents when client has no get_agents()."""
+        from unittest.mock import MagicMock
+
+        task = make_task()
+        agent = make_agent()
+        # Build a client that only has assign_task (an async callable) — no get_agents.
+        mock_client = MagicMock()
+        mock_client.assign_task = AsyncMock()
+        del mock_client.get_agents  # ensure hasattr returns False
+        walker = DAGWalker(tasks=[task], agents=[agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 1
+        assert assignments[0][1] is agent
+
+    async def test_advance_dag_falls_back_on_get_agents_exception(self) -> None:
+        """If get_agents() raises, advance_dag() falls back to the cached list."""
+        task = make_task()
+        cached_agent = make_agent(id="cached")
+        mock_client = AsyncMock()
+        mock_client.get_agents = AsyncMock(side_effect=RuntimeError("service down"))
+        walker = DAGWalker(tasks=[task], agents=[cached_agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        # Falls back to cached list — the cached agent was available
+        assert len(assignments) == 1
+        assert assignments[0][1].id == "cached"
+
+    async def test_advance_dag_ignores_none_from_get_agents(self) -> None:
+        """If get_agents() returns None, advance_dag() keeps the existing agent list."""
+        task = make_task()
+        cached_agent = make_agent(id="cached")
+        mock_client = AsyncMock()
+        mock_client.get_agents = AsyncMock(return_value=None)
+        walker = DAGWalker(tasks=[task], agents=[cached_agent], client=mock_client)
+
+        assignments = await walker.advance_dag()
+
+        assert len(assignments) == 1
+        assert assignments[0][1].id == "cached"
+
+
+class TestBackgroundScan:
+    """Tests for issue #98 — periodic background DAG scan safety net."""
+
+    async def test_start_background_scan_returns_task(self) -> None:
+        """start_background_scan() returns an asyncio.Task."""
+        walker = DAGWalker(tasks=[], agents=[], scan_interval=0.05)
+        stop_event = asyncio.Event()
+        task = walker.start_background_scan(stop_event)
+        assert isinstance(task, asyncio.Task)
+        stop_event.set()
+        await task
+
+    async def test_background_scan_calls_advance_dag(self) -> None:
+        """Background scan calls advance_dag() at least once per interval."""
+        ready_task = make_task()
+        agent = make_agent()
+        walker = DAGWalker(tasks=[ready_task], agents=[agent], scan_interval=0.02)
+
+        call_count = 0
+        original_advance = walker.advance_dag
+
+        async def counting_advance() -> list:
+            nonlocal call_count
+            call_count += 1
+            return await original_advance()
+
+        walker.advance_dag = counting_advance  # type: ignore[method-assign]
+
+        stop_event = asyncio.Event()
+        scan_task = walker.start_background_scan(stop_event)
+        await asyncio.sleep(0.07)  # allow ~3 intervals to fire
+        stop_event.set()
+        await scan_task
+
+        assert call_count >= 1
+
+    async def test_background_scan_survives_advance_dag_exception(self) -> None:
+        """A raised exception in advance_dag() must not terminate the scan loop."""
+        walker = DAGWalker(tasks=[], agents=[], scan_interval=0.02)
+        call_count = 0
+
+        async def failing_advance() -> list:
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise RuntimeError("transient failure")
+            return []
+
+        walker.advance_dag = failing_advance  # type: ignore[method-assign]
+
+        stop_event = asyncio.Event()
+        scan_task = walker.start_background_scan(stop_event)
+        await asyncio.sleep(0.07)
+        stop_event.set()
+        await scan_task
+
+        assert call_count >= 2
+
+    async def test_background_scan_exits_immediately_on_stop(self) -> None:
+        """If stop_event is pre-set, the loop exits before calling advance_dag()."""
+        walker = DAGWalker(tasks=[], agents=[], scan_interval=60.0)
+        call_count = 0
+
+        async def counting_advance() -> list:
+            nonlocal call_count
+            call_count += 1
+            return []
+
+        walker.advance_dag = counting_advance  # type: ignore[method-assign]
+
+        stop_event = asyncio.Event()
+        stop_event.set()  # pre-set before starting
+        scan_task = walker.start_background_scan(stop_event)
+        await scan_task
+
+        assert call_count == 0
+
+    async def test_start_background_scan_stores_task_reference(self) -> None:
+        """start_background_scan() stores the task in self._scan_task."""
+        walker = DAGWalker(tasks=[], agents=[], scan_interval=0.05)
+        stop_event = asyncio.Event()
+        task = walker.start_background_scan(stop_event)
+        assert walker._scan_task is task
+        stop_event.set()
+        await task
