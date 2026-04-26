@@ -126,7 +126,7 @@ natsStatus NATSListener::start(jsCtx* js) {
 
   // Create a pull consumer (no callback, subscription will be used for fetch)
   for (int attempt = 1; attempt <= attempts; ++attempt) {
-    jsErrCode jerr = jsErrCode(0);
+    jsErrCode jerr = static_cast<jsErrCode>(0);
     // Pass NULL for the message handler callback since we'll use pull-based fetch
     s = js_Subscribe(&sub_, js, cfg_.subject.c_str(), nullptr, nullptr, nullptr, &sub_opts, &jerr);
     if (s == NATS_OK) {
@@ -192,8 +192,9 @@ void NATSListener::pull_loop() noexcept {
   constexpr int timeout_ms = 1000;  // 1-second timeout per fetch
 
   while (!stopped_.load(std::memory_order_acquire)) {
-    natsMsg* msg = nullptr;
-    natsStatus s = natsSubscription_Fetch(&msg, sub_, 1, timeout_ms);
+    natsMsgList list{};
+    jsErrCode js_err = static_cast<jsErrCode>(0);
+    natsStatus s = natsSubscription_Fetch(&list, sub_, 1, timeout_ms, &js_err);
 
     if (s == NATS_TIMEOUT) {
       // No message available within timeout; loop back and check stopped_ flag
@@ -207,9 +208,16 @@ void NATSListener::pull_loop() noexcept {
       continue;
     }
 
-    if (msg == nullptr) {
+    if (list.Count == 0 || list.Msgs == nullptr) {
+      natsMsgList_Destroy(&list);
       continue;
     }
+
+    // Take ownership of the first (and only) message
+    natsMsg* msg = list.Msgs[0];
+    list.Msgs[0] = nullptr;
+    list.Count = 0;
+    natsMsgList_Destroy(&list);
 
     // Handle the message (includes ack/nak)
     handle_message(msg);
