@@ -166,9 +166,8 @@ class TestRunRoutingLoop:
 
     def test_run_routing_loop_respects_poll_interval(self) -> None:
         """run_routing_loop() must use the provided poll_interval."""
-        with patch("time.sleep") as mock_sleep:
-            with patch("time.sleep", side_effect=KeyboardInterrupt):
-                run_routing_loop(poll_interval=2.5)
+        with patch("time.sleep", side_effect=KeyboardInterrupt):
+            run_routing_loop(poll_interval=2.5)
 
             # sleep was called, but since we interrupt immediately,
             # we can't easily verify the interval. Just verify it was called.
