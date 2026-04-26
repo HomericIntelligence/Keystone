@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   secret-scanning:
+    name: secret-scanning
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -50,6 +51,7 @@ jobs:
           retention-days: 90
 
   sast-scanning:
+    name: sast-scanning
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -120,6 +122,7 @@ jobs:
           category: "/language:cpp"
 
   dependency-scanning:
+    name: dependency-scanning
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -315,6 +318,7 @@ jobs:
           deny-licenses: GPL-3.0, AGPL-3.0
 
   cpp-static-analysis:
+    name: cpp-static-analysis
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -363,6 +367,7 @@ jobs:
           retention-days: 30
 
   security-report:
+    name: security-report
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [secret-scanning, sast-scanning, dependency-scanning, docker-image-scanning, cpp-static-analysis]
