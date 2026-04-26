@@ -45,10 +45,10 @@ NatsErrorCategory categorizeNatsError(natsStatus status) {
       return NatsErrorCategory::kConfigError;
 
     // Transient errors
-    case NATS_NO_SERVERS:
-    case NATS_NOT_CONNECTED:
+    case NATS_NO_SERVER:
+    case NATS_NOT_YET_CONNECTED:
     case NATS_TIMEOUT:
-    case NATS_CONN_CLOSED:
+    case NATS_CONNECTION_CLOSED:
     case NATS_NO_MEMORY:
     case NATS_STALE_CONNECTION:
     case NATS_PROTOCOL_ERROR:
@@ -57,16 +57,14 @@ NatsErrorCategory categorizeNatsError(natsStatus status) {
       return NatsErrorCategory::kTransient;
 
     // Permanent errors
-    case NATS_AUTH_REQUIRED:
-    case NATS_AUTHORIZATION_ERR:
-    case NATS_INSUFFICIENT_RESOURCES:
-    case NATS_NOT_ALLOWED:
+    case NATS_CONNECTION_AUTH_FAILED:
+    case NATS_INSUFFICIENT_BUFFER:
+    case NATS_NOT_PERMITTED:
     case NATS_DRAINING:
-    case NATS_FAILED_TO_CONNECT:
-    case NATS_SECURE_CONN_WANTED:
+    case NATS_FAILED_TO_INITIALIZE:
+    case NATS_SECURE_CONNECTION_WANTED:
     case NATS_INVALID_SUBJECT:
-    case NATS_MAX_PAYLOAD_EXCEEDED:
-    case NATS_PERMISSIONS_ERR:
+    case NATS_MAX_PAYLOAD:
       return NatsErrorCategory::kPermanent;
 
     default:
@@ -434,9 +432,10 @@ natsMsg* NatsConnection::fetch(std::string_view subject,
     throw std::runtime_error("NatsConnection::fetch: subscription returned null");
   }
 
-  // Fetch a single message with timeout
-  natsMsg* msg = nullptr;
-  s = natsSubscription_Fetch(&msg, sub, 1, timeout_ms);
+  // Fetch a single message with timeout using natsMsgList
+  natsMsgList list{};
+  jsErrCode js_err = 0;
+  s = natsSubscription_Fetch(&list, sub, 1, timeout_ms, &js_err);
 
   // Clean up subscription (durable consumer state persists in NATS)
   natsSubscription_Unsubscribe(sub);
@@ -451,6 +450,16 @@ natsMsg* NatsConnection::fetch(std::string_view subject,
     throwForNatsStatus(s, "NatsConnection::fetch");
   }
 
+  if (list.Count == 0 || list.Msgs == nullptr) {
+    return nullptr;
+  }
+
+  // Return the first (and only) message; caller takes ownership.
+  // Remaining entries in list (none, since batch=1) would be destroyed here.
+  natsMsg* msg = list.Msgs[0];
+  list.Msgs[0] = nullptr;
+  list.Count = 0;
+  natsMsgList_Destroy(&list);
   return msg;
 }
 
