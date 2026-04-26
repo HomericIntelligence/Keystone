@@ -434,7 +434,7 @@ natsMsg* NatsConnection::fetch(std::string_view subject,
 
   // Fetch a single message with timeout using natsMsgList
   natsMsgList list{};
-  jsErrCode js_err = 0;
+  jsErrCode js_err = static_cast<jsErrCode>(0);
   s = natsSubscription_Fetch(&list, sub, 1, timeout_ms, &js_err);
 
   // Clean up subscription (durable consumer state persists in NATS)
