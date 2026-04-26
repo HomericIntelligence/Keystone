@@ -329,15 +329,15 @@ TEST_F(NatsIntegrationTest, NatsStatusTrackerWiredToConnectionCallbacks) {
   conn.setReconnectedCallback([&tracker]() { tracker.setConnected(); });
 
   // Initially disconnected
-  EXPECT_EQ(tracker.state(), NatsConnectionState::kDisconnected);
+  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kDisconnected);
 
   // Simulate disconnection
   tracker.setDisconnected();
-  EXPECT_EQ(tracker.state(), NatsConnectionState::kDisconnected);
+  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kDisconnected);
 
   // Simulate reconnection
   tracker.setConnected();
-  EXPECT_EQ(tracker.state(), NatsConnectionState::kConnected);
+  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kConnected);
 
   // lastSuccessEpochMs should be updated
   int64_t ts = tracker.lastSuccessEpochMs();
