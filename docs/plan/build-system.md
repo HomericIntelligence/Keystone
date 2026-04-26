@@ -2,76 +2,107 @@
 
 ## Overview
 
-ProjectKeystone uses CMake 3.28+ with C++20 module support to manage compilation, dependencies, and multi-platform builds. This document outlines the build configuration, toolchain requirements, and development workflows.
+ProjectKeystone uses **CMake 3.20+** with **Conan 2** for dependency management and **CMakePresets.json** (v8) for preset-based builds. Traditional C++ headers are used (not C++20 modules). This document outlines the build configuration, toolchain requirements, and development workflows.
+
+See also: `/CLAUDE.md` for project scope and architecture.
+
+---
 
 ## Toolchain Requirements
 
 ### Compiler Support
 
-| Compiler | Minimum Version | C++20 Modules | Coroutines | Recommended |
-|----------|----------------|---------------|------------|-------------|
-| **GCC** | 13.0 | ✅ Full | ✅ Full | 13.2+ |
-| **Clang** | 16.0 | ✅ Full | ✅ Full | 17.0+ |
-| **MSVC** | 17.5 (VS 2022) | ✅ Full | ✅ Full | 17.8+ |
+| Compiler | Minimum Version | Recommended |
+|----------|----------------|-------------|
+| **GCC** | 11.0 | 13.0+ |
+| **Clang** | 15.0 | 17.0+ |
+| **MSVC** | 17.0 (VS 2022) | 17.8+ |
+
+All compilers must support C++20 (e.g., `std::latch`, `std::barrier`, `std::atomic<T>`).
 
 ### Build Tools
 
-- **CMake**: 3.28 or later (required for module support)
+- **CMake**: 3.20 or later (see CMakePresets section below)
 - **Ninja**: 1.11+ (recommended build system)
 - **Make**: 4.3+ (alternative to Ninja)
+- **Just** (optional): Unified build commands via `justfile`
 
-### Package Managers
+### Package Manager: Conan 2
 
-**Primary Choice: vcpkg** (recommended for C++20 module compatibility)
+ProjectKeystone uses **Conan 2** for C++ dependency management:
 
 ```bash
-# Install vcpkg
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-./bootstrap-vcpkg.sh  # Linux/macOS
-# or
-./bootstrap-vcpkg.bat  # Windows
+# Install Conan 2
+pip install conan>=2.0
+
+# Configure profile (one-time)
+conan profile detect --force
+
+# Install dependencies
+conan install . --build=missing
 ```
 
-**Alternative: Conan** (v2.0+)
+**Dependencies** (see `conanfile.py`):
+
+- **nats.c** v3.12.0 — NATS JetStream C client
+- **concurrentqueue** — Lock-free queue (moodycamel)
+- **spdlog** — Structured logging
+- **fmt** — Format library (as spdlog's text formatting backend)
+- **GoogleTest** — Unit testing (dev dependency)
+
+---
 
 ## Project Structure
 
 ```
 ProjectKeystone/
 ├── CMakeLists.txt              # Root CMake configuration
-├── CMakePresets.json           # Build presets
-├── vcpkg.json                  # Dependency manifest
+├── CMakePresets.json           # Build presets (v8 schema)
+├── conanfile.py                # Conan 2 dependency manifest
+├── conanfile.lock              # Locked dependency versions
+├── pixi.toml                   # Pixi environment (optional)
+├── justfile                    # Build command shortcuts (optional)
+├── .clang-format               # Code formatting rules
+├── .clang-tidy                 # Static analysis rules
 ├── cmake/
-│   ├── Keystone.cmake          # Custom CMake functions
-│   ├── CompilerWarnings.cmake  # Warning configurations
-│   └── Sanitizers.cmake        # Sanitizer configurations
-├── modules/
-│   ├── Keystone.Core/
-│   │   ├── CMakeLists.txt
-│   │   ├── Core.cppm           # Module interface
-│   │   └── impl/               # Implementation files
-│   ├── Keystone.Protocol/
-│   ├── Keystone.Agents/
-│   └── Keystone.Integration/
+│   └── FindNATS.cmake          # NATS.c library finder
+├── src/
+│   ├── core/                   # Message routing, KIM protocol
+│   ├── concurrency/            # Thread pools, synchronization
+│   ├── network/                # NATS JetStream integration
+│   ├── transport/              # Transport abstraction
+│   ├── monitoring/             # Logging, metrics, health
+│   ├── simulation/             # Test simulation framework
+│   ├── agents/                 # Minimal agent stubs (tests/examples)
+│   ├── daemon/                 # Keystone daemon process
+│   └── keystone/               # Main library interface
 ├── tests/
 │   ├── CMakeLists.txt
-│   ├── unit/
-│   ├── integration/
-│   └── performance/
+│   ├── unit/                   # Unit tests per component
+│   ├── integration/            # Cross-component integration tests
+│   ├── e2e/                    # End-to-end distributed tests
+│   ├── load/                   # Load and throughput tests
+│   ├── fixtures/               # Shared test fixtures
+│   └── mocks/                  # Mock implementations
+├── docs/
+│   ├── plan/                   # Planning and design docs
+│   ├── api/                    # API documentation
+│   └── architecture/           # Architecture decisions
 ├── examples/
-│   └── CMakeLists.txt
-└── third_party/                # Git submodules if needed
+│   └── *.cpp                   # Example programs
+└── CHANGELOG.md                # Release notes
 ```
+
+---
 
 ## Root CMakeLists.txt
 
 ```cmake
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.20)
 
 project(ProjectKeystone
-    VERSION 1.0.0
-    DESCRIPTION "High-Performance Hierarchical Multi-Agent System"
+    VERSION 0.1.0
+    DESCRIPTION "Pure Invisible Transport Layer for HomericIntelligence"
     LANGUAGES CXX
 )
 
@@ -80,62 +111,66 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Enable C++20 Modules (experimental)
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_CMAKE_API "aa1f7df0-828a-4fcd-9afc-2dc80491aca7")
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP ON)
+# Export compile commands for clang-tidy, clang-format, etc.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Compiler warnings (C++ only, to avoid breaking nats.c FetchContent)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wextra>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wpedantic>
+    $<$<COMPILE_LANGUAGE:CXX>:-Werror>
+  )
+endif()
 
 # Build options
-option(KEYSTONE_BUILD_TESTS "Build tests" ON)
-option(KEYSTONE_BUILD_EXAMPLES "Build examples" ON)
-option(KEYSTONE_BUILD_BENCHMARKS "Build benchmarks" ON)
-option(KEYSTONE_ENABLE_ASAN "Enable AddressSanitizer" OFF)
-option(KEYSTONE_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-option(KEYSTONE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
-option(KEYSTONE_ENABLE_LTO "Enable Link-Time Optimization" OFF)
+option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+option(ENABLE_GRPC "Enable gRPC support for distributed nodes" OFF)
+option(ENABLE_PROFILING "Enable profiling tests (slow)" OFF)
+option(ENABLE_CLANG_TIDY "Enable clang-tidy static analysis" OFF)
 
-# Include custom CMake modules
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(Keystone)
-include(CompilerWarnings)
-include(Sanitizers)
+# Code coverage setup
+if(ENABLE_COVERAGE)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(--coverage -fprofile-arcs -ftest-coverage -O0)
+    add_link_options(--coverage)
+  else()
+    message(WARNING "Code coverage only supported with GCC or Clang")
+  endif()
+endif()
 
 # Find dependencies
-find_package(concurrentqueue CONFIG REQUIRED)
-find_package(cista CONFIG REQUIRED)
-find_package(gRPC CONFIG REQUIRED)
-find_package(Protobuf CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
+find_package(NATS REQUIRED)
+find_package(concurrentqueue REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(fmt REQUIRED)
 
-# Optional dependencies
-if(KEYSTONE_BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
+# Optional gRPC support
+if(ENABLE_GRPC)
+  find_package(gRPC REQUIRED)
+  find_package(Protobuf REQUIRED)
 endif()
 
-if(KEYSTONE_BUILD_BENCHMARKS)
-    find_package(benchmark CONFIG REQUIRED)
-endif()
+# Testing
+enable_testing()
+find_package(GTest REQUIRED)
 
 # Add subdirectories
-add_subdirectory(modules/Keystone.Core)
-add_subdirectory(modules/Keystone.Protocol)
-add_subdirectory(modules/Keystone.Agents)
-add_subdirectory(modules/Keystone.Integration)
+add_subdirectory(src)
+add_subdirectory(tests)
+add_subdirectory(examples)
 
-if(KEYSTONE_BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
-if(KEYSTONE_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif()
-
-# Installation rules
+# Installation
 include(GNUInstallDirs)
-install(TARGETS Keystone.Core Keystone.Protocol Keystone.Agents Keystone.Integration
+install(TARGETS keystone_core
     EXPORT KeystoneTargets
-    FILE_SET CXX_MODULES DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+install(DIRECTORY src/keystone/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT KeystoneTargets
     FILE KeystoneTargets.cmake
@@ -144,15 +179,18 @@ install(EXPORT KeystoneTargets
 )
 ```
 
+---
+
 ## CMake Presets (CMakePresets.json)
+
+ProjectKeystone uses **CMakePresets.json v8** for preset-based builds with parallel build output directories:
 
 ```json
 {
-    "version": 6,
+    "version": 8,
     "cmakeMinimumRequired": {
         "major": 3,
-        "minor": 28,
-        "patch": 0
+        "minor": 20
     },
     "configurePresets": [
         {
@@ -169,8 +207,7 @@ install(EXPORT KeystoneTargets
             "inherits": "default",
             "displayName": "Debug Build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "KEYSTONE_ENABLE_ASAN": "ON"
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
@@ -178,25 +215,34 @@ install(EXPORT KeystoneTargets
             "inherits": "default",
             "displayName": "Release Build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "KEYSTONE_ENABLE_LTO": "ON"
+                "CMAKE_BUILD_TYPE": "Release"
             }
         },
         {
-            "name": "relwithdebinfo",
+            "name": "asan",
             "inherits": "default",
-            "displayName": "Release with Debug Info",
+            "displayName": "Debug + AddressSanitizer",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer"
             }
         },
         {
             "name": "tsan",
             "inherits": "default",
-            "displayName": "ThreadSanitizer Build",
+            "displayName": "Debug + ThreadSanitizer",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "KEYSTONE_ENABLE_TSAN": "ON"
+                "CMAKE_CXX_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer"
+            }
+        },
+        {
+            "name": "ubsan",
+            "inherits": "default",
+            "displayName": "Debug + UBSanitizer",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_FLAGS": "-fsanitize=undefined -fno-omit-frame-pointer"
             }
         }
     ],
@@ -208,6 +254,14 @@ install(EXPORT KeystoneTargets
         {
             "name": "release",
             "configurePreset": "release"
+        },
+        {
+            "name": "asan",
+            "configurePreset": "asan"
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan"
         }
     ],
     "testPresets": [
@@ -217,248 +271,71 @@ install(EXPORT KeystoneTargets
             "output": {
                 "outputOnFailure": true
             }
+        },
+        {
+            "name": "asan",
+            "configurePreset": "asan",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan",
+            "output": {
+                "outputOnFailure": true
+            }
         }
     ]
 }
 ```
 
-## Module CMakeLists.txt Example
+**Build Output Structure**:
 
-### Keystone.Core Module
-
-```cmake
-# modules/Keystone.Core/CMakeLists.txt
-
-add_library(Keystone.Core)
-add_library(Keystone::Core ALIAS Keystone.Core)
-
-# Module interface files
-target_sources(Keystone.Core
-    PUBLIC
-        FILE_SET CXX_MODULES FILES
-            Core.cppm
-            Concurrency.cppm
-            Messaging.cppm
-            Synchronization.cppm
-            Utilities.cppm
-)
-
-# Implementation files
-target_sources(Keystone.Core
-    PRIVATE
-        impl/ThreadPool.cpp
-        impl/MessageQueue.cpp
-        impl/Synchronization.cpp
-        impl/Logger.cpp
-        impl/Metrics.cpp
-)
-
-# Include directories for implementation files
-target_include_directories(Keystone.Core
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/impl
-)
-
-# Link dependencies
-target_link_libraries(Keystone.Core
-    PUBLIC
-        concurrentqueue::concurrentqueue
-        spdlog::spdlog
-    PRIVATE
-        Threads::Threads
-)
-
-# Compiler features
-target_compile_features(Keystone.Core PUBLIC cxx_std_20)
-
-# Warnings
-keystone_set_warnings(Keystone.Core)
-
-# Sanitizers
-keystone_enable_sanitizers(Keystone.Core)
+```
+build/
+├── debug/      # Debug build
+├── release/    # Release build
+├── asan/       # AddressSanitizer + UBSanitizer
+├── tsan/       # ThreadSanitizer
+└── ubsan/      # UndefinedBehaviorSanitizer
 ```
 
-## Dependency Management (vcpkg.json)
-
-```json
-{
-    "name": "project-keystone",
-    "version": "1.0.0",
-    "dependencies": [
-        {
-            "name": "concurrentqueue",
-            "version>=": "1.0.4"
-        },
-        {
-            "name": "cista",
-            "version>=": "0.14"
-        },
-        {
-            "name": "grpc",
-            "version>=": "1.54.0"
-        },
-        {
-            "name": "protobuf",
-            "version>=": "3.21.0"
-        },
-        {
-            "name": "spdlog",
-            "version>=": "1.12.0",
-            "features": ["fmt-external"]
-        },
-        {
-            "name": "onnxruntime",
-            "version>=": "1.15.0",
-            "platform": "!uwp"
-        },
-        {
-            "name": "prometheus-cpp",
-            "version>=": "1.1.0"
-        }
-    ],
-    "builtin-baseline": "TBD",
-    "overrides": []
-}
-```
-
-## Custom CMake Modules
-
-### cmake/Keystone.cmake
-
-```cmake
-# Helper functions for Keystone project
-
-function(keystone_add_module MODULE_NAME)
-    add_library(${MODULE_NAME})
-    add_library(Keystone::${MODULE_NAME} ALIAS ${MODULE_NAME})
-
-    target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20)
-
-    # Apply common settings
-    keystone_set_warnings(${MODULE_NAME})
-
-    if(KEYSTONE_ENABLE_LTO)
-        set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
-endfunction()
-```
-
-### cmake/CompilerWarnings.cmake
-
-```cmake
-function(keystone_set_warnings TARGET_NAME)
-    if(MSVC)
-        target_compile_options(${TARGET_NAME} PRIVATE
-            /W4          # High warning level
-            /WX          # Treat warnings as errors
-            /permissive- # Strict standards compliance
-        )
-    else()
-        target_compile_options(${TARGET_NAME} PRIVATE
-            -Wall
-            -Wextra
-            -Wpedantic
-            -Werror      # Treat warnings as errors
-            -Wconversion
-            -Wsign-conversion
-            -Wnull-dereference
-            -Wdouble-promotion
-            -Wformat=2
-        )
-
-        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            target_compile_options(${TARGET_NAME} PRIVATE
-                -Wmost
-                -Wthread-safety
-            )
-        endif()
-    endif()
-endfunction()
-```
-
-### cmake/Sanitizers.cmake
-
-```cmake
-function(keystone_enable_sanitizers TARGET_NAME)
-    if(KEYSTONE_ENABLE_ASAN)
-        target_compile_options(${TARGET_NAME} PRIVATE
-            -fsanitize=address
-            -fno-omit-frame-pointer
-        )
-        target_link_options(${TARGET_NAME} PRIVATE -fsanitize=address)
-    endif()
-
-    if(KEYSTONE_ENABLE_TSAN)
-        target_compile_options(${TARGET_NAME} PRIVATE
-            -fsanitize=thread
-            -fno-omit-frame-pointer
-        )
-        target_link_options(${TARGET_NAME} PRIVATE -fsanitize=thread)
-    endif()
-
-    if(KEYSTONE_ENABLE_UBSAN)
-        target_compile_options(${TARGET_NAME} PRIVATE
-            -fsanitize=undefined
-            -fno-omit-frame-pointer
-        )
-        target_link_options(${TARGET_NAME} PRIVATE -fsanitize=undefined)
-    endif()
-endfunction()
-```
+---
 
 ## Build Workflows
 
 ### Using Justfile (Recommended)
 
-ProjectKeystone uses `just` for unified build commands. All commands run in Docker by default, with native mode available.
+ProjectKeystone uses `just` for unified build commands:
 
 ```bash
 # Show all available commands
-make help
-make help
+just help
 
-# Build with AddressSanitizer (Docker)
-make compile.debug.asan
+# Build with AddressSanitizer
+just build debug.asan
 
 # Build release mode
-make compile.release
+just build release
 
 # Build debug mode
-make compile.debug
+just build debug
 
 # Build with ThreadSanitizer
-make compile.debug.tsan
+just build debug.tsan
 
 # Run all tests
-make test.debug.asan
+just test debug.asan
 
 # Run specific test suites
-make test.basic
-make test.module
-make test.unit
+just test basic
+just test module
+just test unit
 
 # Run linters
-make lint
-make format
-
-# Native mode (run on host instead of Docker)
-make compile.debug.asan.native
-make test.debug.asan.native
-# or
-NATIVE=1 make compile.debug.asan
-```
-
-**Build Directory Structure:**
-
-Justfile uses `build/<mode>/` for parallel builds:
-```
-build/
-├── debug/      # Debug build
-├── release/    # Release build
-├── asan/       # AddressSanitizer + UBSan
-├── tsan/       # ThreadSanitizer
-├── grpc/       # With gRPC support (optional)
-└── coverage/   # With coverage instrumentation
+just lint
+just format
 ```
 
 ### Manual CMake Workflow (without justfile)
@@ -466,6 +343,9 @@ build/
 #### Local Development Build
 
 ```bash
+# Install dependencies
+conan install . --build=missing
+
 # Configure with debug preset
 cmake --preset debug
 
@@ -489,6 +369,20 @@ cmake --build build/release --parallel
 cmake --install build/release --prefix /usr/local
 ```
 
+#### With AddressSanitizer
+
+```bash
+# Configure
+cmake --preset asan
+
+# Build
+cmake --build build/asan --parallel
+
+# Run tests (will detect memory errors)
+cd build/asan
+ctest --output-on-failure
+```
+
 #### With ThreadSanitizer
 
 ```bash
@@ -503,56 +397,57 @@ cd build/tsan
 ctest --output-on-failure
 ```
 
+---
+
+## Code Quality
+
+### clang-format
+
+All C++ code must pass `clang-format` with the project `.clang-format` config:
+
+```bash
+just format        # Format all source files in-place
+just format-check  # Check formatting without modifying (CI gate)
+```
+
+### clang-tidy
+
+Static analysis is enforced via `clang-tidy`:
+
+```bash
+just lint          # Run clang-tidy on all targets
+```
+
+### Sanitizers
+
+| Sanitizer | Purpose | Preset |
+|-----------|---------|--------|
+| **ASan** | Use-after-free, buffer overflows, heap corruption | `asan` |
+| **UBSan** | Undefined behavior (signed overflow, null deref, etc.) | `ubsan` |
+| **TSan** | Data races, lock-order inversions | `tsan` |
+
+Run sanitizer builds before every PR merge:
+
+```bash
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan
+cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan
+```
+
+---
+
 ## CI/CD Integration
 
-### GitHub Actions Workflow
+GitHub Actions workflows run:
 
-```yaml
-# .github/workflows/build.yml
-name: Build and Test
+1. **Build** with GCC 13 and Clang 17 on Linux
+2. **Test** all tests under sanitizers
+3. **Code coverage** on Linux builds
+4. **Format check** (`just format-check`)
+5. **Static analysis** (`just lint`)
 
-on: [push, pull_request]
+All must pass before PR merge.
 
-jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, windows-2022, macos-13]
-        compiler:
-          - { name: gcc, version: 13 }
-          - { name: clang, version: 17 }
-          - { name: msvc, version: latest }
-        exclude:
-          - os: windows-2022
-            compiler: { name: gcc }
-          - os: ubuntu-22.04
-            compiler: { name: msvc }
-          - os: macos-13
-            compiler: { name: msvc }
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 'latest'
-
-      - name: Configure CMake
-        run: cmake --preset debug
-
-      - name: Build
-        run: cmake --build build/debug --parallel
-
-      - name: Test
-        run: ctest --preset default
-
-      - name: Upload coverage
-        if: matrix.os == 'ubuntu-22.04'
-        uses: codecov/codecov-action@v3
-```
+---
 
 ## Platform-Specific Considerations
 
@@ -567,88 +462,86 @@ sudo apt-get install -y \
     ninja-build \
     gcc-13 \
     g++-13 \
-    git
+    git \
+    python3-pip
+
+# Install Conan
+pip3 install conan
 
 # Set default compiler
 export CC=gcc-13
 export CXX=g++-13
+
+# Build
+conan install . --build=missing
+cmake --preset debug
+cmake --build build/debug
 ```
 
 ### macOS
 
 ```bash
 # Install via Homebrew
-brew install cmake ninja llvm@17
+brew install cmake ninja llvm@17 python3
+
+# Install Conan
+pip3 install conan
 
 # Use LLVM toolchain
 export CC=/usr/local/opt/llvm@17/bin/clang
 export CXX=/usr/local/opt/llvm@17/bin/clang++
+
+# Build
+conan install . --build=missing
+cmake --preset debug
+cmake --build build/debug
 ```
 
 ### Windows
 
 ```powershell
 # Install Visual Studio 2022 with C++ workload
-# Install CMake and Ninja via Visual Studio installer
+# Install CMake and Ninja via Visual Studio installer or winget
+# Install Python from python.org
+
+# Install Conan
+pip install conan
 
 # Use Developer Command Prompt
+conan install . --build=missing
 cmake --preset debug
 cmake --build build/debug
 ```
 
-## Performance Optimization Flags
-
-### GCC/Clang Release Flags
-
-```cmake
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(${TARGET_NAME} PRIVATE
-        -O3                    # Maximum optimization
-        -march=native          # CPU-specific optimizations
-        -flto                  # Link-time optimization
-        -ffast-math            # Fast floating-point math
-        -funroll-loops         # Loop unrolling
-    )
-endif()
-```
-
-### MSVC Release Flags
-
-```cmake
-if(MSVC AND CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(${TARGET_NAME} PRIVATE
-        /O2                    # Maximum optimization
-        /GL                    # Whole program optimization
-        /arch:AVX2             # AVX2 instructions
-    )
-    target_link_options(${TARGET_NAME} PRIVATE
-        /LTCG                  # Link-time code generation
-    )
-endif()
-```
+---
 
 ## Troubleshooting
 
-### Module Build Issues
+### CMake Not Found
 
-**Problem**: "C++20 modules not supported"
-**Solution**: Upgrade CMake to 3.28+ and compiler to minimum version
+**Problem**: `cmake: command not found`
 
-**Problem**: Module dependency errors
-**Solution**: Clean build directory: `rm -rf build && cmake --preset debug`
+**Solution**: Install CMake 3.20+ or use package manager (apt, brew, choco)
 
-**Problem**: Slow module compilation
-**Solution**: Use Ninja instead of Make: `-G Ninja`
+### Conan Dependencies Not Found
 
-### Dependency Issues
+**Problem**: `find_package(nats.c) not found`
 
-**Problem**: vcpkg packages not found
-**Solution**: Specify vcpkg toolchain: `-DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake`
+**Solution**: Run `conan install . --build=missing` before cmake
 
-**Problem**: Version conflicts
-**Solution**: Update `vcpkg.json` baseline and run `vcpkg update`
+### Ninja Build Failures
+
+**Problem**: Build errors with Ninja
+
+**Solution**: Try Make instead: `cmake --preset debug -G "Unix Makefiles"`
+
+### Compiler Not Supporting C++20
+
+**Problem**: "C++20 not supported" error
+
+**Solution**: Upgrade compiler to minimum versions (GCC 11, Clang 15, MSVC 17)
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-17
+**Document Version**: 2.0 (Pure Transport — Conan 2 + CMakePresets)
+**Last Updated**: 2026-04-25
