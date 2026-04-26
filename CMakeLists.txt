@@ -261,6 +261,12 @@ target_include_directories(
                               $<INSTALL_INTERFACE:include/keystone>)
 
 # Link dependencies (including spdlog for logger.hpp)
+# NOTE: spdlog is intentionally propagated as PUBLIC (not INTERFACE) here.
+# logger.hpp is a public header that directly includes <spdlog/spdlog.h> and
+# exposes spdlog::level::level_enum in its public API.  Downstream targets that
+# include logger.hpp therefore need spdlog on their include path at compile time,
+# which only PUBLIC (not INTERFACE) provides when the dependency comes through a
+# compiled target.  See CLAUDE.md §"Public Dependency Visibility" and issue #328.
 target_link_libraries(keystone_concurrency PUBLIC keystone_core)
 
 # Handle circular dependency: keystone_core uses Logger from

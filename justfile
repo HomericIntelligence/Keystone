@@ -89,3 +89,15 @@ status:
 
 benchmark:
   make benchmark NATIVE=1
+
+# Validate CPack package generation without producing real packages (issue #370).
+# Builds the release preset, then runs cpack --debug -G TGZ so packaging errors
+# are caught early, before a real release fires.  Runs from build/release.
+pack-dry-run:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cmake --preset release
+    cmake --build --preset release
+    echo "--- CPack dry-run (TGZ, no output) ---"
+    cd build/release && cpack --debug -G TGZ 2>&1 | grep -v "^CPack: -"
+    echo "--- CPack dry-run complete ---"
