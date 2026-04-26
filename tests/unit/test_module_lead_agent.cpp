@@ -399,7 +399,9 @@ TEST_F(ModuleLeadAgentTest, FailurePropagatedUpwardToRequester) {
       .get();
 
   // module_1 should have received a goal — prime module coordination for 1 task
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 42")).get();
+  // Sender must be component_1 so requester_id_ is set correctly for upward propagation.
+  module->processMessage(core::KeystoneMessage::create("component_1", "module_1", "Calculate: 42"))
+      .get();
 
   // Deliver a TASK_FAILED to the module from task_1
   auto failure_msg =
