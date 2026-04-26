@@ -161,11 +161,7 @@ jobs:
         image: nats:latest
         ports:
           - 4222:4222
-        options: >-
-          --health-cmd "nc -z 127.0.0.1 4222"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
+        options: --health-cmd "timeout 1 bash -c 'echo > /dev/tcp/localhost/4222'" --health-interval 5s --health-timeout 3s --health-retries 10
 
     steps:
       - name: Checkout code
