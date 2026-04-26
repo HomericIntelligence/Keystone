@@ -913,9 +913,12 @@ TEST_F(DistributedGrpcTest, AggregatorResetFunctionality) {
 }
 
 TEST_F(DistributedGrpcTest, TaskCleanupOldTasks) {
-  // Create old task states
+  // Create old task states with all terminal phases
   coordinator_->updateTaskStatus("old-task-1", hmas::TASK_PHASE_COMPLETED);
   coordinator_->updateTaskStatus("old-task-2", hmas::TASK_PHASE_FAILED);
+  coordinator_->updateTaskStatus("old-task-3", hmas::TASK_PHASE_ERROR);
+  coordinator_->updateTaskStatus("old-task-4", hmas::TASK_PHASE_TIMEOUT);
+  coordinator_->updateTaskStatus("old-task-5", hmas::TASK_PHASE_CANCELLED);
   coordinator_->updateTaskStatus("recent-task", hmas::TASK_PHASE_EXECUTING);
 
   // Wait a bit
@@ -925,7 +928,7 @@ TEST_F(DistributedGrpcTest, TaskCleanupOldTasks) {
   int cleaned = coordinator_->cleanupOldTasks(50);
 
   // Note: This test depends on coordinator implementation
-  // If cleanup only removes completed/failed tasks, it should work
+  // If cleanup only removes completed/failed/error/timeout/cancelled tasks, it should work
   // The exact behavior depends on implementation details
 
   EXPECT_GE(cleaned, 0);  // At least doesn't crash
