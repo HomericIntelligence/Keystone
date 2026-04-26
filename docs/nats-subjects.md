@@ -9,8 +9,9 @@ subscribers (e.g., Odysseus, myrmidons) must adhere to.
 **Keystone owns all NATS streams and subject schemas.** No component creates or manages
 NATS streams directly.
 
-**Last Updated**: 2026-04-22
-**Document Version**: 1.0
+**Last Updated**: 2026-04-25
+**Document Version**: 1.1
+**Status**: Validated against Keystone implementation (issue #252)
 
 ---
 
@@ -47,11 +48,11 @@ hi.tasks.{teamId}.{taskId}.{verb}
 
 ## Payload Envelope Contract
 
-All messages published to Keystone-owned NATS subjects **must** use the following
-envelope structure. This contract is binding for all publishers (Hermes, Agamemnon,
+All messages published to Keystone-owned NATS subjects **should** use the following
+envelope structure. This contract is binding for new publishers (Hermes, Agamemnon,
 Odysseus).
 
-### Envelope Schema
+### Canonical Envelope Schema (Hermes Format)
 
 ```json
 {
@@ -67,9 +68,19 @@ Odysseus).
 | `data` | object | yes | Event-specific payload. **All domain fields are nested here.** |
 | `timestamp` | string | yes | ISO 8601 UTC timestamp of when the event was emitted. |
 
-### Task Event `data` Fields
+### Backwards Compatibility: Alternative Formats
 
-For events on `hi.tasks.>` subjects:
+Keystone's subscriber code accepts multiple payload formats for backwards compatibility
+with pre-issue-#107 publishers. While new publishers **must** use the canonical Hermes
+format above, Keystone will accept:
+
+- **Flat format** (deprecated): `{"status": "...", "newStatus": "...", ...}` — status at top level
+- **Hermes format** (canonical): `{"event": "...", "data": {"status": "...", ...}, "timestamp": "..."}`
+- **Mixed format**: Payloads with status in both locations (top-level takes precedence)
+
+### Task Event `data` Fields (Canonical Hermes Format)
+
+For events on `hi.tasks.>` subjects, the `data` object contains:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -78,6 +89,9 @@ For events on `hi.tasks.>` subjects:
 | `data.status` | string | yes | Current task status. See [Task Status Values](#task-status-values). |
 | `data.result` | any | no | Task output. Present on `completed` events. |
 | `data.error` | string | no | Error description. Present on `failed` events. |
+
+**Note**: Keystone also accepts `status`, `teamId`, and other fields at the top level for
+backwards compatibility with legacy publishers (see [Backwards Compatibility](#backwards-compatibility-alternative-formats)).
 
 #### Task Status Values
 
@@ -123,48 +137,87 @@ For events on `hi.tasks.>` subjects:
 
 ## Common Schema Errors
 
-### Error: `status` at top level (issue #107)
+### Error: Top-level `status` instead of nested (Deprecated Format — Still Supported)
 
-**Wrong — do not do this:**
+**Deprecated format — do not use in new publishers:**
 
 ```json
 {
-  "event": "task.completed",
   "status": "completed",
-  "data": { "id": "task-abc123", "teamId": "team1" },
-  "timestamp": "2026-04-22T14:00:00Z"
+  "data": { "id": "task-abc123", "teamId": "team1" }
 }
 ```
 
-**Why it fails:** Subscribers (Keystone, Odysseus) read `payload["data"]["status"]`.
-A top-level `status` field will be silently ignored, causing the event to be missed.
-This is the root cause of issue #107.
+This was the format used before issue #107 was fixed (Keystone was reading top-level `status`).
+Hermes now emits the canonical format with `status` nested inside `data`.
 
-**Correct:** `status` is always nested inside `data`.
+**Keystone currently accepts this for backwards compatibility**, but new publishers
+**must use the canonical format** (see [Canonical Envelope Schema](#canonical-envelope-schema-hermes-format)).
+
+### Error: Missing `status` entirely
+
+If a payload has neither `data.status` nor top-level `status`, Keystone will still dispatch
+the event but with no effective status. This is acceptable for sparse payloads and events
+like `task.updated` where the verb itself conveys the action.
 
 ---
 
 ## Subscriber Contract
 
-All subscribers reading from Keystone subjects **must** extract task status as:
+All subscribers reading from Keystone subjects **must** implement the following
+status resolution priority (issue #107):
 
 ```
-status = payload["data"]["status"]
+1. payload["status"] (top-level, highest priority)
+2. payload["data"]["status"] (nested, canonical format)
+3. payload["newStatus"] (fallback for alternative formats)
+4. None (if no status found)
 ```
 
-For backwards compatibility with any pre-issue-#107 publishers, subscribers **may**
-fall back to `payload["status"]` only if `payload["data"]["status"]` is absent, but
-must log a warning when the fallback is triggered.
+Keystone's `NATSListener` implements this exact resolution strategy in the
+`TaskEvent` Pydantic model (`src/keystone/models.py`).
 
-```
-if payload.data.status is present → use it
-else if payload.status is present → use it, emit warning
-else → treat as missing status
+### Implementation Example (Python)
+
+```python
+from src.keystone.models import TaskEvent
+
+# All of these formats are accepted
+payload1 = {"status": "completed"}  # flat format
+payload2 = {"data": {"status": "completed"}}  # Hermes canonical
+payload3 = {"event": "task.completed", "data": {...}, "timestamp": "..."}  # full envelope
+
+event = TaskEvent.model_validate(payload)
+status = event.effective_status  # Resolves automatically
 ```
 
-> **Deprecation**: This flat-format fallback (`payload["status"]`) is deprecated
-> as of v0.2.0 and will be removed in v0.3.0. All publishers must migrate to the
-> nested `payload["data"]["status"]` format before v0.3.0.
+### Deprecation Notice
+
+The flat-format `payload["status"]` is a legacy format from before issue #107 was fixed.
+All new publishers **must** use the canonical Hermes format with nested `data.status`.
+This backwards compatibility layer may be removed in v0.4.0 (after a 6-month deprecation period).
+
+---
+
+## Payload Validation
+
+### Hermes Publisher Validation
+
+This document was validated against the actual Hermes publisher in ProjectHermes
+`src/hermes/publisher.py` (lines 86-91). Hermes publishes task events with:
+
+- `event` field matching the subject verb (e.g., `"task.completed"`)
+- `data` object containing task ID, team ID, status, and optional `result`/`error`
+- ISO 8601 UTC `timestamp`
+
+### Keystone Subscriber Validation
+
+Keystone's NATS listener is implemented in `src/keystone/nats_listener.py` and
+models are in `src/keystone/models.py`. The `TaskEvent` Pydantic model validates
+incoming payloads and resolves status fields with the 3-way priority listed above.
+
+All tests in `tests/test_task_event.py` and `tests/test_nats_listener.py` verify
+compliance with this specification.
 
 ---
 
