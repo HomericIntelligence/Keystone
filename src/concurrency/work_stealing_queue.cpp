@@ -30,6 +30,7 @@ WorkStealingQueue::~WorkStealingQueue() {
 }
 
 WorkStealingQueue::WorkStealingQueue(WorkStealingQueue&& other) noexcept {
+  std::lock_guard<std::mutex> lock(other.push_mutex_);
   auto other_arr = other.array_.load(std::memory_order_acquire);
   if (other_arr) {
     auto arr_ptr = new std::shared_ptr<Array>(*other_arr);
@@ -47,6 +48,8 @@ WorkStealingQueue::WorkStealingQueue(WorkStealingQueue&& other) noexcept {
 
 WorkStealingQueue& WorkStealingQueue::operator=(WorkStealingQueue&& other) noexcept {
   if (this != &other) {
+    std::lock_guard<std::mutex> lock(other.push_mutex_);
+
     // Clean up our current array
     auto old_arr = array_.load(std::memory_order_acquire);
     if (old_arr) {
@@ -111,6 +114,10 @@ void WorkStealingQueue::push(WorkItem item) {
   if (item.correlation_id.empty()) {
     item.correlation_id = LogContext::getCorrelationId();
   }
+
+  // push() may be called from any thread (scheduler submitters are not always
+  // the queue owner), so serialize concurrent pushers with a mutex.
+  std::lock_guard<std::mutex> lock(push_mutex_);
 
   size_t b = bottom_.load(std::memory_order_relaxed);
   auto arr = loadArray();

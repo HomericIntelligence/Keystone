@@ -5,6 +5,7 @@
 #include <coroutine>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <variant>
@@ -163,7 +164,8 @@ class WorkStealingQueue {
     Array(size_t cap) : capacity(cap) { items = std::make_unique<WorkItem[]>(cap); }
   };
 
-  std::atomic<size_t> bottom_{0};  // Owner-only, points to next push position
+  mutable std::mutex push_mutex_;  // Serializes concurrent push() callers
+  std::atomic<size_t> bottom_{0};  // Protected by push_mutex_ for writers
   std::atomic<size_t> top_{0};     // Atomic, points to next steal position
   std::atomic<std::shared_ptr<Array>*> array_{nullptr};
 
