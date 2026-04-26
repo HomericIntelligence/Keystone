@@ -153,12 +153,25 @@ std::optional<WorkItem> WorkStealingQueue::pop() {
 
   size_t t = top_.load(std::memory_order_relaxed);
 
-  if (b >= t) {
-    // Non-empty
+  if (b > t) {
+    // More than one item — owner wins without competing with thieves.
     WorkItem item = std::move(arr->items[b % arr->capacity]);
     return item;
+  } else if (b == t) {
+    // Exactly one item remains: race with thieves using CAS on top_.
+    // Move the item first (it will be abandoned if the CAS fails).
+    WorkItem item = std::move(arr->items[b % arr->capacity]);
+    // Restore bottom so the queue appears empty regardless of CAS outcome.
+    bottom_.store(b + 1, std::memory_order_relaxed);
+    // Try to claim the item by advancing top_ past b.
+    if (top_.compare_exchange_strong(t, t + 1, std::memory_order_acq_rel,
+                                     std::memory_order_acquire)) {
+      return item;
+    }
+    // A thief already incremented top_ — the item belongs to the thief.
+    return std::nullopt;
   } else {
-    // Empty, restore bottom
+    // Empty, restore bottom.
     bottom_.store(b + 1, std::memory_order_relaxed);
     return std::nullopt;
   }

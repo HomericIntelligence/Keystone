@@ -38,8 +38,11 @@ void ModuleLeadAgent::setAvailableTaskAgents(const std::vector<std::string>& tas
 // === Hook Method Implementations (override LeadAgentBase pure virtuals) ===
 
 bool ModuleLeadAgent::isSubordinateResult(const core::KeystoneMessage& msg) {
-  // Check if this is a task result (from TaskAgent)
-  return msg.command == "response";
+  // Check if this is a task result (from TaskAgent).
+  // Explicitly exclude TASK_FAILED messages so they are handled by
+  // processSubordinateFailure() and not silently treated as successes
+  // (Issue #184).
+  return msg.command == "response" && msg.action_type != core::ActionType::TASK_FAILED;
 }
 
 std::vector<std::string> ModuleLeadAgent::decomposeGoal(const std::string& goal) {
@@ -96,7 +99,11 @@ void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& resu
 
   // Check if we've received all results
   if (all_complete) {
-    coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
+    if (coordination_.hasFailures()) {
+      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
+    } else {
+      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
+    }
   }
 }
 

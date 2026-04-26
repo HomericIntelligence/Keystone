@@ -5,7 +5,7 @@
 #include <string>
 #include <string_view>
 
-#include "nats/nats.h"
+#include <nats.h>
 
 namespace keystone {
 namespace network {
