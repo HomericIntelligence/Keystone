@@ -325,9 +325,7 @@ TEST_F(ComponentLeadAgentTest, ModuleFailureBeforeAllResultsDoesNotDeadlock) {
   // Decompose into 3 module goals
   component
       ->processMessage(core::KeystoneMessage::create(
-          "chief",
-          "component_1",
-          "Build Core: Messaging(10) and Concurrency(20) and Storage(30)"))
+          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20) and Storage(30)"))
       .get();
 
   // First module fails immediately — must not leave the other two permanently pending
