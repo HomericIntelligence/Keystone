@@ -7,6 +7,7 @@ platforms = ["linux-64"]
 
 [dependencies]
 cmake = ">=3.20"
+conan = ">=2.0"
 ninja = ">=1.10"
 cxx-compiler = "*"
 gtest = "*"
@@ -33,7 +34,8 @@ keepachangelog = ">=2.0,<3"
 dev = { features = ["dev"], solve-group = "default" }
 
 [tasks]
-configure = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF"
+conan-install = "conan install . --output-folder=build-native --profile=conan/profiles/default --build=missing"
+configure = { cmd = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF", depends-on = ["conan-install"] }
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
 test = { cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q", depends-on = ["build"] }
 test-python = "python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
