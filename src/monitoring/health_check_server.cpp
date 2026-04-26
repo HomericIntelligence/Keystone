@@ -71,6 +71,9 @@ bool HealthCheckServer::start() {
     return false;  // Already running
   }
 
+  // Initialize logger (ensures spdlog is ready before first log call)
+  concurrency::Logger::init();
+
   // Create socket
   server_fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd_.load() < 0) {
