@@ -9,16 +9,17 @@ build:
 test:
   make test NATIVE=1
 
-# Install Conan dependencies (tsan profile)
-# Removes the Conan-generated CMakePresets.json from the tsan output folder to prevent
-# a duplicate "conan-debug" preset collision with the debug build in CMakeUserPresets.json.
+# Install Conan dependencies (tsan profile).
+# The tsan Conan profile sets user.keystone.sanitizer=tsan and
+# tools.cmake.cmake_layout:build_folder_vars so Conan names its generated
+# preset "conan-debug-tsan" rather than "conan-debug", preventing a
+# duplicate-preset collision with the plain debug build in CMakeUserPresets.json
+# regardless of whether conan install is invoked via just or directly.
 deps-tsan:
     conan install . \
         --output-folder=build/tsan \
         --profile=conan/profiles/tsan \
         --build=missing
-    rm -f build/tsan/CMakePresets.json
-    python3 scripts/remove-preset-include.py CMakeUserPresets.json build/tsan/CMakePresets.json
 
 # Build with ThreadSanitizer
 build-tsan: deps-tsan
