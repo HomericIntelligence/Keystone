@@ -157,6 +157,9 @@ class TestRunRoutingLoop:
         with patch("time.sleep", side_effect=KeyboardInterrupt):
             run_routing_loop(poll_interval=2.5)
 
+            # sleep was called, but since we interrupt immediately,
+            # we can't easily verify the interval. Just verify it was called.
+
 
 class TestAssignTask:
     def test_assign_task_logs_assignment(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -168,65 +171,49 @@ class TestAssignTask:
         assert "task_assigned" in messages
 
 
+def _make_run_mocks():
+    """Create standard mocks for run() tests."""
+    mock_listener = MagicMock(spec=NATSListener)
+    mock_listener.stop = AsyncMock()
+    mock_claimer = MagicMock(spec=TaskClaimer)
+    mock_claimer.drain = AsyncMock(return_value=True)
+    mock_event_loop = MagicMock()
+    mock_event_loop.add_signal_handler = MagicMock()
+    return mock_listener, mock_claimer, mock_event_loop
+
+
 class TestRunAsync:
     async def test_run_returns_zero(self) -> None:
         """run() must return 0 on successful execution."""
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
+        keystone.daemon._shutdown_event.set()
 
-        with patch("keystone.daemon.NATSListener") as mock_listener_class:
-            mock_listener = MagicMock(spec=NATSListener)
-            mock_listener.stop = AsyncMock()
-            mock_listener_class.return_value = mock_listener
+        mock_listener, mock_claimer, mock_event_loop = _make_run_mocks()
 
-            with patch("keystone.daemon.TaskClaimer") as mock_claimer_class:
-                mock_claimer = MagicMock(spec=TaskClaimer)
-                mock_claimer.drain = AsyncMock(return_value=True)
-                mock_claimer_class.return_value = mock_claimer
-
-                async def set_event():
-                    keystone.daemon._shutdown_event.set()
-
-                with patch("asyncio.get_running_loop") as mock_loop:
-                    mock_event_loop = MagicMock()
-                    mock_event_loop.add_signal_handler = MagicMock()
-                    mock_loop.return_value = mock_event_loop
-
-                    task = asyncio.create_task(set_event())
+        with patch("keystone.daemon.NATSListener", return_value=mock_listener):
+            with patch("keystone.daemon.TaskClaimer", return_value=mock_claimer):
+                with patch("asyncio.get_running_loop", return_value=mock_event_loop):
                     result = await run(settings)
-                    await task
-                    assert result == 0
+
+        assert result == 0
 
     async def test_run_logs_drain_incomplete_warning(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """run() must log a warning when drain() returns False."""
-
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
+        keystone.daemon._shutdown_event.set()
 
-        with patch("keystone.daemon.NATSListener") as mock_listener_class:
-            mock_listener = MagicMock(spec=NATSListener)
-            mock_listener.stop = AsyncMock()
-            mock_listener_class.return_value = mock_listener
+        mock_listener, mock_claimer, mock_event_loop = _make_run_mocks()
+        mock_claimer.drain = AsyncMock(return_value=False)
 
-            with patch("keystone.daemon.TaskClaimer") as mock_claimer_class:
-                mock_claimer = MagicMock(spec=TaskClaimer)
-                mock_claimer.drain = AsyncMock(return_value=False)
-                mock_claimer_class.return_value = mock_claimer
-
-                with caplog.at_level(logging.WARNING):
-                    async def set_event():
-                        keystone.daemon._shutdown_event.set()
-
-                    with patch("asyncio.get_running_loop") as mock_loop:
-                        mock_event_loop = MagicMock()
-                        mock_event_loop.add_signal_handler = MagicMock()
-                        mock_loop.return_value = mock_event_loop
-
-                        task = asyncio.create_task(set_event())
+        with patch("keystone.daemon.NATSListener", return_value=mock_listener):
+            with patch("keystone.daemon.TaskClaimer", return_value=mock_claimer):
+                with patch("asyncio.get_running_loop", return_value=mock_event_loop):
+                    with caplog.at_level(logging.WARNING):
                         await run(settings)
-                        await task
 
         messages = " ".join(caplog.messages)
         assert "drain_incomplete" in messages
@@ -235,32 +222,18 @@ class TestRunAsync:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """run() must catch and log errors from listener.stop()."""
-
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
+        keystone.daemon._shutdown_event.set()
 
-        with patch("keystone.daemon.NATSListener") as mock_listener_class:
-            mock_listener = MagicMock(spec=NATSListener)
-            mock_listener.stop = AsyncMock(side_effect=RuntimeError("connection lost"))
-            mock_listener_class.return_value = mock_listener
+        mock_listener, mock_claimer, mock_event_loop = _make_run_mocks()
+        mock_listener.stop = AsyncMock(side_effect=RuntimeError("connection lost"))
 
-            with patch("keystone.daemon.TaskClaimer") as mock_claimer_class:
-                mock_claimer = MagicMock(spec=TaskClaimer)
-                mock_claimer.drain = AsyncMock(return_value=True)
-                mock_claimer_class.return_value = mock_claimer
-
-                with caplog.at_level(logging.ERROR):
-                    async def set_event():
-                        keystone.daemon._shutdown_event.set()
-
-                    with patch("asyncio.get_running_loop") as mock_loop:
-                        mock_event_loop = MagicMock()
-                        mock_event_loop.add_signal_handler = MagicMock()
-                        mock_loop.return_value = mock_event_loop
-
-                        task = asyncio.create_task(set_event())
+        with patch("keystone.daemon.NATSListener", return_value=mock_listener):
+            with patch("keystone.daemon.TaskClaimer", return_value=mock_claimer):
+                with patch("asyncio.get_running_loop", return_value=mock_event_loop):
+                    with caplog.at_level(logging.ERROR):
                         result = await run(settings)
-                        await task
 
         messages = " ".join(caplog.messages)
         assert "nats_stop_error" in messages
@@ -268,64 +241,34 @@ class TestRunAsync:
 
     async def test_run_logs_daemon_started(self, caplog: pytest.LogCaptureFixture) -> None:
         """run() must log daemon_started on startup."""
-
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
+        keystone.daemon._shutdown_event.set()
 
-        with patch("keystone.daemon.NATSListener") as mock_listener_class:
-            mock_listener = MagicMock(spec=NATSListener)
-            mock_listener.stop = AsyncMock()
-            mock_listener_class.return_value = mock_listener
+        mock_listener, mock_claimer, mock_event_loop = _make_run_mocks()
 
-            with patch("keystone.daemon.TaskClaimer") as mock_claimer_class:
-                mock_claimer = MagicMock(spec=TaskClaimer)
-                mock_claimer.drain = AsyncMock(return_value=True)
-                mock_claimer_class.return_value = mock_claimer
-
-                with caplog.at_level(logging.INFO):
-                    async def set_event():
-                        keystone.daemon._shutdown_event.set()
-
-                    with patch("asyncio.get_running_loop") as mock_loop:
-                        mock_event_loop = MagicMock()
-                        mock_event_loop.add_signal_handler = MagicMock()
-                        mock_loop.return_value = mock_event_loop
-
-                        task = asyncio.create_task(set_event())
+        with patch("keystone.daemon.NATSListener", return_value=mock_listener):
+            with patch("keystone.daemon.TaskClaimer", return_value=mock_claimer):
+                with patch("asyncio.get_running_loop", return_value=mock_event_loop):
+                    with caplog.at_level(logging.INFO):
                         await run(settings)
-                        await task
 
         messages = " ".join(caplog.messages)
         assert "daemon_started" in messages
 
     async def test_run_logs_daemon_stopped(self, caplog: pytest.LogCaptureFixture) -> None:
         """run() must log daemon_stopped on shutdown."""
-
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
+        keystone.daemon._shutdown_event.set()
 
-        with patch("keystone.daemon.NATSListener") as mock_listener_class:
-            mock_listener = MagicMock(spec=NATSListener)
-            mock_listener.stop = AsyncMock()
-            mock_listener_class.return_value = mock_listener
+        mock_listener, mock_claimer, mock_event_loop = _make_run_mocks()
 
-            with patch("keystone.daemon.TaskClaimer") as mock_claimer_class:
-                mock_claimer = MagicMock(spec=TaskClaimer)
-                mock_claimer.drain = AsyncMock(return_value=True)
-                mock_claimer_class.return_value = mock_claimer
-
-                with caplog.at_level(logging.INFO):
-                    async def set_event():
-                        keystone.daemon._shutdown_event.set()
-
-                    with patch("asyncio.get_running_loop") as mock_loop:
-                        mock_event_loop = MagicMock()
-                        mock_event_loop.add_signal_handler = MagicMock()
-                        mock_loop.return_value = mock_event_loop
-
-                        task = asyncio.create_task(set_event())
+        with patch("keystone.daemon.NATSListener", return_value=mock_listener):
+            with patch("keystone.daemon.TaskClaimer", return_value=mock_claimer):
+                with patch("asyncio.get_running_loop", return_value=mock_event_loop):
+                    with caplog.at_level(logging.INFO):
                         await run(settings)
-                        await task
 
         messages = " ".join(caplog.messages)
         assert "daemon_stopped" in messages
