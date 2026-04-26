@@ -127,6 +127,7 @@ class ThreadPool {
   std::queue<WorkItem> work_queue_;
   std::mutex queue_mutex_;
   std::condition_variable condition_;
+  std::condition_variable drain_cv_;
   std::atomic<bool> shutdown_requested_{false};
 };
 

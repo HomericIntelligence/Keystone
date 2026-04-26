@@ -202,6 +202,25 @@ TEST(ThreadPoolTest, ConcurrentSubmissions) {
   EXPECT_EQ(counter.load(), 100);
 }
 
+// Test: GracefulShutdown drains queue by design, not incidentally.
+// Submits bursts of work and then calls shutdown() immediately; all submitted
+// work must be counted even though shutdown() races with the workers.
+TEST(ThreadPoolTest, GracefulShutdownDrainsQueueExplicitly) {
+  ThreadPool pool(4);
+  std::atomic<int> counter{0};
+
+  // Submit a burst of short-lived tasks before calling shutdown().
+  for (int32_t i = 0; i < 20; ++i) {
+    pool.submit([&]() { counter.fetch_add(1); });
+  }
+
+  // shutdown() must not return until every submitted task has executed.
+  pool.shutdown();
+
+  EXPECT_EQ(counter.load(), 20);
+  EXPECT_TRUE(pool.is_shutting_down());
+}
+
 // Test: Destructor calls shutdown
 TEST(ThreadPoolTest, DestructorShutdown) {
   std::atomic<int> counter{0};
