@@ -12,3 +12,9 @@ tools.build:cxxflags=["-fsanitize=thread", "-fno-omit-frame-pointer"]
 tools.build:cflags=["-fsanitize=thread", "-fno-omit-frame-pointer"]
 tools.build:sharedlinkflags=["-fsanitize=thread"]
 tools.build:exelinkflags=["-fsanitize=thread"]
+# Give this profile a unique build-folder discriminator so Conan generates a
+# preset named "conan-debug-tsan" instead of "conan-debug", preventing a
+# duplicate-preset collision with the plain debug profile in
+# CMakeUserPresets.json (see issue #324).
+user.keystone.sanitizer=tsan
+tools.cmake.cmake_layout:build_folder_vars=["settings.build_type", "user.keystone.sanitizer"]
