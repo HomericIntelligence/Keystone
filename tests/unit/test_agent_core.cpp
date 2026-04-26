@@ -1,11 +1,17 @@
 #include "agents/agent_core.hpp"
+#include "concurrency/logger.hpp"
 #include "core/config.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
 
+#include <algorithm>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
+#include <spdlog/spdlog.h>
 
 using namespace keystone;
 using namespace keystone::agents;
@@ -517,4 +523,110 @@ TEST_F(AgentCoreTest, FairnessDoesNotLoseMessages) {
   EXPECT_EQ(high_count, 10) << "All 10 HIGH messages should be received";
   EXPECT_EQ(normal_count, 5) << "All 5 NORMAL messages should be received";
   EXPECT_EQ(commands.size(), 15u) << "Total of 15 messages should be received";
+}
+
+// ---------------------------------------------------------------------------
+// Logger output assertions for backpressure events
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Attach a ringbuffer sink to the "keystone" spdlog logger (after
+/// Logger::init()), run @p fn, then return all formatted log lines captured.
+std::vector<std::string> captureLogLines(std::function<void()> fn) {
+  keystone::concurrency::Logger::init(spdlog::level::trace);
+
+  auto logger = spdlog::get("keystone");
+  auto sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(256);
+  sink->set_level(spdlog::level::trace);
+  logger->sinks().push_back(sink);
+
+  fn();
+
+  // Flush to ensure all records are in the buffer
+  logger->flush();
+
+  // Remove the test sink before returning
+  auto& sinks = logger->sinks();
+  sinks.erase(std::remove(sinks.begin(), sinks.end(), sink), sinks.end());
+
+  return sink->last_formatted();
+}
+
+bool anyLineContains(const std::vector<std::string>& lines, const std::string& substr) {
+  for (const auto& line : lines) {
+    if (line.find(substr) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+// Test: backpressure WARN is logged when inbox is full
+TEST(AgentCoreLogTest, BackpressureInboxFullLogsWarn) {
+  // Must shutdown any existing logger so we get a fresh one with our sink
+  keystone::concurrency::Logger::shutdown();
+
+  auto agent = std::make_shared<TestAgent>("log_test_agent");
+
+  auto lines = captureLogLines([&]() {
+    // Fill queue beyond max to trigger backpressure log
+    size_t max_size = keystone::core::Config::AGENT_MAX_QUEUE_SIZE;
+    for (size_t i = 0; i < max_size + 20; ++i) {
+      auto msg = keystone::core::KeystoneMessage::create(
+          "sender", agent->getAgentId(), "msg_" + std::to_string(i));
+      msg.priority = keystone::core::Priority::NORMAL;
+      agent->receiveMessage(msg);
+    }
+  });
+
+  EXPECT_TRUE(anyLineContains(lines, "[BACKPRESSURE]"))
+      << "Expected [BACKPRESSURE] warning in log output";
+  EXPECT_TRUE(anyLineContains(lines, "inbox full"))
+      << "Expected 'inbox full' phrase in log output";
+  EXPECT_TRUE(anyLineContains(lines, "log_test_agent"))
+      << "Expected agent id in backpressure log line";
+
+  keystone::concurrency::Logger::shutdown();
+}
+
+// Test: backpressure recovery INFO is logged when queue drains below low watermark
+TEST(AgentCoreLogTest, BackpressureRecoveryLogsInfo) {
+  keystone::concurrency::Logger::shutdown();
+
+  auto agent = std::make_shared<TestAgent>("recovery_log_agent");
+
+  auto lines = captureLogLines([&]() {
+    size_t max_size = keystone::core::Config::AGENT_MAX_QUEUE_SIZE;
+
+    // Fill to trigger backpressure
+    for (size_t i = 0; i < max_size + 20; ++i) {
+      auto msg = keystone::core::KeystoneMessage::create(
+          "sender", agent->getAgentId(), "fill_" + std::to_string(i));
+      msg.priority = keystone::core::Priority::NORMAL;
+      agent->receiveMessage(msg);
+    }
+
+    // Drain below low watermark so recovery log fires
+    size_t low_watermark =
+        static_cast<size_t>(max_size * keystone::core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
+    size_t drain_count = max_size - low_watermark + 20;
+    for (size_t i = 0; i < drain_count; ++i) {
+      agent->getMessage();
+    }
+
+    // Send one more message — this triggers the recovery CAS log
+    auto msg = keystone::core::KeystoneMessage::create("sender", agent->getAgentId(), "trigger");
+    msg.priority = keystone::core::Priority::NORMAL;
+    agent->receiveMessage(msg);
+  });
+
+  EXPECT_TRUE(anyLineContains(lines, "recovered"))
+      << "Expected 'recovered' in log output after backpressure clears";
+  EXPECT_TRUE(anyLineContains(lines, "accepting messages"))
+      << "Expected 'accepting messages' phrase in recovery log line";
+
+  keystone::concurrency::Logger::shutdown();
 }
