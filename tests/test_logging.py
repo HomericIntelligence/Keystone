@@ -111,6 +111,34 @@ class TestJsonFormatter:
         assert "exception" in data
         assert "ValueError" in data["exception"]
 
+    def test_include_location_adds_pathname_lineno_funcname(self) -> None:
+        """JsonFormatter with include_location=True must include location fields (line 40-42)."""
+        record = _make_record(name="test")
+        record.pathname = "/path/to/file.py"
+        record.lineno = 42
+        record.funcName = "test_func"
+
+        formatter = JsonFormatter(include_location=True)
+        data = json.loads(formatter.format(record))
+
+        assert data["pathname"] == "/path/to/file.py"
+        assert data["lineno"] == 42
+        assert data["funcName"] == "test_func"
+
+    def test_exclude_location_by_default(self) -> None:
+        """JsonFormatter without include_location must exclude location fields."""
+        record = _make_record(name="test")
+        record.pathname = "/path/to/file.py"
+        record.lineno = 42
+        record.funcName = "test_func"
+
+        formatter = JsonFormatter(include_location=False)
+        data = json.loads(formatter.format(record))
+
+        assert "pathname" not in data
+        assert "lineno" not in data
+        assert "funcName" not in data
+
 
 # ---------------------------------------------------------------------------
 # TestGetLogger
@@ -232,6 +260,64 @@ class TestKeystoneLoggerAdapter:
         assert not errors
         assert len(records) == 50
         lg._logger.handlers.clear()
+
+    def test_debug_method_logs_at_debug_level(self) -> None:
+        """KeystoneLogger.debug() must log at DEBUG level (line 72)."""
+        lg, records = self._capturing_logger("debug_test")
+        lg.debug("debug_msg", key="value")
+        assert len(records) == 1
+        assert records[0].levelno == logging.DEBUG
+        assert records[0].getMessage() == "debug_msg"
+        lg._logger.handlers.clear()
+
+    def test_warning_method_logs_at_warning_level(self) -> None:
+        """KeystoneLogger.warning() must log at WARNING level (line 80)."""
+        lg, records = self._capturing_logger("warning_test")
+        lg.warning("warn_msg", key="value")
+        assert len(records) == 1
+        assert records[0].levelno == logging.WARNING
+        assert records[0].getMessage() == "warn_msg"
+        lg._logger.handlers.clear()
+
+    def test_error_method_logs_at_error_level(self) -> None:
+        """KeystoneLogger.error() must log at ERROR level (line 84)."""
+        lg, records = self._capturing_logger("error_test")
+        lg.error("error_msg", key="value")
+        assert len(records) == 1
+        assert records[0].levelno == logging.ERROR
+        assert records[0].getMessage() == "error_msg"
+        lg._logger.handlers.clear()
+
+    def test_bind_creates_new_logger_with_merged_context(self) -> None:
+        """KeystoneLogger.bind() returns a new logger with merged context (line 99-101)."""
+        lg1 = get_logger(component="bind_test", team_id="t1")
+        lg2 = lg1.bind(task_id="task-1", agent_id="a1")
+
+        # lg1 should still have only team_id
+        assert lg1._context == {"team_id": "t1"}
+        # lg2 should have merged context
+        assert lg2._context == {"team_id": "t1", "task_id": "task-1", "agent_id": "a1"}
+
+    def test_bind_overrides_existing_fields(self) -> None:
+        """KeystoneLogger.bind() overrides existing fields in context."""
+        lg1 = get_logger(component="bind_override", team_id="t1", task_id="old-task")
+        lg2 = lg1.bind(task_id="new-task")
+
+        assert lg1._context["task_id"] == "old-task"
+        assert lg2._context["task_id"] == "new-task"
+        assert lg2._context["team_id"] == "t1"
+
+    def test_bind_does_not_mutate_original(self) -> None:
+        """KeystoneLogger.bind() must not mutate the original logger's context."""
+        lg1 = get_logger(component="bind_immutable", team_id="t1")
+        original_context = dict(lg1._context)
+
+        lg2 = lg1.bind(task_id="task-1")
+
+        # Original should be unchanged
+        assert lg1._context == original_context
+        # New one should have the binding
+        assert "task_id" in lg2._context
 
 
 # ---------------------------------------------------------------------------
