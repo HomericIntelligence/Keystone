@@ -489,7 +489,7 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
     jsStreamConfig stream_cfg;
     jsStreamConfig_Init(&stream_cfg);
     stream_cfg.Name = "hi-tasks";
-    stream_cfg.Subjects = (const char* []){(const char*)"hi.tasks.>", nullptr};
+    stream_cfg.Subjects = (const char*[]){(const char*)"hi.tasks.>", nullptr};
     stream_cfg.MaxAge = 3600000;  // 1 hour
 
     s = js_AddStream(nullptr, js, &stream_cfg, nullptr, nullptr);
@@ -505,8 +505,7 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
   consumer_cfg.DeliverPolicy = js_DeliverLastPerSubject;
   consumer_cfg.MaxAckPending = 1;  // Rate-limiting: one unacked message at a time
 
-  natsStatus consumer_s =
-      js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
+  natsStatus consumer_s = js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
   // It's OK if consumer already exists
   if (consumer_s != NATS_OK && consumer_s != NATS_ERR_CONSUMER_CREATE_FAILED) {
     ASSERT_EQ(consumer_s, NATS_OK) << "Failed to add consumer: " << natsStatus_GetText(consumer_s);
@@ -516,8 +515,8 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
   const char* test_subject = "hi.tasks.team-001.task-abc123.completed";
   const char* test_payload = R"({"status":"completed"})";
   jsErrCode jerr = jsErrCode(0);
-  natsStatus pub_s = natsConnection_PublishString(
-      conn.handle(), test_subject, test_payload, nullptr, nullptr);
+  natsStatus pub_s =
+      natsConnection_PublishString(conn.handle(), test_subject, test_payload, nullptr, nullptr);
   ASSERT_EQ(pub_s, NATS_OK) << "Failed to publish test message: " << natsStatus_GetText(pub_s);
 
   // Give JetStream a moment to process the publish
@@ -533,12 +532,11 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
   listener_cfg.durable_name = "test-listener-consumer";
   listener_cfg.max_ack_pending = 1;
 
-  NATSListener listener(listener_cfg,
-                        [&](std::string_view team_id, std::string_view task_id) {
-                          captured_team_id = std::string(team_id);
-                          captured_task_id = std::string(task_id);
-                          dag_advances++;
-                        });
+  NATSListener listener(listener_cfg, [&](std::string_view team_id, std::string_view task_id) {
+    captured_team_id = std::string(team_id);
+    captured_task_id = std::string(task_id);
+    dag_advances++;
+  });
 
   // Start the listener
   natsStatus listen_s = listener.start(js);
@@ -679,7 +677,7 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
     jsStreamConfig stream_cfg;
     jsStreamConfig_Init(&stream_cfg);
     stream_cfg.Name = "hi-tasks";
-    stream_cfg.Subjects = (const char* []){(const char*)"hi.tasks.>", nullptr};
+    stream_cfg.Subjects = (const char*[]){(const char*)"hi.tasks.>", nullptr};
     s = js_AddStream(nullptr, js, &stream_cfg, nullptr, nullptr);
   }
 
@@ -689,16 +687,15 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
   consumer_cfg.Durable = "test-malformed-consumer";
   consumer_cfg.DeliverPolicy = js_DeliverLastPerSubject;
   consumer_cfg.MaxAckPending = 1;
-  natsStatus consumer_s =
-      js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
+  natsStatus consumer_s = js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
   // OK if already exists
 
   // Publish a malformed message
   natsStatus pub_s = natsConnection_PublishString(conn.handle(),
-                                                   "hi.tasks.bad",  // Only 3 parts, malformed
-                                                   "{}",
-                                                   nullptr,
-                                                   nullptr);
+                                                  "hi.tasks.bad",  // Only 3 parts, malformed
+                                                  "{}",
+                                                  nullptr,
+                                                  nullptr);
   ASSERT_EQ(pub_s, NATS_OK);
 
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
