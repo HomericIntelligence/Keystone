@@ -38,14 +38,26 @@ class HealthCheckServer {
   using ReadinessCheck = std::function<bool()>;
 
   /**
+   * @brief NatsConnection connectivity check function type (issue #204)
+   *
+   * Lambda/callback that returns true when the NATS connection is established.
+   * Supplied by the caller to decouple HealthCheckServer from NatsConnection.
+   * When set, the readiness probe returns 503 until this callback returns true.
+   */
+  using NatsConnectionCheck = std::function<bool()>;
+
+  /**
    * @brief Construct health check server with configuration
    * @param port HTTP server port (default: 8080 for Kubernetes)
    * @param readiness_check Optional custom readiness check function
    * @param nats_status Optional NATS status tracker (non-owning); used by /v1/health
+   * @param nats_connection_check Optional NATS connection check (issue #204);
+   *        when supplied the readiness probe is not ready until this returns true
    */
   explicit HealthCheckServer(uint16_t port = 8080,
                              ReadinessCheck readiness_check = nullptr,
-                             NatsStatusTracker* nats_status = nullptr);
+                             NatsStatusTracker* nats_status = nullptr,
+                             NatsConnectionCheck nats_connection_check = nullptr);
 
   /**
    * @brief Destructor - stops server if running
@@ -85,6 +97,15 @@ class HealthCheckServer {
    */
   void setReadinessCheck(ReadinessCheck check);
 
+  /**
+   * @brief Set NATS connection check function (issue #204)
+   *
+   * Wires a NatsConnection::isConnected()-style lambda into the readiness
+   * probe.  When set, /ready returns 503 until the callback returns true.
+   * Pass nullptr to clear (readiness probe ignores NATS connectivity again).
+   */
+  void setNatsConnectionCheck(NatsConnectionCheck check);
+
  private:
   /**
    * @brief HTTP server loop (runs in background thread)
@@ -123,7 +144,8 @@ class HealthCheckServer {
   std::atomic<int> server_fd_{-1};
   mutable std::mutex readiness_mutex_;
   ReadinessCheck readiness_check_;
-  NatsStatusTracker* nats_status_{nullptr};  // non-owning
+  NatsConnectionCheck nats_connection_check_;  // issue #204: gates /ready on NATS connectivity
+  NatsStatusTracker* nats_status_{nullptr};    // non-owning
 };
 
 }  // namespace monitoring

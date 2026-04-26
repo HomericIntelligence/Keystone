@@ -40,6 +40,15 @@ SerializableMessage SerializableMessage::fromKeystoneMessage(const KeystoneMessa
   auto duration = msg.timestamp.time_since_epoch();
   smsg.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
 
+  // Issue #285: Propagate correlation_id for cross-host tracing
+  if (msg.correlation_id.has_value()) {
+    smsg.correlation_id = cista::offset::string{msg.correlation_id.value().c_str()};
+    smsg.has_correlation_id = true;
+  } else {
+    smsg.correlation_id = cista::offset::string{""};
+    smsg.has_correlation_id = false;
+  }
+
   return smsg;
 }
 
@@ -75,6 +84,13 @@ KeystoneMessage SerializableMessage::toKeystoneMessage() const {
   // Initialize Phase C fields with defaults (not in serialized format yet)
   msg.priority = Priority::NORMAL;
   msg.deadline = std::nullopt;
+
+  // Issue #285: Restore correlation_id from serialized form
+  if (has_correlation_id) {
+    msg.correlation_id = std::string{correlation_id.data(), correlation_id.size()};
+  } else {
+    msg.correlation_id = std::nullopt;
+  }
 
   return msg;
 }

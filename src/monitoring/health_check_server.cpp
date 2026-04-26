@@ -56,10 +56,12 @@ class SocketHandle {
 
 HealthCheckServer::HealthCheckServer(uint16_t port,
                                      ReadinessCheck readiness_check,
-                                     NatsStatusTracker* nats_status)
+                                     NatsStatusTracker* nats_status,
+                                     NatsConnectionCheck nats_connection_check)
     : port_(port),
       server_fd_(-1),
       readiness_check_(std::move(readiness_check)),
+      nats_connection_check_(std::move(nats_connection_check)),
       nats_status_(nats_status) {}
 
 HealthCheckServer::~HealthCheckServer() {
@@ -166,6 +168,11 @@ uint16_t HealthCheckServer::getPort() const {
 void HealthCheckServer::setReadinessCheck(ReadinessCheck check) {
   std::lock_guard<std::mutex> lock(readiness_mutex_);
   readiness_check_ = std::move(check);
+}
+
+void HealthCheckServer::setNatsConnectionCheck(NatsConnectionCheck check) {
+  std::lock_guard<std::mutex> lock(readiness_mutex_);
+  nats_connection_check_ = std::move(check);
 }
 
 void HealthCheckServer::serverLoop() {
@@ -311,7 +318,11 @@ void HealthCheckServer::handleRequest(int client_fd) {
     bool ready = true;
     {
       std::lock_guard<std::mutex> lock(readiness_mutex_);
-      if (readiness_check_) {
+      // issue #204: gate on NATS connection readiness first
+      if (nats_connection_check_ && !nats_connection_check_()) {
+        ready = false;
+      }
+      if (ready && readiness_check_) {
         ready = readiness_check_();
       }
     }

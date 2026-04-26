@@ -15,6 +15,7 @@ struct NATSListenerConfig {
   std::string subject;       ///< NATS subject pattern, e.g. "hi.tasks.>"
   std::string durable_name;  ///< Durable consumer name for JetStream
   int max_ack_pending{1};    ///< Max unacked messages per CLAUDE.md rate-limit
+  int max_attempts{3};       ///< Maximum subscribe attempts before giving up (issue #331)
 };
 
 /// Callback invoked when a terminal task event advances the DAG.
