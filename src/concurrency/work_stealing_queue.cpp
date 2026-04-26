@@ -184,7 +184,8 @@ std::optional<WorkItem> WorkStealingQueue::steal() {
   WorkItem item = std::move(arr->items[t % arr->capacity]);
 
   // Try to atomically increment top
-  if (top_.compare_exchange_strong(t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
+  if (top_.compare_exchange_strong(
+          t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
     // FIX #284: Restore correlation ID on worker thread before execution
     if (!item.correlation_id.empty()) {
       LogContext::setCorrelationId(item.correlation_id);
