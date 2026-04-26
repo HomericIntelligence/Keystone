@@ -258,7 +258,10 @@ add_library(
 
 target_include_directories(
   keystone_concurrency PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                              $<INSTALL_INTERFACE:include/keystone>)
+                              $<INSTALL_INTERFACE:include/keystone>
+                              $<TARGET_PROPERTY:spdlog::spdlog,INTERFACE_INCLUDE_DIRECTORIES>
+                              $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>
+                              $<TARGET_PROPERTY:concurrentqueue::concurrentqueue,INTERFACE_INCLUDE_DIRECTORIES>)
 
 # Link dependencies (including spdlog for logger.hpp)
 # NOTE: spdlog is intentionally propagated as PUBLIC (not INTERFACE) here.
@@ -267,10 +270,14 @@ target_include_directories(
 # include logger.hpp therefore need spdlog on their include path at compile time,
 # which only PUBLIC (not INTERFACE) provides when the dependency comes through a
 # compiled target.  See CLAUDE.md §"Public Dependency Visibility" and issue #328.
-target_link_libraries(keystone_concurrency PUBLIC keystone_core)
+# Issue #323: Resolve circular dependency. keystone_concurrency must directly
+# link external dependencies (spdlog, fmt, concurrentqueue) to ensure their
+# include directories are available during compilation. This breaks the circular
+# dependency chain while maintaining the same public interface visibility.
+target_link_libraries(keystone_concurrency PUBLIC spdlog::spdlog fmt::fmt
+                                                   concurrentqueue::concurrentqueue)
 
-# Handle circular dependency: keystone_core uses Logger from
-# keystone_concurrency This works with shared libraries
+# keystone_core needs concurrency components for Logger usage
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
 # Network library (Phase 8: Distributed communication)
@@ -566,6 +573,15 @@ target_link_libraries(registry_integration_tests keystone_agents keystone_core
 
 gtest_discover_tests(registry_integration_tests)
 
+# Integration Tests (NATS: #178, #205, #307)
+add_executable(nats_integration_tests
+               tests/integration/test_nats_integration.cpp)
+
+target_link_libraries(nats_integration_tests keystone_agents keystone_core
+                      keystone_transport GTest::gtest_main)
+
+gtest_discover_tests(nats_integration_tests)
+
 # Add test target
 add_custom_target(
   run_tests
@@ -582,8 +598,8 @@ add_custom_target(
           concurrency_unit_tests
           simulation_unit_tests
           transport_unit_tests
+          nats_integration_tests
           # DISABLED: registry_integration_tests (ADR-006) DISABLED:
-          # nats_integration_tests (ADR-006, uses task_agent.hpp)
   COMMENT "Running all ProjectKeystone tests with failure output")
 
 # Benchmarks Phase 3.1: Re-enabled hierarchy benchmarks with unified async API
