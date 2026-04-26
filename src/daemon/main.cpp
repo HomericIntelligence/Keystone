@@ -67,9 +67,15 @@ int main() {
   keystone::transport::NatsConnection nats_conn(nats_cfg);
   keystone::network::NATSListener listener(listener_cfg, dag_advance);
 
+  // Wire NatsStatusTracker callbacks into NATS connection lifecycle (issue #210)
+  nats_conn.setDisconnectedCallback([&nats_status]() { nats_status.setDisconnected(); });
+  nats_conn.setReconnectedCallback([&nats_status]() { nats_status.setConnected(); });
+
   // Attempt to connect to NATS; log a warning but continue if unavailable so
   // the health endpoint remains reachable.
   if (nats_conn.connect()) {
+    // Connection succeeded — update tracker
+    nats_status.setConnected();
     jsCtx* js = nats_conn.jsContext();
     if (js != nullptr) {
       natsStatus s = listener.start(js);
