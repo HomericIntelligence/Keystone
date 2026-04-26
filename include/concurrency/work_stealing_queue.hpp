@@ -1,13 +1,13 @@
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <coroutine>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <variant>
-
-#include <concurrentqueue.h>
 
 namespace keystone {
 namespace concurrency {
@@ -17,6 +17,9 @@ namespace concurrency {
  *
  * FIX P3-02: Default constructor is private to prevent invalid WorkItems.
  * Always use makeFunction() or makeCoroutine() factory methods.
+ *
+ * FIX #284: Captures correlation ID at submission time to propagate across
+ * thread boundaries.
  */
 struct WorkItem {
   enum class Type { Function, Coroutine };
@@ -24,6 +27,7 @@ struct WorkItem {
   Type type;
   std::function<void()> func;
   std::coroutine_handle<> handle;
+  std::string correlation_id;  // FIX #284: Captured at submission time
 
   static WorkItem makeFunction(std::function<void()> f) {
     WorkItem item;
@@ -57,52 +61,31 @@ struct WorkItem {
 
  private:
   // FIX P3-02: Private default constructor prevents accidental creation of invalid WorkItems
-  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr) {}
+  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr), correlation_id("") {}
 };
 
 /**
- * @brief WorkStealingQueue - Lock-free queue for work-stealing scheduler
+ * @brief WorkStealingQueue - Lock-free deque for work-stealing scheduler
  *
- * This queue is designed for work-stealing thread pools where:
- * - The owner thread pushes and pops work items from one end (LIFO for
- * locality)
- * - Other threads can steal work items from the other end (FIFO)
- *
- * Uses moodycamel::ConcurrentQueue for lock-free MPMC operations.
+ * Implements canonical Chase-Lev work-stealing deque semantics:
+ * - The owner thread pushes and pops from the BACK (LIFO)
+ * - Thief threads steal from the FRONT (FIFO)
  *
  * Thread Safety:
- * - push() and pop() are called by the owner thread
+ * - push() and pop() are called ONLY by the owner thread
  * - steal() is called by other threads
- * - All operations are lock-free and thread-safe
- *
- * Usage:
- *   WorkStealingQueue queue;
- *
- *   // Owner thread
- *   queue.push(WorkItem::makeFunction([]() { }));
- *   auto item = queue.pop();  // LIFO
- *
- *   // Thief thread
- *   auto stolen = queue.steal();  // FIFO
+ * - All operations use atomic indices and proper memory ordering
  */
 class WorkStealingQueue {
  public:
-  /**
-   * @brief Construct a WorkStealingQueue
-   */
   WorkStealingQueue();
+  ~WorkStealingQueue();
 
-  /**
-   * @brief Destructor
-   */
-  ~WorkStealingQueue() = default;
-
-  // Non-copyable, movable
   WorkStealingQueue(const WorkStealingQueue&) = delete;
   WorkStealingQueue& operator=(const WorkStealingQueue&) = delete;
 
-  WorkStealingQueue(WorkStealingQueue&&) noexcept = default;
-  WorkStealingQueue& operator=(WorkStealingQueue&&) noexcept = default;
+  WorkStealingQueue(WorkStealingQueue&&) noexcept;
+  WorkStealingQueue& operator=(WorkStealingQueue&&) noexcept;
 
   /**
    * @brief Push a work item onto the queue (owner thread)
@@ -142,7 +125,16 @@ class WorkStealingQueue {
   bool empty() const;
 
  private:
-  moodycamel::ConcurrentQueue<WorkItem> queue_;
+  static constexpr size_t INITIAL_CAPACITY = 64;
+
+  std::atomic<int64_t> bottom_;
+  std::atomic<int64_t> top_;
+  WorkItem* elements_;
+  size_t capacity_;
+
+  void grow();
+  WorkItem& get(int64_t index);
+  const WorkItem& get(int64_t index) const;
 };
 
 }  // namespace concurrency
