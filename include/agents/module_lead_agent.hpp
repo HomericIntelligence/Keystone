@@ -96,6 +96,19 @@ class ModuleLeadAgent : public LeadAgentBase<ModuleLeadState> {
   void processYamlModule(const std::string& yaml_spec);
 
   /**
+   * @brief Handle a gRPC TaskResult callback from a child TaskAgent (Issue #186)
+   *
+   * Called externally when the coordinator delivers a task result via gRPC.
+   * Checks hmas::TaskResult::success() and calls coordination_.recordFailure()
+   * when the result is not successful so that hasFailures() is set correctly
+   * and the agent does not remain permanently stuck in WAITING_FOR_TASKS.
+   *
+   * @param subtask_id Identifier of the child task (child task_id)
+   * @param result     gRPC TaskResult from the coordinator
+   */
+  void processTaskResult(const std::string& subtask_id, const hmas::TaskResult& result);
+
+  /**
    * @brief Start heartbeat thread (sends heartbeat every 1s)
    */
   void startHeartbeat();

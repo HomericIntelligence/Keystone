@@ -230,6 +230,58 @@ TEST_F(ComponentLeadAgentTest, StateTransitionFlow) {
   (void)trace;  // Suppress unused variable warning
 }
 
+// ============================================================================
+// Issue #185: processSubordinateFailure propagates failure upward
+// ============================================================================
+
+TEST_F(ComponentLeadAgentTest, ModuleFailurePropagatedUpwardToRequester) {
+  // When a module reports TASK_FAILED and all modules are terminal, the
+  // ComponentLeadAgent must forward a TASK_FAILED to its own requester.
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  auto module1 = std::make_shared<agents::ModuleLeadAgent>("module_1");
+
+  // Dummy parent that will receive the propagated failure
+  auto parent = std::make_shared<agents::ModuleLeadAgent>("parent_chief");
+
+  component->setMessageBus(bus_.get());
+  module1->setMessageBus(bus_.get());
+  parent->setMessageBus(bus_.get());
+
+  bus_->registerAgent(component->getAgentId(), component);
+  bus_->registerAgent(module1->getAgentId(), module1);
+  bus_->registerAgent(parent->getAgentId(), parent);
+
+  component->setAvailableModuleLeads({"module_1"});
+
+  // parent_chief sends a goal to component_1 for 1 module
+  component
+      ->processMessage(core::KeystoneMessage::create("parent_chief",
+                                                     "component_1",
+                                                     "Implement Core component: Messaging(10)"))
+      .get();
+
+  // component_1 is now in WAITING_FOR_MODULES waiting for module_1
+  // Deliver a TASK_FAILED from module_1
+  auto failure_msg =
+      core::KeystoneMessage::create("module_1", "component_1", "module_result", "module crashed");
+  failure_msg.action_type = core::ActionType::TASK_FAILED;
+  component->processMessage(failure_msg).get();
+
+  // ComponentLeadAgent must be in ERROR
+  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+
+  // parent_chief inbox should contain a TASK_FAILED from component_1
+  bool received_failure = false;
+  std::optional<core::KeystoneMessage> msg;
+  while ((msg = parent->getMessage()).has_value()) {
+    if (msg->action_type == core::ActionType::TASK_FAILED) {
+      received_failure = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(received_failure) << "Parent did not receive TASK_FAILED from ComponentLeadAgent";
+}
+
 TEST_F(ComponentLeadAgentTest, ConcurrentCoordination) {
   auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
   component->setMessageBus(bus_.get());
