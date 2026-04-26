@@ -8,6 +8,8 @@
 #include "core/message.hpp"
 #include "core/message_pool.hpp"
 
+#include <cstdint>
+
 #include <benchmark/benchmark.h>
 
 using namespace keystone::core;
@@ -32,7 +34,7 @@ BENCHMARK(BM_MessageCreation_NoPooing);
  */
 static void BM_MessageCreation_WithPooling(benchmark::State& state) {
   // Warmup pool
-  for (int i = 0; i < 100; ++i) {
+  for (int32_t i = 0; i < 100; ++i) {
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }
@@ -56,14 +58,14 @@ BENCHMARK(BM_MessageCreation_WithPooling);
  * Burst pattern: Create many messages then destroy them (no pooling)
  */
 static void BM_MessageBurst_NoPooling(benchmark::State& state) {
-  const int burst_size = state.range(0);
+  const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
     std::vector<KeystoneMessage> messages;
-    messages.reserve(burst_size);
+    messages.reserve(static_cast<size_t>(burst_size));
 
     // Create burst
-    for (int i = 0; i < burst_size; ++i) {
+    for (int32_t i = 0; i < burst_size; ++i) {
       messages.push_back(KeystoneMessage::create("sender", "receiver", "cmd"));
     }
 
@@ -78,21 +80,21 @@ BENCHMARK(BM_MessageBurst_NoPooling)->Arg(10)->Arg(100)->Arg(1000);
  * Burst pattern: Acquire many messages then release them (with pooling)
  */
 static void BM_MessageBurst_WithPooling(benchmark::State& state) {
-  const int burst_size = state.range(0);
+  const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   // Warmup pool
   MessagePool::clear();
-  for (int i = 0; i < burst_size; ++i) {
+  for (int32_t i = 0; i < burst_size; ++i) {
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }
 
   for (auto _ : state) {
     std::vector<KeystoneMessage> messages;
-    messages.reserve(burst_size);
+    messages.reserve(static_cast<size_t>(burst_size));
 
     // Acquire burst
-    for (int i = 0; i < burst_size; ++i) {
+    for (int32_t i = 0; i < burst_size; ++i) {
       messages.push_back(MessagePool::acquire());
     }
 
@@ -124,7 +126,7 @@ BENCHMARK(BM_SteadyState_NoPooling);
  */
 static void BM_SteadyState_WithPooling(benchmark::State& state) {
   // Warmup
-  for (int i = 0; i < 10; ++i) {
+  for (int32_t i = 0; i < 10; ++i) {
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }
@@ -147,7 +149,7 @@ BENCHMARK(BM_SteadyState_WithPooling);
  */
 static void BM_PoolStatistics(benchmark::State& state) {
   // Warmup
-  for (int i = 0; i < 100; ++i) {
+  for (int32_t i = 0; i < 100; ++i) {
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }
@@ -169,7 +171,7 @@ static void BM_PoolHitRate(benchmark::State& state) {
 
   // Build up pool
   std::vector<KeystoneMessage> warmup;
-  for (int i = 0; i < 100; ++i) {
+  for (int32_t i = 0; i < 100; ++i) {
     warmup.push_back(MessagePool::acquire());
   }
   for (auto& msg : warmup) {
@@ -201,7 +203,7 @@ static void BM_ThreadLocalPooling(benchmark::State& state) {
   }
 
   // Warmup per-thread pool
-  for (int i = 0; i < 10; ++i) {
+  for (int32_t i = 0; i < 10; ++i) {
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }

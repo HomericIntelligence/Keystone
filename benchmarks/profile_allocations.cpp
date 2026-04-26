@@ -7,19 +7,20 @@
 
 #include "core/message.hpp"
 
+#include <cstdint>
 #include <vector>
 
 using namespace keystone::core;
 
 int main() {
   // Simulate realistic workload for profiling
-  const int num_messages = 10000;
+  const int32_t num_messages = 10000;
 
   std::vector<KeystoneMessage> messages;
-  messages.reserve(num_messages);
+  messages.reserve(static_cast<size_t>(num_messages));
 
   // Create many messages (typical hot path)
-  for (int i = 0; i < num_messages; ++i) {
+  for (int32_t i = 0; i < num_messages; ++i) {
     messages.push_back(
         KeystoneMessage::create("sender-agent-001", "receiver-agent-002", "EXECUTE"));
   }
@@ -28,7 +29,7 @@ int main() {
   messages.clear();
 
   // Test with payloads
-  for (int i = 0; i < num_messages; ++i) {
+  for (int32_t i = 0; i < num_messages; ++i) {
     auto msg = KeystoneMessage::create("sender",
                                        "receiver",
                                        "EXECUTE",

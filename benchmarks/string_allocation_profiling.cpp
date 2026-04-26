@@ -13,6 +13,7 @@
 
 #include "core/message.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -40,7 +41,7 @@ BENCHMARK(BM_MessageCreation_Baseline);
  * Measure string allocation overhead by varying sender/receiver ID lengths
  */
 static void BM_MessageCreation_VariableIDLength(benchmark::State& state) {
-  int id_length = state.range(0);
+  int32_t id_length = static_cast<int32_t>(state.range(0));
   std::string sender(id_length, 'a');
   std::string receiver(id_length, 'b');
 
@@ -62,7 +63,7 @@ BENCHMARK(BM_MessageCreation_VariableIDLength)
  * Measure allocation overhead with payload strings
  */
 static void BM_MessageCreation_WithPayload(benchmark::State& state) {
-  int payload_size = state.range(0);
+  int32_t payload_size = static_cast<int32_t>(state.range(0));
   std::string payload_data(payload_size, 'x');
 
   for (auto _ : state) {
@@ -85,13 +86,13 @@ BENCHMARK(BM_MessageCreation_WithPayload)
  * This measures allocation rate under realistic load
  */
 static void BM_HighFrequency_MessageCreation(benchmark::State& state) {
-  const int burst_size = state.range(0);
+  const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
     std::vector<KeystoneMessage> messages;
-    messages.reserve(burst_size);
+    messages.reserve(static_cast<size_t>(burst_size));
 
-    for (int i = 0; i < burst_size; ++i) {
+    for (int32_t i = 0; i < burst_size; ++i) {
       messages.push_back(KeystoneMessage::create("sender-agent", "receiver-agent", "EXECUTE"));
     }
 
@@ -224,14 +225,14 @@ BENCHMARK(BM_Concurrent_MessageCreation)->Threads(1)->Threads(2)->Threads(4)->Th
  * Memory pressure test: Create and hold many messages
  */
 static void BM_Memory_Pressure(benchmark::State& state) {
-  const int message_count = state.range(0);
+  const int32_t message_count = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
     std::vector<KeystoneMessage> messages;
-    messages.reserve(message_count);
+    messages.reserve(static_cast<size_t>(message_count));
 
     // Allocate many messages
-    for (int i = 0; i < message_count; ++i) {
+    for (int32_t i = 0; i < message_count; ++i) {
       messages.push_back(KeystoneMessage::create("sender-" + std::to_string(i),
                                                  "receiver-" + std::to_string(i),
                                                  "EXECUTE"));

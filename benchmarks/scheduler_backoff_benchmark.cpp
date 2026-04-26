@@ -13,6 +13,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <thread>
 
 #include <benchmark/benchmark.h>
@@ -55,7 +56,7 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
   scheduler.start();
 
   auto total_latency_ns = std::make_shared<std::atomic<int64_t>>(0);
-  auto task_count = std::make_shared<std::atomic<int>>(0);
+  auto task_count = std::make_shared<std::atomic<int32_t>>(0);
 
   for (auto _ : state) {
     auto submit_time = std::chrono::steady_clock::now();
@@ -75,7 +76,7 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
   // Wait for all work to complete
   std::this_thread::sleep_for(100ms);
 
-  int count = task_count->load();
+  int32_t count = task_count->load();
   if (count > 0) {
     int64_t avg_latency_ns = total_latency_ns->load() / count;
     state.counters["avg_latency_us"] = benchmark::Counter(avg_latency_ns / 1000.0);
@@ -146,11 +147,11 @@ static void BM_WorkStealingDuringBackoff(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
-  auto counter = std::make_shared<std::atomic<int>>(0);
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
 
   for (auto _ : state) {
     // Submit all work to worker 0 (others will steal)
-    for (int i = 0; i < 100; ++i) {
+    for (int32_t i = 0; i < 100; ++i) {
       scheduler.submitTo(0, [counter]() {
         counter->fetch_add(1);
         std::this_thread::sleep_for(10us);  // Small work

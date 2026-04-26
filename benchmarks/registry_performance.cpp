@@ -2,6 +2,7 @@
 #include "core/agent_id_interning.hpp"
 #include "core/message_bus.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -68,7 +69,7 @@ class IntegerBasedRegistry {
 
 static void BM_RegisterAgent_StringBased(benchmark::State& state) {
   StringBasedRegistry registry;
-  int agent_count = 0;
+  int32_t agent_count = 0;
 
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(agent_count++);
@@ -82,7 +83,7 @@ BENCHMARK(BM_RegisterAgent_StringBased);
 
 static void BM_RegisterAgent_IntegerBased(benchmark::State& state) {
   IntegerBasedRegistry registry;
-  int agent_count = 0;
+  int32_t agent_count = 0;
 
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(agent_count++);
@@ -102,13 +103,13 @@ static void BM_LookupAgent_StringBased(benchmark::State& state) {
   StringBasedRegistry registry;
 
   // Pre-register 1000 agents
-  for (int i = 0; i < 1000; ++i) {
+  for (int32_t i = 0; i < 1000; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % 1000);
     benchmark::DoNotOptimize(registry.hasAgent(agent_id));
@@ -122,13 +123,13 @@ static void BM_LookupAgent_IntegerBased(benchmark::State& state) {
   IntegerBasedRegistry registry;
 
   // Pre-register 1000 agents
-  for (int i = 0; i < 1000; ++i) {
+  for (int32_t i = 0; i < 1000; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % 1000);
     benchmark::DoNotOptimize(registry.hasAgent(agent_id));
@@ -146,13 +147,13 @@ static void BM_GetAgent_StringBased(benchmark::State& state) {
   StringBasedRegistry registry;
 
   // Pre-register 1000 agents
-  for (int i = 0; i < 1000; ++i) {
+  for (int32_t i = 0; i < 1000; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % 1000);
     auto agent = registry.getAgent(agent_id);
@@ -167,13 +168,13 @@ static void BM_GetAgent_IntegerBased(benchmark::State& state) {
   IntegerBasedRegistry registry;
 
   // Pre-register 1000 agents
-  for (int i = 0; i < 1000; ++i) {
+  for (int32_t i = 0; i < 1000; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % 1000);
     auto agent = registry.getAgent(agent_id);
@@ -192,13 +193,13 @@ static void BM_RouteMessage_MessageBus(benchmark::State& state) {
   MessageBus bus;
 
   // Pre-register 1000 agents
-  for (int i = 0; i < 1000; ++i) {
+  for (int32_t i = 0; i < 1000; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     bus.registerAgent(agent_id, agent);
   }
 
-  int msg_idx = 0;
+  int32_t msg_idx = 0;
   for (auto _ : state) {
     std::string receiver_id = "agent_" + std::to_string(msg_idx++ % 1000);
     KeystoneMessage msg = KeystoneMessage::create("sender", receiver_id, "test_command");
@@ -215,16 +216,16 @@ BENCHMARK(BM_RouteMessage_MessageBus);
 
 static void BM_Lookup_Scalability_StringBased(benchmark::State& state) {
   StringBasedRegistry registry;
-  int num_agents = state.range(0);
+  int32_t num_agents = static_cast<int32_t>(state.range(0));
 
   // Pre-register agents
-  for (int i = 0; i < num_agents; ++i) {
+  for (int32_t i = 0; i < num_agents; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % num_agents);
     benchmark::DoNotOptimize(registry.hasAgent(agent_id));
@@ -236,16 +237,16 @@ BENCHMARK(BM_Lookup_Scalability_StringBased)->Range(100, 10000);
 
 static void BM_Lookup_Scalability_IntegerBased(benchmark::State& state) {
   IntegerBasedRegistry registry;
-  int num_agents = state.range(0);
+  int32_t num_agents = static_cast<int32_t>(state.range(0));
 
   // Pre-register agents
-  for (int i = 0; i < num_agents; ++i) {
+  for (int32_t i = 0; i < num_agents; ++i) {
     std::string agent_id = "agent_" + std::to_string(i);
     auto agent = std::make_shared<TaskAgent>(agent_id);
     registry.registerAgent(agent_id, agent);
   }
 
-  int lookup_idx = 0;
+  int32_t lookup_idx = 0;
   for (auto _ : state) {
     std::string agent_id = "agent_" + std::to_string(lookup_idx++ % num_agents);
     benchmark::DoNotOptimize(registry.hasAgent(agent_id));

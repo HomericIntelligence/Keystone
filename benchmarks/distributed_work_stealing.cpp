@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <thread>
 #include <vector>
 
@@ -25,8 +26,8 @@ static void BM_WorkStealing_LocalOnly(benchmark::State& state) {
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submitToNode(0, [&completed]() {
         // Simulate work
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
@@ -63,8 +64,8 @@ static void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
     // Submit tasks to both nodes (round-robin)
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submitToNode(i % 2, [&completed]() {
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
@@ -100,8 +101,8 @@ static void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
 
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submitToNode(i % 2, [&completed]() {
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
@@ -136,8 +137,8 @@ static void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
 
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submitToNode(i % 2, [&completed]() {
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
@@ -171,8 +172,8 @@ static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
     // Submit all tasks to node 0 (creates imbalance)
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submitToNode(0, [&completed]() {
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
@@ -266,8 +267,8 @@ static void BM_AgentAffinity_Registered(benchmark::State& state) {
     std::vector<std::string> agents = {"agent_A", "agent_B", "agent_C", "agent_D"};
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submit(agents[i % 4], [&completed]() {
-        volatile int sum = 0;
-        for (int j = 0; j < 100; ++j) {
+        volatile int32_t sum = 0;
+        for (int32_t j = 0; j < 100; ++j) {
           sum += j;
         }
         completed++;
