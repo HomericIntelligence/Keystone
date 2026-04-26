@@ -12,7 +12,7 @@ class ProjectKeystoneConan(ConanFile):
     def requirements(self) -> None:
         self.requires("spdlog/1.12.0")
         self.requires("concurrentqueue/1.0.4")
-        self.requires("cnats/3.9.3")
+        self.requires("cnats/3.12.0")
         if self.options.with_grpc:
             self.requires("yaml-cpp/0.8.0")
 
