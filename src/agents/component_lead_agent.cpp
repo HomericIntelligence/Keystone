@@ -260,7 +260,8 @@ void ComponentLeadAgent::processYamlComponent(const std::string& yaml_spec) {
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for module task {}: {}", task_id,
+          concurrency::Logger::error("Failed to get result for module task {}: {}",
+                                     task_id,
                                      e.what());
         }
       }).detach();
