@@ -108,12 +108,6 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// Generate unique task ID
   std::string generateTaskId() const;
 
-  /// Convert task phase enum to string
-  static std::string phaseToString(hmas::TaskPhase phase);
-
-  /// Convert string to task phase enum
-  static hmas::TaskPhase stringToPhase(const std::string& phase_str);
-
   std::shared_ptr<ServiceRegistry> registry_;
   std::shared_ptr<TaskRouter> router_;
 
