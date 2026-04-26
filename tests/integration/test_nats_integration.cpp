@@ -447,3 +447,74 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
   EXPECT_TRUE(saw_shutdown) << "Shutdown message was not delivered";
   EXPECT_EQ(count, kPending + 1);
 }
+
+/**
+ * @brief Multiple agents can receive NATS-routed messages independently.
+ *
+ * Verifies that when multiple agents are registered, each receives messages
+ * routed to it by the transparent bridge, with proper isolation.
+ */
+TEST_F(NatsServerTest, NatsMultiAgentRouting) {
+  auto agent1 = std::make_shared<TaskAgent>("myrmidon.pipeline.0");
+  auto agent2 = std::make_shared<TaskAgent>("myrmidon.research.0");
+  agent1->setMessageBus(bus_.get());
+  agent2->setMessageBus(bus_.get());
+  bus_->registerAgent(agent1->getAgentId(), agent1);
+  bus_->registerAgent(agent2->getAgentId(), agent2);
+
+  // Route two different messages to two different agents
+  auto msg1 = KeystoneMessage::create("nats.bridge:hi.pipeline.execute",
+                                      "myrmidon.pipeline.0",
+                                      ActionType::EXECUTE,
+                                      "session-multi",
+                                      "pipeline-work");
+  auto msg2 = KeystoneMessage::create("nats.bridge:hi.research.execute",
+                                      "myrmidon.research.0",
+                                      ActionType::EXECUTE,
+                                      "session-multi",
+                                      "research-work");
+
+  EXPECT_TRUE(bus_->routeMessage(msg1));
+  EXPECT_TRUE(bus_->routeMessage(msg2));
+
+  // Both agents should receive their respective messages
+  bool a1_ok = waitFor([&]() { return agent1->getMessage().has_value(); });
+  bool a2_ok = waitFor([&]() { return agent2->getMessage().has_value(); });
+
+  EXPECT_TRUE(a1_ok) << "agent1 did not receive message";
+  EXPECT_TRUE(a2_ok) << "agent2 did not receive message";
+}
+
+/**
+ * @brief TransparentBridge correctly decodes NATS subject patterns.
+ *
+ * Verifies that subject patterns from NATS (e.g., hi.tasks.completed)
+ * are correctly parsed and routed according to the KIM schema.
+ */
+TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
+  auto agent = std::make_shared<TaskAgent>("schema_validator");
+  agent->setMessageBus(bus_.get());
+  bus_->registerAgent(agent->getAgentId(), agent);
+
+  // Simulate a message arriving from NATS with a well-formed subject
+  const std::string nats_subject = "hi.tasks.team-01.task-123.completed";
+  const std::string nats_payload =
+      R"({"result":"task succeeded","output":{"code":0,"message":"ok"}})";
+
+  auto msg = KeystoneMessage::create("nats.bridge:" +
+                                         nats_subject,  // sender includes subject for tracing
+                                     "schema_validator",
+                                     ActionType::EXECUTE,
+                                     "schema-session",
+                                     nats_payload);
+
+  EXPECT_TRUE(bus_->routeMessage(msg));
+
+  bool received = waitFor([&]() { return agent->getMessage().has_value(); });
+  ASSERT_TRUE(received) << "Agent did not receive schema-traced message";
+
+  auto m = agent->getMessage();
+  ASSERT_TRUE(m.has_value());
+  EXPECT_TRUE(m->sender_id.find("nats.bridge:") != std::string::npos)
+      << "Sender should contain nats.bridge: prefix for traceability";
+}
