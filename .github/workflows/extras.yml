@@ -150,3 +150,80 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  nats-integration:
+    name: NATS integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    services:
+      nats:
+        image: nats:latest
+        ports:
+          - 4222:4222
+        options: >-
+          --health-cmd "nc -z 127.0.0.1 4222"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@v5
+        with:
+          path: build/x86.release/_deps
+          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-release-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install Conan dependencies
+        run: make deps.native
+
+      - name: Build release
+        run: make compile.release.native
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Wait for NATS to be ready
+        run: |
+          for i in {1..30}; do
+            if nc -z 127.0.0.1 4222; then
+              echo "NATS is ready"
+              exit 0
+            fi
+            echo "Waiting for NATS... ($i/30)"
+            sleep 1
+          done
+          echo "NATS failed to start"
+          exit 1
+
+      - name: Run NATS integration tests
+        env:
+          KEYSTONE_INTEGRATION_TESTS: "1"
+          NATS_URL: nats://127.0.0.1:4222
+        run: ctest --preset release -R "Nats" --output-on-failure

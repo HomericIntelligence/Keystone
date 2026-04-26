@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <thread>
 
 #include "nats/nats.h"
 
@@ -38,10 +39,10 @@ struct SubjectClassification {
   std::string_view verb;
 };
 
-/// NATSListener subscribes to a JetStream durable consumer and drives DAG
-/// advancement on every terminal task event.  Every code path through the
-/// message handler explicitly calls natsMsg_Ack or natsMsg_Nak before
-/// returning so that messages are never left unacknowledged (issue #86).
+/// NATSListener subscribes to a JetStream durable consumer using a pull-based
+/// fetch loop that honors MaxAckPending = 1 rate-limiting per CLAUDE.md spec.
+/// Every message is explicitly acked or nacked before the next fetch.
+/// The listener runs on its own thread and can be cleanly stopped via stop().
 class NATSListener {
  public:
   /// Construct listener with configuration and DAG-advance callback.
@@ -54,11 +55,15 @@ class NATSListener {
 
   ~NATSListener();
 
-  /// Subscribe to the configured subject on the given JetStream context.
+  /// Subscribe to the configured subject on the given JetStream context and
+  /// start the pull-based fetch loop on an internal thread.
+  /// @param js JetStream context (must outlive the listener or until stop() is called)
   /// @return NATS_OK on success.
   natsStatus start(jsCtx* js);
 
-  /// Unsubscribe and release the subscription.  Safe to call multiple times.
+  /// Signal the loop to stop and wait for the thread to join.
+  /// Safe to call multiple times. The subscription is unsubscribed and
+  /// destroyed during this call.
   void stop();
 
   /// Parse a NATS subject into a SubjectClassification.
@@ -66,7 +71,11 @@ class NATSListener {
   static SubjectClassification classify_subject(std::string_view subject) noexcept;
 
  private:
-  static void on_msg(natsConnection* nc, natsSubscription* sub, natsMsg* msg, void* userdata);
+  /// Pull-based fetch loop running on listener_thread_.
+  /// Repeatedly calls natsSubscription_Fetch(sub, 1, timeout_ms) to get one
+  /// message at a time, calls handle_message(), then loops back to fetch the
+  /// next message. Exits cleanly when stopped_ becomes true.
+  void pull_loop() noexcept;
 
   void handle_message(natsMsg* msg) noexcept;
 
@@ -74,6 +83,8 @@ class NATSListener {
   AdvanceDagCallback callback_;
   natsSubscription* sub_{nullptr};
   std::atomic<bool> stopped_{false};
+  std::thread listener_thread_;  ///< Pull loop runs here
+  jsCtx* js_{nullptr};           ///< Cached JetStream context
 };
 
 }  // namespace network
