@@ -133,6 +133,9 @@ struct KeystoneMessage {
   // Phase 1.2 (Issue #52): Task cancellation
   std::optional<std::string> task_id;  ///< Optional task ID for tracking/cancellation
 
+  // Issue #285: Cross-host tracing
+  std::optional<std::string> correlation_id;  ///< Optional correlation ID for distributed tracing
+
   // Payload and timing
   std::string command;                 ///< Command string to execute (legacy/convenience)
   std::optional<std::string> payload;  ///< Optional payload data

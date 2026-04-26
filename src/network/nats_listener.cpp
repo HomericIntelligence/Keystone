@@ -115,13 +115,24 @@ natsStatus NATSListener::start(jsCtx* js) {
   jsSubOptions_Init(&sub_opts);
   sub_opts.Config.MaxAckPending = cfg_.max_ack_pending;
 
-  jsErrCode jerr = jsErrCode(0);
-  natsStatus s =
-      js_Subscribe(&sub_, js, cfg_.subject.c_str(), on_msg, this, nullptr, &sub_opts, &jerr);
+  const int attempts = cfg_.max_attempts > 0 ? cfg_.max_attempts : 1;
+  natsStatus s = NATS_ERR;
+  for (int attempt = 1; attempt <= attempts; ++attempt) {
+    jsErrCode jerr = jsErrCode(0);
+    s = js_Subscribe(&sub_, js, cfg_.subject.c_str(), on_msg, this, nullptr, &sub_opts, &jerr);
+    if (s == NATS_OK) {
+      break;
+    }
+    spdlog::warn("NATSListener: subscribe attempt {}/{} failed status={} jerr={}",
+                 attempt,
+                 attempts,
+                 static_cast<int>(s),
+                 static_cast<int>(jerr));
+  }
   if (s != NATS_OK) {
-    spdlog::error("NATSListener: subscribe failed status={} jerr={}",
-                  static_cast<int>(s),
-                  static_cast<int>(jerr));
+    spdlog::error("NATSListener: all {} subscribe attempt(s) failed status={}",
+                  attempts,
+                  static_cast<int>(s));
   }
   return s;
 }

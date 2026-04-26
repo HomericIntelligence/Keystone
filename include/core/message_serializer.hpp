@@ -33,6 +33,10 @@ struct SerializableMessage {
   bool has_payload;
   int64_t timestamp_ns;  // Timestamp as nanoseconds since epoch
 
+  // Issue #285: Cross-host tracing correlation ID
+  cista::offset::string correlation_id;
+  bool has_correlation_id{false};
+
   /**
    * @brief Convert KeystoneMessage to SerializableMessage
    */
