@@ -162,9 +162,7 @@ class WorkStealingQueue {
     std::unique_ptr<WorkItem[]> items;
     size_t capacity;
 
-    Array(size_t cap) : capacity(cap) {
-      items = std::make_unique<WorkItem[]>(cap);
-    }
+    Array(size_t cap) : capacity(cap) { items = std::make_unique<WorkItem[]>(cap); }
   };
 
   std::atomic<size_t> bottom_{0};  // Owner-only, points to next push position
