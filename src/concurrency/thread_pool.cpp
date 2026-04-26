@@ -54,7 +54,18 @@ void ThreadPool::shutdown() {
     shutdown_requested_.store(true);
   }
 
-  // Wake up all threads
+  // Wake workers so they process remaining items (drain phase).
+  condition_.notify_all();
+
+  // Explicitly wait for the queue to drain before signalling workers to exit.
+  // This makes the "all pending work completes before shutdown" guarantee
+  // explicit and by-design, not merely incidental.
+  {
+    std::unique_lock<std::mutex> lock(queue_mutex_);
+    drain_cv_.wait(lock, [this]() { return work_queue_.empty(); });
+  }
+
+  // Queue is now empty — wake all workers so they see the exit condition.
   condition_.notify_all();
 
   // Join all worker threads
@@ -89,6 +100,11 @@ void ThreadPool::worker_loop() {
         work_queue_.pop();
       } else {
         continue;  // Spurious wakeup
+      }
+
+      // Notify drain waiters when the queue becomes empty after dequeueing.
+      if (work_queue_.empty()) {
+        drain_cv_.notify_all();
       }
     }
 
