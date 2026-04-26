@@ -159,13 +159,13 @@ std::optional<WorkItem> WorkStealingQueue::pop() {
     return item;
   } else if (b == t) {
     // Exactly one item remains: race with thieves using CAS on top_.
-    // Move the item first (it will be abandoned if the CAS fails).
-    WorkItem item = std::move(arr->items[b % arr->capacity]);
-    // Restore bottom so the queue appears empty regardless of CAS outcome.
+    // Restore bottom first so the queue appears empty regardless of CAS outcome.
     bottom_.store(b + 1, std::memory_order_relaxed);
-    // Try to claim the item by advancing top_ past b.
+    // Try to claim ownership by advancing top_ past b.
+    // Only move the item AFTER winning the CAS to avoid double-move with thieves.
     if (top_.compare_exchange_strong(
             t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
+      WorkItem item = std::move(arr->items[b % arr->capacity]);
       return item;
     }
     // A thief already incremented top_ — the item belongs to the thief.
@@ -194,11 +194,12 @@ std::optional<WorkItem> WorkStealingQueue::steal() {
     return std::nullopt;  // Empty
   }
 
-  WorkItem item = std::move(arr->items[t % arr->capacity]);
-
-  // Try to atomically increment top
+  // Try to atomically increment top before moving the item.
+  // This ensures only the winner of the CAS moves the item, preventing
+  // a concurrent pop() from double-moving the same slot.
   if (top_.compare_exchange_strong(
           t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
+    WorkItem item = std::move(arr->items[t % arr->capacity]);
     // FIX #284: Restore correlation ID on worker thread before execution
     if (!item.correlation_id.empty()) {
       LogContext::setCorrelationId(item.correlation_id);
