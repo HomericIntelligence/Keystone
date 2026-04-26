@@ -5,7 +5,6 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <string>
 #include <variant>
 
 #include <concurrentqueue.h>
@@ -18,9 +17,6 @@ namespace concurrency {
  *
  * FIX P3-02: Default constructor is private to prevent invalid WorkItems.
  * Always use makeFunction() or makeCoroutine() factory methods.
- *
- * FIX #284: Captures correlation ID at submission time to propagate across
- * thread boundaries.
  */
 struct WorkItem {
   enum class Type { Function, Coroutine };
@@ -28,7 +24,6 @@ struct WorkItem {
   Type type;
   std::function<void()> func;
   std::coroutine_handle<> handle;
-  std::string correlation_id;  // FIX #284: Captured at submission time
 
   static WorkItem makeFunction(std::function<void()> f) {
     WorkItem item;
@@ -62,7 +57,7 @@ struct WorkItem {
 
  private:
   // FIX P3-02: Private default constructor prevents accidental creation of invalid WorkItems
-  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr), correlation_id("") {}
+  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr) {}
 };
 
 /**
