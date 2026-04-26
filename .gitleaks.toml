@@ -1,0 +1,18 @@
+title = "ProjectKeystone Gitleaks Configuration"
+
+[extend]
+# Use the default Gitleaks ruleset as the base
+useDefault = true
+
+[[allowlists]]
+description = "Documentation and example files containing placeholder credentials"
+paths = [
+  # Kubernetes example manifests — placeholder TLS certs and base64 blobs
+  "k8s/metrics-security.yaml",
+  "k8s/secrets.yaml",
+  # Operations and deployment docs with curl examples using placeholder passwords
+  "docs/KUBERNETES_DEPLOYMENT.md",
+  "docs/METRICS_SECURITY.md",
+  # Skill documentation with example API key patterns
+  ".claude/skills/quality-security-scan/SKILL.md",
+]
