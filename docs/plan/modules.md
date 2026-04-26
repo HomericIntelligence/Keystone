@@ -1,35 +1,240 @@
-# ProjectKeystone Module Structure
+# ProjectKeystone Component Architecture
 
 ## Overview
 
-ProjectKeystone uses C++20 Modules instead of traditional header files for better compile times, stronger encapsulation, and clearer architectural boundaries. The system is organized into four primary modules, each with well-defined responsibilities and minimal coupling.
+ProjectKeystone is a **pure invisible transport layer** for HomericIntelligence. It provides transparent, zero-configuration message routing using two complementary transports:
 
-## Why C++20 Modules?
+1. **Local Transport** (intra-host): BlazingMQ + lock-free concurrent queue via `concurrentqueue`
+2. **Cross-Host Transport** (via Tailscale mesh): NATS JetStream v3.12.0
 
-### Advantages Over Headers
+The two transports are automatically bridged via the **Transparent Bridge** — components publish and subscribe to logical NATS subjects without awareness of whether peers are local or remote.
 
-1. **Faster Compilation**: Modules are compiled once and reused (no repeated parsing)
-2. **Better Encapsulation**: Private implementation details truly hidden
-3. **No Include Order Issues**: Modules are order-independent
-4. **Reduced Build Times**: 40-60% faster builds in typical scenarios
-5. **Explicit Dependencies**: Clear module interface vs implementation
+> **Note**: The 4-layer HMAS agent hierarchy (ChiefArchitectAgent → ComponentLeadAgent → ModuleLeadAgent → TaskAgent) was extracted and moved to **ProjectAgamemnon** per ADR-006/ADR-015. Keystone retains only transport primitives.
 
-### Toolchain Requirements
+---
 
-- **GCC**: 13.0 or later
-- **Clang**: 16.0 or later
-- **MSVC**: Visual Studio 2022 17.5 or later
-- **CMake**: 3.28 or later
+## Source Layout
 
-## Module Hierarchy
+ProjectKeystone is organized by transport and infrastructure concerns:
 
 ```
-Keystone (namespace)
-├── Keystone.Core              # Foundation infrastructure
-├── Keystone.Protocol          # Communication protocols
-├── Keystone.Agents            # Agent implementations
-└── Keystone.Integration       # External integrations
+src/
+├── core/               # Message routing, KIM protocol, transport bridge
+├── concurrency/        # Thread pools, synchronization primitives
+├── network/            # NATS JetStream client integration
+├── transport/          # Transport abstraction (local/remote)
+├── monitoring/         # Logging, metrics, health checks
+├── simulation/         # Test simulation framework
+├── agents/             # Minimal agent stubs (for tests/examples)
+├── daemon/             # Keystone daemon process
+└── keystone/           # Primary library interface
 ```
+
+## Core Components
+
+### 1. Message Bus (`src/core/`)
+
+The **MessageBus** is the central coordination layer:
+
+- Routes KIM (Keystone Interchange Message) protocol messages
+- Enforces backpressure on local queues
+- Delegates to **Transparent Bridge** for off-host routing
+- Target: **<500 ns local routing latency**, **>2 M msg/sec throughput**
+
+**Key Classes**:
+
+- `MessageBus` — Central message coordinator
+- `KIM` — Keystone Interchange Message structure
+- `Router` — Routing logic for local/remote destinations
+
+### 2. Concurrency Utilities (`src/concurrency/`)
+
+Thread-safe building blocks for high-performance message handling:
+
+- **ThreadPool** — Fixed-size worker threads
+- **Synchronization primitives** — Barriers, latches, atomic state
+- **Lock-free queuing** — Via `concurrentqueue` library
+
+### 3. Network / NATS Integration (`src/network/`)
+
+NATS JetStream client integration:
+
+- Durable consumer streams (per myrmidon / consumer)
+- Pull-based, rate-limited delivery (`MaxAckPending=1`)
+- Automatic reconnection and message deduplication
+- Subject-based routing to `hi.*` streams
+
+**Managed Streams**:
+
+| Stream | Subject | Consumer Type |
+|--------|---------|---------------|
+| `homeric-research` | `hi.research.>` | PULL |
+| `homeric-myrmidon` | `hi.myrmidon.{type}.>` | PULL |
+| `homeric-pipeline` | `hi.pipeline.>` | PUB/SUB |
+| `homeric-agents` | `hi.agents.>` | PUB/SUB |
+| `homeric-tasks` | `hi.tasks.>` | PUB/SUB |
+| `homeric-logs` | `hi.logs.>` | PUB |
+
+### 4. Transparent Bridge
+
+Automatically promotes messages between local MessageBus and NATS JetStream:
+
+```
+Publisher (local)
+    ↓
+MessageBus.route(msg)
+    ↓
+    ├─ local destination → deliver via concurrentqueue
+    │
+    └─ remote destination → publish to NATS subject
+```
+
+Consumer receives identically whether peer is local or remote.
+
+### 5. Monitoring (`src/monitoring/`)
+
+Logging, metrics, and health checks:
+
+- **Logger** — spdlog-based structured logging
+- **Metrics** — Performance counters and histograms
+- **Health checks** — Agent and transport readiness probes
+
+### 6. Simulation Framework (`src/simulation/`)
+
+Test harness for deterministic testing:
+
+- Virtual time control
+- Fault injection (network delays, message drops)
+- Deterministic scheduling
+
+### 7. Agents Module (`src/agents/`)
+
+Minimal agent implementations for testing and examples. **Note**: Real agent implementations (ChiefArchitectAgent, etc.) are in **ProjectAgamemnon**.
+
+---
+
+## Transport Decision Flow
+
+```
+Publisher calls:
+    MessageBus::publish(message, destination_subject)
+                            ↓
+                Does destination_subject route locally?
+                    ├─ YES → deliver via lock-free queue
+                    └─ NO → publish to NATS subject
+                              ↓
+                          Remote NATS broker
+                              ↓
+                          Remote MessageBus receives
+                              ↓
+                          Local delivery on remote host
+```
+
+No component needs to know whether a peer is local or remote. The bridge handles routing transparently.
+
+---
+
+## Message Flow Example
+
+**Scenario**: Local publisher → remote subscriber (off-host)
+
+1. Publisher calls: `bus.publish(msg, "hi.agents.commander-1")`
+2. MessageBus routes to **Transparent Bridge**
+3. Bridge promotes message to NATS: `publish("hi.agents.commander-1", msg_bytes)`
+4. NATS broker stores in `homeric-agents` stream
+5. Remote host's MessageBus pulls from stream via durable consumer
+6. Remote subscriber receives via lock-free queue
+7. Subscriber sends ACK back to NATS
+8. Message removed from stream after durable consumer ACK
+
+---
+
+## Backpressure and Flow Control
+
+Keystone enforces pull-based, rate-limited delivery:
+
+- `MaxAckPending = 1` per consumer (one in-flight message per myrmidon)
+- Each consumer calls `natsSubscription_Fetch(batch=1)` — explicit pull
+- Slow consumers don't block publishers
+- Messages accumulate in NATS stream until consumer is ready
+- No drop, no loss — durable delivery guaranteed
+
+---
+
+## Key Dependencies
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| **BlazingMQ** | latest | Local durable queue (optional, can use in-memory queue) |
+| **concurrentqueue** | latest | Lock-free intra-host message queue |
+| **nats.c** | 3.12.0 | NATS JetStream C client |
+| **spdlog** | latest | Structured logging |
+| **CMake** | 3.20+ | Build system |
+
+---
+
+## Build Configuration
+
+ProjectKeystone uses **CMake 3.20+** with traditional C++ header-based organization (not C++20 modules):
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(ProjectKeystone CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+```
+
+**Target Library**: `keystone_core` — the main transport library
+
+**Optional Features**:
+
+- `ENABLE_GRPC` — Distributed multi-node gRPC support (Phase 8)
+- `ENABLE_COVERAGE` — Code coverage instrumentation
+- `ENABLE_PROFILING` — Profiling test suite
+- `ENABLE_CLANG_TIDY` — Static analysis
+
+---
+
+## What Was Moved to ProjectAgamemnon
+
+The following **are NOT part of Keystone** — they live in ProjectAgamemnon:
+
+- L0 **ChiefArchitectAgent** (system coordinator)
+- L1 **ComponentLeadAgent** (component lifecycle)
+- L2 **ModuleLeadAgent** (module orchestration)
+- L3 **TaskAgent** (task execution)
+- Delegation and escalation logic
+- Work-stealing scheduler
+- HMAS 4-layer hierarchy
+
+Keystone's only concern: **moving bytes from publisher to subscriber, reliably and transparently**.
+
+---
+
+## Concurrency Model
+
+- **ThreadPool** — Fixed-size worker threads for I/O and message handling
+- **Lock-free queuing** — `concurrentqueue` for intra-thread message passing
+- **C++20 synchronization** — `std::latch`, `std::barrier`, `std::atomic<T>`
+- **No coroutines** (in transport layer) — synchronous messaging primitives
+
+---
+
+## Design Principles
+
+1. **Invisible Transport**: Components never address Keystone directly — they publish to NATS subjects
+2. **Transparent Bridging**: Local MessageBus and NATS seamlessly bridge — no component awareness needed
+3. **Pull-Based, Rate-Limited**: Myrmidons pull at their own pace; Keystone never overloads
+4. **Durable Delivery**: NATS JetStream ensures at-least-once; consumer ACKs track progress
+5. **C++20 Only**: Pure C++20 with BlazingMQ and nats.c — no Python, gRPC middleware, or agents
+6. **Tailscale Required**: All cross-host NATS traffic runs via WireGuard mesh (`tail8906b5.ts.net`)
+
+---
+
+**Document Version**: 2.0 (Pure Transport — HMAS moved to ProjectAgamemnon)
+**Last Updated**: 2026-04-25
 
 ---
 
