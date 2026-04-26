@@ -128,6 +128,15 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
+# Issue #323: Add Conan package include directories globally.
+# Some CMake versions may not properly propagate INTERFACE_INCLUDE_DIRECTORIES
+# through the link chain from Conan-provided packages. Adding them globally
+# ensures all targets have access to spdlog, fmt, and concurrentqueue headers.
+include_directories(
+  ${spdlog_INCLUDE_DIRS_RELEASE}
+  ${fmt_INCLUDE_DIRS_RELEASE}
+  ${concurrentqueue_INCLUDE_DIRS_RELEASE})
+
 # Cista — zero-copy serialization (NOT on ConanCenter, kept as FetchContent)
 FetchContent_Declare(
   cista
@@ -260,17 +269,21 @@ target_include_directories(
   keystone_concurrency PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                               $<INSTALL_INTERFACE:include/keystone>)
 
-# Link dependencies (including spdlog for logger.hpp)
-# NOTE: spdlog is intentionally propagated as PUBLIC (not INTERFACE) here.
-# logger.hpp is a public header that directly includes <spdlog/spdlog.h> and
-# exposes spdlog::level::level_enum in its public API.  Downstream targets that
-# include logger.hpp therefore need spdlog on their include path at compile time,
-# which only PUBLIC (not INTERFACE) provides when the dependency comes through a
-# compiled target.  See CLAUDE.md §"Public Dependency Visibility" and issue #328.
-target_link_libraries(keystone_concurrency PUBLIC keystone_core)
+# Issue #323: Resolve circular dependency.
+# Link concurrency library to all its external dependencies explicitly.
+# This ensures spdlog, fmt, and concurrentqueue are available during compilation,
+# breaking the circular dependency pattern that was previously used.
+target_link_libraries(keystone_concurrency PUBLIC spdlog::spdlog fmt::fmt
+                                                   concurrentqueue::concurrentqueue)
 
-# Handle circular dependency: keystone_core uses Logger from
-# keystone_concurrency This works with shared libraries
+# Explicitly add include directories for Conan packages. Some CMake versions
+# may not properly propagate INTERFACE_INCLUDE_DIRECTORIES from external targets.
+target_include_directories(keystone_concurrency PUBLIC
+  ${spdlog_INCLUDE_DIRS_RELEASE}
+  ${fmt_INCLUDE_DIRS_RELEASE}
+  ${concurrentqueue_INCLUDE_DIRS_RELEASE})
+
+# keystone_core needs concurrency components for Logger usage
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
 # Network library (Phase 8: Distributed communication)
@@ -548,7 +561,12 @@ target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                             $<INSTALL_INTERFACE:include/keystone>)
 
-target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog)
+target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt)
+
+# Explicitly add spdlog and fmt include directories for Conan packages
+target_include_directories(keystone_transport PUBLIC
+  ${spdlog_INCLUDE_DIRS_RELEASE}
+  ${fmt_INCLUDE_DIRS_RELEASE})
 
 # Unit Tests — NATS transport (issue #122)
 add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
@@ -566,6 +584,15 @@ target_link_libraries(registry_integration_tests keystone_agents keystone_core
 
 gtest_discover_tests(registry_integration_tests)
 
+# Integration Tests (NATS: #178, #205, #307)
+add_executable(nats_integration_tests
+               tests/integration/test_nats_integration.cpp)
+
+target_link_libraries(nats_integration_tests keystone_agents keystone_core
+                      keystone_transport GTest::gtest_main)
+
+gtest_discover_tests(nats_integration_tests)
+
 # Add test target
 add_custom_target(
   run_tests
@@ -582,8 +609,8 @@ add_custom_target(
           concurrency_unit_tests
           simulation_unit_tests
           transport_unit_tests
+          nats_integration_tests
           # DISABLED: registry_integration_tests (ADR-006) DISABLED:
-          # nats_integration_tests (ADR-006, uses task_agent.hpp)
   COMMENT "Running all ProjectKeystone tests with failure output")
 
 # Benchmarks Phase 3.1: Re-enabled hierarchy benchmarks with unified async API

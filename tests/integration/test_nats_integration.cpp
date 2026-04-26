@@ -146,11 +146,13 @@ TEST_F(NatsIntegrationTest, PipelineLocalEventTriggersAgentProcessing) {
  */
 TEST_F(NatsIntegrationTest, PipelineStartupScanPopulatesRegistry) {
   // Simulate startup: register a set of well-known myrmidon agents.
+  // Agent IDs use alphanumeric + hyphen/underscore format (dots are not
+  // permitted in agent_id tokens — dots are the NATS subject separator).
   const std::vector<std::string> known_agents = {
-      "myrmidon.research.0",
-      "myrmidon.pipeline.0",
-      "myrmidon.pipeline.1",
-      "myrmidon.tasks.0",
+      "myrmidon-research-0",
+      "myrmidon-pipeline-0",
+      "myrmidon-pipeline-1",
+      "myrmidon-tasks-0",
   };
 
   std::vector<std::shared_ptr<TaskAgent>> agents;
@@ -170,11 +172,10 @@ TEST_F(NatsIntegrationTest, PipelineStartupScanPopulatesRegistry) {
   // Registry count must match.
   EXPECT_EQ(bus_->listAgents().size(), known_agents.size());
 
-  // Verify subjects reflect the NATS subject schema convention.
-  // (agent IDs use the dot-separated subject naming pattern)
+  // Verify agents follow the safe-identifier naming convention.
   for (const auto& id : bus_->listAgents()) {
-    EXPECT_NE(id.find('.'), std::string::npos)
-        << "Agent ID should follow subject naming convention: " << id;
+    EXPECT_NE(id.find('-'), std::string::npos)
+        << "Agent ID should use hyphen-separated naming convention: " << id;
   }
 }
 
