@@ -178,12 +178,13 @@ transitive access to these headers at compile time.
 
 ```
 build/
-├── debug/        # Debug build
-├── release/      # Release build
-├── asan/         # Debug + AddressSanitizer
+├── x86/          # Default release build (CMakePresets.json default)
+├── x86.debug/    # Debug build variant
+├── debug/        # Debug build (alternative preset)
 ├── tsan/         # Debug + ThreadSanitizer
-├── ubsan/        # Debug + UBSan
-└── coverage/     # Debug + Coverage
+├── ProjectMnemosyne/  # Legacy/archived build directory
+├── conan-deps/   # Conan dependency cache
+└── reports/      # Build reports and test results
 ```
 
 ### Test Structure
@@ -195,7 +196,11 @@ tests/
 ├── e2e/            # End-to-end and distributed tests
 ├── load/           # Load and throughput tests
 ├── fixtures/       # Shared test fixtures
-└── mocks/          # Mock implementations
+├── mocks/          # Mock implementations
+├── conftest.py     # pytest configuration and fixtures
+├── helpers.py      # Shared test helper utilities
+├── __init__.py     # Python package marker
+└── test_*.py       # Python integration and daemon tests
 ```
 
 ---
@@ -325,6 +330,6 @@ Before opening a PR:
 
 ---
 
-**Last Updated**: 2026-03-28
+**Last Updated**: 2026-04-25
 **Version**: 2.0 (Pure Transport — HMAS extracted to ProjectAgamemnon per ADR-006)
 **Project**: ProjectKeystone
