@@ -123,7 +123,9 @@ Keystone enforces pull-based, rate-limited delivery to prevent myrmidon overload
 
 ---
 
-## What Was Moved to ProjectAgamemnon (ADR-006)
+## What Was Moved to ProjectAgamemnon (ADR-006, ADR-015)
+
+### C++ Agent Layer (ADR-015)
 
 The following are **no longer part of Keystone**. They live in ProjectAgamemnon:
 
@@ -134,6 +136,25 @@ The following are **no longer part of Keystone**. They live in ProjectAgamemnon:
 - Delegation and escalation logic
 - Work-stealing scheduler
 - HMAS 4-layer hierarchy design
+
+### Python Orchestration Layer (ADR-015, 2026)
+
+The following Python modules were also extracted from Keystone into ProjectAgamemnon
+as part of the ADR-015 follow-up (HomericIntelligence/Odysseus#143):
+
+- `dag_walker.py` — DAGWalker (task ready-set computation, cycle detection)
+- `task_claimer.py` — TaskClaimer (per-team concurrency guard, drain)
+- `nats_listener.py` — NATSListener (NATS subject subscriber, `hi.tasks.>`)
+- `maestro_client.py` — MaestroClient (AI Maestro REST client)
+- `models.py` — Task, Agent, TaskEvent domain models
+- `daemon.py` — orchestration daemon entry point
+- `config.py`, `logging.py`, `validation.py` — supporting utilities
+
+These modules are now part of `agamemnon.orchestration` in ProjectAgamemnon.
+Keystone retains sole ownership of the NATS subject schema but no longer runs
+a Python subscriber.
+
+---
 
 Keystone's only concern is moving bytes from publisher to subscriber, reliably and
 transparently.
@@ -331,5 +352,5 @@ Before opening a PR:
 ---
 
 **Last Updated**: 2026-04-25
-**Version**: 2.0 (Pure Transport — HMAS extracted to ProjectAgamemnon per ADR-006)
+**Version**: 3.0 (Pure Transport — HMAS and Python orchestration extracted to ProjectAgamemnon per ADR-015)
 **Project**: ProjectKeystone
