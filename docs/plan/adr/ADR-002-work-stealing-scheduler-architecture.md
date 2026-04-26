@@ -7,7 +7,14 @@
 
 ## Context
 
-ProjectKeystone requires a high-performance scheduler to manage concurrent agent execution across multiple worker threads. Early phases used basic thread pools, but scaling to 100+ agents with coroutine-based execution demanded a more sophisticated approach.
+ProjectKeystone required a high-performance scheduler to manage concurrent agent execution
+across multiple worker threads during early development. Scaling to 100+ agents with
+coroutine-based execution demanded a sophisticated approach.
+
+> **Note (ADR-015)**: The HMAS agent hierarchy (`ChiefArchitectAgent`, `ComponentLeadAgent`,
+> `ModuleLeadAgent`, `TaskAgent`) has been extracted into **ProjectAgamemnon**. The
+> `WorkStealingScheduler` itself remains in Keystone as a transport concurrency primitive.
+> References to agent types and the "4-layer hierarchy" below are historical context.
 
 ### Requirements
 

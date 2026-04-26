@@ -24,6 +24,7 @@ namespace monitoring {
  * - hmas_worker_utilization_percent - Gauge of worker utilization
  * - hmas_deadline_misses_total - Counter of deadline misses
  * - hmas_deadline_miss_milliseconds - Gauge of average miss time
+ * - keystone_task_claimer_in_flight_count - Gauge of active advance_dag_tracked tasks
  */
 class PrometheusExporter {
  public:

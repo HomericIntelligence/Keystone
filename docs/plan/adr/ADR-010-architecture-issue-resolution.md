@@ -1,5 +1,10 @@
 # ADR-010: P0 Critical Architecture Issues - RESOLVED ✅
 
+> **Note (ADR-015)**: Agent types referenced in code examples below
+> (`ChiefArchitectAgent`, `TaskAgent`, etc.) have been extracted into
+> **ProjectAgamemnon**. The transport-layer fixes documented here (MessageBus
+> lifetime safety, scheduler thread safety) remain part of ProjectKeystone.
+
 ## Overview
 This document tracked the P0 (critical) architecture issues identified in the comprehensive code review.
 
