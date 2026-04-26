@@ -312,6 +312,12 @@ std::string PrometheusExporter::generateMetrics() {
   ss << "# TYPE hmas_uptime_seconds gauge\n";
   ss << "hmas_uptime_seconds " << uptime_seconds << "\n";
 
+  // In-flight task claim count (gauge - TaskClaimer advance_dag_tracked tasks)
+  ss << "# HELP keystone_task_claimer_in_flight_count Number of advance_dag_tracked "
+        "tasks currently executing in the TaskClaimer\n";
+  ss << "# TYPE keystone_task_claimer_in_flight_count gauge\n";
+  ss << "keystone_task_claimer_in_flight_count " << metrics.getInFlightCount() << "\n";
+
   // Health status (gauge - always 1 if responding)
   ss << "# HELP hmas_up HMAS health status (1=up, 0=down)\n";
   ss << "# TYPE hmas_up gauge\n";

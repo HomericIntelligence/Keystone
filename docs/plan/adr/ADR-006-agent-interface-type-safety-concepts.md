@@ -7,6 +7,12 @@
 
 ## Context
 
+> **Note (ADR-015)**: The concrete agent types discussed in this ADR
+> (`TaskAgent`, `ChiefArchitectAgent`, `ModuleLeadAgent`, `ComponentLeadAgent`) have
+> been extracted into **ProjectAgamemnon**. The C++20 Concepts defined here continue to
+> apply to agent implementations in ProjectAgamemnon; this ADR is the authoritative
+> record for the compile-time interface verification design.
+
 Issue #24 identified that the agent interface has no compile-time verification that agents
 implement the required methods. Errors are only caught at link time or runtime when methods
 are missing or have incorrect signatures.

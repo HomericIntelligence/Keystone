@@ -109,6 +109,23 @@ class Metrics {
   PriorityStats getPriorityStats() const;
 
   /**
+   * @brief Set the current number of in-flight task claims.
+   *
+   * Called by the TaskClaimer (or its C++ bridge) to report how many
+   * advance_dag_tracked tasks are currently executing. The value is snapshotted
+   * on each call and exposed as a Prometheus gauge.
+   *
+   * @param count Number of tasks currently in-flight.
+   */
+  void setInFlightCount(int64_t count);
+
+  /**
+   * @brief Get the current in-flight task claim count.
+   * @return Last value set by setInFlightCount(), or 0 if never set.
+   */
+  int64_t getInFlightCount() const;
+
+  /**
    * @brief Record a deadline miss
    * @param msg_id Message identifier that missed deadline
    * @param late_by_ms How late the message was processed (in milliseconds)
@@ -178,6 +195,9 @@ class Metrics {
   // Deadline tracking
   std::atomic<uint64_t> deadline_misses_{0};
   std::atomic<int64_t> total_deadline_miss_ms_{0};
+
+  // In-flight task claim count (reported by TaskClaimer)
+  std::atomic<int64_t> in_flight_count_{0};
 
   // Throughput calculation
   std::chrono::steady_clock::time_point start_time_;

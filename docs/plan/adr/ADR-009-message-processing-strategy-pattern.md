@@ -6,6 +6,12 @@
 
 ## Context and Problem Statement
 
+> **Note (ADR-015)**: The `TaskAgent` and other agent types referenced throughout this
+> ADR have been extracted into **ProjectAgamemnon**. This ADR documents a proposed design
+> pattern for separating agent domain logic from infrastructure concerns; its
+> implementation status applies to ProjectAgamemnon, not to ProjectKeystone's transport
+> layer.
+
 Agents currently mix domain logic with infrastructure concerns:
 - `processMessage()` implementations contain business logic (bash execution, delegation, synthesis)
 - Infrastructure concerns (inbox management, routing, metrics, deadlines) are coupled with domain logic

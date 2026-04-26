@@ -12,6 +12,12 @@ raw pointers (`sendMessage(msg, BaseAgent* target)`). Code review identified thi
 critical architectural debt that would not scale to the 4-layer hierarchy (L0→L1→L2→L3)
 and 100+ agent deployments planned for Phases 2-5.
 
+> **Note (ADR-015)**: The 4-layer HMAS hierarchy (L0 `ChiefArchitectAgent`,
+> L1 `ComponentLeadAgent`, L2 `ModuleLeadAgent`, L3 `TaskAgent`) has since been
+> extracted from ProjectKeystone into **ProjectAgamemnon** (see ADR-015). This ADR
+> documents the original MessageBus design decision, which still applies to
+> Keystone's transport primitives. References to agent types below are historical.
+
 ### Problems with Direct Coupling
 
 1. **Tight Coupling**: Agents require direct pointer references to communicate

@@ -1,14 +1,21 @@
 #include "network/hmas_coordinator_service.hpp"
 
+#include "core/message.hpp"
+#include "core/subject_validator.hpp"
+
 #include <chrono>
 #include <random>
 #include <sstream>
 
 namespace keystone::network {
 
-HMASCoordinatorServiceImpl::HMASCoordinatorServiceImpl(std::shared_ptr<ServiceRegistry> registry,
-                                                       std::shared_ptr<TaskRouter> router)
-    : registry_(std::move(registry)), router_(std::move(router)) {}
+HMASCoordinatorServiceImpl::HMASCoordinatorServiceImpl(
+    std::shared_ptr<ServiceRegistry> registry,
+    std::shared_ptr<TaskRouter> router,
+    std::shared_ptr<core::MessageBus> message_bus)
+    : registry_(std::move(registry)),
+      router_(std::move(router)),
+      message_bus_(std::move(message_bus)) {}
 
 HMASCoordinatorServiceImpl::~HMASCoordinatorServiceImpl() = default;
 
@@ -18,6 +25,18 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(grpc::ServerContext* context
   (void)context;  // Unused
 
   std::lock_guard<std::mutex> lock(mutex_);
+
+  // Validate incoming subject tokens at the gRPC service boundary.
+  // parent_task_id is optional — only validate when non-empty.
+  if (!request->parent_task_id().empty()) {
+    try {
+      keystone::core::validateNatsSubjectToken(request->parent_task_id(), "parent_task_id");
+    } catch (const std::invalid_argument& e) {
+      response->set_accepted(false);
+      response->set_error(std::string("Invalid parent_task_id: ") + e.what());
+      return grpc::Status::OK;
+    }
+  }
 
   // Parse YAML spec
   auto spec_opt = YamlParser::parseTaskSpec(request->yaml_spec());
@@ -31,6 +50,16 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(grpc::ServerContext* context
 
   // Generate task ID if not provided
   std::string task_id = spec.metadata.task_id.empty() ? generateTaskId() : spec.metadata.task_id;
+
+  // Validate the task_id token before routing — rejects path traversal and
+  // other characters that are unsafe in NATS subject positions.
+  try {
+    keystone::core::validateNatsSubjectToken(task_id, "task_id");
+  } catch (const std::invalid_argument& e) {
+    response->set_accepted(false);
+    response->set_error(std::string("Invalid task_id: ") + e.what());
+    return grpc::Status::OK;
+  }
 
   // Route task to appropriate agent
   auto routing_result = router_->routeTask(spec);
@@ -75,6 +104,13 @@ grpc::Status HMASCoordinatorServiceImpl::StreamTaskStatus(
   (void)context;  // Unused
 
   const std::string& task_id = request->task_id();
+
+  // Validate task_id at the service boundary before any internal lookup.
+  try {
+    keystone::core::validateNatsSubjectToken(task_id, "task_id");
+  } catch (const std::invalid_argument& e) {
+    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, e.what());
+  }
 
   // Stream status updates until task is complete or client disconnects
   while (!context->IsCancelled()) {
@@ -125,6 +161,14 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(grpc::ServerContext* cont
   (void)context;  // Unused
 
   const std::string& task_id = request->task_id();
+
+  // Validate task_id at the service boundary.
+  try {
+    keystone::core::validateNatsSubjectToken(task_id, "task_id");
+  } catch (const std::invalid_argument& e) {
+    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, e.what());
+  }
+
   int64_t timeout_ms = request->timeout_ms();
 
   auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout_ms);
@@ -144,12 +188,31 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(grpc::ServerContext* cont
       // Check if task is in terminal state
       auto state_it = active_tasks_.find(task_id);
       if (state_it != active_tasks_.end()) {
-        if (isTerminalPhase(state_it->second.phase) &&
-            state_it->second.phase != hmas::TASK_PHASE_COMPLETED) {
-          // Task failed but no result yet
+        const hmas::TaskPhase current_phase = state_it->second.phase;
+        if (isTerminalPhase(current_phase) && current_phase != hmas::TASK_PHASE_COMPLETED) {
+          // Task reached a non-success terminal state — synthesize an error result.
+          // Provide a phase-specific error message so callers can distinguish
+          // infrastructure errors (TASK_PHASE_ERROR) from logical failures.
           response->set_task_id(task_id);
-          response->set_status(state_it->second.phase);
-          response->set_error("Task ended without result");
+          response->set_status(current_phase);
+          switch (current_phase) {
+            case hmas::TASK_PHASE_ERROR:
+              response->set_error(
+                  "Task terminated with infrastructure or unexpected error (TASK_PHASE_ERROR)");
+              break;
+            case hmas::TASK_PHASE_FAILED:
+              response->set_error("Task failed during execution (TASK_PHASE_FAILED)");
+              break;
+            case hmas::TASK_PHASE_TIMEOUT:
+              response->set_error("Task exceeded its deadline (TASK_PHASE_TIMEOUT)");
+              break;
+            case hmas::TASK_PHASE_CANCELLED:
+              response->set_error("Task was cancelled before completion (TASK_PHASE_CANCELLED)");
+              break;
+            default:
+              response->set_error("Task ended without result");
+              break;
+          }
           return grpc::Status::OK;
         }
       }
@@ -175,6 +238,15 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitResult(grpc::ServerContext* conte
                                                       const hmas::TaskResult* request,
                                                       hmas::ResultAcknowledgement* response) {
   (void)context;  // Unused
+
+  // Validate task_id at the service boundary.
+  try {
+    keystone::core::validateNatsSubjectToken(request->task_id(), "task_id");
+  } catch (const std::invalid_argument& e) {
+    response->set_acknowledged(false);
+    response->set_message(std::string("Invalid task_id: ") + e.what());
+    return grpc::Status::OK;
+  }
 
   std::lock_guard<std::mutex> lock(mutex_);
 
@@ -205,38 +277,70 @@ grpc::Status HMASCoordinatorServiceImpl::CancelTask(grpc::ServerContext* context
                                                     hmas::CancelResponse* response) {
   (void)context;  // Unused
 
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  const std::string& task_id = request->task_id();
-
-  auto it = active_tasks_.find(task_id);
-  if (it == active_tasks_.end()) {
+  // Validate task_id at the service boundary.
+  try {
+    keystone::core::validateNatsSubjectToken(request->task_id(), "task_id");
+  } catch (const std::invalid_argument& e) {
     response->set_cancelled(false);
-    response->set_message("Task not found");
+    response->set_message(std::string("Invalid task_id: ") + e.what());
     response->set_current_phase(hmas::TASK_PHASE_UNSPECIFIED);
     return grpc::Status::OK;
   }
 
-  auto& state = it->second;
+  const std::string& task_id = request->task_id();
 
-  // Check if task can be cancelled (not already in terminal state)
-  if (isTerminalPhase(state.phase)) {
-    response->set_cancelled(false);
-    response->set_message("Task already in terminal state");
-    response->set_current_phase(state.phase);
-    return grpc::Status::OK;
-  }
+  // Use a nested scope so the mutex is released before we call into MessageBus,
+  // preventing a potential lock-order inversion with locks held inside the
+  // agent/scheduler layer.
+  std::string assigned_agent_id;
+  bool task_cancelled = false;
+  hmas::TaskPhase previous_phase = hmas::TASK_PHASE_UNSPECIFIED;
 
-  // Mark as cancelled
-  hmas::TaskPhase previous_phase = state.phase;
-  state.phase = hmas::TASK_PHASE_CANCELLED;
-  state.updated_at = std::chrono::system_clock::now();
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
 
-  // TODO: Notify assigned agent to stop execution
+    auto it = active_tasks_.find(task_id);
+    if (it == active_tasks_.end()) {
+      response->set_cancelled(false);
+      response->set_message("Task not found");
+      response->set_current_phase(hmas::TASK_PHASE_UNSPECIFIED);
+      return grpc::Status::OK;
+    }
 
-  response->set_cancelled(true);
+    auto& state = it->second;
+
+    // Check if task can be cancelled (not already in terminal state)
+    if (isTerminalPhase(state.phase)) {
+      response->set_cancelled(false);
+      response->set_message("Task already in terminal state");
+      response->set_current_phase(state.phase);
+      return grpc::Status::OK;
+    }
+
+    // Mark as cancelled
+    previous_phase = state.phase;
+    state.phase = hmas::TASK_PHASE_CANCELLED;
+    state.updated_at = std::chrono::system_clock::now();
+
+    // Capture data needed for the out-of-lock notification.
+    assigned_agent_id = state.assigned_agent_id;
+    task_cancelled = true;
+  }  // mutex released here
+
+  response->set_cancelled(task_cancelled);
   response->set_message("Task cancelled successfully");
   response->set_current_phase(previous_phase);
+
+  // Notify the assigned agent to stop execution cooperatively.
+  // This is done after releasing the mutex to avoid lock-order inversion.
+  if (message_bus_ && !assigned_agent_id.empty()) {
+    auto cancel_msg = core::KeystoneMessage::createCancellation(
+        "coordinator",      // sender
+        assigned_agent_id,  // receiver — the agent executing the task
+        task_id             // task being cancelled
+    );
+    message_bus_->routeMessage(cancel_msg);
+  }
 
   return grpc::Status::OK;
 }
@@ -245,6 +349,13 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(grpc::ServerContext* co
                                                          const hmas::TaskProgressRequest* request,
                                                          hmas::TaskProgress* response) {
   (void)context;  // Unused
+
+  // Validate task_id at the service boundary.
+  try {
+    keystone::core::validateNatsSubjectToken(request->task_id(), "task_id");
+  } catch (const std::invalid_argument& e) {
+    return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, e.what());
+  }
 
   std::lock_guard<std::mutex> lock(mutex_);
 

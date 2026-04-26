@@ -182,6 +182,14 @@ Metrics::PriorityStats Metrics::getPriorityStats() const {
           low_priority_count_.load(std::memory_order_relaxed)};
 }
 
+void Metrics::setInFlightCount(int64_t count) {
+  in_flight_count_.store(count, std::memory_order_relaxed);
+}
+
+int64_t Metrics::getInFlightCount() const {
+  return in_flight_count_.load(std::memory_order_relaxed);
+}
+
 void Metrics::recordDeadlineMiss(const std::string& /* msg_id */, int64_t late_by_ms) {
   deadline_misses_.fetch_add(1, std::memory_order_relaxed);
   total_deadline_miss_ms_.fetch_add(late_by_ms, std::memory_order_relaxed);
@@ -214,6 +222,7 @@ void Metrics::reset() {
   total_worker_samples_.store(0, std::memory_order_relaxed);
   deadline_misses_.store(0, std::memory_order_relaxed);
   total_deadline_miss_ms_.store(0, std::memory_order_relaxed);
+  in_flight_count_.store(0, std::memory_order_relaxed);
 
   {
     std::lock_guard<std::mutex> lock(timestamps_mutex_);
