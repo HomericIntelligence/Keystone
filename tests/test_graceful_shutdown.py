@@ -142,6 +142,7 @@ class TestDrainCompletes:
 
 
 class TestDrainTimeout:
+    @pytest.mark.timeout(30)
     async def test_drain_timeout_returns_false(self) -> None:
         """drain() returns False when in-flight tasks outlast the timeout."""
         claimer = SlowTaskClaimer(delay=10.0)
@@ -156,6 +157,7 @@ class TestDrainTimeout:
         except (asyncio.CancelledError, Exception):
             pass
 
+    @pytest.mark.timeout(30)
     async def test_drain_timeout_logs_warning(self) -> None:
         claimer = SlowTaskClaimer(delay=10.0)
         task = claimer.advance_dag_tracked("team-slow")
@@ -274,6 +276,7 @@ class TestShutdownSequence:
         assert claimer.in_flight_count == 0
         assert "team-c" not in claimer.calls
 
+    @pytest.mark.timeout(30)
     async def test_stop_called_even_when_drain_times_out(self) -> None:
         """listener.stop() must be called even if drain times out."""
         claimer = SlowTaskClaimer(delay=10.0)
