@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import keystone.daemon
 from keystone.config import Settings
 from keystone.daemon import (
     _handle_signal,
@@ -101,8 +102,6 @@ class TestMain:
 class TestHandleSignal:
     def test_handle_signal_sets_shutdown_event(self) -> None:
         """_handle_signal() must set the _shutdown_event when called."""
-        import keystone.daemon
-
         keystone.daemon._shutdown_event = asyncio.Event()
         mock_listener = MagicMock(spec=NATSListener)
 
@@ -113,8 +112,6 @@ class TestHandleSignal:
 
     def test_handle_signal_calls_listener_begin_shutdown(self) -> None:
         """_handle_signal() must call listener.begin_shutdown() on signal."""
-        import keystone.daemon
-
         keystone.daemon._shutdown_event = asyncio.Event()
         mock_listener = MagicMock(spec=NATSListener)
 
@@ -174,8 +171,6 @@ class TestAssignTask:
 class TestRunAsync:
     async def test_run_returns_zero(self) -> None:
         """run() must return 0 on successful execution."""
-        import keystone.daemon
-
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
 
@@ -206,7 +201,6 @@ class TestRunAsync:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """run() must log a warning when drain() returns False."""
-        import keystone.daemon
 
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
@@ -241,7 +235,6 @@ class TestRunAsync:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         """run() must catch and log errors from listener.stop()."""
-        import keystone.daemon
 
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
@@ -275,7 +268,6 @@ class TestRunAsync:
 
     async def test_run_logs_daemon_started(self, caplog: pytest.LogCaptureFixture) -> None:
         """run() must log daemon_started on startup."""
-        import keystone.daemon
 
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
@@ -308,7 +300,6 @@ class TestRunAsync:
 
     async def test_run_logs_daemon_stopped(self, caplog: pytest.LogCaptureFixture) -> None:
         """run() must log daemon_stopped on shutdown."""
-        import keystone.daemon
 
         settings = Settings(shutdown_timeout=0.1)
         keystone.daemon._shutdown_event = asyncio.Event()
