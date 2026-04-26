@@ -77,15 +77,15 @@ TEST(NatsStatusTrackerTest, MultipleSetConnectedUpdatesTimestamp) {
 TEST(NatsStatusTrackerTest, ConcurrentStateUpdatesAreSafe) {
   NatsStatusTracker tracker;
   std::atomic<bool> start{false};
-  constexpr int kThreads = 8;
-  constexpr int kIters = 200;
+  constexpr int32_t kThreads = 8;
+  constexpr int32_t kIters = 200;
 
   std::vector<std::thread> threads;
   threads.reserve(kThreads);
-  for (int i = 0; i < kThreads; ++i) {
+  for (int32_t i = 0; i < kThreads; ++i) {
     threads.emplace_back([&tracker, &start, i]() {
       while (!start.load()) {}
-      for (int j = 0; j < kIters; ++j) {
+      for (int32_t j = 0; j < kIters; ++j) {
         switch ((i + j) % 3) {
           case 0:
             tracker.setConnected();

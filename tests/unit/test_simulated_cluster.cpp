@@ -86,8 +86,8 @@ TEST_F(SimulatedClusterTest, SubmitToRegisteredAgent) {
   SimulatedCluster cluster(config);
   cluster.start();
 
-  std::atomic<int> node0_counter{0};
-  std::atomic<int> node1_counter{0};
+  std::atomic<int32_t> node0_counter{0};
+  std::atomic<int32_t> node1_counter{0};
 
   cluster.registerAgent("agent_A", 0);
   cluster.registerAgent("agent_B", 1);
@@ -111,7 +111,7 @@ TEST_F(SimulatedClusterTest, SubmitToUnregisteredAgent) {
   SimulatedCluster cluster(config);
   cluster.start();
 
-  std::atomic<int> total_counter{0};
+  std::atomic<int32_t> total_counter{0};
 
   // Submit to unregistered agents - should round-robin
   for (int32_t i = 0; i < 10; ++i) {
@@ -130,7 +130,7 @@ TEST_F(SimulatedClusterTest, SubmitDirectlyToNode) {
   SimulatedCluster cluster(config);
   cluster.start();
 
-  std::atomic<int> counter0{0}, counter1{0}, counter2{0};
+  std::atomic<int32_t> counter0{0}, counter1{0}, counter2{0};
 
   cluster.submitToNode(0, [&]() { counter0++; });
   cluster.submitToNode(1, [&]() { counter1++; });
@@ -171,7 +171,7 @@ TEST_F(SimulatedClusterTest, ProcessNetworkMessages) {
   SimulatedCluster cluster(config);
   cluster.start();
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Manually send work via network
   cluster.getNetwork()->send(0, 1, [&]() { counter++; });
@@ -311,7 +311,7 @@ TEST_F(SimulatedClusterTest, MultiNodeWorkDistribution) {
   SimulatedCluster cluster(config);
   cluster.start();
 
-  std::atomic<int> counters[4] = {0, 0, 0, 0};
+  std::atomic<int32_t> counters[4] = {0, 0, 0, 0};
 
   // Submit 10 tasks to each node
   for (int32_t node = 0; node < 4; ++node) {

@@ -77,7 +77,7 @@ TEST(E2E_PhaseA, AsyncDelegationWithWorkStealing) {
   std::cout << "✓ All agents registered and configured" << std::endl;
 
   // ACT: Send commands to different task agents
-  std::map<std::string, std::pair<TaskAgent*, int>> commands;  // msg_id -> (agent, expected)
+  std::map<std::string, std::pair<TaskAgent*, int32_t>> commands;  // msg_id -> (agent, expected)
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(1, 50);
@@ -228,7 +228,7 @@ TEST(E2E_PhaseA, WorkStealingLoadBalancing) {
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
   // Count how many agents received messages
-  int agents_with_messages = 0;
+  int32_t agents_with_messages = 0;
   for (auto& agent : task_agents) {
     int32_t count = 0;
     while (agent->getMessage().has_value()) {

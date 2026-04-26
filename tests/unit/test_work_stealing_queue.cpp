@@ -49,7 +49,7 @@ TEST(WorkStealingQueueTest, PopEmpty) {
 // Test: Steal from queue
 TEST(WorkStealingQueueTest, Steal) {
   WorkStealingQueue queue;
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   queue.push(WorkItem::makeFunction([&]() { counter.fetch_add(1); }));
 
@@ -71,7 +71,7 @@ TEST(WorkStealingQueueTest, StealEmpty) {
 // Test: Multiple push and pop
 TEST(WorkStealingQueueTest, MultiplePushPop) {
   WorkStealingQueue queue;
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Push 10 items
   for (int32_t i = 0; i < 10; ++i) {
@@ -95,7 +95,7 @@ TEST(WorkStealingQueueTest, MultiplePushPop) {
 // Test: Concurrent push from multiple threads
 TEST(WorkStealingQueueTest, ConcurrentPush) {
   WorkStealingQueue queue;
-  std::atomic<int> push_count{0};
+  std::atomic<int32_t> push_count{0};
   constexpr int32_t num_threads = 4;
   constexpr int32_t items_per_thread = 25;
 
@@ -118,7 +118,7 @@ TEST(WorkStealingQueueTest, ConcurrentPush) {
 // Test: Work stealing from multiple threads
 TEST(WorkStealingQueueTest, WorkStealingMultipleThreads) {
   WorkStealingQueue queue;
-  std::atomic<int> executed_count{0};
+  std::atomic<int32_t> executed_count{0};
   constexpr int32_t total_items = 100;
 
   // Push work items

@@ -48,7 +48,7 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
 
   // Create 3 TaskAgents for parallel execution
   std::vector<std::shared_ptr<TaskAgent>> task_agents;
-  for (int i = 1; i <= 3; ++i) {
+  for (int32_t i = 1; i <= 3; ++i) {
     auto agent = std::make_shared<TaskAgent>("task_" + std::to_string(i));
     task_agents.push_back(agent);
   }
@@ -102,7 +102,7 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   std::cout << "3. ModuleLead delegates to 3 TaskAgents..." << std::endl;
 
   // Each TaskAgent processes their assigned task
-  int tasks_processed = 0;
+  int32_t tasks_processed = 0;
   for (auto& agent : task_agents) {
     auto task_msg = agent->getMessage();
     if (task_msg.has_value()) {
@@ -118,7 +118,7 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   // ModuleLead receives results from all TaskAgents
   std::cout << "4. ModuleLead receives results from TaskAgents..." << std::endl;
 
-  int results_received = 0;
+  int32_t results_received = 0;
   for (int32_t i = 0; i < 3; ++i) {
     auto result_msg = module_lead->getMessage();
     if (result_msg.has_value()) {
@@ -189,7 +189,7 @@ TEST(E2E_Phase2, ModuleLeadHandlesVariableTaskCount) {
   auto module_lead = std::make_shared<ModuleLeadAgent>("module_math");
 
   std::vector<std::shared_ptr<TaskAgent>> task_agents;
-  for (int i = 1; i <= 3; ++i) {
+  for (int32_t i = 1; i <= 3; ++i) {
     auto agent = std::make_shared<TaskAgent>("task_" + std::to_string(i));
     task_agents.push_back(agent);
   }
@@ -224,7 +224,7 @@ TEST(E2E_Phase2, ModuleLeadHandlesVariableTaskCount) {
   module_lead->processMessage(*module_msg).get();
 
   // Process tasks (should be 2)
-  int tasks_processed = 0;
+  int32_t tasks_processed = 0;
   for (auto& agent : task_agents) {
     auto task_msg = agent->getMessage();
     if (task_msg.has_value()) {

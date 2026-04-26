@@ -44,11 +44,11 @@ using namespace std::chrono_literals;
  */
 struct LoadTestConfig {
   std::string scenario;
-  int duration_seconds{600};
-  int message_rate{100};  // messages per second
-  int num_component_leads{2};
-  int num_module_leads{4};
-  int num_task_agents{16};
+  int32_t duration_seconds{600};
+  int32_t message_rate{100};  // messages per second
+  int32_t num_component_leads{2};
+  int32_t num_module_leads{4};
+  int32_t num_task_agents{16};
   double high_priority_pct{0.2};
   double normal_priority_pct{0.7};
   double low_priority_pct{0.1};
@@ -146,7 +146,7 @@ class MessageGenerator {
  */
 class MetricsCollector {
  public:
-  explicit MetricsCollector(int sample_interval_ms = 1000)
+  explicit MetricsCollector(int32_t sample_interval_ms = 1000)
       : sample_interval_(sample_interval_ms), running_(false) {}
 
   void start() {
@@ -208,7 +208,7 @@ class MetricsCollector {
     }
   }
 
-  int sample_interval_;
+  int32_t sample_interval_;
   std::atomic<bool> running_;
   std::thread collector_thread_;
   std::vector<MetricsSample> samples_;
@@ -348,7 +348,7 @@ class LoadTestHarness {
   }
 
  private:
-  int getTotalAgents() const {
+  int32_t getTotalAgents() const {
     return 1 + config_.num_component_leads + config_.num_module_leads + config_.num_task_agents;
   }
 
@@ -461,7 +461,7 @@ class LoadTestHarness {
 LoadTestConfig parseArgs(int argc, char** argv) {
   LoadTestConfig config;
 
-  for (int i = 1; i < argc; ++i) {
+  for (int32_t i = 1; i < argc; ++i) {
     std::string arg = argv[i];
 
     if (arg.find("--scenario=") == 0) {

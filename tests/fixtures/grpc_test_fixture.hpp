@@ -81,8 +81,8 @@ class GrpcTestFixture : public ::testing::Test {
   std::unique_ptr<keystone::network::GrpcServer> registry_server_;
 
   // Server ports (ephemeral, assigned by OS)
-  int coordinator_port_ = 0;
-  int registry_port_ = 0;
+  int32_t coordinator_port_ = 0;
+  int32_t registry_port_ = 0;
 };
 
 }  // namespace test

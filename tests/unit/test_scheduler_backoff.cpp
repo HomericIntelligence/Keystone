@@ -173,7 +173,7 @@ TEST_F(SchedulerBackoffTest, WakeUpNotification) {
   // Let workers enter SLEEP phase
   std::this_thread::sleep_for(50ms);
 
-  auto work_executed = std::make_shared<std::atomic<int>>(0);
+  auto work_executed = std::make_shared<std::atomic<int32_t>>(0);
 
   // Submit multiple work items rapidly
   // All workers should wake up immediately via notify_all()
@@ -197,7 +197,7 @@ TEST_F(SchedulerBackoffTest, MultipleWorkersBackoff) {
   std::this_thread::sleep_for(100ms);
 
   // Verify scheduler is still running and responsive
-  auto counter = std::make_shared<std::atomic<int>>(0);
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
   scheduler.submit([counter]() { counter->fetch_add(1); });
 
   std::this_thread::sleep_for(50ms);
@@ -211,7 +211,7 @@ TEST_F(SchedulerBackoffTest, BackoffDoesNotLoseWork) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
-  auto counter = std::make_shared<std::atomic<int>>(0);
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
 
   // Submit 1000 tasks rapidly
   for (int32_t i = 0; i < 1000; ++i) {
@@ -236,7 +236,7 @@ TEST_F(SchedulerBackoffTest, LatencyUnderLoad) {
   scheduler.start();
 
   auto total_latency_us = std::make_shared<std::atomic<int64_t>>(0);
-  auto task_count = std::make_shared<std::atomic<int>>(0);
+  auto task_count = std::make_shared<std::atomic<int32_t>>(0);
 
   // Submit continuous work to keep workers in SPIN phase
   for (int32_t i = 0; i < 100; ++i) {
@@ -257,7 +257,7 @@ TEST_F(SchedulerBackoffTest, LatencyUnderLoad) {
   // Wait for completion
   std::this_thread::sleep_for(200ms);
 
-  int count = task_count->load();
+  int32_t count = task_count->load();
   EXPECT_EQ(count, 100);
 
   // Average latency should be low (<= 150μs)
@@ -279,7 +279,7 @@ TEST_F(SchedulerBackoffTest, BackoffPhaseProgression) {
   // We can't directly observe phase transitions, but we can verify
   // that the scheduler remains responsive at different time points
 
-  auto counter = std::make_shared<std::atomic<int>>(0);
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
 
   // After 1ms - likely in SPIN/YIELD phase
   std::this_thread::sleep_for(1ms);

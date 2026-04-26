@@ -54,7 +54,7 @@ class YamlSpecBuilder {
     return *this;
   }
 
-  YamlSpecBuilder& setTargetLevel(int level) {
+  YamlSpecBuilder& setTargetLevel(int32_t level) {
     spec_.routing.target_level = level;
     return *this;
   }
@@ -377,7 +377,7 @@ TEST_F(DistributedGrpcTest, HeartbeatMonitoring) {
   EXPECT_EQ(alive_agents[0].agent_id, "agent-alive");
 
   // Cleanup dead agents
-  int removed = registry_->cleanupDeadAgents();
+  int32_t removed = registry_->cleanupDeadAgents();
   EXPECT_EQ(removed, 1);
   EXPECT_EQ(registry_->getAgentCount(), 1);
 }
@@ -922,7 +922,7 @@ TEST_F(DistributedGrpcTest, TaskCleanupOldTasks) {
   std::this_thread::sleep_for(100ms);
 
   // Cleanup tasks older than 50ms (should remove old tasks)
-  int cleaned = coordinator_->cleanupOldTasks(50);
+  int32_t cleaned = coordinator_->cleanupOldTasks(50);
 
   // Note: This test depends on coordinator implementation
   // If cleanup only removes completed/failed tasks, it should work

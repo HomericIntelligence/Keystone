@@ -26,7 +26,7 @@ TEST(ThreadPoolTest, DISABLED_CreateAndDestroy) {
 // Test: Submit and execute function
 TEST(ThreadPoolTest, SubmitFunction) {
   ThreadPool pool(2);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   pool.submit([&]() { counter.fetch_add(1); });
 
@@ -39,7 +39,7 @@ TEST(ThreadPoolTest, SubmitFunction) {
 // Test: Submit multiple functions
 TEST(ThreadPoolTest, SubmitMultipleFunctions) {
   ThreadPool pool(4);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   for (int32_t i = 0; i < 10; ++i) {
     pool.submit([&]() { counter.fetch_add(1); });
@@ -77,9 +77,9 @@ TEST(ThreadPoolTest, SubmitCoroutineHandle) {
 // Test: Parallel execution
 TEST(ThreadPoolTest, ParallelExecution) {
   ThreadPool pool(4);
-  std::atomic<int> counter{0};
-  std::atomic<int> max_concurrent{0};
-  std::atomic<int> current_concurrent{0};
+  std::atomic<int32_t> counter{0};
+  std::atomic<int32_t> max_concurrent{0};
+  std::atomic<int32_t> current_concurrent{0};
 
   auto work = [&]() {
     int32_t concurrent = current_concurrent.fetch_add(1) + 1;
@@ -115,7 +115,7 @@ TEST(ThreadPoolTest, ParallelExecution) {
 // Test: Graceful shutdown
 TEST(ThreadPoolTest, GracefulShutdown) {
   ThreadPool pool(2);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Submit some work
   for (int32_t i = 0; i < 5; ++i) {
@@ -135,7 +135,7 @@ TEST(ThreadPoolTest, GracefulShutdown) {
 // Test: No new work accepted after shutdown
 TEST(ThreadPoolTest, NoWorkAfterShutdown) {
   ThreadPool pool(2);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   pool.shutdown();
 
@@ -162,7 +162,7 @@ TEST(ThreadPoolTest, DISABLED_HardwareConcurrency) {
 // Test: Exception handling in worker
 TEST(ThreadPoolTest, ExceptionHandling) {
   ThreadPool pool(2);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Submit task that throws
   pool.submit([]() { throw std::runtime_error("Test exception"); });
@@ -179,7 +179,7 @@ TEST(ThreadPoolTest, ExceptionHandling) {
 // Test: Thread safety with concurrent submissions
 TEST(ThreadPoolTest, ConcurrentSubmissions) {
   ThreadPool pool(4);
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Launch multiple threads that submit work
   std::vector<std::thread> submitters;
@@ -204,7 +204,7 @@ TEST(ThreadPoolTest, ConcurrentSubmissions) {
 
 // Test: Destructor calls shutdown
 TEST(ThreadPoolTest, DestructorShutdown) {
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   {
     ThreadPool pool(2);

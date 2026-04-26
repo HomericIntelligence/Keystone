@@ -122,7 +122,7 @@ TEST_F(CoordinationStateTest, StatePersistence) {
  * @brief Test 7: Thread-safe state transitions
  */
 TEST_F(CoordinationStateTest, ThreadSafeStateTransitions) {
-  constexpr int NUM_THREADS = 10;
+  constexpr int32_t NUM_THREADS = 10;
   std::vector<std::thread> threads;
 
   // 10 threads concurrently transition states
@@ -247,7 +247,7 @@ TEST_F(CoordinationStateTest, GetResultsBeforeRecording) {
  * @brief Test 15: Thread-safe result recording
  */
 TEST_F(CoordinationStateTest, RecordResultThreadSafety) {
-  constexpr int NUM_THREADS = 10;
+  constexpr int32_t NUM_THREADS = 10;
   state_.initializeCoordination(NUM_THREADS);
 
   std::vector<std::thread> threads;
@@ -269,7 +269,7 @@ TEST_F(CoordinationStateTest, RecordResultThreadSafety) {
  * @brief Test 16: Custom result type (integers)
  */
 TEST_F(CoordinationStateTest, ResultTypeCustom) {
-  CoordinationState<TestState, int> int_state;
+  CoordinationState<TestState, int32_t> int_state;
   int_state.initializeCoordination(3);
 
   int_state.recordResult(42);
@@ -498,7 +498,7 @@ TEST_F(CoordinationStateTest, MultipleWorkflowCycles) {
  * @brief Test 28: Concurrent workflows (stress test)
  */
 TEST_F(CoordinationStateTest, ConcurrentWorkflows) {
-  constexpr int NUM_THREADS = 5;
+  constexpr int32_t NUM_THREADS = 5;
   std::vector<std::thread> threads;
 
   for (int32_t i = 0; i < NUM_THREADS; ++i) {
@@ -705,7 +705,7 @@ TEST_F(CoordinationStateTest, InitializeClearsPreviousFailures) {
 }
 
 TEST_F(CoordinationStateTest, RecordFailureThreadSafety) {
-  constexpr int NUM_THREADS = 10;
+  constexpr int32_t NUM_THREADS = 10;
   state_.initializeCoordination(NUM_THREADS);
 
   std::vector<std::thread> threads;
