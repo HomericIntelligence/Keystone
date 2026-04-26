@@ -269,6 +269,58 @@ class NatsConnection {
    */
   jsCtx* jsContext() noexcept;
 
+  // =========================================================================
+  // Pull-based fetch for durable consumers (rate-limiting pattern per CLAUDE.md)
+  // =========================================================================
+
+  /**
+   * @brief Fetch a single message from a durable consumer (pull pattern).
+   *
+   * Implements the rate-limiting pull pattern described in CLAUDE.md:
+   * - Myrmidon pulls exactly one message when ready for more work
+   * - Provides backpressure: slow consumer simply stops fetching
+   * - Timeout allows periodic wakeup for graceful shutdown checks
+   *
+   * @param subject       Subject pattern to subscribe to (e.g., "hi.tasks.>")
+   * @param consumer_name Durable consumer name (e.g., "my-myrmidon")
+   * @param timeout_ms    Fetch timeout in milliseconds (default 30000)
+   * @return              Non-null natsMsg* on success; caller owns it and must
+   *                      call natsMsg_Destroy()
+   *
+   * @throws std::system_error if fetch times out (timeout is normal, not an error)
+   * @throws std::system_error if network error occurs (transient)
+   * @throws std::domain_error if consumer or stream not found (configuration)
+   * @throws std::runtime_error if authentication or authorization failure
+   *
+   * Thread-safety: NOT thread-safe. Call from single consumer thread.
+   *
+   * Exception contract (per ADR-014):
+   * - std::domain_error: Configuration errors (stream/consumer not found)
+   * - std::system_error: Transient errors (network, timeout)
+   * - std::runtime_error: Permanent errors (auth, permission denied)
+   */
+  natsMsg* fetch(std::string_view subject,
+                 std::string_view consumer_name,
+                 int64_t timeout_ms = 30000);
+
+  // =========================================================================
+  // Exception mapping utility (exposed for testing, not part of public API)
+  // =========================================================================
+
+  /**
+   * @brief Map nats.c error code to standard C++ exception.
+   *
+   * Follows ADR-014 exception contract:
+   * - NATS_NOT_FOUND, stream/consumer errors → std::domain_error
+   * - Network, timeout errors → std::system_error
+   * - Auth, authorization errors → std::runtime_error
+   *
+   * @param status NATS error code from nats.c
+   * @param context Description of operation (e.g., "subscribe")
+   * @throws One of: std::domain_error, std::system_error, std::runtime_error
+   */
+  static void throwForNatsStatus(natsStatus status, const std::string& context);
+
  protected:
   // nats.c static callback shims — nats.c passes a void* user data pointer
   // which we cast back to NatsConnection*. Protected to allow test subclasses
