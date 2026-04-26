@@ -501,12 +501,12 @@ TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
   const std::string nats_payload =
       R"({"result":"task succeeded","output":{"code":0,"message":"ok"}})";
 
-  auto msg = KeystoneMessage::create(
-      "nats.bridge:" + nats_subject,  // sender includes subject for tracing
-      "schema_validator",
-      ActionType::EXECUTE,
-      "schema-session",
-      nats_payload);
+  auto msg = KeystoneMessage::create("nats.bridge:" +
+                                         nats_subject,  // sender includes subject for tracing
+                                     "schema_validator",
+                                     ActionType::EXECUTE,
+                                     "schema-session",
+                                     nats_payload);
 
   EXPECT_TRUE(bus_->routeMessage(msg));
 
