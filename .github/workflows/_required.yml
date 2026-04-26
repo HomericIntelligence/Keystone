@@ -286,11 +286,10 @@ jobs:
           retention-days: 7
 
   # ============================================================
-  # 3. integration-tests
-  #    C++ integration/sample/example/application tests
-  #    + all sanitizer builds (asan, ubsan, tsan, lsan) as matrix
+  # 3. integration-tests-sanitizer (matrix: asan, ubsan, tsan, lsan)
+  #    Fan-in job `integration-tests` below is the single required check.
   # ============================================================
-  integration-tests:
+  integration-tests-sanitizer:
     name: integration-tests (${{ matrix.sanitizer }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -355,6 +354,24 @@ jobs:
           name: integration-test-logs-${{ matrix.sanitizer }}
           path: build/x86.debug.${{ matrix.sanitizer }}/Testing/
           retention-days: 7
+
+  # Fan-in: single required-check context "integration-tests".
+  # Passes only when every sanitizer leg above succeeds.
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-24.04
+    needs: integration-tests-sanitizer
+    if: always()
+    steps:
+      - name: Check sanitizer results
+        env:
+          SANITIZER_RESULT: ${{ needs.integration-tests-sanitizer.result }}
+        run: |
+          if [ "$SANITIZER_RESULT" != "success" ]; then
+            echo "One or more sanitizer builds failed: $SANITIZER_RESULT"
+            exit 1
+          fi
+          echo "All sanitizer builds passed"
 
   # ============================================================
   # 4. build
