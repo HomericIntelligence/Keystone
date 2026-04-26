@@ -1,7 +1,10 @@
 #include "network/yaml_parser.hpp"
 
+#include "network/task_phase_utils.hpp"
+
 #include <regex>
 #include <sstream>
+#include <stdexcept>
 
 namespace keystone::network {
 
@@ -52,6 +55,8 @@ std::optional<HierarchicalTaskSpec> YamlParser::parseTaskSpec(const YAML::Node& 
 
     return spec;
   } catch (const YAML::Exception& e) {
+    return std::nullopt;
+  } catch (const std::exception& e) {
     return std::nullopt;
   }
 }
@@ -297,7 +302,14 @@ TaskStatus YamlParser::parseStatus(const YAML::Node& node) {
   TaskStatus status;
 
   if (node["phase"]) {
-    status.phase = node["phase"].as<std::string>();
+    const std::string phase_str = node["phase"].as<std::string>();
+    // Validate phase string against the known TaskPhase enum values.
+    // An empty string defaults to "PENDING" (struct default); any non-empty
+    // string that does not map to a valid phase is rejected.
+    if (!phase_str.empty() && !isKnownPhaseString(phase_str)) {
+      throw std::runtime_error("Unknown task phase string: '" + phase_str + "'");
+    }
+    status.phase = phase_str;
   }
   if (node["startTime"]) {
     status.start_time = node["startTime"].as<std::string>();
