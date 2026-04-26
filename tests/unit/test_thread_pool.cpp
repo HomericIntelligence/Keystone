@@ -3,14 +3,21 @@
  * @brief Unit tests for ThreadPool
  */
 
+#include "concurrency/logger.hpp"
 #include "concurrency/task.hpp"
 #include "concurrency/thread_pool.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <stdexcept>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
+#include <spdlog/spdlog.h>
 
 using namespace keystone::concurrency;
 
@@ -221,4 +228,98 @@ TEST(ThreadPoolTest, DestructorShutdown) {
 
   // After scope, all work should be done
   EXPECT_EQ(counter.load(), 5);
+}
+
+// ---------------------------------------------------------------------------
+// Logger output assertions for worker exception events
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Capture all spdlog "keystone" lines produced while @p fn runs.
+std::vector<std::string> captureThreadPoolLogLines(std::function<void()> fn) {
+  Logger::init(spdlog::level::trace);
+
+  auto logger = spdlog::get("keystone");
+  auto sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(256);
+  sink->set_level(spdlog::level::trace);
+  logger->sinks().push_back(sink);
+
+  fn();
+
+  logger->flush();
+
+  auto& sinks = logger->sinks();
+  sinks.erase(std::remove(sinks.begin(), sinks.end(), sink), sinks.end());
+
+  return sink->last_formatted();
+}
+
+bool anyLineContains(const std::vector<std::string>& lines, const std::string& substr) {
+  for (const auto& line : lines) {
+    if (line.find(substr) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+// Test: std::exception thrown in worker is logged at error level
+TEST(ThreadPoolLogTest, WorkerStdExceptionIsLogged) {
+  Logger::shutdown();
+
+  std::vector<std::string> lines;
+  {
+    ThreadPool pool(1);
+
+    lines = captureThreadPoolLogLines([&]() {
+      std::atomic<bool> done{false};
+      pool.submit([&done]() {
+        done.store(true);
+        throw std::runtime_error("worker-boom");
+      });
+      // Wait for the task to execute and the exception to be caught/logged
+      for (int i = 0; i < 50 && !done.load(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      // Give the catch block a moment to emit the log line
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    });
+  }
+
+  EXPECT_TRUE(anyLineContains(lines, "worker-boom"))
+      << "Expected exception message in log output";
+  EXPECT_TRUE(anyLineContains(lines, "Exception in worker"))
+      << "Expected 'Exception in worker' prefix in log output";
+
+  Logger::shutdown();
+}
+
+// Test: unknown exception thrown in worker is logged at error level
+TEST(ThreadPoolLogTest, WorkerUnknownExceptionIsLogged) {
+  Logger::shutdown();
+
+  std::vector<std::string> lines;
+  {
+    ThreadPool pool(1);
+
+    lines = captureThreadPoolLogLines([&]() {
+      std::atomic<bool> done{false};
+      pool.submit([&done]() {
+        done.store(true);
+        throw 42;  // non-std::exception
+      });
+      for (int i = 0; i < 50 && !done.load(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    });
+  }
+
+  EXPECT_TRUE(anyLineContains(lines, "Unknown exception"))
+      << "Expected 'Unknown exception' in log output for non-std throw";
+
+  Logger::shutdown();
 }
