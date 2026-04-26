@@ -23,10 +23,6 @@ updates:
         patterns:
           - "*"
 
-    # Explicitly track critical actions
-    allow:
-      - dependency-name: "softprops/action-gh-release"
-
     # Limit concurrent PRs
     open-pull-requests-limit: 3
 
