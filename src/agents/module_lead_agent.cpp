@@ -96,11 +96,7 @@ void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& resu
 
   // Check if we've received all results
   if (all_complete) {
-    if (coordination_.hasFailures()) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-    } else {
-      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
-    }
+    coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
   }
 }
 
@@ -264,7 +260,8 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for task {}: {}", task_id, e.what());
+          concurrency::Logger::error("Failed to get result for task {}: {}", task_id,
+                                     e.what());
         }
       }).detach();
     } catch (const std::exception& e) {
