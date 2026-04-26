@@ -260,8 +260,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for task {}: {}", task_id,
-                                     e.what());
+          concurrency::Logger::error("Failed to get result for task {}: {}", task_id, e.what());
         }
       }).detach();
     } catch (const std::exception& e) {
