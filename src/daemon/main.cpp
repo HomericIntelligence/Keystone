@@ -1,3 +1,4 @@
+#include "core/message_bus.hpp"
 #include "monitoring/health_check_server.hpp"
 #include "monitoring/nats_status.hpp"
 #include "network/nats_listener.hpp"
@@ -8,8 +9,10 @@
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace {
 std::atomic<bool> g_stop{false};
@@ -40,8 +43,13 @@ int main() {
                "http://0.0.0.0:"
             << health_server.getPort() << "/v1/health\n";
 
+  // Create the local MessageBus for agent routing.
+  keystone::core::MessageBus message_bus;
+
   // -------------------------------------------------------------------------
   // Wire NATSListener into the daemon startup path (Issue #180).
+  // Wire NatsConnection into MessageBus for transparent bridge routing
+  // (Issues #206, #333).
   //
   // Configuration is drawn from environment variables so the binary stays
   // zero-config by default:
@@ -66,6 +74,25 @@ int main() {
 
   keystone::transport::NatsConnection nats_conn(nats_cfg);
   keystone::network::NATSListener listener(listener_cfg, dag_advance);
+
+  // Wire NatsConnection into MessageBus for transparent off-host forwarding (Issue #206).
+  // When a message cannot be delivered locally, MessageBus will forward it via NATS.
+  message_bus.setNatsPublisher(
+      [&nats_conn](std::string_view subject, std::span<const std::byte> payload) {
+        // Publish message to NATS subject for off-host delivery.
+        // This callback is invoked when local routing fails.
+        natsConnection* nc = nats_conn.handle();
+        if (nc != nullptr) {
+          natsStatus s = natsConnection_Publish(nc,
+                                                subject.data(),
+                                                reinterpret_cast<const char*>(payload.data()),
+                                                static_cast<int>(payload.size()));
+          if (s != NATS_OK) {
+            std::cerr << "keystone-daemon: natsConnection_Publish failed subject=" << subject
+                      << " status=" << static_cast<int>(s) << '\n';
+          }
+        }
+      });
 
   // Attempt to connect to NATS; log a warning but continue if unavailable so
   // the health endpoint remains reachable.
