@@ -358,3 +358,130 @@ TEST_F(ModuleLeadAgentTest, ConcurrentCoordination) {
   }
   EXPECT_EQ(count, 50);
 }
+
+// ============================================================================
+// Issue #186: gRPC Async TASK_FAILED Handling Tests (5 tests)
+// Tests for explicit TASK_FAILED handling in async gRPC result path
+// ============================================================================
+
+#ifdef ENABLE_GRPC
+
+TEST_F(ModuleLeadAgentTest, ProcessGrpcTaskResultSuccessUpdatesCoordination) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+
+  // Initialize coordination with 1 expected result
+  module->coordination_.initializeCoordination(1);
+
+  // Create a successful TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_COMPLETED);
+  result.set_result_yaml("result: 42");
+
+  // Process the result
+  bool all_done = module->processTaskResultFromGrpc(result);
+
+  // Should mark completion when all results received
+  EXPECT_TRUE(all_done);
+  EXPECT_EQ(module->coordination_.getReceivedCount(), 1);
+}
+
+TEST_F(ModuleLeadAgentTest, ProcessGrpcTaskResultFailureUpdatesCoordination) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+
+  // Initialize coordination with 1 expected result
+  module->coordination_.initializeCoordination(1);
+
+  // Create a failed TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_FAILED);
+  result.set_error("Task execution failed");
+
+  // Process the result
+  bool all_done = module->processTaskResultFromGrpc(result);
+
+  // Should mark completion and record failure
+  EXPECT_TRUE(all_done);
+  EXPECT_TRUE(module->coordination_.hasFailures());
+  EXPECT_EQ(module->coordination_.getFailureCount(), 1);
+  EXPECT_NE(module->coordination_.getFailureMessages()[0].find("Task execution failed"),
+            std::string::npos);
+}
+
+TEST_F(ModuleLeadAgentTest, ProcessGrpcTaskResultTimeoutIsRecordedAsFailure) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+
+  // Initialize coordination with 1 expected result
+  module->coordination_.initializeCoordination(1);
+
+  // Create a timeout TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_TIMEOUT);
+  result.set_error("Task timed out");
+
+  // Process the result
+  bool all_done = module->processTaskResultFromGrpc(result);
+
+  // Timeout should be treated as failure
+  EXPECT_TRUE(all_done);
+  EXPECT_TRUE(module->coordination_.hasFailures());
+  EXPECT_EQ(module->coordination_.getFailureCount(), 1);
+}
+
+TEST_F(ModuleLeadAgentTest, ProcessGrpcTaskResultMixedSuccessAndFailure) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+
+  // Initialize coordination with 2 expected results
+  module->coordination_.initializeCoordination(2);
+
+  // First result: success
+  hmas::TaskResult result1;
+  result1.set_task_id("task-1");
+  result1.set_status(hmas::TASK_PHASE_COMPLETED);
+  result1.set_result_yaml("result: 10");
+
+  bool done1 = module->processTaskResultFromGrpc(result1);
+  EXPECT_FALSE(done1);  // Not all done yet
+  EXPECT_EQ(module->coordination_.getReceivedCount(), 1);
+  EXPECT_FALSE(module->coordination_.hasFailures());
+
+  // Second result: failure
+  hmas::TaskResult result2;
+  result2.set_task_id("task-2");
+  result2.set_status(hmas::TASK_PHASE_FAILED);
+  result2.set_error("Task 2 failed");
+
+  bool done2 = module->processTaskResultFromGrpc(result2);
+  EXPECT_TRUE(done2);  // All done now
+  EXPECT_EQ(module->coordination_.getReceivedCount(), 2);
+  EXPECT_TRUE(module->coordination_.hasFailures());
+  EXPECT_EQ(module->coordination_.getFailureCount(), 1);
+}
+
+TEST_F(ModuleLeadAgentTest, ProcessGrpcTaskResultErrorStateTransition) {
+  auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
+  module->setMessageBus(bus_.get());
+  bus_->registerAgent(module->getAgentId(), module);
+
+  std::vector<std::string> task_ids = {"task_1"};
+  module->setAvailableTaskAgents(task_ids);
+
+  // Initialize to WAITING state
+  module->coordination_.transitionTo(agents::ModuleLeadAgent::State::WAITING_FOR_TASKS,
+                                    "WAITING_FOR_TASKS");
+
+  // Process a failed result
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_FAILED);
+  result.set_error("Critical task failure");
+
+  module->processTaskResultFromGrpc(result);
+
+  // Should transition to ERROR state
+  EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
+}
+
+#endif  // ENABLE_GRPC

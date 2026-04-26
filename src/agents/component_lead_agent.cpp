@@ -245,6 +245,29 @@ void ComponentLeadAgent::processYamlComponent(const std::string& yaml_spec) {
 
       coordination_.trackPendingSubordinate(child_spec.metadata.task_id,
                                             available_module_leads_[agent_index]);
+
+      // Issue #186: Add async gRPC result handling for TASK_FAILED path
+      // Launch background thread to poll for this task's result and update coordination state
+      std::thread([this, task_id = response.task_id(), deadline_ms]() {
+        try {
+          // Wait for the task to complete (with timeout)
+          auto result = coordination_.getCoordinatorClient()->getTaskResult(task_id, deadline_ms);
+          // Process result and check for failures
+          bool all_done = processTaskResultFromGrpc(result);
+          if (all_done && coordination_.getCurrentState() == State::WAITING_FOR_MODULES) {
+            coordination_.transitionTo(State::AGGREGATING, stateToString(State::AGGREGATING));
+          }
+        } catch (const std::exception& e) {
+          concurrency::Logger::error("Failed to retrieve module result for task {}: {}", task_id, e.what());
+          // Record as failure to prevent deadlock
+          bool all_done = coordination_.recordFailure(
+              std::string("Failed to retrieve result: ") + e.what());
+          if (all_done) {
+            coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
+          }
+        }
+      }).detach();
+
     } catch (const std::exception& e) {
       concurrency::Logger::error("Failed to submit module: {}", e.what());
     }

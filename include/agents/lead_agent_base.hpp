@@ -190,6 +190,57 @@ class LeadAgentBase : public AsyncAgent {
       coordinator_client->submitResult(task_result);
     }
   }
+
+  /**
+   * @brief Process a gRPC TaskResult and update coordination state
+   *
+   * Handles both success and failure cases:
+   * - If status == TASK_PHASE_COMPLETED: records as success via recordResult()
+   * - If status == TASK_PHASE_FAILED/TIMEOUT/CANCELLED/ERROR: records as failure via recordFailure()
+   * - Transitions to ERROR state when all results (success + failure) are received
+   *
+   * This method fixes issue #186 by providing explicit TASK_FAILED handling in the
+   * async gRPC result path. Previously, only the synchronous MessageBus path
+   * (via processSubordinateFailure) handled failures.
+   *
+   * @param result The gRPC TaskResult from coordinator
+   * @return true if all expected results have been received (completion condition)
+   */
+  bool processTaskResultFromGrpc(const hmas::TaskResult& result) {
+    // Check if this is a failure result
+    if (result.status() == hmas::TASK_PHASE_FAILED ||
+        result.status() == hmas::TASK_PHASE_TIMEOUT ||
+        result.status() == hmas::TASK_PHASE_CANCELLED ||
+        result.status() == hmas::TASK_PHASE_ERROR) {
+      // Record as failure and check if all results are in
+      std::string error_msg = result.error().empty() ?
+          "Task failed with status " + std::to_string(result.status()) :
+          result.error();
+      bool all_done = this->coordination_.recordFailure(error_msg);
+      if (all_done) {
+        this->coordination_.transitionTo(this->error_state_, stateToString(this->error_state_));
+      }
+      return all_done;
+    }
+
+    // Success case (TASK_PHASE_COMPLETED or TASK_PHASE_SYNTHESIZING)
+    if (result.status() == hmas::TASK_PHASE_COMPLETED ||
+        result.status() == hmas::TASK_PHASE_SYNTHESIZING) {
+      // Extract result from YAML if available, otherwise use empty string
+      std::string result_value;
+      if (!result.result_yaml().empty()) {
+        auto spec_opt = network::YamlParser::parseTaskSpec(result.result_yaml());
+        if (spec_opt && spec_opt->status.result) {
+          result_value = *spec_opt->status.result;
+        }
+      }
+      return this->coordination_.recordResult(result_value);
+    }
+
+    // Unexpected status (PENDING, PLANNING, WAITING, EXECUTING)
+    // Don't record yet - task is still in progress
+    return false;
+  }
 #endif
 
   // Coordination state (shared by all lead agents)

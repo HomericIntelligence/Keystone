@@ -370,3 +370,130 @@ TEST_F(ComponentLeadAgentTest, SuccessResultAfterModuleFailureStillCountsTowardC
   auto state = component->getCurrentState();
   EXPECT_NE(state, agents::ComponentLeadAgent::State::WAITING_FOR_MODULES);
 }
+
+// ============================================================================
+// Issue #186: gRPC Async TASK_FAILED Handling Tests (5 tests)
+// Tests for explicit TASK_FAILED handling in async gRPC result path
+// ============================================================================
+
+#ifdef ENABLE_GRPC
+
+TEST_F(ComponentLeadAgentTest, ProcessGrpcTaskResultSuccessUpdatesCoordination) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+
+  // Initialize coordination with 1 expected result
+  component->coordination_.initializeCoordination(1);
+
+  // Create a successful TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_COMPLETED);
+  result.set_result_yaml("result: success");
+
+  // Process the result
+  bool all_done = component->processTaskResultFromGrpc(result);
+
+  // Should mark completion when all results received
+  EXPECT_TRUE(all_done);
+  EXPECT_EQ(component->coordination_.getReceivedCount(), 1);
+}
+
+TEST_F(ComponentLeadAgentTest, ProcessGrpcTaskResultFailureUpdatesCoordination) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+
+  // Initialize coordination with 1 expected result
+  component->coordination_.initializeCoordination(1);
+
+  // Create a failed TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_FAILED);
+  result.set_error("Module execution failed");
+
+  // Process the result
+  bool all_done = component->processTaskResultFromGrpc(result);
+
+  // Should mark completion and record failure
+  EXPECT_TRUE(all_done);
+  EXPECT_TRUE(component->coordination_.hasFailures());
+  EXPECT_EQ(component->coordination_.getFailureCount(), 1);
+  EXPECT_NE(component->coordination_.getFailureMessages()[0].find("Module execution failed"),
+            std::string::npos);
+}
+
+TEST_F(ComponentLeadAgentTest, ProcessGrpcTaskResultTimeoutIsRecordedAsFailure) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+
+  // Initialize coordination with 1 expected result
+  component->coordination_.initializeCoordination(1);
+
+  // Create a timeout TaskResult from gRPC
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_TIMEOUT);
+  result.set_error("Task timed out after 25 minutes");
+
+  // Process the result
+  bool all_done = component->processTaskResultFromGrpc(result);
+
+  // Timeout should be treated as failure
+  EXPECT_TRUE(all_done);
+  EXPECT_TRUE(component->coordination_.hasFailures());
+  EXPECT_EQ(component->coordination_.getFailureCount(), 1);
+}
+
+TEST_F(ComponentLeadAgentTest, ProcessGrpcTaskResultMixedSuccessAndFailure) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+
+  // Initialize coordination with 2 expected results
+  component->coordination_.initializeCoordination(2);
+
+  // First result: success
+  hmas::TaskResult result1;
+  result1.set_task_id("task-1");
+  result1.set_status(hmas::TASK_PHASE_COMPLETED);
+  result1.set_result_yaml("result: partial success");
+
+  bool done1 = component->processTaskResultFromGrpc(result1);
+  EXPECT_FALSE(done1);  // Not all done yet
+  EXPECT_EQ(component->coordination_.getReceivedCount(), 1);
+  EXPECT_FALSE(component->coordination_.hasFailures());
+
+  // Second result: failure
+  hmas::TaskResult result2;
+  result2.set_task_id("task-2");
+  result2.set_status(hmas::TASK_PHASE_FAILED);
+  result2.set_error("Task 2 failed");
+
+  bool done2 = component->processTaskResultFromGrpc(result2);
+  EXPECT_TRUE(done2);  // All done now
+  EXPECT_EQ(component->coordination_.getReceivedCount(), 2);
+  EXPECT_TRUE(component->coordination_.hasFailures());
+  EXPECT_EQ(component->coordination_.getFailureCount(), 1);
+}
+
+TEST_F(ComponentLeadAgentTest, ProcessGrpcTaskResultErrorStateTransition) {
+  auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
+  component->setMessageBus(bus_.get());
+  bus_->registerAgent(component->getAgentId(), component);
+
+  std::vector<std::string> module_ids = {"module_1"};
+  component->setAvailableModuleLeads(module_ids);
+
+  // Initialize to WAITING state
+  component->coordination_.transitionTo(agents::ComponentLeadAgent::State::WAITING_FOR_MODULES,
+                                       "WAITING_FOR_MODULES");
+
+  // Process a failed result
+  hmas::TaskResult result;
+  result.set_task_id("task-1");
+  result.set_status(hmas::TASK_PHASE_FAILED);
+  result.set_error("Critical failure");
+
+  component->processTaskResultFromGrpc(result);
+
+  // Should transition to ERROR state
+  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+}
+
+#endif  // ENABLE_GRPC
