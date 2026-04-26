@@ -308,8 +308,7 @@ TEST(ThreadPoolLogTest, WorkerStdExceptionIsLogged) {
     });
   }
 
-  EXPECT_TRUE(anyLineContains(lines, "worker-boom"))
-      << "Expected exception message in log output";
+  EXPECT_TRUE(anyLineContains(lines, "worker-boom")) << "Expected exception message in log output";
   EXPECT_TRUE(anyLineContains(lines, "Exception in worker"))
       << "Expected 'Exception in worker' prefix in log output";
 

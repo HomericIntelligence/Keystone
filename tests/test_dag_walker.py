@@ -461,3 +461,64 @@ class TestBackgroundScan:
         assert walker._scan_task is task
         stop_event.set()
         await task
+
+
+class TestFindCyclePath:
+    """Tests for _find_cycle_path() cycle detection with back-edge reconstruction."""
+
+    def test_find_cycle_path_returns_empty_for_acyclic_graph(self) -> None:
+        """_find_cycle_path() returns [] for an acyclic DAG."""
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t1"])
+        walker = DAGWalker(tasks=[t1, t2], agents=[])
+        assert walker._find_cycle_path() == []
+
+    def test_find_cycle_path_detects_immediate_back_edge(self) -> None:
+        """_find_cycle_path() detects immediate back-edge to GRAY neighbor (line 108-117)."""
+        # t1 -> t2, t2 -> t1 (immediate back-edge when processing t2's edges)
+        t1 = make_task(id="t1", dependencies=["t2"])
+        t2 = make_task(id="t2", dependencies=["t1"])
+        walker = DAGWalker(tasks=[t1, t2], agents=[])
+        cycle = walker._find_cycle_path()
+        assert len(cycle) >= 2
+        assert "t1" in cycle
+        assert "t2" in cycle
+
+    def test_find_cycle_path_detects_deferred_back_edge(self) -> None:
+        """_find_cycle_path() detects deferred back-edge when revisiting GRAY node (line 91-100)."""
+        # t1 -> t2, t2 -> t3, t3 -> t1 (back-edge found when popping t1 from stack)
+        t1 = make_task(id="t1", dependencies=["t3"])
+        t2 = make_task(id="t2", dependencies=["t1"])
+        t3 = make_task(id="t3", dependencies=["t2"])
+        walker = DAGWalker(tasks=[t1, t2, t3], agents=[])
+        cycle = walker._find_cycle_path()
+        assert len(cycle) >= 2
+        assert "t1" in cycle
+        assert "t2" in cycle
+        assert "t3" in cycle
+
+    def test_find_cycle_path_handles_black_node_skip(self) -> None:
+        """_find_cycle_path() skips BLACK (already visited) nodes (line 102-103)."""
+        # Complex graph: t1 -> t2, t1 -> t3, t2 -> t3, t3 -> t2 (cycle in t2 <-> t3)
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t3"])
+        t3 = make_task(id="t3", dependencies=["t2"])
+        walker = DAGWalker(tasks=[t1, t2, t3], agents=[])
+        cycle = walker._find_cycle_path()
+        # t1 is visited first (no cycle), then t2 <-> t3 is detected
+        assert "t2" in cycle
+        assert "t3" in cycle
+
+    def test_find_cycle_path_with_multiple_independent_components(self) -> None:
+        """_find_cycle_path() detects cycle in one component (line 75-77 loop)."""
+        # Component 1: t1 -> t2 (no cycle)
+        # Component 2: t3 -> t4 -> t3 (cycle)
+        t1 = make_task(id="t1")
+        t2 = make_task(id="t2", dependencies=["t1"])
+        t3 = make_task(id="t3", dependencies=["t4"])
+        t4 = make_task(id="t4", dependencies=["t3"])
+        walker = DAGWalker(tasks=[t1, t2, t3, t4], agents=[])
+        cycle = walker._find_cycle_path()
+        # Should find the cycle in component 2
+        assert "t3" in cycle
+        assert "t4" in cycle

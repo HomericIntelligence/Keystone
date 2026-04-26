@@ -575,8 +575,9 @@ TEST(AgentCoreLogTest, BackpressureInboxFullLogsWarn) {
     // Fill queue beyond max to trigger backpressure log
     size_t max_size = keystone::core::Config::AGENT_MAX_QUEUE_SIZE;
     for (size_t i = 0; i < max_size + 20; ++i) {
-      auto msg = keystone::core::KeystoneMessage::create(
-          "sender", agent->getAgentId(), "msg_" + std::to_string(i));
+      auto msg = keystone::core::KeystoneMessage::create("sender",
+                                                         agent->getAgentId(),
+                                                         "msg_" + std::to_string(i));
       msg.priority = keystone::core::Priority::NORMAL;
       agent->receiveMessage(msg);
     }
@@ -584,8 +585,7 @@ TEST(AgentCoreLogTest, BackpressureInboxFullLogsWarn) {
 
   EXPECT_TRUE(anyLineContains(lines, "[BACKPRESSURE]"))
       << "Expected [BACKPRESSURE] warning in log output";
-  EXPECT_TRUE(anyLineContains(lines, "inbox full"))
-      << "Expected 'inbox full' phrase in log output";
+  EXPECT_TRUE(anyLineContains(lines, "inbox full")) << "Expected 'inbox full' phrase in log output";
   EXPECT_TRUE(anyLineContains(lines, "log_test_agent"))
       << "Expected agent id in backpressure log line";
 
@@ -603,15 +603,16 @@ TEST(AgentCoreLogTest, BackpressureRecoveryLogsInfo) {
 
     // Fill to trigger backpressure
     for (size_t i = 0; i < max_size + 20; ++i) {
-      auto msg = keystone::core::KeystoneMessage::create(
-          "sender", agent->getAgentId(), "fill_" + std::to_string(i));
+      auto msg = keystone::core::KeystoneMessage::create("sender",
+                                                         agent->getAgentId(),
+                                                         "fill_" + std::to_string(i));
       msg.priority = keystone::core::Priority::NORMAL;
       agent->receiveMessage(msg);
     }
 
     // Drain below low watermark so recovery log fires
-    size_t low_watermark =
-        static_cast<size_t>(max_size * keystone::core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
+    size_t low_watermark = static_cast<size_t>(
+        max_size * keystone::core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
     size_t drain_count = max_size - low_watermark + 20;
     for (size_t i = 0; i < drain_count; ++i) {
       agent->getMessage();
