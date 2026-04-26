@@ -301,3 +301,34 @@ TEST(WorkStealingSchedulerTest, HeavyLoad) {
 
   scheduler.shutdown();
 }
+
+// Test: Correlation ID propagation across thread boundaries (FIX #284)
+TEST(WorkStealingSchedulerTest, CorrelationIdPropagation) {
+  WorkStealingScheduler scheduler(2);
+  scheduler.start();
+
+  // Create a correlation ID on the submitting thread
+  std::string expected_correlation_id = generateCorrelationId();
+  LogContext::set("main_thread", 0, "test_session");
+  LogContext::setCorrelationId(expected_correlation_id);
+
+  auto captured_correlation_id = std::make_shared<std::string>();
+  auto barrier = std::make_shared<std::atomic<int32_t>>(0);
+
+  // Submit work that captures the correlation ID of the worker thread
+  scheduler.submit([captured_correlation_id, barrier]() {
+    *captured_correlation_id = LogContext::getCorrelationId();
+    barrier->store(1);
+  });
+
+  // Wait for work to complete
+  while (barrier->load() == 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  // The correlation ID should have been propagated to the worker thread
+  EXPECT_EQ(*captured_correlation_id, expected_correlation_id);
+
+  LogContext::clear();
+  scheduler.shutdown();
+}
