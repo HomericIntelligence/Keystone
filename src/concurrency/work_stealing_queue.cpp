@@ -139,8 +139,10 @@ void WorkStealingQueue::push(WorkItem item) {
 }
 
 std::optional<WorkItem> WorkStealingQueue::pop() {
-  // Owner-only: pops from the back (LIFO)
-  // No synchronization needed because only owner calls this
+  // Hold push_mutex_ because push() and pop() both modify bottom_.
+  // push() is multi-thread callable (external submitters), so we must
+  // serialize all bottom_ writes under the same lock.
+  std::lock_guard<std::mutex> lock(push_mutex_);
 
   size_t b = bottom_.load(std::memory_order_relaxed);
   auto arr = loadArray();
