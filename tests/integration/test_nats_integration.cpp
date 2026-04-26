@@ -191,8 +191,8 @@ TEST_F(NatsIntegrationTest, PipelineShutdownDrainsCleanly) {
   bus_->registerAgent(agent->getAgentId(), agent);
 
   // Queue several work messages before the shutdown signal.
-  constexpr int kWorkMessages = 5;
-  for (int i = 0; i < kWorkMessages; ++i) {
+  constexpr int32_t kWorkMessages = 5;
+  for (int32_t i = 0; i < kWorkMessages; ++i) {
     auto work = KeystoneMessage::create("bridge",
                                         "drain_agent",
                                         ActionType::EXECUTE,
@@ -207,7 +207,7 @@ TEST_F(NatsIntegrationTest, PipelineShutdownDrainsCleanly) {
   EXPECT_TRUE(bus_->routeMessage(shutdown_msg));
 
   // Drain: consume all kWorkMessages + 1 shutdown.
-  int drained = 0;
+  int32_t drained = 0;
   bool saw_shutdown = false;
   bool drained_all = waitFor(
       [&]() {
@@ -254,7 +254,7 @@ TEST_F(NatsIntegrationTest, PipelinePriorityMessagesDeliveredInOrder) {
   bool got_first = waitFor([&]() { return agent->getMessage().has_value(); });
   ASSERT_TRUE(got_first) << "No messages delivered to priority_agent";
 
-  int delivered = 1;
+  int32_t delivered = 1;
   while (agent->getMessage().has_value()) {
     ++delivered;
   }
@@ -346,7 +346,7 @@ TEST_F(NatsServerTest, NatsConnectionSucceeds) {
 
   // Use nc (netcat) to test TCP connectivity; fall back to bash /dev/tcp.
   std::string check_cmd = "bash -c 'echo > /dev/tcp/" + host + "/" + port + "' 2>/dev/null";
-  int rc = std::system(check_cmd.c_str());  // NOLINT(cert-env33-c)
+  int32_t rc = std::system(check_cmd.c_str());  // NOLINT(cert-env33-c)
   EXPECT_EQ(rc, 0) << "Could not connect to NATS server at " << url
                    << ". Is the server running? (docker-compose -f docker-compose.test.yml up)";
 }
@@ -411,8 +411,8 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
   agent->setMessageBus(bus_.get());
   bus_->registerAgent(agent->getAgentId(), agent);
 
-  constexpr int kPending = 3;
-  for (int i = 0; i < kPending; ++i) {
+  constexpr int32_t kPending = 3;
+  for (int32_t i = 0; i < kPending; ++i) {
     auto work = KeystoneMessage::create("nats.bridge:hi.tasks.execute",
                                         "hi.myrmidon.tasks.0",
                                         ActionType::EXECUTE,
@@ -428,7 +428,7 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
                                           "drain-session");
   EXPECT_TRUE(bus_->routeMessage(shutdown));
 
-  int count = 0;
+  int32_t count = 0;
   bool saw_shutdown = false;
   bool ok = waitFor(
       [&]() {

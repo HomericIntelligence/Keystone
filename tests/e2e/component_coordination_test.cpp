@@ -56,7 +56,7 @@ TEST(E2E_Phase3, ComponentLeadCoordinatesMultipleModules) {
 
   // Create 6 TaskAgents (3 per module)
   std::vector<std::shared_ptr<TaskAgent>> task_agents;
-  for (int i = 1; i <= 6; ++i) {
+  for (int32_t i = 1; i <= 6; ++i) {
     auto agent = std::make_shared<TaskAgent>("task_" + std::to_string(i));
     task_agents.push_back(agent);
   }
@@ -130,7 +130,7 @@ TEST(E2E_Phase3, ComponentLeadCoordinatesMultipleModules) {
   std::cout << "4. ModuleLeads → TaskAgents (6 total)..." << std::endl;
 
   // All 6 TaskAgents process their tasks
-  int tasks_processed = 0;
+  int32_t tasks_processed = 0;
   for (auto& agent : task_agents) {
     auto task_msg = agent->getMessage();
     if (task_msg.has_value()) {

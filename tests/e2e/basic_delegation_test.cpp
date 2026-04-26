@@ -51,7 +51,7 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 
   int32_t num1 = dis(gen);
   int32_t num2 = dis(gen);
-  int expected_result = num1 + num2;
+  int32_t expected_result = num1 + num2;
 
   std::cout << "\nTest: Adding " << num1 << " + " << num2 << " = " << expected_result << std::endl;
 
@@ -112,7 +112,9 @@ TEST(E2E_Phase1, ChiefArchitectSendsMultipleCommands) {
   task_agent->setMessageBus(bus.get());
 
   // Test cases: (num1, num2, expected_result)
-  std::vector<std::tuple<int, int, int>> test_cases = {{5, 3, 8}, {15, 27, 42}, {100, 200, 300}};
+  std::vector<std::tuple<int32_t, int32_t, int32_t>> test_cases = {{5, 3, 8},
+                                                                   {15, 27, 42},
+                                                                   {100, 200, 300}};
 
   // ACT & ASSERT: Send each command
   for (const auto& [num1, num2, expected] : test_cases) {

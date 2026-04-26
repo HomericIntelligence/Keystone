@@ -93,7 +93,7 @@ TEST_F(CoordinatorTerminalStateTest, GetTaskProgressIsCompleteForAllTerminalStat
 
 TEST_F(CoordinatorTerminalStateTest, CleanupRemovesAllTerminalStates) {
   // All 5 terminal tasks were set at SetUp; pass age_threshold_ms=0 to force cleanup
-  int removed = coordinator_->cleanupOldTasks(0);
+  int32_t removed = coordinator_->cleanupOldTasks(0);
   EXPECT_EQ(removed, 5);
 
   for (const auto& task_id :

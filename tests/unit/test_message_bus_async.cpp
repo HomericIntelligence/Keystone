@@ -21,7 +21,7 @@ using namespace keystone::concurrency;
 class CountingAgent : public AsyncAgent {
  public:
   explicit CountingAgent(const std::string& agent_id)
-      : AsyncAgent(agent_id), count_(std::make_shared<std::atomic<int>>(0)) {}
+      : AsyncAgent(agent_id), count_(std::make_shared<std::atomic<int32_t>>(0)) {}
 
   Task<Response> processMessage(const KeystoneMessage& msg) override {
     count_->fetch_add(1);
@@ -35,10 +35,10 @@ class CountingAgent : public AsyncAgent {
     co_return resp;
   }
 
-  int getCount() const { return count_->load(); }
+  int32_t getCount() const { return count_->load(); }
 
  private:
-  std::shared_ptr<std::atomic<int>> count_;
+  std::shared_ptr<std::atomic<int32_t>> count_;
 };
 
 // Test: MessageBus without scheduler (synchronous routing)
@@ -145,7 +145,7 @@ TEST(MessageBusAsyncTest, MultipleAgentsAsyncRouting) {
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
   // Check both agents received messages
-  int count2 = 0, count3 = 0;
+  int32_t count2 = 0, count3 = 0;
   while (agent2->getMessage())
     count2++;
   while (agent3->getMessage())
@@ -212,7 +212,7 @@ TEST(MessageBusAsyncTest, HighLoadAsyncRouting) {
   agent2->setMessageBus(&bus);
 
   // Send many messages
-  const int num_messages = 1000;
+  const int32_t num_messages = 1000;
   for (int32_t i = 0; i < num_messages; ++i) {
     auto msg = KeystoneMessage::create("agent1", "agent2", "msg" + std::to_string(i));
     bus.routeMessage(msg);
@@ -222,7 +222,7 @@ TEST(MessageBusAsyncTest, HighLoadAsyncRouting) {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   // Count received messages
-  int received = 0;
+  int32_t received = 0;
   while (agent2->getMessage()) {
     received++;
   }
@@ -259,7 +259,7 @@ TEST(MessageBusAsyncTest, SchedulerShutdownGraceful) {
   scheduler.shutdown();
 
   // All messages should have been delivered before shutdown completed
-  int received = 0;
+  int32_t received = 0;
   while (agent2->getMessage()) {
     received++;
   }
@@ -280,13 +280,13 @@ TEST(MessageBusAsyncTest, ConcurrentLifecycleStressTest) {
   bus.setScheduler(&scheduler);
 
   std::atomic<bool> stop{false};
-  std::atomic<int> agents_created{0};
-  std::atomic<int> agents_destroyed{0};
-  std::atomic<int> messages_sent{0};
-  std::atomic<int> registration_errors{0};
+  std::atomic<int32_t> agents_created{0};
+  std::atomic<int32_t> agents_destroyed{0};
+  std::atomic<int32_t> messages_sent{0};
+  std::atomic<int32_t> registration_errors{0};
 
   // Helper to generate unique agent IDs
-  auto get_agent_id = [](int counter) {
+  auto get_agent_id = [](int32_t counter) {
     return "stress_agent_" + std::to_string(counter);
   };
 
@@ -487,7 +487,7 @@ TEST(MessageBusAsyncTest, MessageToDeletedAgentGraceful) {
   bus.unregisterAgent("agent2");
 
   // Try to send more messages (should fail gracefully)
-  for (int i = 10; i < 20; ++i) {
+  for (int32_t i = 10; i < 20; ++i) {
     auto msg = KeystoneMessage::create("agent1", "agent2", "msg_" + std::to_string(i));
     bool routed = bus.routeMessage(msg);
     // May or may not route depending on timing

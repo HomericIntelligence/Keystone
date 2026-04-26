@@ -44,7 +44,7 @@ TEST_F(HeartbeatMonitorTest, DetectFailure) {
   std::this_thread::sleep_for(std::chrono::milliseconds(350));
 
   // Check agents should detect failure
-  int failures = monitor.checkAgents();
+  int32_t failures = monitor.checkAgents();
   EXPECT_EQ(failures, 1);
   EXPECT_FALSE(monitor.isAlive("agent1"));
   EXPECT_EQ(monitor.getTotalFailures(), 1);

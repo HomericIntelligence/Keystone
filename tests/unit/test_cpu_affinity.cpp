@@ -15,7 +15,7 @@ TEST(CPUAffinityTest, EnableCPUAffinity) {
   scheduler.start();
 
   // Submit some work to ensure workers are running
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 100; ++i) {
     scheduler.submit([&counter]() {
       counter.fetch_add(1, std::memory_order_relaxed);
@@ -38,7 +38,7 @@ TEST(CPUAffinityTest, DisabledByDefault) {
   WorkStealingScheduler scheduler(2);  // affinity disabled by default
   scheduler.start();
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 50; ++i) {
     scheduler.submit([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
   }
@@ -57,7 +57,7 @@ TEST(CPUAffinityTest, MoreWorkersThanCores) {
   WorkStealingScheduler scheduler(num_workers, true);
   scheduler.start();
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (size_t i = 0; i < 100; ++i) {
     scheduler.submit([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
   }

@@ -158,8 +158,8 @@ TEST_F(MessagePoolTest, StatisticsTracking) {
 
 TEST_F(MessagePoolTest, ThreadLocalIsolation) {
   // Each thread should have its own pool
-  std::atomic<int> thread1_pool_size{0};
-  std::atomic<int> thread2_pool_size{0};
+  std::atomic<int32_t> thread1_pool_size{0};
+  std::atomic<int32_t> thread2_pool_size{0};
 
   auto worker1 = [&]() {
     MessagePool::clear();
@@ -289,7 +289,7 @@ TEST_F(MessagePoolTest, ResetStats) {
 
 TEST_F(MessagePoolTest, HighLoadScenario) {
   // Simulate high-load scenario with many acquires and releases
-  const int iterations = 10000;
+  const int32_t iterations = 10000;
 
   for (int32_t i = 0; i < iterations; ++i) {
     auto msg = MessagePool::acquire();

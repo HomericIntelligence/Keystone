@@ -87,7 +87,7 @@ class HealthCheckServerTest : public ::testing::Test {
   /**
    * @brief Extract HTTP status code from response
    */
-  int getStatusCode(const std::string& response) {
+  int32_t getStatusCode(const std::string& response) {
     if (response.empty())
       return 0;
 
@@ -118,7 +118,7 @@ class HealthCheckServerTest : public ::testing::Test {
     return response.substr(body_start + 4);
   }
 
-  int port_;
+  int32_t port_;
   std::unique_ptr<HealthCheckServer> server_;
 };
 
@@ -389,7 +389,7 @@ TEST_F(HealthCheckServerTest, ConcurrentRequests) {
 
   // Send 10 concurrent requests
   std::vector<std::thread> threads;
-  std::atomic<int> success_count{0};
+  std::atomic<int32_t> success_count{0};
 
   for (int32_t i = 0; i < 10; ++i) {
     threads.emplace_back([this, &success_count]() {

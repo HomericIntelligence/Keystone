@@ -209,8 +209,8 @@ TEST_F(MetricsTest, ReportGeneration) {
 TEST_F(MetricsTest, ThreadSafety) {
   auto& metrics = Metrics::getInstance();
 
-  const int num_threads = 10;
-  const int msgs_per_thread = 100;
+  const int32_t num_threads = 10;
+  const int32_t msgs_per_thread = 100;
 
   std::vector<std::thread> threads;
 

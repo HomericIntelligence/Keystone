@@ -101,7 +101,7 @@ TEST(AgentIdInterningTest, ThreadSafety) {
   AgentIdInterning interning;
   constexpr int32_t num_threads = 10;
   constexpr int32_t iterations_per_thread = 100;
-  std::atomic<int> successes{0};
+  std::atomic<int32_t> successes{0};
 
   std::vector<std::thread> threads;
   threads.reserve(num_threads);
@@ -215,7 +215,7 @@ TEST(AgentIdInterningTest, ConcurrentReads) {
 
   constexpr int32_t num_readers = 20;
   constexpr int32_t reads_per_thread = 1000;
-  std::atomic<int> successes{0};
+  std::atomic<int32_t> successes{0};
 
   std::vector<std::thread> readers;
   readers.reserve(num_readers);

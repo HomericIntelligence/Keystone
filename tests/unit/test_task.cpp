@@ -18,7 +18,7 @@ using namespace keystone::concurrency;
 
 // Test: Simple Task<int> creation and get()
 TEST(TaskTest, SimpleIntTask) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     co_return 42;
   }();
 
@@ -60,7 +60,7 @@ TEST(TaskTest, StringTask) {
 
 // Test: Exception propagation
 TEST(TaskTest, ExceptionPropagation) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     throw std::runtime_error("Test exception");
     co_return 42;  // Never reached
   }();
@@ -70,11 +70,11 @@ TEST(TaskTest, ExceptionPropagation) {
 
 // Test: Task move constructor
 TEST(TaskTest, MoveConstructor) {
-  auto task1 = []() -> Task<int> {
+  auto task1 = []() -> Task<int32_t> {
     co_return 100;
   }();
 
-  Task<int> task2 = std::move(task1);
+  Task<int32_t> task2 = std::move(task1);
 
   int32_t result = task2.get();
   EXPECT_EQ(result, 100);
@@ -82,11 +82,11 @@ TEST(TaskTest, MoveConstructor) {
 
 // Test: Task move assignment
 TEST(TaskTest, MoveAssignment) {
-  auto task1 = []() -> Task<int> {
+  auto task1 = []() -> Task<int32_t> {
     co_return 200;
   }();
 
-  auto task2 = []() -> Task<int> {
+  auto task2 = []() -> Task<int32_t> {
     co_return 300;
   }();
 
@@ -98,7 +98,7 @@ TEST(TaskTest, MoveAssignment) {
 
 // Test: Manual resume
 TEST(TaskTest, ManualResume) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     co_return 42;
   }();
 
@@ -113,12 +113,12 @@ TEST(TaskTest, ManualResume) {
 
 // Test: Chaining coroutines with co_await
 TEST(TaskTest, CoroutineChaining) {
-  auto inner = []() -> Task<int> {
+  auto inner = []() -> Task<int32_t> {
     co_return 10;
   };
 
   // Keep outer lambda alive until get() completes to avoid stack-use-after-scope
-  auto outerLambda = [&]() -> Task<int> {
+  auto outerLambda = [&]() -> Task<int32_t> {
     int32_t value = co_await inner();
     co_return value * 2;
   };
@@ -129,12 +129,12 @@ TEST(TaskTest, CoroutineChaining) {
 
 // Test: Multiple co_await in sequence
 TEST(TaskTest, MultipleCoAwait) {
-  auto getValue = [](int x) -> Task<int> {
+  auto getValue = [](int32_t x) -> Task<int32_t> {
     co_return x;
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto sumLambda = [&]() -> Task<int> {
+  auto sumLambda = [&]() -> Task<int32_t> {
     int32_t a = co_await getValue(10);
     int32_t b = co_await getValue(20);
     int32_t c = co_await getValue(30);
@@ -147,13 +147,13 @@ TEST(TaskTest, MultipleCoAwait) {
 
 // Test: Exception in chained coroutine
 TEST(TaskTest, ExceptionInChainedCoroutine) {
-  auto throwingTask = []() -> Task<int> {
+  auto throwingTask = []() -> Task<int32_t> {
     throw std::runtime_error("Inner exception");
     co_return 0;
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto outerLambda = [&]() -> Task<int> {
+  auto outerLambda = [&]() -> Task<int32_t> {
     int32_t value = co_await throwingTask();
     co_return value;
   };
@@ -164,7 +164,7 @@ TEST(TaskTest, ExceptionInChainedCoroutine) {
 
 // Test: Task<void> chaining
 TEST(TaskTest, VoidTaskChaining) {
-  auto counter = std::make_shared<std::atomic<int>>(0);
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
 
   auto increment = [counter]() -> Task<void> {
     counter->fetch_add(1);
@@ -189,7 +189,7 @@ TEST(TaskTest, VoidTaskChaining) {
 
 // Test: await_ready returns correct value
 TEST(TaskTest, AwaitReady) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     co_return 42;
   }();
 
@@ -203,7 +203,7 @@ TEST(TaskTest, AwaitReady) {
 
 // Test: Complex computation with multiple steps
 TEST(TaskTest, ComplexComputation) {
-  auto fibonacci = [](int n) -> Task<int> {
+  auto fibonacci = [](int32_t n) -> Task<int32_t> {
     if (n <= 1) {
       co_return n;
     }
@@ -212,7 +212,7 @@ TEST(TaskTest, ComplexComputation) {
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto computeLambda = [&]() -> Task<int> {
+  auto computeLambda = [&]() -> Task<int32_t> {
     int32_t a = co_await fibonacci(5);
     int32_t b = co_await fibonacci(10);
     co_return a + b;
@@ -227,7 +227,7 @@ TEST(TaskTest, ComplexComputation) {
 TEST(TaskTest, EarlyDestruction) {
   // This test verifies that destroying a Task before completion is safe
   {
-    auto task = []() -> Task<int> {
+    auto task = []() -> Task<int32_t> {
       co_return 42;
     }();
 
@@ -240,12 +240,12 @@ TEST(TaskTest, EarlyDestruction) {
 
 // Test: Multiple get() calls return same result
 TEST(TaskTest, MultipleGetCalls) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     co_return 42;
   }();
 
-  int result1 = task.get();
-  int result2 = task.get();
+  int32_t result1 = task.get();
+  int32_t result2 = task.get();
 
   EXPECT_EQ(result1, 42);
   EXPECT_EQ(result2, 42);
@@ -260,7 +260,7 @@ TEST(TaskTest, ExceptionMessagePreservation) {
   const std::string error_msg = "Detailed error message with context";
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto taskLambda = [&error_msg]() -> Task<int> {
+  auto taskLambda = [&error_msg]() -> Task<int32_t> {
     throw std::runtime_error(error_msg);
     co_return 0;
   };
@@ -287,14 +287,14 @@ TEST(TaskTest, VoidTaskExceptionHandling) {
 // Test: Different exception types
 TEST(TaskTest, DifferentExceptionTypes) {
   // std::invalid_argument
-  auto task1 = []() -> Task<int> {
+  auto task1 = []() -> Task<int32_t> {
     throw std::invalid_argument("Invalid argument");
     co_return 0;
   }();
   EXPECT_THROW({ task1.get(); }, std::invalid_argument);
 
   // std::out_of_range
-  auto task2 = []() -> Task<int> {
+  auto task2 = []() -> Task<int32_t> {
     throw std::out_of_range("Out of range");
     co_return 0;
   }();
@@ -306,7 +306,7 @@ TEST(TaskTest, DifferentExceptionTypes) {
     const char* what() const noexcept override { return "Custom exception"; }
   };
 
-  auto task3 = []() -> Task<int> {
+  auto task3 = []() -> Task<int32_t> {
     throw CustomException();
     co_return 0;
   }();
@@ -335,18 +335,18 @@ TEST(TaskTest, DifferentExceptionTypes) {
 
 // Test: Exception in co_await chain preserves stack
 TEST(TaskTest, ExceptionInCoAwaitChain) {
-  auto innerTask = []() -> Task<int> {
+  auto innerTask = []() -> Task<int32_t> {
     throw std::runtime_error("Inner task failed");
     co_return 10;
   };
 
   // Keep lambdas alive until get() completes to avoid stack-use-after-scope
-  auto middleTask = [&]() -> Task<int> {
+  auto middleTask = [&]() -> Task<int32_t> {
     int32_t val = co_await innerTask();
     co_return val * 2;  // Never reached
   };
 
-  auto outerLambda = [&]() -> Task<int> {
+  auto outerLambda = [&]() -> Task<int32_t> {
     int32_t val = co_await middleTask();
     co_return val * 3;  // Never reached
   };
@@ -362,7 +362,7 @@ TEST(TaskTest, ExceptionInCoAwaitChain) {
 
 // Test: Multiple exceptions - only first is captured
 TEST(TaskTest, MultipleExceptionsFirstCaptured) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     try {
       throw std::runtime_error("First exception");
     } catch (...) {
@@ -378,9 +378,9 @@ TEST(TaskTest, MultipleExceptionsFirstCaptured) {
 
 // Test: Exception with move-only types
 TEST(TaskTest, ExceptionWithMoveOnlyType) {
-  auto task = []() -> Task<std::unique_ptr<int>> {
+  auto task = []() -> Task<std::unique_ptr<int32_t>> {
     throw std::runtime_error("Move-only exception test");
-    co_return std::make_unique<int>(42);
+    co_return std::make_unique<int32_t>(42);
   }();
 
   EXPECT_THROW({ task.get(); }, std::runtime_error);
@@ -388,7 +388,7 @@ TEST(TaskTest, ExceptionWithMoveOnlyType) {
 
 // Test: Verify exception stored in promise
 TEST(TaskTest, ExceptionStoredInPromise) {
-  auto task = []() -> Task<int> {
+  auto task = []() -> Task<int32_t> {
     throw std::runtime_error("Stored in promise");
     co_return 0;
   }();
@@ -408,15 +408,15 @@ TEST(TaskTest, ExceptionStoredInPromise) {
 
 // Test: Verify symmetric transfer chains coroutines properly
 TEST(TaskTest, SymmetricTransferChaining) {
-  std::vector<int> execution_order;
+  std::vector<int32_t> execution_order;
 
-  auto task1 = [&]() -> Task<int> {
+  auto task1 = [&]() -> Task<int32_t> {
     execution_order.push_back(1);
     co_return 10;
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto task2Lambda = [&]() -> Task<int> {
+  auto task2Lambda = [&]() -> Task<int32_t> {
     execution_order.push_back(2);
     int32_t val = co_await task1();
     execution_order.push_back(3);
@@ -427,7 +427,7 @@ TEST(TaskTest, SymmetricTransferChaining) {
   EXPECT_EQ(task2.get(), 20);
 
   // Execution order: task2 starts (2), awaits task1 (1), resumes task2 (3)
-  std::vector<int> expected = {2, 1, 3};
+  std::vector<int32_t> expected = {2, 1, 3};
   EXPECT_EQ(execution_order, expected);
 }
 
@@ -451,17 +451,17 @@ TEST(TaskTest, SymmetricTransferChaining) {
 
 // Test: Multiple levels of coroutine chaining
 TEST(TaskTest, DeepCoroutineChaining) {
-  auto level3 = []() -> Task<int> {
+  auto level3 = []() -> Task<int32_t> {
     co_return 1;
   };
 
   // Keep lambdas alive until get() completes to avoid stack-use-after-scope
-  auto level2 = [&]() -> Task<int> {
+  auto level2 = [&]() -> Task<int32_t> {
     int32_t val = co_await level3();
     co_return val + 10;
   };
 
-  auto level1Lambda = [&]() -> Task<int> {
+  auto level1Lambda = [&]() -> Task<int32_t> {
     int32_t val = co_await level2();
     co_return val + 100;
   };
@@ -472,7 +472,7 @@ TEST(TaskTest, DeepCoroutineChaining) {
 
 // Test: Symmetric transfer with Task<void>
 TEST(TaskTest, SymmetricTransferVoidTask) {
-  std::vector<int> execution_order;
+  std::vector<int32_t> execution_order;
 
   auto voidTask = [&]() -> Task<void> {
     execution_order.push_back(1);
@@ -480,7 +480,7 @@ TEST(TaskTest, SymmetricTransferVoidTask) {
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto wrapperLambda = [&]() -> Task<int> {
+  auto wrapperLambda = [&]() -> Task<int32_t> {
     execution_order.push_back(2);
     co_await voidTask();
     execution_order.push_back(3);
@@ -490,18 +490,18 @@ TEST(TaskTest, SymmetricTransferVoidTask) {
 
   EXPECT_EQ(wrapper.get(), 42);
 
-  std::vector<int> expected = {2, 1, 3};
+  std::vector<int32_t> expected = {2, 1, 3};
   EXPECT_EQ(execution_order, expected);
 }
 
 // Test: Verify no stack overflow with many chained coroutines
 TEST(TaskTest, NoStackOverflowWithManyChainedCoroutines) {
   // Create a chain of 1000 coroutines
-  const int chain_length = 1000;
-  std::atomic<int> counter{0};
+  const int32_t chain_length = 1000;
+  std::atomic<int32_t> counter{0};
 
-  std::function<Task<int>(int)> chainedTask;
-  chainedTask = [&](int depth) -> Task<int> {
+  std::function<Task<int32_t>(int32_t)> chainedTask;
+  chainedTask = [&](int32_t depth) -> Task<int32_t> {
     counter.fetch_add(1);
     if (depth <= 0) {
       co_return 0;
@@ -519,13 +519,13 @@ TEST(TaskTest, NoStackOverflowWithManyChainedCoroutines) {
 
 // Test: Exception propagation through symmetric transfer
 TEST(TaskTest, ExceptionPropagationThroughSymmetricTransfer) {
-  auto throwingTask = []() -> Task<int> {
+  auto throwingTask = []() -> Task<int32_t> {
     throw std::runtime_error("Inner exception");
     co_return 0;
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto catchingLambda = [&]() -> Task<int> {
+  auto catchingLambda = [&]() -> Task<int32_t> {
     int32_t val = co_await throwingTask();
     co_return val;  // Never reached
   };
@@ -536,25 +536,25 @@ TEST(TaskTest, ExceptionPropagationThroughSymmetricTransfer) {
 
 // Test: Multiple co_awaits with symmetric transfer
 TEST(TaskTest, MultipleCoAwaitsWithSymmetricTransfer) {
-  std::vector<int> execution_order;
+  std::vector<int32_t> execution_order;
 
-  auto task1 = [&]() -> Task<int> {
+  auto task1 = [&]() -> Task<int32_t> {
     execution_order.push_back(1);
     co_return 10;
   };
 
-  auto task2 = [&]() -> Task<int> {
+  auto task2 = [&]() -> Task<int32_t> {
     execution_order.push_back(2);
     co_return 20;
   };
 
-  auto task3 = [&]() -> Task<int> {
+  auto task3 = [&]() -> Task<int32_t> {
     execution_order.push_back(3);
     co_return 30;
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  auto aggregatorLambda = [&]() -> Task<int> {
+  auto aggregatorLambda = [&]() -> Task<int32_t> {
     execution_order.push_back(0);
     int32_t a = co_await task1();
     int32_t b = co_await task2();
@@ -566,6 +566,6 @@ TEST(TaskTest, MultipleCoAwaitsWithSymmetricTransfer) {
   EXPECT_EQ(aggregator.get(), 60);
 
   // Execution order: aggregator starts, then task1, task2, task3
-  std::vector<int> expected = {0, 1, 2, 3};
+  std::vector<int32_t> expected = {0, 1, 2, 3};
   EXPECT_EQ(execution_order, expected);
 }

@@ -289,7 +289,7 @@ class NatsCallbackTest : public ::testing::Test {
 };
 
 TEST_F(NatsCallbackTest, ErrorCallbackFiredOnError) {
-  std::atomic<int> call_count{0};
+  std::atomic<int32_t> call_count{0};
   conn_.setErrorCallback([&](const std::string& /*err*/) { ++call_count; });
 
   conn_.fireError();
@@ -298,7 +298,7 @@ TEST_F(NatsCallbackTest, ErrorCallbackFiredOnError) {
 }
 
 TEST_F(NatsCallbackTest, DisconnectedCallbackFiredOnDisconnect) {
-  std::atomic<int> call_count{0};
+  std::atomic<int32_t> call_count{0};
   conn_.setDisconnectedCallback([&]() { ++call_count; });
 
   conn_.fireDisconnected();
@@ -307,7 +307,7 @@ TEST_F(NatsCallbackTest, DisconnectedCallbackFiredOnDisconnect) {
 }
 
 TEST_F(NatsCallbackTest, ReconnectedCallbackFiredOnReconnect) {
-  std::atomic<int> call_count{0};
+  std::atomic<int32_t> call_count{0};
   conn_.setReconnectedCallback([&]() { ++call_count; });
 
   conn_.fireReconnected();
@@ -316,7 +316,7 @@ TEST_F(NatsCallbackTest, ReconnectedCallbackFiredOnReconnect) {
 }
 
 TEST_F(NatsCallbackTest, ClosedCallbackFiredOnClose) {
-  std::atomic<int> call_count{0};
+  std::atomic<int32_t> call_count{0};
   conn_.setClosedCallback([&]() { ++call_count; });
 
   conn_.fireClosed();
@@ -411,8 +411,8 @@ class NatsCallbackOverrideTest : public ::testing::Test {
 };
 
 TEST_F(NatsCallbackOverrideTest, ReplacedCallbackIsInvokedInsteadOfOriginal) {
-  std::atomic<int> first_count{0};
-  std::atomic<int> second_count{0};
+  std::atomic<int32_t> first_count{0};
+  std::atomic<int32_t> second_count{0};
 
   conn_.setReconnectedCallback([&]() { ++first_count; });
   conn_.setReconnectedCallback([&]() { ++second_count; });

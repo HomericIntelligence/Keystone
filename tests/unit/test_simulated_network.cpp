@@ -73,7 +73,7 @@ TEST_F(SimulatedNetworkTest, MultipleMessages) {
   SimulatedNetwork::Config config{.min_latency = 10us, .max_latency = 20us};
   SimulatedNetwork network(config);
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Send 10 messages
   for (int32_t i = 0; i < 10; ++i) {
@@ -87,7 +87,7 @@ TEST_F(SimulatedNetworkTest, MultipleMessages) {
   std::this_thread::sleep_for(50us);
 
   // Receive all messages
-  int received = 0;
+  int32_t received = 0;
   while (auto work = network.receive(1)) {
     (*work)();
     received++;
@@ -103,7 +103,7 @@ TEST_F(SimulatedNetworkTest, DifferentDestinations) {
   SimulatedNetwork::Config config{.min_latency = 10us, .max_latency = 20us};
   SimulatedNetwork network(config);
 
-  std::atomic<int> counter0{0}, counter1{0}, counter2{0};
+  std::atomic<int32_t> counter0{0}, counter1{0}, counter2{0};
 
   // Send to different nodes
   network.send(0, 0, [&]() { counter0++; });
@@ -176,7 +176,7 @@ TEST_F(SimulatedNetworkTest, NoPacketLoss) {
   std::this_thread::sleep_for(50us);
 
   // All messages should be receivable
-  int received = 0;
+  int32_t received = 0;
   while (auto work = network.receive(1)) {
     received++;
   }

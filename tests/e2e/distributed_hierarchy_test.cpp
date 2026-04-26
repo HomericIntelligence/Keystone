@@ -56,10 +56,10 @@ TEST_F(DistributedHierarchyTest, FourLayerHierarchyAcrossNodes) {
   cluster.registerAgent("task_agent_3", 3);
 
   // Counters for each layer
-  std::atomic<int> chief_executions{0};
-  std::atomic<int> component_executions{0};
-  std::atomic<int> module_executions{0};
-  std::atomic<int> task_executions{0};
+  std::atomic<int32_t> chief_executions{0};
+  std::atomic<int32_t> component_executions{0};
+  std::atomic<int32_t> module_executions{0};
+  std::atomic<int32_t> task_executions{0};
 
   // Simulate hierarchical delegation using network send
   // Chief sends to ComponentLead via network
@@ -120,7 +120,7 @@ TEST_F(DistributedHierarchyTest, MultipleCommandsDistributed) {
   cluster.registerAgent("module_lead_2", 2);
   cluster.registerAgent("task_agent", 3);
 
-  std::atomic<int> total_task_executions{0};
+  std::atomic<int32_t> total_task_executions{0};
 
   // Send 10 commands through the hierarchy using network
   for (int32_t cmd = 0; cmd < 10; ++cmd) {
@@ -167,7 +167,7 @@ TEST_F(DistributedHierarchyTest, LoadBalancingAcrossNodes) {
     cluster.registerAgent("task_" + std::to_string(i), 3);
   }
 
-  std::atomic<int> completed_tasks{0};
+  std::atomic<int32_t> completed_tasks{0};
 
   // Submit concentrated workload to node 3
   for (int32_t i = 0; i < 100; ++i) {
@@ -219,7 +219,7 @@ TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
   low_latency_cluster.registerAgent("sender", 0);
   low_latency_cluster.registerAgent("receiver", 1);
 
-  std::atomic<int> low_latency_count{0};
+  std::atomic<int32_t> low_latency_count{0};
 
   auto start_low = std::chrono::steady_clock::now();
 
@@ -252,7 +252,7 @@ TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
   high_latency_cluster.registerAgent("sender", 0);
   high_latency_cluster.registerAgent("receiver", 1);
 
-  std::atomic<int> high_latency_count{0};
+  std::atomic<int32_t> high_latency_count{0};
 
   auto start_high = std::chrono::steady_clock::now();
 
@@ -297,9 +297,9 @@ TEST_F(DistributedHierarchyTest, AgentMigrationBetweenNodes) {
   // Initially on node 0
   cluster.registerAgent("mobile_agent", 0);
 
-  std::atomic<int> executions_node0{0};
-  std::atomic<int> executions_node1{0};
-  std::atomic<int> executions_node2{0};
+  std::atomic<int32_t> executions_node0{0};
+  std::atomic<int32_t> executions_node1{0};
+  std::atomic<int32_t> executions_node2{0};
 
   // Execute on node 0
   for (int32_t i = 0; i < 10; ++i) {

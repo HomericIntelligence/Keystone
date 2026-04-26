@@ -297,7 +297,7 @@ TEST_F(Phase5ProbabilisticFailureTest, AgentsFailBasedOnInjectorRate) {
   }
 
   // Count failed agents
-  int failed_agents = 0;
+  int32_t failed_agents = 0;
   for (auto& agent : agents) {
     if (agent->isFailed()) {
       failed_agents++;
@@ -471,7 +471,7 @@ TEST_F(Phase5NetworkPartitionTest, MessagesDroppedAcrossPartition) {
   EXPECT_EQ(network.getPartitionDroppedMessages(), 0);
 
   // Send message across partition (should be dropped)
-  int executed = 0;
+  int32_t executed = 0;
   network.send(0, 2, [&executed]() { executed++; });
 
   EXPECT_EQ(network.getPartitionDroppedMessages(), 1);
@@ -565,10 +565,10 @@ TEST_F(Phase5NetworkPartitionTest, SplitBrainWorkDistribution) {
   SimulatedNetwork network(config);
 
   // Simulate 4 nodes with work
-  std::atomic<int> node0_work{0};
-  std::atomic<int> node1_work{0};
-  std::atomic<int> node2_work{0};
-  std::atomic<int> node3_work{0};
+  std::atomic<int32_t> node0_work{0};
+  std::atomic<int32_t> node1_work{0};
+  std::atomic<int32_t> node2_work{0};
+  std::atomic<int32_t> node3_work{0};
 
   // Create partition: [0, 1] vs [2, 3]
   network.createPartition({0, 1}, {2, 3});
@@ -715,7 +715,7 @@ TEST_F(Phase5MessageLossTest, MessageLossWithSimulatedNetwork) {
   SimulatedNetwork network(config);
 
   // Send 100 messages
-  std::atomic<int> delivered{0};
+  std::atomic<int32_t> delivered{0};
   for (int32_t i = 0; i < 100; ++i) {
     network.send(0, 1, [&delivered]() { delivered++; });
   }
@@ -821,8 +821,8 @@ TEST_F(Phase5MessageLossTest, MessageLossWithManualRetries) {
   RetryPolicy policy(retry_config);
 
   // Try sending 10 messages with retry logic
-  std::atomic<int> delivered{0};
-  std::atomic<int> total_attempts{0};
+  std::atomic<int32_t> delivered{0};
+  std::atomic<int32_t> total_attempts{0};
 
   for (int32_t i = 0; i < 10; ++i) {
     std::string msg_id = "msg" + std::to_string(i);
@@ -884,7 +884,7 @@ TEST_F(Phase5MessageLossTest, CombinedPartitionAndLoss) {
   network.createPartition({0, 1}, {2, 3});
 
   // Send messages in various scenarios
-  std::atomic<int> delivered{0};
+  std::atomic<int32_t> delivered{0};
 
   // Within partition: should work (with some loss)
   // Increased to 50 messages for statistical reliability

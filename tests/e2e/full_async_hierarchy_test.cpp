@@ -67,7 +67,7 @@ TEST(E2E_PhaseB, FullAsync4LayerHierarchy) {
 
   // Level 3: Task Agents (6 total: 3 per module)
   std::vector<std::shared_ptr<TaskAgent>> task_agents;
-  for (int i = 1; i <= 6; ++i) {
+  for (int32_t i = 1; i <= 6; ++i) {
     auto task = std::make_shared<TaskAgent>("task" + std::to_string(i));
     task->setMessageBus(&bus);
     task->setScheduler(&scheduler);
@@ -103,7 +103,7 @@ TEST(E2E_PhaseB, FullAsync4LayerHierarchy) {
   EXPECT_GE(mod2_trace.size(), 4);
 
   // Verify all task agents executed their commands
-  int total_commands = 0;
+  int32_t total_commands = 0;
   for (const auto& task : task_agents) {
     total_commands += task->getCommandHistory().size();
   }
@@ -158,7 +158,7 @@ TEST(E2E_PhaseB, Async4LayerConcurrentExecution) {
 
   // Create slow task agents (sleep 0.05s per task)
   std::vector<std::shared_ptr<TaskAgent>> task_agents;
-  for (int i = 1; i <= 6; ++i) {
+  for (int32_t i = 1; i <= 6; ++i) {
     auto task = std::make_shared<TaskAgent>("task" + std::to_string(i));
     task->setMessageBus(&bus);
     task->setScheduler(&scheduler);
@@ -189,7 +189,7 @@ TEST(E2E_PhaseB, Async4LayerConcurrentExecution) {
   EXPECT_LT(elapsed, 600);  // Should complete well under sequential time
 
   // Verify all tasks completed
-  int total_commands = 0;
+  int32_t total_commands = 0;
   for (const auto& task : task_agents) {
     total_commands += task->getCommandHistory().size();
   }

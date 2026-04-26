@@ -431,7 +431,7 @@ TEST_F(RegistryIntegrationTest, ThreadSafeRegistryOperations) {
   std::vector<std::thread> threads;
 
   // 5 threads: register 20 agents each (100 total)
-  std::atomic<int> registered{0};
+  std::atomic<int32_t> registered{0};
   for (int32_t t = 0; t < 5; ++t) {
     threads.emplace_back([this, t, &all_agents, &registered]() {
       for (int32_t i = 0; i < 20; ++i) {

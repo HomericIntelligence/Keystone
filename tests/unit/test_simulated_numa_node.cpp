@@ -38,7 +38,7 @@ TEST_F(SimulatedNUMANodeTest, SubmitWork) {
   SimulatedNUMANode node(0, 4);
   node.start();
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Submit multiple work items
   for (int32_t i = 0; i < 10; ++i) {
@@ -56,7 +56,7 @@ TEST_F(SimulatedNUMANodeTest, SubmitToSpecificWorker) {
   SimulatedNUMANode node(0, 4);
   node.start();
 
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
 
   // Submit to worker 0
   for (int32_t i = 0; i < 5; ++i) {
@@ -187,7 +187,7 @@ TEST_F(SimulatedNUMANodeTest, MultipleNodes) {
   node1.start();
   node2.start();
 
-  std::atomic<int> counter0{0}, counter1{0}, counter2{0};
+  std::atomic<int32_t> counter0{0}, counter1{0}, counter2{0};
 
   node0.submit([&]() { counter0++; });
   node1.submit([&]() { counter1++; });
@@ -209,7 +209,7 @@ TEST_F(SimulatedNUMANodeTest, SuccessfulWorkStealing) {
   node.start();
 
   // Submit work that will remain in queue
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 10; ++i) {
     node.submitToWorker(0, [&]() { counter++; });
   }
@@ -267,7 +267,7 @@ TEST_F(SimulatedNUMANodeTest, CrossNodeWorkStealing) {
   node1.start();
 
   // Submit work to node1
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 5; ++i) {
     node1.submitToWorker(0, [&]() { counter++; });
   }
@@ -299,7 +299,7 @@ TEST_F(SimulatedNUMANodeTest, MultipleSuccessfulSteals) {
   node.start();
 
   // Submit many work items that are slow to execute
-  std::atomic<int> counter{0};
+  std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 20; ++i) {
     node.submit([&]() {
       counter++;
