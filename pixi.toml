@@ -29,6 +29,9 @@ ruff = ">=0.1,<1"
 mypy = ">=1.0,<2"
 keepachangelog = ">=2.0,<3"
 
+[environments]
+dev = { features = ["dev"], solve-group = "default" }
+
 [tasks]
 configure = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF"
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
@@ -54,3 +57,12 @@ depends-on = ["build"]
 [tasks.test-all]
 cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
 depends-on = ["build"]
+
+[tasks.test-py]
+cmd = "pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+
+[tasks.lint-py]
+cmd = "ruff check ."
+
+[tasks.typecheck-py]
+cmd = "mypy conanfile.py"
