@@ -4,10 +4,10 @@ default:
   @just --list
 
 build:
-  make compile NATIVE=1
+  make compile
 
 test:
-  make test NATIVE=1
+  make test
 
 # Install Conan dependencies (tsan profile).
 # The tsan Conan profile sets user.keystone.sanitizer=tsan and
@@ -32,13 +32,13 @@ test-tsan: build-tsan
 
 
 lint:
-  make lint NATIVE=1
+  make lint
 
 format:
-  make format NATIVE=1
+  make format
 
 format-check:
-  make format.check NATIVE=1
+  make format.check
 
 # Run NATS integration tests (requires NATS server at NATS_URL)
 # Starts a NATS server via Docker Compose, runs the nats_integration_tests
@@ -49,8 +49,8 @@ integration-test:
     cmake --preset debug
     cmake --build --preset debug --target nats_integration_tests
     echo "--- Starting NATS test server ---"
-    docker-compose -f docker-compose.test.yml up -d nats
-    trap 'echo "--- Stopping NATS test server ---"; docker-compose -f docker-compose.test.yml down' EXIT
+    podman compose -f docker-compose.test.yml up -d nats
+    trap 'echo "--- Stopping NATS test server ---"; podman compose -f docker-compose.test.yml down' EXIT
     # Wait for NATS to be ready (up to 30 s)
     for i in $(seq 1 30); do
         if curl -sf http://localhost:8222/healthz > /dev/null 2>&1; then
@@ -102,13 +102,13 @@ clean:
   make clean
 
 start:
-  make docker.up
+  make container.up
 
 status:
-  docker-compose ps
+  podman compose ps
 
 benchmark:
-  make benchmark NATIVE=1
+  make benchmark
 
 # Validate CPack package generation without producing real packages (issue #370).
 # Builds the release preset, then runs cpack --debug -G TGZ so packaging errors

@@ -17,14 +17,9 @@
 # Number of processors for parallel builds
 NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-# Docker mode detection
-ifeq ($(NATIVE),1)
-    DOCKER_CHECK :=
-    DOCKER_PREFIX :=
-else
-    DOCKER_CHECK := docker-compose up -d dev >/dev/null 2>&1 || true;
-    DOCKER_PREFIX := docker-compose exec -T dev
-endif
+# Container runtime (Podman)
+CONTAINER_CHECK := podman compose up -d dev >/dev/null 2>&1 || true;
+CONTAINER_PREFIX := podman compose exec -T dev
 
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
@@ -79,9 +74,9 @@ $(BUILD_DIR)/$(BUILD_SUBDIR):
 # Generic build rule for any mode
 compile: $(BUILD_DIR)/$(BUILD_SUBDIR)
 	@echo "Building $* mode..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS)"
-	$(DOCKER_PREFIX) bash -c "cmake --build $(BUILD_DIR)/$(BUILD_SUBDIR) -j$(NPROC)"
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS)"
+	$(CONTAINER_PREFIX) bash -c "cmake --build $(BUILD_DIR)/$(BUILD_SUBDIR) -j$(NPROC)"
 
 # ============================================================================
 # Test Recipes
@@ -104,59 +99,59 @@ TEST_PROFILING := profiling_tests
 # Run all tests with ctest
 test: compile
 	@echo "Running all tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
 
 # Individual test suites (run specific executable)
 test.unit: compile
 	@echo "Running unit tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_UNIT)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_UNIT)
 
 test.basic: compile
 	@echo "Running basic delegation tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_BASIC)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_BASIC)
 
 test.module: compile
 	@echo "Running module coordination tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_MODULE)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_MODULE)
 
 test.component: compile
 	@echo "Running component coordination tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_COMPONENT)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_COMPONENT)
 
 test.async: compile
 	@echo "Running async delegation tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_ASYNC)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_ASYNC)
 
 test.distributed: compile
 	@echo "Running distributed hierarchy tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_DISTRIBUTED)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_DISTRIBUTED)
 
 test.concurrency: compile
 	@echo "Running concurrency unit tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_CONCURRENCY)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_CONCURRENCY)
 
 test.simulation: compile
 	@echo "Running simulation unit tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_SIMULATION)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_SIMULATION)
 
 test.grpc: compile.grpc
 	@echo "Running gRPC distributed tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_GRPC)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_GRPC)
 
 test.profiling: compile.profile
 	@echo "Running profiling tests..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_PROFILING)
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_PROFILING)
 
 # ============================================================================
 # Benchmark Recipes
@@ -167,24 +162,24 @@ test.profiling: compile.profile
 # Run all benchmarks
 benchmark: compile.release
 	@echo "Running benchmarks..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./scripts/run_benchmarks.sh
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./scripts/run_benchmarks.sh
 
 # Individual benchmark targets
 benchmark.message-pool: compile.release
 	@echo "Running message pool benchmarks..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/message_pool_benchmarks
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/message_pool_benchmarks
 
 benchmark.distributed: compile.release
 	@echo "Running distributed benchmarks..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/distributed_benchmarks
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/distributed_benchmarks
 
 benchmark.strings: compile.release
 	@echo "Running string allocation benchmarks..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/string_allocation_benchmarks
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/string_allocation_benchmarks
 
 # ============================================================================
 # Load Testing
@@ -195,14 +190,14 @@ benchmark.strings: compile.release
 # Run all load test scenarios
 load-test: compile.release
 	@echo "Running load tests (full duration)..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./tests/load/run_all_scenarios.sh
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./tests/load/run_all_scenarios.sh
 
 # Run load tests in quick mode (for CI)
 load-test.quick: compile.release
 	@echo "Running load tests (quick mode)..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./tests/load/run_all_scenarios.sh --quick
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./tests/load/run_all_scenarios.sh --quick
 
 # ============================================================================
 # Coverage
@@ -212,8 +207,8 @@ load-test.quick: compile.release
 
 coverage: compile.coverage
 	@echo "Generating coverage report..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./scripts/generate_coverage.sh
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./scripts/generate_coverage.sh
 
 # ============================================================================
 # CI/CD Helper Recipes
@@ -241,8 +236,8 @@ pre-commit: format.check lint.clang-tidy test.basic
 
 lint:
 	@echo "Running static analysis..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) ./scripts/run_static_analysis.sh $(LINT_FLAGS);
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) ./scripts/run_static_analysis.sh $(LINT_FLAGS);
 
 %.clang-tidy:
 	@echo "Running clang-tidy..."
@@ -250,7 +245,7 @@ lint:
 
 %.cppcheck:
 	@echo "Running cppcheck..."
-	$(DOCKER_CHECK)
+	$(CONTAINER_CHECK)
 	@$(MAKE) $* LINT_FLAGS=--cppcheck-only
 
 # ============================================================================
@@ -261,8 +256,8 @@ lint:
 
 format:
 	@echo "Formatting C++ code with clang-format..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c \
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) bash -c \
 			"find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' \) \
 			-not -path '*/build/*' -not -path '*/_deps/*' \
 			| xargs clang-format -i --Werror";
@@ -270,8 +265,8 @@ format:
 
 format.check:
 	@echo "Checking C++ formatting..."
-	$(DOCKER_CHECK)
-	$(DOCKER_PREFIX) bash -c \
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) bash -c \
 			"find src include tests benchmarks -type f \( -name '*.cpp' -o -name '*.hpp' \) \
 			-not -path '*/build/*' -not -path '*/_deps/*' \
 			| xargs clang-format --dry-run --Werror"
@@ -289,43 +284,39 @@ clean:
 	rm -rf $(BUILD_DIR)/$(BUILD_SUBDIR)
 
 # ============================================================================
-# Docker Management
+# Container Management (Podman)
 # ============================================================================
 
-.PHONY: docker.build docker.up docker.clean docker.down docker.shell
+.PHONY: container.build container.up container.clean container.down container.shell
 
-docker.build:
-	@echo "Building Docker image: dev (commit $(GIT_COMMIT))..."
-	docker-compose build dev
+container.build:
+	@echo "Building container image: dev..."
+	podman compose build dev
 
-docker.build.%:
-	@echo "Building Docker image: $* (commit $(GIT_COMMIT))..."
-	docker-compose build $*
+container.build.%:
+	@echo "Building container image: $*..."
+	podman compose build $*
 
-docker.up:
-	@echo "Starting dev container for commit $(GIT_COMMIT)..."
-	docker-compose up -d dev
+container.up:
+	@echo "Starting dev container..."
+	podman compose up -d dev
 	sleep 2
 
-docker.clean:
-	@echo "Cleaning Docker resources..."
-	docker-compose down -v
-	docker rmi -f projectkeystone-dev:$(GIT_COMMIT) projectkeystone:$(GIT_COMMIT) || true
+container.clean:
+	@echo "Cleaning container resources..."
+	podman compose down -v
+	podman rmi -f projectkeystone-dev:latest projectkeystone:latest || true
 
-docker.down:
+container.down:
 	@echo "Stopping containers..."
-	docker-compose down
+	podman compose down
 
-docker.shell: docker-up
-	$(DOCKER_PREFIX) /bin/bash
+container.shell: container.up
+	$(CONTAINER_PREFIX) /bin/bash
 
 # ============================================================================
-# Native Variants (run on host system instead of Docker)
+# Build Variants
 # ============================================================================
-
-# Pattern rule for native variants - matches any target with .native suffix
-%.native:
-	@$(MAKE) $* NATIVE=1
 
 # Sanitizer pattern rules - append sanitizer flags to existing targets
 %.asan:
@@ -373,7 +364,7 @@ help:
 	@echo "ProjectKeystone Makefile"
 	@echo "Unified build system with debug, release, sanitizer modes, and testing"
 	@echo ""
-	@echo "Usage: make <target>[.modifier][.native]"
+	@echo "Usage: make <target>[.modifier]"
 	@echo ""
 	@echo "Build Commands:"
 	@echo "  make                    Build debug mode (build/x86.debug)"
@@ -431,18 +422,11 @@ help:
 	@echo "  make ci.quick           Quick CI for PRs"
 	@echo "  make pre-commit         Pre-commit checks"
 	@echo ""
-	@echo "Docker:"
-	@echo "  make docker.build       Build Docker image"
-	@echo "  make docker.up          Start dev container"
-	@echo "  make docker.down        Stop containers"
-	@echo "  make docker.shell       Enter dev container"
-	@echo ""
-	@echo "Native Mode (run on host instead of Docker):"
-	@echo "  Append .native to any target:"
-	@echo "    make compile.debug.asan.native   Build with ASan on host"
-	@echo "    make test.debug.asan.native      Run ASan tests on host"
-	@echo "    make benchmark.native            Run benchmarks on host"
-	@echo "    make lint.native                 Run linters on host"
+	@echo "Container (Podman):"
+	@echo "  make container.build    Build container image"
+	@echo "  make container.up       Start dev container"
+	@echo "  make container.down     Stop containers"
+	@echo "  make container.shell    Enter dev container"
 	@echo ""
 	@echo "Clean:"
 	@echo "  make clean              Clean current build directory"

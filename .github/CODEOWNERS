@@ -14,7 +14,8 @@
 # Repository configuration
 CMakeLists.txt @mvillmow
 docker-compose.yml @mvillmow
-Dockerfile @mvillmow
+docker-compose.test.yml @mvillmow
+Containerfile @mvillmow
 .dockerignore @mvillmow
 
 # CI/CD workflows - changes affect all development
@@ -150,5 +151,5 @@ third_party/ @mvillmow
 
 # DevOps Team (CI/CD and infrastructure)
 # .github/workflows/ @devops-team
-# Dockerfile @devops-team
+# Containerfile @devops-team
 # docker-compose.yml @devops-team
