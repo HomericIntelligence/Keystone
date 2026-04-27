@@ -13,7 +13,7 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Added
 
-- Opt-in TLS handshake integration test (`ENABLE_TLS_INTEGRATION_TESTS`) with self-signed CA + server cert; gracefully skips when `nats-server` or `openssl` are absent (#275)
+- Integration test `SchedulerSigtermTest` verifying SIGTERM mid-flight causes graceful drain: all submitted tasks complete before worker threads exit (#303)
 - Migrate dependency management to Conan 2 with CMakePresets ([220326c](../../commit/220326c))
 - NATS subject schema documentation and payload envelope contract
 - Pre-commit CI job enforcing all hook checks
@@ -33,7 +33,7 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Changed
 
-- Migrate container runtime from Docker to Podman; `Dockerfile` renamed to `Containerfile`, `NATIVE=1` escape hatch removed — all builds, tests, linting, and formatting run inside Podman containers via `podman compose`
+- Remove duplicate clang-format step from lint job; pre-commit hook (mirrors-clang-format v18.1.0) is the single source of truth for C++ formatting checks
 - License replaced from MIT placeholder to BSD 3-Clause
 - Unsized integers converted to sized types (`int32_t`, `uint32_t`, `size_t`)
 - `CONTRIBUTING.md` rewritten to match current C++20/Conan/just workflow
