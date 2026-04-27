@@ -1,7 +1,7 @@
 name: Extras (non-blocking)
 
-# Benchmarks and coverage — informational only, not required for merge.
-# These jobs produce build artifacts and Codecov reports but do not block PRs.
+# Benchmarks and NATS integration — informational only, not required for merge.
+# Coverage has moved to _required.yml and is now a blocking check.
 
 on:
   push:
@@ -75,81 +75,6 @@ jobs:
           path: build/reports/benchmarks/
           retention-days: 30
           if-no-files-found: ignore
-
-  coverage:
-    name: coverage
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Install build dependencies
-        uses: ./.github/actions/install-build-deps
-        with:
-          include-coverage: "true"
-
-      - name: Cache Conan packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
-          restore-keys: |
-            conan-${{ runner.os }}-
-
-      - name: Cache FetchContent downloads
-        uses: actions/cache@v5
-        with:
-          path: build/x86.debug.coverage/_deps
-          key: fetchcontent-coverage-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-coverage-${{ runner.os }}-
-
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
-
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps.native
-
-      - name: Build with coverage
-        run: make compile.debug.coverage.native
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-      - name: Run tests for coverage
-        run: make test.debug.coverage.native
-
-      - name: Generate coverage report
-        run: |
-          chmod +x scripts/generate_coverage.sh
-          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report
-          path: build/coverage/html/
-          retention-days: 30
-          if-no-files-found: ignore
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: build/coverage/coverage_filtered.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   nats-integration:
     name: NATS integration tests

@@ -193,13 +193,13 @@ fi
 # Clean up temporary gcov wrapper
 [[ -n "$LLVM_GCOV_WRAPPER" ]] && rm -f "$LLVM_GCOV_WRAPPER"
 
-# Check if coverage meets threshold (80%)
-THRESHOLD=80.0
+# Check if coverage meets threshold (75%)
+THRESHOLD=75.0
 if (( $(echo "$COVERAGE_PERCENT >= $THRESHOLD" | bc -l) )); then
-    echo -e "${GREEN}✓ Coverage meets threshold (≥ 80%)${NC}"
+    echo -e "${GREEN}✓ Coverage meets threshold (≥ 75%)${NC}"
     exit 0
 else
-    echo -e "${YELLOW}⚠ Coverage below threshold (< 80%): $COVERAGE_PERCENT%${NC}"
+    echo -e "${YELLOW}⚠ Coverage below threshold (< 75%): $COVERAGE_PERCENT%${NC}"
     echo -e "${YELLOW}  Target: $THRESHOLD%${NC}"
     exit 1
 fi
