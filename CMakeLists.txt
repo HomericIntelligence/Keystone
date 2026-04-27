@@ -267,7 +267,10 @@ add_library(
 
 target_include_directories(
   keystone_concurrency PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                              $<INSTALL_INTERFACE:include/keystone>)
+                              $<INSTALL_INTERFACE:include/keystone>
+                              $<TARGET_PROPERTY:spdlog::spdlog,INTERFACE_INCLUDE_DIRECTORIES>
+                              $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>
+                              $<TARGET_PROPERTY:concurrentqueue::concurrentqueue,INTERFACE_INCLUDE_DIRECTORIES>)
 
 # Issue #323: Resolve circular dependency.
 # Link concurrency library to all its external dependencies explicitly.
@@ -282,7 +285,6 @@ target_include_directories(keystone_concurrency PUBLIC
   ${spdlog_INCLUDE_DIRS_RELEASE}
   ${fmt_INCLUDE_DIRS_RELEASE}
   ${concurrentqueue_INCLUDE_DIRS_RELEASE})
-
 # keystone_core needs concurrency components for Logger usage
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
@@ -555,7 +557,9 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 gtest_discover_tests(simulation_unit_tests)
 
 # Transport library — NATS connection with TLS support (issue #122)
-add_library(keystone_transport src/transport/nats_connection.cpp)
+# and NATSListener pull-based fetch loop (issues #178, #205, #307)
+add_library(keystone_transport src/transport/nats_connection.cpp
+                               src/network/nats_listener.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
