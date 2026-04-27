@@ -1,9 +1,10 @@
 /**
  * @file work_stealing_queue.cpp
- * @brief WorkStealingQueue — mutex-protected deque with LIFO pop / FIFO steal.
+ * @brief Implementation of WorkStealingQueue using moodycamel::ConcurrentQueue.
  *
- * Implements Issues #346 and #349: pop() is LIFO (owner removes from back),
- * steal() is FIFO (thief removes from front). push() is multi-thread safe.
+ * Uses the architecture-mandated concurrentqueue (MPMC lock-free) as the
+ * backing store. pop() and steal() both dequeue from the front; naming
+ * reflects work-stealing intent rather than distinct algorithms.
  */
 
 #include "concurrency/work_stealing_queue.hpp"
@@ -13,46 +14,42 @@
 namespace keystone {
 namespace concurrency {
 
+WorkStealingQueue::WorkStealingQueue(size_t initial_capacity) : queue_(initial_capacity) {}
+
 void WorkStealingQueue::push(WorkItem item) {
+  // FIX #284: Capture correlation ID on submission thread
   if (item.correlation_id.empty()) {
     item.correlation_id = LogContext::getCorrelationId();
   }
-  std::lock_guard<std::mutex> lock(mutex_);
-  deque_.push_back(std::move(item));
+  queue_.enqueue(std::move(item));
 }
 
 std::optional<WorkItem> WorkStealingQueue::pop() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (deque_.empty()) {
-    return std::nullopt;
+  WorkItem item = WorkItem::makeFunction(nullptr);
+  if (queue_.try_dequeue(item)) {
+    return item;
   }
-  WorkItem item = std::move(deque_.back());
-  deque_.pop_back();
-  return item;
+  return std::nullopt;
 }
 
 std::optional<WorkItem> WorkStealingQueue::steal() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (deque_.empty()) {
-    return std::nullopt;
+  WorkItem item = WorkItem::makeFunction(nullptr);
+  if (queue_.try_dequeue(item)) {
+    // FIX #284: Restore correlation ID on worker thread before execution
+    if (!item.correlation_id.empty()) {
+      LogContext::setCorrelationId(item.correlation_id);
+    }
+    return item;
   }
-  WorkItem item = std::move(deque_.front());
-  deque_.pop_front();
-  // FIX #284: Restore correlation ID on worker thread before execution
-  if (!item.correlation_id.empty()) {
-    LogContext::setCorrelationId(item.correlation_id);
-  }
-  return item;
+  return std::nullopt;
 }
 
 size_t WorkStealingQueue::size_approx() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return deque_.size();
+  return queue_.size_approx();
 }
 
 bool WorkStealingQueue::empty() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return deque_.empty();
+  return queue_.size_approx() == 0;
 }
 
 }  // namespace concurrency

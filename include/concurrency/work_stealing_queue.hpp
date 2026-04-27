@@ -2,11 +2,13 @@
 
 #include <cassert>
 #include <coroutine>
-#include <deque>
 #include <functional>
-#include <mutex>
+#include <memory>
 #include <optional>
 #include <string>
+#include <variant>
+
+#include <concurrentqueue.h>
 
 namespace keystone {
 namespace concurrency {
@@ -55,42 +57,35 @@ struct WorkItem {
            (type == Type::Coroutine && handle != nullptr);
   }
 
-  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr), correlation_id("") {}
+  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr) {}
 };
 
 /**
- * @brief WorkStealingQueue — mutex-protected deque with LIFO pop / FIFO steal.
+ * @brief WorkStealingQueue - Lock-free queue for work-stealing scheduler.
  *
- * Implements work-stealing deque semantics (Issues #346, #349):
- * - push() appends to the back; callable from any thread.
- * - pop()  removes from the back (LIFO) — for the owner worker thread.
- * - steal() removes from the front (FIFO) — for thief threads.
+ * Uses moodycamel::ConcurrentQueue for lock-free MPMC operations, which
+ * is the mandated backing store per the Keystone architecture (CLAUDE.md).
  *
- * A single mutex protects the deque, making all three operations correct
- * under arbitrary concurrent access. This is simpler and more correct than
- * a lock-free Chase-Lev deque for the multi-producer case required by the
- * scheduler's submit() path.
+ * Thread Safety:
+ * - push() callable from any thread (MPMC)
+ * - pop() and steal() callable from any thread (MPMC)
+ * - All operations are lock-free and thread-safe
+ *
+ * Note: pop() and steal() have equivalent dequeue semantics with
+ * ConcurrentQueue (both FIFO). The distinction in naming reflects the
+ * work-stealing design intent: pop() is the owner's hot path, steal()
+ * is the thief's path.
  */
 class WorkStealingQueue {
  public:
-  WorkStealingQueue() = default;
+  explicit WorkStealingQueue(size_t initial_capacity = 1024);
   ~WorkStealingQueue() = default;
 
   WorkStealingQueue(const WorkStealingQueue&) = delete;
   WorkStealingQueue& operator=(const WorkStealingQueue&) = delete;
 
-  WorkStealingQueue(WorkStealingQueue&& other) noexcept {
-    std::lock_guard<std::mutex> lock(other.mutex_);
-    deque_ = std::move(other.deque_);
-  }
-
-  WorkStealingQueue& operator=(WorkStealingQueue&& other) noexcept {
-    if (this != &other) {
-      std::scoped_lock lock(mutex_, other.mutex_);
-      deque_ = std::move(other.deque_);
-    }
-    return *this;
-  }
+  WorkStealingQueue(WorkStealingQueue&&) = default;
+  WorkStealingQueue& operator=(WorkStealingQueue&&) = default;
 
   void push(WorkItem item);
   std::optional<WorkItem> pop();
@@ -99,8 +94,7 @@ class WorkStealingQueue {
   bool empty() const;
 
  private:
-  mutable std::mutex mutex_;
-  std::deque<WorkItem> deque_;
+  moodycamel::ConcurrentQueue<WorkItem> queue_;
 };
 
 }  // namespace concurrency
