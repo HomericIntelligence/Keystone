@@ -33,15 +33,6 @@ using namespace keystone::concurrency;
 
 namespace {
 
-// ---------------------------------------------------------------------------
-// Global state shared between the signal handler and the test body.
-// Using a raw pointer is intentional: signal handlers cannot safely capture
-// lambdas or use smart pointers.
-// ---------------------------------------------------------------------------
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-WorkStealingScheduler* g_scheduler_under_test = nullptr;
-
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::atomic<bool> g_sigterm_received{false};
 
@@ -70,7 +61,6 @@ class SchedulerSigtermTest : public ::testing::Test {
  protected:
   void SetUp() override {
     g_sigterm_received.store(false, std::memory_order_relaxed);
-    g_scheduler_under_test = nullptr;
 
     // Capture the previous SIGTERM handler so we can restore it in TearDown.
     prev_handler_ = std::signal(SIGTERM, sigtermHandler);
@@ -80,7 +70,6 @@ class SchedulerSigtermTest : public ::testing::Test {
   void TearDown() override {
     // Restore the previous signal handler unconditionally.
     std::signal(SIGTERM, prev_handler_);
-    g_scheduler_under_test = nullptr;
     g_sigterm_received.store(false, std::memory_order_relaxed);
   }
 
@@ -122,7 +111,6 @@ TEST_F(SchedulerSigtermTest, InflightTasksCompleteOnSigterm) {
   constexpr auto task_duration = std::chrono::milliseconds(30);
 
   WorkStealingScheduler scheduler(num_workers);
-  g_scheduler_under_test = &scheduler;
   scheduler.start();
 
   std::atomic<int32_t> counter{0};
@@ -175,7 +163,6 @@ TEST_F(SchedulerSigtermTest, PerWorkerDrainOnSigterm) {
   constexpr auto task_duration = std::chrono::milliseconds(20);
 
   WorkStealingScheduler scheduler(num_workers);
-  g_scheduler_under_test = &scheduler;
   scheduler.start();
 
   std::atomic<int32_t> counter{0};
@@ -220,7 +207,6 @@ TEST_F(SchedulerSigtermTest, LargeWorkloadDrainsCompletely) {
   constexpr int32_t num_tasks = 500;
 
   WorkStealingScheduler scheduler(num_workers);
-  g_scheduler_under_test = &scheduler;
   scheduler.start();
 
   std::atomic<int32_t> counter{0};
@@ -259,7 +245,6 @@ TEST_F(SchedulerSigtermTest, SigtermWithEmptyQueueShutdownsCleanly) {
   constexpr size_t num_workers = 2;
 
   WorkStealingScheduler scheduler(num_workers);
-  g_scheduler_under_test = &scheduler;
   scheduler.start();
 
   EXPECT_TRUE(scheduler.isRunning());
