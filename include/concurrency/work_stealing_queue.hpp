@@ -2,12 +2,11 @@
 
 #include <cassert>
 #include <coroutine>
+#include <deque>
 #include <functional>
-#include <memory>
+#include <mutex>
 #include <optional>
-#include <variant>
-
-#include <concurrentqueue.h>
+#include <string>
 
 namespace keystone {
 namespace concurrency {
@@ -24,6 +23,7 @@ struct WorkItem {
   Type type;
   std::function<void()> func;
   std::coroutine_handle<> handle;
+  std::string correlation_id;  // FIX #284: Capture and propagate correlation ID
 
   static WorkItem makeFunction(std::function<void()> f) {
     WorkItem item;
@@ -55,94 +55,52 @@ struct WorkItem {
            (type == Type::Coroutine && handle != nullptr);
   }
 
- private:
-  // FIX P3-02: Private default constructor prevents accidental creation of invalid WorkItems
-  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr) {}
+  WorkItem() : type(Type::Function), func(nullptr), handle(nullptr), correlation_id("") {}
 };
 
 /**
- * @brief WorkStealingQueue - Lock-free queue for work-stealing scheduler
+ * @brief WorkStealingQueue — mutex-protected deque with LIFO pop / FIFO steal.
  *
- * This queue is designed for work-stealing thread pools where:
- * - The owner thread pushes and pops work items from one end (LIFO for
- * locality)
- * - Other threads can steal work items from the other end (FIFO)
+ * Implements work-stealing deque semantics (Issues #346, #349):
+ * - push() appends to the back; callable from any thread.
+ * - pop()  removes from the back (LIFO) — for the owner worker thread.
+ * - steal() removes from the front (FIFO) — for thief threads.
  *
- * Uses moodycamel::ConcurrentQueue for lock-free MPMC operations.
- *
- * Thread Safety:
- * - push() and pop() are called by the owner thread
- * - steal() is called by other threads
- * - All operations are lock-free and thread-safe
- *
- * Usage:
- *   WorkStealingQueue queue;
- *
- *   // Owner thread
- *   queue.push(WorkItem::makeFunction([]() { }));
- *   auto item = queue.pop();  // LIFO
- *
- *   // Thief thread
- *   auto stolen = queue.steal();  // FIFO
+ * A single mutex protects the deque, making all three operations correct
+ * under arbitrary concurrent access. This is simpler and more correct than
+ * a lock-free Chase-Lev deque for the multi-producer case required by the
+ * scheduler's submit() path.
  */
 class WorkStealingQueue {
  public:
-  /**
-   * @brief Construct a WorkStealingQueue
-   */
-  WorkStealingQueue();
-
-  /**
-   * @brief Destructor
-   */
+  WorkStealingQueue() = default;
   ~WorkStealingQueue() = default;
 
-  // Non-copyable, movable
   WorkStealingQueue(const WorkStealingQueue&) = delete;
   WorkStealingQueue& operator=(const WorkStealingQueue&) = delete;
 
-  WorkStealingQueue(WorkStealingQueue&&) noexcept = default;
-  WorkStealingQueue& operator=(WorkStealingQueue&&) noexcept = default;
+  WorkStealingQueue(WorkStealingQueue&& other) noexcept {
+    std::lock_guard<std::mutex> lock(other.mutex_);
+    deque_ = std::move(other.deque_);
+  }
 
-  /**
-   * @brief Push a work item onto the queue (owner thread)
-   *
-   * @param item Work item to push
-   */
+  WorkStealingQueue& operator=(WorkStealingQueue&& other) noexcept {
+    if (this != &other) {
+      std::scoped_lock lock(mutex_, other.mutex_);
+      deque_ = std::move(other.deque_);
+    }
+    return *this;
+  }
+
   void push(WorkItem item);
-
-  /**
-   * @brief Pop a work item from the queue (owner thread, LIFO)
-   *
-   * @return Work item if available, std::nullopt otherwise
-   */
   std::optional<WorkItem> pop();
-
-  /**
-   * @brief Steal a work item from the queue (thief thread, FIFO)
-   *
-   * @return Work item if available, std::nullopt otherwise
-   */
   std::optional<WorkItem> steal();
-
-  /**
-   * @brief Get approximate size of the queue
-   *
-   * Note: This is an approximate count due to concurrent access
-   *
-   * @return Approximate number of items in queue
-   */
   size_t size_approx() const;
-
-  /**
-   * @brief Check if queue is (approximately) empty
-   *
-   * @return true if queue appears empty
-   */
   bool empty() const;
 
  private:
-  moodycamel::ConcurrentQueue<WorkItem> queue_;
+  mutable std::mutex mutex_;
+  std::deque<WorkItem> deque_;
 };
 
 }  // namespace concurrency

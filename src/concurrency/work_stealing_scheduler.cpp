@@ -83,7 +83,11 @@ void WorkStealingScheduler::submitTo(size_t worker_index, std::function<void()> 
     return;
   }
 
-  worker_queues_[worker_index]->push(WorkItem::makeFunction(std::move(func)));
+  // FIX #284: Capture correlation ID from submitting thread
+  auto work_item = WorkItem::makeFunction(std::move(func));
+  work_item.correlation_id = LogContext::getCorrelationId();
+
+  worker_queues_[worker_index]->push(std::move(work_item));
 
   // Stream C1: Wake up workers in SLEEP phase immediately
   shutdown_cv_.notify_all();
@@ -95,7 +99,11 @@ void WorkStealingScheduler::submitTo(size_t worker_index, std::coroutine_handle<
     return;
   }
 
-  worker_queues_[worker_index]->push(WorkItem::makeCoroutine(handle));
+  // FIX #284: Capture correlation ID from submitting thread
+  auto work_item = WorkItem::makeCoroutine(handle);
+  work_item.correlation_id = LogContext::getCorrelationId();
+
+  worker_queues_[worker_index]->push(std::move(work_item));
 
   // Stream C1: Wake up workers in SLEEP phase immediately
   shutdown_cv_.notify_all();
@@ -271,9 +279,22 @@ void WorkStealingScheduler::workerLoop(size_t worker_index) {
     auto work = tryStealWithBackoff(worker_index);
 
     if (work.has_value() && work->valid()) {
+      // FIX #284: Restore captured correlation ID before execution
+      std::string previous_id = LogContext::getCorrelationId();
+      if (!work->correlation_id.empty()) {
+        LogContext::setCorrelationId(work->correlation_id);
+      }
+
       // Execute the work item
       Logger::trace("Worker {} executing work", worker_index);
       work->execute();
+
+      // Restore previous correlation ID after execution
+      if (!previous_id.empty()) {
+        LogContext::setCorrelationId(previous_id);
+      } else {
+        LogContext::clearCorrelationId();
+      }
       // Note: tryStealWithBackoff() resets internally when work is found
     }
     // No else needed - tryStealWithBackoff() handles backoff internally
@@ -284,7 +305,20 @@ void WorkStealingScheduler::workerLoop(size_t worker_index) {
   auto& own_queue = *worker_queues_[worker_index];
   while (auto work = own_queue.pop()) {
     if (work->valid()) {
+      // FIX #284: Restore captured correlation ID before execution (drain phase)
+      std::string previous_id = LogContext::getCorrelationId();
+      if (!work->correlation_id.empty()) {
+        LogContext::setCorrelationId(work->correlation_id);
+      }
+
       work->execute();
+
+      // Restore previous correlation ID after execution
+      if (!previous_id.empty()) {
+        LogContext::setCorrelationId(previous_id);
+      } else {
+        LogContext::clearCorrelationId();
+      }
     }
   }
 
