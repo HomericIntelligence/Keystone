@@ -393,27 +393,22 @@ pre-commit run clang-format --all-files
 ### Running Tests Locally
 
 ```bash
-# Build and run tests in Docker
-docker-compose up test
+# Build and run tests via Podman
+podman compose up test
 
 # Or in development container
-docker-compose up -d dev
-docker-compose exec dev bash
+podman compose up -d dev
+podman compose exec dev bash
 cd build && ctest --output-on-failure
 ```
 
 ### Running Builds Locally
 
 ```bash
-# Build specific Docker target
-docker build --target builder -t projectkeystone:builder .
-docker build --target runtime -t projectkeystone:runtime .
-docker build --target development -t projectkeystone:dev .
-
-# Native build
-mkdir -p build && cd build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug ..
-ninja
+# Build specific Containerfile target
+podman build --target builder -t projectkeystone:builder .
+podman build --target runtime -t projectkeystone:runtime .
+podman build --target development -t projectkeystone:dev .
 ```
 
 ### Running Security Scans Locally

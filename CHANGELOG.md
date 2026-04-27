@@ -32,7 +32,7 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Changed
 
-- Remove duplicate clang-format step from lint job; pre-commit hook (mirrors-clang-format v18.1.0) is the single source of truth for C++ formatting checks
+- Migrate container runtime from Docker to Podman; `Dockerfile` renamed to `Containerfile`, `NATIVE=1` escape hatch removed — all builds, tests, linting, and formatting run inside Podman containers via `podman compose`
 - License replaced from MIT placeholder to BSD 3-Clause
 - Unsized integers converted to sized types (`int32_t`, `uint32_t`, `size_t`)
 - `CONTRIBUTING.md` rewritten to match current C++20/Conan/just workflow
