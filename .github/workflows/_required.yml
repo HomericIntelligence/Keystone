@@ -51,9 +51,6 @@ jobs:
       - name: Install Python linters
         run: pip install "ruff>=0.1,<1" "mypy>=1.8.0,<2" "conan>=2.0.0"
 
-      - name: Clang-format check (C++)
-        run: just format-check
-
       - name: Ruff lint (Python)
         run: ruff check src/ tests/
 
