@@ -106,10 +106,8 @@ file(MAKE_DIRECTORY "${COVERAGE_OUTPUT_DIR}")
 file(MAKE_DIRECTORY "${BENCHMARK_OUTPUT_DIR}")
 file(MAKE_DIRECTORY "${ANALYSIS_OUTPUT_DIR}")
 
-# ============================================================================
-# Dependencies — Conan-provided via find_package(), cista via FetchContent
-# ============================================================================
-
+# =====================================================================# Dependencies — Conan-provided via find_package(), cista via FetchContent
+# =====================================================================
 include(FetchContent)
 
 # Google Test (Conan: gtest/1.14.0)
@@ -619,6 +617,14 @@ else()
     "TLS integration tests disabled. Use -DENABLE_TLS_INTEGRATION_TESTS=ON to enable (requires nats-server + openssl)."
   )
 endif()
+# Integration Tests: SIGTERM mid-flight graceful shutdown (Issue #303)
+add_executable(scheduler_sigterm_tests
+               tests/integration/test_scheduler_sigterm.cpp)
+
+target_link_libraries(scheduler_sigterm_tests keystone_concurrency keystone_core
+                      GTest::gtest_main)
+
+gtest_discover_tests(scheduler_sigterm_tests)
 
 # Add test target
 add_custom_target(
@@ -739,10 +745,8 @@ if(ENABLE_FUZZING)
   message(STATUS "Run with: ./<fuzz_target> -max_len=4096 -runs=1000000")
 endif()
 
-# ============================================================================
-# Installation Rules
-# ============================================================================
-
+# =====================================================================# Installation Rules
+# =====================================================================
 include(GNUInstallDirs)
 
 # Install runtime libraries (keystone package)
@@ -761,10 +765,8 @@ if(ENABLE_GRPC)
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
 endif()
 
-# ============================================================================
-# Version Information (needed early for CMake package config)
-# ============================================================================
-
+# =====================================================================# Version Information (needed early for CMake package config)
+# =====================================================================
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
@@ -883,10 +885,8 @@ if(ENABLE_GRPC)
     PATTERN "*.proto")
 endif()
 
-# ============================================================================
-# CPack Configuration
-# ============================================================================
-
+# =====================================================================# CPack Configuration
+# =====================================================================
 set(CPACK_PACKAGE_NAME "ProjectKeystone")
 set(CPACK_PACKAGE_VENDOR "ProjectKeystone Development Team")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
