@@ -13,6 +13,7 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Added
 
+- Opt-in TLS handshake integration test (`ENABLE_TLS_INTEGRATION_TESTS`) with self-signed CA + server cert; gracefully skips when `nats-server` or `openssl` are absent (#275)
 - Migrate dependency management to Conan 2 with CMakePresets ([220326c](../../commit/220326c))
 - NATS subject schema documentation and payload envelope contract
 - Pre-commit CI job enforcing all hook checks

@@ -597,6 +597,38 @@ target_link_libraries(nats_integration_tests keystone_agents keystone_core
 
 gtest_discover_tests(nats_integration_tests)
 
+# Integration Tests: SIGTERM mid-flight graceful shutdown (Issue #303)
+add_executable(scheduler_sigterm_tests
+               tests/integration/test_scheduler_sigterm.cpp)
+
+target_link_libraries(scheduler_sigterm_tests keystone_concurrency keystone_core
+                      GTest::gtest_main)
+
+gtest_discover_tests(scheduler_sigterm_tests)
+
+# TLS Handshake Integration Tests (Issue #275)
+# Opt-in: requires nats-server and openssl on PATH at test runtime.
+# Disabled by default so CI environments without nats-server are not broken.
+option(ENABLE_TLS_INTEGRATION_TESTS
+       "Enable TLS handshake integration tests (requires nats-server and openssl)" OFF)
+
+if(ENABLE_TLS_INTEGRATION_TESTS)
+  add_executable(tls_integration_tests
+                 tests/integration/test_tls_integration.cpp)
+
+  target_link_libraries(tls_integration_tests keystone_transport
+                        GTest::gtest_main)
+
+  gtest_discover_tests(tls_integration_tests)
+
+  message(STATUS "TLS integration tests enabled (ENABLE_TLS_INTEGRATION_TESTS=ON)")
+else()
+  message(
+    STATUS
+    "TLS integration tests disabled. Use -DENABLE_TLS_INTEGRATION_TESTS=ON to enable (requires nats-server + openssl)."
+  )
+endif()
+
 # Add test target
 add_custom_target(
   run_tests
