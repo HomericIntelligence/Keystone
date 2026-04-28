@@ -144,6 +144,9 @@ jobs:
           restore-keys: |
             fetchcontent-clang-tidy-${{ runner.os }}-
 
+      - name: Install Conan dependencies
+        run: make deps.native
+
       - name: Configure CMake with clang-tidy
         run: |
           CONAN_TOOLCHAIN=""
