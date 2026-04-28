@@ -1,0 +1,3 @@
+# Claude agent prompt files use XML-like YAML front-matter and structured
+# prose conventions that intentionally deviate from standard markdown style.
+.claude/
