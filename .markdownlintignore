@@ -1,3 +1,7 @@
 # Claude agent prompt files use XML-like YAML front-matter and structured
 # prose conventions that intentionally deviate from standard markdown style.
 .claude/
+
+# CHANGELOG.md uses repeated headings ("Added", "Changed", "Fixed") across
+# version sections and long URLs that intentionally exceed 120 chars.
+CHANGELOG.md

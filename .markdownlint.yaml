@@ -29,3 +29,6 @@ MD041: false  # Allow flexibility in documentation structure
 # MD046: Code block style
 MD046:
   style: fenced  # Prefer fenced code blocks over indented
+
+# MD060: Table column style — separator rows (|---|) don't need spaces
+MD060: false

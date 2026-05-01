@@ -194,6 +194,7 @@ jobs:
           globs: |
             **/*.md
             !.claude/**
+            !CHANGELOG.md
           config: ".markdownlint.yaml"
 
   pixi-check:
