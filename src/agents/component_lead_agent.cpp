@@ -260,47 +260,12 @@ void ComponentLeadAgent::processYamlComponent(const std::string& yaml_spec) {
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for module task {}: {}",
-                                     task_id,
+          concurrency::Logger::error("Failed to get result for module task {}: {}", task_id,
                                      e.what());
         }
       }).detach();
     } catch (const std::exception& e) {
       concurrency::Logger::error("Failed to submit module: {}", e.what());
-    }
-  }
-}
-
-void ComponentLeadAgent::processTaskResult(const std::string& subtask_id,
-                                           const hmas::TaskResult& result) {
-  // Feed result into the result aggregator (if present) so it tracks completion
-  if (result_aggregator_) {
-    result_aggregator_->addResult(subtask_id, result);
-  }
-
-  if (result.success()) {
-    // Record success — check if all modules are done
-    bool all_done = coordination_.recordResult(result.result_yaml());
-    if (all_done && !coordination_.hasFailures()) {
-      coordination_.transitionTo(State::AGGREGATING, stateToString(State::AGGREGATING));
-    } else if (all_done) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-    }
-  } else {
-    // gRPC path: record failure so hasFailures() is set correctly (Issue #186)
-    std::string error = result.error_message().empty() ? "subordinate module failed"
-                                                       : result.error_message();
-    bool all_done = coordination_.recordFailure(error);
-    if (all_done) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-
-      // Propagate failure upward to parent (ChiefArchitectAgent) — Issue #185
-      const std::string& parent_id = coordination_.getRequesterId();
-      if (!parent_id.empty()) {
-        auto failed_msg = core::KeystoneMessage::create(
-            agent_id_, parent_id, core::ActionType::TASK_FAILED, "", error);
-        sendMessage(failed_msg);
-      }
     }
   }
 }

@@ -38,11 +38,8 @@ void ModuleLeadAgent::setAvailableTaskAgents(const std::vector<std::string>& tas
 // === Hook Method Implementations (override LeadAgentBase pure virtuals) ===
 
 bool ModuleLeadAgent::isSubordinateResult(const core::KeystoneMessage& msg) {
-  // Check if this is a task result (from TaskAgent).
-  // Explicitly exclude TASK_FAILED messages so they are handled by
-  // processSubordinateFailure() and not silently treated as successes
-  // (Issue #184).
-  return msg.command == "response" && msg.action_type != core::ActionType::TASK_FAILED;
+  // Check if this is a task result (from TaskAgent)
+  return msg.command == "response";
 }
 
 std::vector<std::string> ModuleLeadAgent::decomposeGoal(const std::string& goal) {
@@ -99,11 +96,7 @@ void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& resu
 
   // Check if we've received all results
   if (all_complete) {
-    if (coordination_.hasFailures()) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-    } else {
-      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
-    }
+    coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
   }
 }
 
@@ -267,45 +260,12 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for task {}: {}", task_id, e.what());
+          concurrency::Logger::error("Failed to get result for task {}: {}", task_id,
+                                     e.what());
         }
       }).detach();
     } catch (const std::exception& e) {
       concurrency::Logger::error("Failed to submit task: {}", e.what());
-    }
-  }
-}
-
-void ModuleLeadAgent::processTaskResult(const std::string& subtask_id,
-                                        const hmas::TaskResult& result) {
-  // Feed result into the result aggregator (if present) so it tracks completion
-  if (result_aggregator_) {
-    result_aggregator_->addResult(subtask_id, result);
-  }
-
-  if (result.success()) {
-    // Record success — check if all subtasks are done
-    bool all_done = coordination_.recordResult(result.result_yaml());
-    if (all_done && !coordination_.hasFailures()) {
-      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
-    } else if (all_done) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-    }
-  } else {
-    // gRPC path: record failure so hasFailures() is set correctly (Issue #186)
-    std::string error = result.error_message().empty() ? "subordinate task failed"
-                                                       : result.error_message();
-    bool all_done = coordination_.recordFailure(error);
-    if (all_done) {
-      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
-
-      // Propagate failure upward to parent (ComponentLeadAgent) — Issue #185
-      const std::string& parent_id = coordination_.getRequesterId();
-      if (!parent_id.empty()) {
-        auto failed_msg = core::KeystoneMessage::create(
-            agent_id_, parent_id, core::ActionType::TASK_FAILED, "", error);
-        sendMessage(failed_msg);
-      }
     }
   }
 }
