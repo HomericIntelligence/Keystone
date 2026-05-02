@@ -5,8 +5,12 @@
 > ✅ **All installation, build, and test steps are validated in CI/CD.** See [CI/CD Coverage
 Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
-[![Quality Gates](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml/badge.svg)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
-[![Code Coverage](https://img.shields.io/badge/coverage-86.2%25-yellow)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
+[![Quality
+Gates](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml/badge.svg)](<https://github.com/mvillmow>
+/ProjectKeystone/actions/workflows/quality.yml)
+[![Code
+Coverage](https://img.shields.io/badge/coverage-86.2%25-yellow)](<https://github.com/mvillmow/ProjectKeystone/actions/wor>
+kflows/quality.yml)
 [![Tests](https://img.shields.io/badge/tests-481%20passing-success)](.github/workflows/ci.yml)
 [![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

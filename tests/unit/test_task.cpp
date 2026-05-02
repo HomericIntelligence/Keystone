@@ -3,7 +3,7 @@
  * @brief Unit tests for Task<T> coroutine type
  */
 
-#include "concurrency/task.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <functional>
@@ -12,15 +12,13 @@
 #include <string>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "concurrency/task.hpp"
 
 using namespace keystone::concurrency;
 
 // Test: Simple Task<int> creation and get()
 TEST(TaskTest, SimpleIntTask) {
-  auto task = []() -> Task<int32_t> {
-    co_return 42;
-  }();
+  auto task = []() -> Task<int32_t> { co_return 42; }();
 
   EXPECT_FALSE(task.done());
   int32_t result = task.get();
@@ -70,9 +68,7 @@ TEST(TaskTest, ExceptionPropagation) {
 
 // Test: Task move constructor
 TEST(TaskTest, MoveConstructor) {
-  auto task1 = []() -> Task<int32_t> {
-    co_return 100;
-  }();
+  auto task1 = []() -> Task<int32_t> { co_return 100; }();
 
   Task<int32_t> task2 = std::move(task1);
 
@@ -82,13 +78,9 @@ TEST(TaskTest, MoveConstructor) {
 
 // Test: Task move assignment
 TEST(TaskTest, MoveAssignment) {
-  auto task1 = []() -> Task<int32_t> {
-    co_return 200;
-  }();
+  auto task1 = []() -> Task<int32_t> { co_return 200; }();
 
-  auto task2 = []() -> Task<int32_t> {
-    co_return 300;
-  }();
+  auto task2 = []() -> Task<int32_t> { co_return 300; }();
 
   task2 = std::move(task1);
 
@@ -98,9 +90,7 @@ TEST(TaskTest, MoveAssignment) {
 
 // Test: Manual resume
 TEST(TaskTest, ManualResume) {
-  auto task = []() -> Task<int32_t> {
-    co_return 42;
-  }();
+  auto task = []() -> Task<int32_t> { co_return 42; }();
 
   EXPECT_FALSE(task.done());
 
@@ -113,11 +103,10 @@ TEST(TaskTest, ManualResume) {
 
 // Test: Chaining coroutines with co_await
 TEST(TaskTest, CoroutineChaining) {
-  auto inner = []() -> Task<int32_t> {
-    co_return 10;
-  };
+  auto inner = []() -> Task<int32_t> { co_return 10; };
 
-  // Keep outer lambda alive until get() completes to avoid stack-use-after-scope
+  // Keep outer lambda alive until get() completes to avoid
+  // stack-use-after-scope
   auto outerLambda = [&]() -> Task<int32_t> {
     int32_t value = co_await inner();
     co_return value * 2;
@@ -129,9 +118,7 @@ TEST(TaskTest, CoroutineChaining) {
 
 // Test: Multiple co_await in sequence
 TEST(TaskTest, MultipleCoAwait) {
-  auto getValue = [](int32_t x) -> Task<int32_t> {
-    co_return x;
-  };
+  auto getValue = [](int32_t x) -> Task<int32_t> { co_return x; };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
   auto sumLambda = [&]() -> Task<int32_t> {
@@ -172,7 +159,8 @@ TEST(TaskTest, VoidTaskChaining) {
   };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
-  // Note: multiIncrementLambda captures increment by reference, so it must stay alive
+  // Note: multiIncrementLambda captures increment by reference, so it must stay
+  // alive
   auto multiIncrementLambda = [&increment]() -> Task<void> {
     co_await increment();
     co_await increment();
@@ -189,9 +177,7 @@ TEST(TaskTest, VoidTaskChaining) {
 
 // Test: await_ready returns correct value
 TEST(TaskTest, AwaitReady) {
-  auto task = []() -> Task<int32_t> {
-    co_return 42;
-  }();
+  auto task = []() -> Task<int32_t> { co_return 42; }();
 
   // Before resume, not ready
   EXPECT_FALSE(task.await_ready());
@@ -227,9 +213,7 @@ TEST(TaskTest, ComplexComputation) {
 TEST(TaskTest, EarlyDestruction) {
   // This test verifies that destroying a Task before completion is safe
   {
-    auto task = []() -> Task<int32_t> {
-      co_return 42;
-    }();
+    auto task = []() -> Task<int32_t> { co_return 42; }();
 
     EXPECT_FALSE(task.done());
     // Task destroyed here without calling get()
@@ -240,9 +224,7 @@ TEST(TaskTest, EarlyDestruction) {
 
 // Test: Multiple get() calls return same result
 TEST(TaskTest, MultipleGetCalls) {
-  auto task = []() -> Task<int32_t> {
-    co_return 42;
-  }();
+  auto task = []() -> Task<int32_t> { co_return 42; }();
 
   int32_t result1 = task.get();
   int32_t result2 = task.get();
@@ -313,14 +295,17 @@ TEST(TaskTest, DifferentExceptionTypes) {
   EXPECT_THROW({ task3.get(); }, CustomException);
 }
 
-// DELETED: P1-002 - ExceptionAfterPartialExecution test removed (C++20 impl-defined behavior)
+// DELETED: P1-002 - ExceptionAfterPartialExecution test removed (C++20
+// impl-defined behavior)
 //
-// This test was checking for exceptions thrown before the first co_await in a coroutine.
-// This is C++20 IMPLEMENTATION-DEFINED behavior, not a bug in Task<T>.
+// This test was checking for exceptions thrown before the first co_await in a
+// coroutine. This is C++20 IMPLEMENTATION-DEFINED behavior, not a bug in
+// Task<T>.
 //
 // With initial_suspend() = std::suspend_always (task.hpp:57), the coroutine
-// transformation suspends immediately before executing any code. The behavior of
-// exceptions thrown before the first suspension point is implementation-defined.
+// transformation suspends immediately before executing any code. The behavior
+// of exceptions thrown before the first suspension point is
+// implementation-defined.
 //
 // ALL OTHER exception tests pass and cover the important cases:
 // - ExceptionPropagation (line 60): Exceptions after co_await ✅
@@ -329,7 +314,8 @@ TEST(TaskTest, DifferentExceptionTypes) {
 // - VoidTaskExceptionHandling (line 246): void Task exceptions ✅
 // - ExceptionInCoAwaitChain (line 310): Exception stack preservation ✅
 //
-// BEST PRACTICE: Always throw exceptions AFTER co_await points for predictable behavior.
+// BEST PRACTICE: Always throw exceptions AFTER co_await points for predictable
+// behavior.
 //
 // This test deletion resolves TEST-002 from architecture review.
 
@@ -431,7 +417,8 @@ TEST(TaskTest, SymmetricTransferChaining) {
   EXPECT_EQ(execution_order, expected);
 }
 
-// DELETED: P0-002 - ContinuationStorageAndResumption test removed (redundant coverage)
+// DELETED: P0-002 - ContinuationStorageAndResumption test removed (redundant
+// coverage)
 //
 // This test was checking that continuations are properly stored and resumed,
 // but had a stack-use-after-scope issue with lambda captures.
@@ -441,19 +428,18 @@ TEST(TaskTest, SymmetricTransferChaining) {
 // - DeepCoroutineChaining (line 437): Tests multi-level continuations ✅
 // - MultipleCoAwaitsWithSymmetricTransfer (line 514): Tests complex chains ✅
 //
-// The continuation storage mechanism (task.hpp:45, 65-85) uses symmetric transfer
-// which is verified by the above tests.
+// The continuation storage mechanism (task.hpp:45, 65-85) uses symmetric
+// transfer which is verified by the above tests.
 //
 // BEST PRACTICE: Avoid capturing local variables by reference [&] in coroutine
-// lambdas. Use shared_ptr or capture by value for variables that outlive suspension.
+// lambdas. Use shared_ptr or capture by value for variables that outlive
+// suspension.
 //
 // This test deletion resolves TEST-004 from architecture review.
 
 // Test: Multiple levels of coroutine chaining
 TEST(TaskTest, DeepCoroutineChaining) {
-  auto level3 = []() -> Task<int32_t> {
-    co_return 1;
-  };
+  auto level3 = []() -> Task<int32_t> { co_return 1; };
 
   // Keep lambdas alive until get() completes to avoid stack-use-after-scope
   auto level2 = [&]() -> Task<int32_t> {

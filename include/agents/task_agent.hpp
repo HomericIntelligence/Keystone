@@ -1,8 +1,5 @@
 #pragma once
 
-#include "agents/async_agent.hpp"
-#include "core/failure_injector.hpp"
-
 #include <atomic>
 #include <cstdio>
 #include <memory>
@@ -12,9 +9,12 @@
 #include <utility>
 #include <vector>
 
+#include "agents/async_agent.hpp"
+#include "core/failure_injector.hpp"
+
 #ifdef ENABLE_GRPC
-#  include "network/grpc_client.hpp"
-#  include "network/yaml_parser.hpp"
+#include "network/grpc_client.hpp"
+#include "network/yaml_parser.hpp"
 #endif
 
 namespace keystone {
@@ -43,7 +43,8 @@ class TaskAgent : public AsyncAgent {
    * @param msg Message containing command to execute
    * @return concurrency::Task<core::Response> Async task with execution result
    */
-  concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) override;
+  concurrency::Task<core::Response> processMessage(
+      const core::KeystoneMessage& msg) override;
 
   /**
    * @brief Get a snapshot of command execution history
@@ -79,7 +80,9 @@ class TaskAgent : public AsyncAgent {
     failure_injector_ = nullptr;
   }
 
-  void setFailureInjector(core::FailureInjector* injector) { failure_injector_ = injector; }
+  void setFailureInjector(core::FailureInjector* injector) {
+    failure_injector_ = injector;
+  }
 
   bool shouldFail() {
     if (failure_injector_ == nullptr) {
@@ -144,20 +147,24 @@ class TaskAgent : public AsyncAgent {
    * @param msg Original incoming message (provides sender_id and msg_id)
    * @param payload Text payload for the response message
    */
-  void sendResponseMessage(const core::KeystoneMessage& msg, const std::string& payload);
+  void sendResponseMessage(const core::KeystoneMessage& msg,
+                           const std::string& payload);
 
   /**
-   * @brief Validate command for security (FIX P1-03: Command injection prevention)
+   * @brief Validate command for security (FIX P1-03: Command injection
+   * prevention)
    *
    * @param command Command to validate
-   * @throws std::runtime_error if command contains unsafe characters or is not whitelisted
+   * @throws std::runtime_error if command contains unsafe characters or is not
+   * whitelisted
    */
   void validateCommand(const std::string& command);
 
   /**
    * @brief Execute a bash command with security validation
    *
-   * FIX P1-03: Now validates command before execution to prevent injection attacks.
+   * FIX P1-03: Now validates command before execution to prevent injection
+   * attacks.
    *
    * @param command The bash command to execute
    * @return std::string The stdout output

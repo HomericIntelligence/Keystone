@@ -8,8 +8,8 @@ namespace core {
 /**
  * @brief Interface for message routing
  *
- * Separates message routing logic from agent registry and scheduler integration,
- * following the Interface Segregation Principle.
+ * Separates message routing logic from agent registry and scheduler
+ * integration, following the Interface Segregation Principle.
  *
  * Responsibilities:
  * - Route messages to appropriate agents by ID

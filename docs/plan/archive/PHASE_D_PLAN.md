@@ -6,8 +6,8 @@
 
 ## Overview
 
-Phase D focuses on **practical performance optimizations** that provide measurable benefits for the current single-node,
-multi-threaded HMAS architecture. This document analyzes proposed optimizations and categorizes them as:
+Phase D focuses on **practical performance optimizations** that provide measurable benefits for the current
+single-node, multi-threaded HMAS architecture. This document analyzes proposed optimizations and categorizes them as:
 
 - **✅ IMPLEMENT NOW**: Clear benefit, low complexity, addresses current needs
 - **🔄 DEFER**: Premature optimization, needs more data, or requires infrastructure first
@@ -32,7 +32,8 @@ multi-threaded HMAS architecture. This document analyzes proposed optimizations 
 - **Async 4 Workers**: 10.1 ms/op, 20k items/sec
 - **Async 8 Workers**: 10.1 ms/op, 14.3k items/sec
 
-**Observation**: Async mode is **245x slower** than sync mode (10.1ms vs 41µs). This suggests significant overhead from:
+**Observation**: Async mode is **245x slower** than sync mode (10.1ms vs 41µs). This suggests significant overhead
+from:
 
 - Scheduler startup/shutdown in benchmark loop
 - 10ms sleep for async completion
@@ -452,13 +453,13 @@ static void BM_Async4LayerHierarchy_4Workers(benchmark::State& state) {
 
 ### Phase D.2: Performance Wins (Week 2) ✅ **DO NOW**
 
-1. **Worker CPU affinity** (MEDIUM-HIGH)
+4. **Worker CPU affinity** (MEDIUM-HIGH)
    - Linux pthread_setaffinity_np()
    - Optional enable/disable flag
    - Test with/without affinity
    - **Estimated**: 3 hours
 
-2. **Message pooling** (HIGH)
+5. **Message pooling** (HIGH)
    - Thread-local MessagePool class
    - acquire() / release() API
    - Integration with KeystoneMessage::create()
@@ -470,13 +471,13 @@ static void BM_Async4LayerHierarchy_4Workers(benchmark::State& state) {
 
 ### Phase D.3: Advanced Monitoring (Week 3) 🔄 **OPTIONAL**
 
-1. **Metrics export endpoint** (MEDIUM)
+6. **Metrics export endpoint** (MEDIUM)
    - Prometheus-compatible format
    - HTTP endpoint or file export
    - Per-agent histograms
    - **Estimated**: 6 hours
 
-2. **Work-stealing statistics** (MEDIUM)
+7. **Work-stealing statistics** (MEDIUM)
    - Track steals per worker
    - Queue utilization metrics
    - Load balancing visualization
@@ -491,21 +492,21 @@ static void BM_Async4LayerHierarchy_4Workers(benchmark::State& state) {
 **UPDATE**: User requested simulation-based implementation to test NUMA and networking optimizations without requiring
 actual hardware.
 
-1. **NUMA Simulation Framework** (HIGH PRIORITY - NEW)
+9. **NUMA Simulation Framework** (HIGH PRIORITY - NEW)
    - Multiple WorkStealingSchedulers simulating different NUMA nodes
    - Artificial latency injection for cross-"node" access
    - Thread pool per simulated node
    - Configurable node count (e.g., 2-4 nodes)
    - Agent-to-node affinity policies
 
-2. **Network Simulation Layer** (HIGH PRIORITY - NEW)
+10. **Network Simulation Layer** (HIGH PRIORITY - NEW)
     - Local sockets or pipes simulating network communication
     - Configurable latency (e.g., 100µs-1ms between "nodes")
     - Bandwidth limiting simulation
     - Message serialization via Cista
     - Packet loss simulation (optional)
 
-3. **Distributed Work-Stealing Simulation** (MEDIUM PRIORITY - NEW)
+11. **Distributed Work-Stealing Simulation** (MEDIUM PRIORITY - NEW)
     - Cross-"node" work stealing with simulated network cost
     - Steal thresholds based on local queue depth
     - Network-aware stealing policies (prefer local, steal remote when desperate)

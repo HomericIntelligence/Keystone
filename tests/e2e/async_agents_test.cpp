@@ -1,6 +1,4 @@
-#include "agents/task_agent.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
@@ -9,7 +7,9 @@
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/task_agent.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone;
 using namespace keystone::agents;
@@ -51,12 +51,10 @@ TEST(E2E_PhaseB, AsyncAgentCoroutineWorkflow) {
   bus.registerAgent(agent3->getAgentId(), agent3);
 
   // Send commands to all agents
-  std::vector<std::pair<TaskAgent*, std::string>> commands = {{agent1.get(), "echo $((10 + 5))"},
-                                                              {agent2.get(), "echo $((20 * 3))"},
-                                                              {agent3.get(), "echo $((100 - 25))"},
-                                                              {agent1.get(), "echo hello"},
-                                                              {agent2.get(), "echo world"},
-                                                              {agent3.get(), "echo async"}};
+  std::vector<std::pair<TaskAgent*, std::string>> commands = {
+      {agent1.get(), "echo $((10 + 5))"},   {agent2.get(), "echo $((20 * 3))"},
+      {agent3.get(), "echo $((100 - 25))"}, {agent1.get(), "echo hello"},
+      {agent2.get(), "echo world"},         {agent3.get(), "echo async"}};
 
   for (const auto& [agent, cmd] : commands) {
     auto msg = KeystoneMessage::create("test", agent->getAgentId(), cmd);
@@ -110,8 +108,10 @@ TEST(E2E_PhaseB, AsyncAgentsConcurrentProcessing) {
   agent->setScheduler(&scheduler);
   bus.registerAgent(agent->getAgentId(), agent);
 
-  // Send sleep + 9 echo commands concurrently to verify true concurrent processing
-  auto sleep_msg = KeystoneMessage::create("test", agent->getAgentId(), "sleep 1");
+  // Send sleep + 9 echo commands concurrently to verify true concurrent
+  // processing
+  auto sleep_msg =
+      KeystoneMessage::create("test", agent->getAgentId(), "sleep 1");
   bus.routeMessage(sleep_msg);
 
   for (int32_t i = 0; i < 9; ++i) {
@@ -124,10 +124,11 @@ TEST(E2E_PhaseB, AsyncAgentsConcurrentProcessing) {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   const auto& mid_history = agent->getCommandHistory();
   // At minimum the echo commands should be mostly done
-  size_t echo_done = std::count_if(mid_history.begin(), mid_history.end(), [](const auto& p) {
-    return p.first.substr(0, 4) == "echo";
-  });
-  EXPECT_GE(echo_done, 5u) << "echo commands should process concurrently with sleep";
+  size_t echo_done = std::count_if(
+      mid_history.begin(), mid_history.end(),
+      [](const auto& p) { return p.first.substr(0, 4) == "echo"; });
+  EXPECT_GE(echo_done, 5u)
+      << "echo commands should process concurrently with sleep";
 
   // Wait for sleep to finish
   std::this_thread::sleep_for(std::chrono::milliseconds(700));
@@ -239,7 +240,8 @@ TEST(E2E_PhaseB, CoawaitAsyncBashExecution) {
   bus.registerAgent(agent->getAgentId(), agent);
 
   // This command's execution will co_await executeBashAsync internally
-  auto msg = KeystoneMessage::create("test", agent->getAgentId(), "echo $((42 * 2))");
+  auto msg =
+      KeystoneMessage::create("test", agent->getAgentId(), "echo $((42 * 2))");
   bus.routeMessage(msg);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));

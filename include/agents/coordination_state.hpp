@@ -12,12 +12,11 @@
 #include <vector>
 
 #ifdef ENABLE_GRPC
-#  include "network/grpc_client.hpp"
-#  include "network/hmas_coordinator_client.hpp"
-#  include "network/service_registry_client.hpp"
-#  include "network/yaml_parser.hpp"
-
-#  include "hmas_coordinator.pb.h"
+#include "hmas_coordinator.pb.h"
+#include "network/grpc_client.hpp"
+#include "network/hmas_coordinator_client.hpp"
+#include "network/service_registry_client.hpp"
+#include "network/yaml_parser.hpp"
 #endif
 
 namespace keystone {
@@ -28,21 +27,23 @@ namespace agents {
  *
  * Eliminates code duplication between ComponentLeadAgent and ModuleLeadAgent
  * by extracting common coordination patterns:
- * - State machine management (IDLE → PLANNING → WAITING → AGGREGATING/SYNTHESIZING)
+ * - State machine management (IDLE → PLANNING → WAITING →
+ * AGGREGATING/SYNTHESIZING)
  * - Result collection from subordinate agents
  * - Execution trace tracking
  * - gRPC service integration (optional)
  *
  * Template Parameters:
  * @tparam StateEnum Enum class defining agent states
- *                   (must have: IDLE, PLANNING, WAITING, AGGREGATING/SYNTHESIZING, ERROR)
+ *                   (must have: IDLE, PLANNING, WAITING,
+ * AGGREGATING/SYNTHESIZING, ERROR)
  * @tparam ResultType Type of results collected from subordinates
  *
  * Usage Example:
  * @code
- * enum class ComponentState { IDLE, PLANNING, WAITING_FOR_MODULES, AGGREGATING, ERROR };
- * class ComponentLeadAgent {
- *   CoordinationState<ComponentState, std::string> coordination_;
+ * enum class ComponentState { IDLE, PLANNING, WAITING_FOR_MODULES, AGGREGATING,
+ * ERROR }; class ComponentLeadAgent { CoordinationState<ComponentState,
+ * std::string> coordination_;
  * };
  * @endcode
  *
@@ -192,14 +193,16 @@ class CoordinationState {
   /**
    * @brief Track a pending subordinate by message ID
    */
-  void trackPendingSubordinate(const std::string& msg_id, const std::string& subordinate_id) {
+  void trackPendingSubordinate(const std::string& msg_id,
+                               const std::string& subordinate_id) {
     pending_subordinates_[msg_id] = subordinate_id;
   }
 
   /**
    * @brief Get pending subordinates map
    */
-  const std::unordered_map<std::string, std::string>& getPendingSubordinates() const {
+  const std::unordered_map<std::string, std::string>& getPendingSubordinates()
+      const {
     return pending_subordinates_;
   }
 
@@ -210,7 +213,9 @@ class CoordinationState {
   void setCurrentGoal(const std::string& goal) { current_goal_ = goal; }
   const std::string& getCurrentGoal() const { return current_goal_; }
 
-  void setRequesterId(const std::string& requester_id) { requester_id_ = requester_id; }
+  void setRequesterId(const std::string& requester_id) {
+    requester_id_ = requester_id;
+  }
   const std::string& getRequesterId() const { return requester_id_; }
 
 #ifdef ENABLE_GRPC
@@ -235,8 +240,7 @@ class CoordinationState {
   void initializeGrpc(const std::string& agent_id,
                       const std::string& coordinator_address,
                       const std::string& registry_address,
-                      const std::string& agent_type,
-                      uint8_t level,
+                      const std::string& agent_type, uint8_t level,
                       const std::vector<std::string>& capabilities,
                       uint32_t max_concurrent_tasks) {
     agent_type_ = agent_type;
@@ -245,11 +249,13 @@ class CoordinationState {
     // Create gRPC clients
     network::GrpcClientConfig coordinator_config;
     coordinator_config.server_address = coordinator_address;
-    coordinator_client_ = std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
+    coordinator_client_ =
+        std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
 
     network::GrpcClientConfig registry_config;
     registry_config.server_address = registry_address;
-    registry_client_ = std::make_unique<network::ServiceRegistryClient>(registry_config);
+    registry_client_ =
+        std::make_unique<network::ServiceRegistryClient>(registry_config);
 
     // Register with ServiceRegistry
     hmas::AgentRegistration registration;
@@ -266,10 +272,12 @@ class CoordinationState {
       if (response.success()) {
         startHeartbeat(agent_id);
       } else {
-        throw std::runtime_error("Failed to register with ServiceRegistry: " + response.message());
+        throw std::runtime_error("Failed to register with ServiceRegistry: " +
+                                 response.message());
       }
     } catch (const std::exception& e) {
-      throw std::runtime_error("gRPC registration failed: " + std::string(e.what()));
+      throw std::runtime_error("gRPC registration failed: " +
+                               std::string(e.what()));
     }
   }
 
@@ -278,7 +286,8 @@ class CoordinationState {
    */
   void startHeartbeat(const std::string& agent_id) {
     heartbeat_running_.store(true);
-    heartbeat_thread_ = std::thread([this, agent_id]() { heartbeatLoop(agent_id); });
+    heartbeat_thread_ =
+        std::thread([this, agent_id]() { heartbeatLoop(agent_id); });
   }
 
   /**
@@ -299,7 +308,8 @@ class CoordinationState {
    *                               "Task" for ModuleLead)
    * @return List of available child agent IDs
    */
-  std::vector<std::string> queryAvailableChildren(const std::string& child_agent_type) {
+  std::vector<std::string> queryAvailableChildren(
+      const std::string& child_agent_type) {
     std::vector<std::string> available_agents;
 
     if (!registry_client_) {
@@ -333,12 +343,16 @@ class CoordinationState {
   /**
    * @brief Set current task ID
    */
-  void setCurrentTaskId(const std::string& task_id) { current_task_id_ = task_id; }
+  void setCurrentTaskId(const std::string& task_id) {
+    current_task_id_ = task_id;
+  }
 
   /**
    * @brief Get coordinator client (for result submission)
    */
-  network::HMASCoordinatorClient* getCoordinatorClient() { return coordinator_client_.get(); }
+  network::HMASCoordinatorClient* getCoordinatorClient() {
+    return coordinator_client_.get();
+  }
 
   /**
    * @brief Shutdown gRPC connections
@@ -353,9 +367,9 @@ class CoordinationState {
    * @brief Destructor - shuts down gRPC connections if enabled
    */
   ~CoordinationState() {
-#  ifdef ENABLE_GRPC
+#ifdef ENABLE_GRPC
     shutdownGrpc();
-#  endif
+#endif
   }
 
  private:
@@ -370,7 +384,8 @@ class CoordinationState {
         if (registry_client_) {
           hmas::Heartbeat heartbeat;
           heartbeat.set_agent_id(agent_id);
-          heartbeat.set_timestamp(std::chrono::system_clock::now().time_since_epoch().count());
+          heartbeat.set_timestamp(
+              std::chrono::system_clock::now().time_since_epoch().count());
           heartbeat.set_active_tasks(received_results_);
 
           registry_client_->sendHeartbeat(heartbeat);

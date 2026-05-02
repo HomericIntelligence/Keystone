@@ -1,9 +1,9 @@
 #pragma once
 
+#include <grpcpp/grpcpp.h>
+
 #include <memory>
 #include <string>
-
-#include <grpcpp/grpcpp.h>
 
 #include "hmas_coordinator.grpc.pb.h"
 #include "service_registry.grpc.pb.h"
@@ -37,11 +37,11 @@ class HMASCoordinatorClient {
   /// @param priority Task priority
   /// @param parent_task_id Parent task ID (optional)
   /// @return Task response with task_id and assigned node
-  hmas::TaskResponse submitTask(const std::string& yaml_spec,
-                                const std::string& session_id,
-                                int64_t deadline_unix_ms,
-                                hmas::TaskPriority priority = hmas::TASK_PRIORITY_NORMAL,
-                                const std::string& parent_task_id = "");
+  hmas::TaskResponse submitTask(
+      const std::string& yaml_spec, const std::string& session_id,
+      int64_t deadline_unix_ms,
+      hmas::TaskPriority priority = hmas::TASK_PRIORITY_NORMAL,
+      const std::string& parent_task_id = "");
 
   /// Submit task result back to parent
   /// @param result Task result to submit
@@ -52,19 +52,22 @@ class HMASCoordinatorClient {
   /// @param task_id Task identifier
   /// @param timeout_ms Timeout in milliseconds (0 = return immediately)
   /// @return Task result
-  hmas::TaskResult getTaskResult(const std::string& task_id, int64_t timeout_ms = 0);
+  hmas::TaskResult getTaskResult(const std::string& task_id,
+                                 int64_t timeout_ms = 0);
 
   /// Get task progress
   /// @param task_id Task identifier
   /// @param include_subtasks Include subtask status
   /// @return Task progress
-  hmas::TaskProgress getTaskProgress(const std::string& task_id, bool include_subtasks = false);
+  hmas::TaskProgress getTaskProgress(const std::string& task_id,
+                                     bool include_subtasks = false);
 
   /// Cancel a running task
   /// @param task_id Task identifier
   /// @param reason Cancellation reason
   /// @return Cancel response
-  hmas::CancelResponse cancelTask(const std::string& task_id, const std::string& reason = "");
+  hmas::CancelResponse cancelTask(const std::string& task_id,
+                                  const std::string& reason = "");
 
   /// Check if connected
   bool isConnected() const { return stub_ != nullptr; }
@@ -94,7 +97,8 @@ class ServiceRegistryClient {
   /// Register agent with the registry
   /// @param registration Agent registration info
   /// @return Registration response
-  hmas::RegistrationResponse registerAgent(const hmas::AgentRegistration& registration);
+  hmas::RegistrationResponse registerAgent(
+      const hmas::AgentRegistration& registration);
 
   /// Send heartbeat to registry
   /// @param agent_id Agent identifier

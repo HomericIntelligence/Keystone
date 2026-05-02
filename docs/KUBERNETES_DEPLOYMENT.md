@@ -562,8 +562,8 @@ See `k8s/prometheus-alerts.yaml` for complete list.
 
 ### Metrics Security
 
-ProjectKeystone implements comprehensive security for metrics endpoints including authentication, encryption, and access
-control.
+ProjectKeystone implements comprehensive security for metrics endpoints including authentication, encryption, and
+access control.
 
 **Security Layers**:
 

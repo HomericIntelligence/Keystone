@@ -59,9 +59,7 @@ void MessagePool::release(KeystoneMessage&& msg) {
   }
 }
 
-size_t MessagePool::getPoolSize() {
-  return getThreadLocal().pool.size();
-}
+size_t MessagePool::getPoolSize() { return getThreadLocal().pool.size(); }
 
 void MessagePool::clear() {
   auto& tld = getThreadLocal();

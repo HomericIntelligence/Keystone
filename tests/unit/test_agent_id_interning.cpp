@@ -1,10 +1,10 @@
-#include "core/agent_id_interning.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "core/agent_id_interning.hpp"
 
 using namespace keystone::core;
 
@@ -110,7 +110,8 @@ TEST(AgentIdInterningTest, ThreadSafety) {
   for (int32_t t = 0; t < num_threads; ++t) {
     threads.emplace_back([&interning, &successes, t]() {
       for (int32_t i = 0; i < iterations_per_thread; ++i) {
-        std::string agent_id = "agent_" + std::to_string(t * iterations_per_thread + i);
+        std::string agent_id =
+            "agent_" + std::to_string(t * iterations_per_thread + i);
 
         // Intern the ID
         uint32_t int_id = interning.intern(agent_id);
@@ -165,13 +166,14 @@ TEST(AgentIdInterningTest, LargeScaleInterning) {
   }
 }
 
-// Test 11: BidirectionalConsistency - Forward and reverse lookups are consistent
+// Test 11: BidirectionalConsistency - Forward and reverse lookups are
+// consistent
 TEST(AgentIdInterningTest, BidirectionalConsistency) {
   AgentIdInterning interning;
 
   // Intern multiple agents
-  std::vector<std::string> agent_ids = {
-      "chief", "component_lead_1", "module_lead_1", "task_1", "task_2"};
+  std::vector<std::string> agent_ids = {"chief", "component_lead_1",
+                                        "module_lead_1", "task_1", "task_2"};
 
   for (const auto& agent_id : agent_ids) {
     interning.intern(agent_id);

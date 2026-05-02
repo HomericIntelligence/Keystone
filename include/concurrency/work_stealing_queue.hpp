@@ -1,5 +1,7 @@
 #pragma once
 
+#include <concurrentqueue.h>
+
 #include <cassert>
 #include <coroutine>
 #include <functional>
@@ -7,8 +9,6 @@
 #include <optional>
 #include <string>
 #include <variant>
-
-#include <concurrentqueue.h>
 
 namespace keystone {
 namespace concurrency {

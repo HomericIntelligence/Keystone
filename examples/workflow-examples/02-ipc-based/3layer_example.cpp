@@ -2,8 +2,8 @@
  * @file 3layer_example.cpp
  * @brief IPC-Based 3-Layer Example: Chief → ModuleLead → TaskAgents (Processes)
  *
- * This example extends the 2-layer IPC pattern to include a ModuleLead coordinator.
- * Five separate OS processes communicate via shared memory:
+ * This example extends the 2-layer IPC pattern to include a ModuleLead
+ * coordinator. Five separate OS processes communicate via shared memory:
  * - 1 Chief process
  * - 1 ModuleLead process
  * - 3 TaskAgent processes
@@ -82,50 +82,50 @@
 //    - named_semaphore for process signaling
 
 int main(int argc, char* argv[]) {
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  IPC 3-Layer Example: Multi-Process Coordination\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "\nThis is a documentation template.\n"
-              << "Full implementation extends 2layer_example.cpp patterns.\n"
-              << "\nKey Implementation Notes:\n"
-              << "1. Each process opens/creates shared memory segment\n"
-              << "2. Each agent creates its message queue in shared memory\n"
-              << "3. ModuleLead implements state machine:\n"
-              << "   IDLE → PLANNING → WAITING_FOR_TASKS → SYNTHESIZING → IDLE\n"
-              << "4. Inter-process message passing uses:\n"
-              << "   - send_ipc_message(segment, receiver_id, msg)\n"
-              << "   - receive_ipc_message(segment, agent_id, timeout)\n"
-              << "5. TaskAgents run in parallel, no coordination needed\n"
-              << "\nStartup Script (run_ipc_3layer.sh):\n"
-              << "#!/bin/bash\n"
-              << "./ipc_3layer --role=task --id=1 &\n"
-              << "./ipc_3layer --role=task --id=2 &\n"
-              << "./ipc_3layer --role=task --id=3 &\n"
-              << "sleep 1\n"
-              << "./ipc_3layer --role=module &\n"
-              << "sleep 1\n"
-              << "./ipc_3layer --role=chief\n"
-              << "\nExpected Output:\n"
-              << "[Task1] Ready, waiting for commands...\n"
-              << "[Task2] Ready, waiting for commands...\n"
-              << "[Task3] Ready, waiting for commands...\n"
-              << "[Module] Ready, waiting for goal...\n"
-              << "[Chief] Sending goal: Calculate 10+20+30\n"
-              << "[Module] Decomposing into 3 tasks\n"
-              << "[Module] Sending task1: echo 10\n"
-              << "[Module] Sending task2: echo 20\n"
-              << "[Module] Sending task3: echo 30\n"
-              << "[Task1] Executing: echo 10 → Result: 10\n"
-              << "[Task2] Executing: echo 20 → Result: 20\n"
-              << "[Task3] Executing: echo 30 → Result: 30\n"
-              << "[Module] Received 3/3 results\n"
-              << "[Module] Synthesizing: Sum = 60\n"
-              << "[Chief] Final result: Module completed with sum=60\n"
-              << "\n═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  IPC 3-Layer Example: Multi-Process Coordination\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "\nThis is a documentation template.\n"
+            << "Full implementation extends 2layer_example.cpp patterns.\n"
+            << "\nKey Implementation Notes:\n"
+            << "1. Each process opens/creates shared memory segment\n"
+            << "2. Each agent creates its message queue in shared memory\n"
+            << "3. ModuleLead implements state machine:\n"
+            << "   IDLE → PLANNING → WAITING_FOR_TASKS → SYNTHESIZING → IDLE\n"
+            << "4. Inter-process message passing uses:\n"
+            << "   - send_ipc_message(segment, receiver_id, msg)\n"
+            << "   - receive_ipc_message(segment, agent_id, timeout)\n"
+            << "5. TaskAgents run in parallel, no coordination needed\n"
+            << "\nStartup Script (run_ipc_3layer.sh):\n"
+            << "#!/bin/bash\n"
+            << "./ipc_3layer --role=task --id=1 &\n"
+            << "./ipc_3layer --role=task --id=2 &\n"
+            << "./ipc_3layer --role=task --id=3 &\n"
+            << "sleep 1\n"
+            << "./ipc_3layer --role=module &\n"
+            << "sleep 1\n"
+            << "./ipc_3layer --role=chief\n"
+            << "\nExpected Output:\n"
+            << "[Task1] Ready, waiting for commands...\n"
+            << "[Task2] Ready, waiting for commands...\n"
+            << "[Task3] Ready, waiting for commands...\n"
+            << "[Module] Ready, waiting for goal...\n"
+            << "[Chief] Sending goal: Calculate 10+20+30\n"
+            << "[Module] Decomposing into 3 tasks\n"
+            << "[Module] Sending task1: echo 10\n"
+            << "[Module] Sending task2: echo 20\n"
+            << "[Module] Sending task3: echo 30\n"
+            << "[Task1] Executing: echo 10 → Result: 10\n"
+            << "[Task2] Executing: echo 20 → Result: 20\n"
+            << "[Task3] Executing: echo 30 → Result: 30\n"
+            << "[Module] Received 3/3 results\n"
+            << "[Module] Synthesizing: Sum = 60\n"
+            << "[Chief] Final result: Module completed with sum=60\n"
+            << "\n═══════════════════════════════════════════════════════\n"
+            << std::endl;
 
-    return 0;
+  return 0;
 }
 
 /**

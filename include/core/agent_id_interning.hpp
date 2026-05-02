@@ -13,7 +13,8 @@ namespace core {
 /**
  * @brief Bidirectional string ↔ integer ID mapping for agent IDs
  *
- * Optimization (Phase A2): Convert O(log n) string lookups to O(1) integer lookups.
+ * Optimization (Phase A2): Convert O(log n) string lookups to O(1) integer
+ * lookups.
  *
  * Performance Benefits:
  * - String comparison (strcmp): O(n) where n = string length

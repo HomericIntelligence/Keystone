@@ -14,10 +14,10 @@ If you discover a security vulnerability in ProjectKeystone, please report it re
 
 ### Reporting via GitHub Security Advisories (Recommended)
 
-Private vulnerability reporting via
-[GitHub Security Advisories](https://github.com/HomericIntelligence/ProjectKeystone/security/advisories/new)
-is **enabled** for this repository. This is the preferred method for reporting vulnerabilities as it provides
-a private communication channel between you and the maintainers.
+Private vulnerability reporting via [GitHub Security
+Advisories](https://github.com/HomericIntelligence/ProjectKeystone/security/advisories/new) is **enabled** for this
+repository. This is the preferred method for reporting vulnerabilities as it provides a private communication channel
+between you and the maintainers.
 
 ### What to include
 

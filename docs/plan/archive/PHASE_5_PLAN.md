@@ -6,8 +6,8 @@
 
 ## Overview
 
-Phase 5 focuses on **robustness and fault tolerance** by subjecting the HMAS to chaos engineering scenarios. The goal is
-to ensure the system gracefully handles failures, recovers from errors, and maintains correctness under adverse
+Phase 5 focuses on **robustness and fault tolerance** by subjecting the HMAS to chaos engineering scenarios. The goal
+is to ensure the system gracefully handles failures, recovers from errors, and maintains correctness under adverse
 conditions.
 
 ### Current Status (Post-Phase 4)
@@ -46,30 +46,36 @@ conditions.
 ### Fault Types to Simulate
 
 ```
-┌────────────────────────────────────────────────────┐
+┌───────────────────────────────────────
+─────────────┐
 │ Agent Failures                                     │
 │  - Random crashes (agent stops processing)         │
 │  - Timeouts (agent slow to respond)                │
 │  - Resource exhaustion (queue overflow)            │
-└────────────────────────────────────────────────────┘
+└───────────────────────────────────────
+─────────────┘
            │
            ▼
-┌────────────────────────────────────────────────────┐
+┌───────────────────────────────────────
+─────────────┐
 │ Network Failures                                   │
 │  - Partitions (nodes can't communicate)            │
 │  - Packet loss (messages dropped)                  │
 │  - Message duplication (same msg delivered 2x)     │
 │  - Out-of-order delivery                           │
-└────────────────────────────────────────────────────┘
+└───────────────────────────────────────
+─────────────┘
            │
            ▼
-┌────────────────────────────────────────────────────┐
+┌───────────────────────────────────────
+─────────────┐
 │ Recovery Mechanisms                                │
 │  - Retry logic (exponential backoff)               │
 │  - Fallback strategies (alternate agents)          │
 │  - Circuit breakers (stop cascading failures)      │
 │  - Heartbeat monitoring (detect dead agents)       │
-└────────────────────────────────────────────────────┘
+└───────────────────────────────────────
+─────────────┘
 ```
 
 ---

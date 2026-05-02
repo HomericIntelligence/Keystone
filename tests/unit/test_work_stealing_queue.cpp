@@ -3,14 +3,14 @@
  * @brief Unit tests for WorkStealingQueue
  */
 
-#include "concurrency/task.hpp"
-#include "concurrency/work_stealing_queue.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "concurrency/task.hpp"
+#include "concurrency/work_stealing_queue.hpp"
 
 using namespace keystone::concurrency;
 
@@ -194,7 +194,8 @@ TEST(WorkStealingQueueTest, LIFOPopSemantics) {
 
   // Push items in order 1, 2, 3, 4, 5
   for (int i = 1; i <= 5; ++i) {
-    auto item = WorkItem::makeFunction([i, &push_order]() { push_order.push_back(i); });
+    auto item =
+        WorkItem::makeFunction([i, &push_order]() { push_order.push_back(i); });
     queue.push(std::move(item));
   }
 

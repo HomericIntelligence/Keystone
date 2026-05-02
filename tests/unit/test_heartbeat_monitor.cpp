@@ -3,19 +3,20 @@
  * @brief Unit tests for HeartbeatMonitor
  */
 
-#include "core/heartbeat_monitor.hpp"
+#include <gtest/gtest.h>
 
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/heartbeat_monitor.hpp"
 
 using namespace keystone::core;
 
 class HeartbeatMonitorTest : public ::testing::Test {
  protected:
-  HeartbeatMonitor::Config default_config_{.heartbeat_interval = std::chrono::milliseconds(100),
-                                           .timeout_threshold = std::chrono::milliseconds(300),
-                                           .auto_remove_dead = false};
+  HeartbeatMonitor::Config default_config_{
+      .heartbeat_interval = std::chrono::milliseconds(100),
+      .timeout_threshold = std::chrono::milliseconds(300),
+      .auto_remove_dead = false};
 };
 
 TEST_F(HeartbeatMonitorTest, DefaultConstruction) {
@@ -68,8 +69,9 @@ TEST_F(HeartbeatMonitorTest, FailureCallback) {
   HeartbeatMonitor monitor(default_config_);
 
   std::string failed_agent;
-  monitor.setFailureCallback(
-      [&failed_agent](const std::string& agent_id) { failed_agent = agent_id; });
+  monitor.setFailureCallback([&failed_agent](const std::string& agent_id) {
+    failed_agent = agent_id;
+  });
 
   monitor.recordHeartbeat("agent1");
   std::this_thread::sleep_for(std::chrono::milliseconds(350));

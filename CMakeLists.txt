@@ -106,7 +106,8 @@ file(MAKE_DIRECTORY "${COVERAGE_OUTPUT_DIR}")
 file(MAKE_DIRECTORY "${BENCHMARK_OUTPUT_DIR}")
 file(MAKE_DIRECTORY "${ANALYSIS_OUTPUT_DIR}")
 
-# =====================================================================# Dependencies — Conan-provided via find_package(), cista via FetchContent
+# =====================================================================#
+# Dependencies — Conan-provided via find_package(), cista via FetchContent
 # =====================================================================
 include(FetchContent)
 
@@ -126,14 +127,12 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
-# Issue #323: Add Conan package include directories globally.
-# Some CMake versions may not properly propagate INTERFACE_INCLUDE_DIRECTORIES
-# through the link chain from Conan-provided packages. Adding them globally
-# ensures all targets have access to spdlog, fmt, and concurrentqueue headers.
-include_directories(
-  ${spdlog_INCLUDE_DIRS_RELEASE}
-  ${fmt_INCLUDE_DIRS_RELEASE}
-  ${concurrentqueue_INCLUDE_DIRS_RELEASE})
+# Issue #323: Add Conan package include directories globally. Some CMake
+# versions may not properly propagate INTERFACE_INCLUDE_DIRECTORIES through the
+# link chain from Conan-provided packages. Adding them globally ensures all
+# targets have access to spdlog, fmt, and concurrentqueue headers.
+include_directories(${spdlog_INCLUDE_DIRS_RELEASE} ${fmt_INCLUDE_DIRS_RELEASE}
+                    ${concurrentqueue_INCLUDE_DIRS_RELEASE})
 
 # Cista — zero-copy serialization (NOT on ConanCenter, kept as FetchContent)
 FetchContent_Declare(
@@ -264,25 +263,29 @@ add_library(
   src/concurrency/scheduler_accessor.cpp)
 
 target_include_directories(
-  keystone_concurrency PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                              $<INSTALL_INTERFACE:include/keystone>
-                              $<TARGET_PROPERTY:spdlog::spdlog,INTERFACE_INCLUDE_DIRECTORIES>
-                              $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>
-                              $<TARGET_PROPERTY:concurrentqueue::concurrentqueue,INTERFACE_INCLUDE_DIRECTORIES>)
+  keystone_concurrency
+  PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/keystone>
+    $<TARGET_PROPERTY:spdlog::spdlog,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:fmt::fmt,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:concurrentqueue::concurrentqueue,INTERFACE_INCLUDE_DIRECTORIES>
+)
 
-# Issue #323: Resolve circular dependency.
-# Link concurrency library to all its external dependencies explicitly.
-# This ensures spdlog, fmt, and concurrentqueue are available during compilation,
-# breaking the circular dependency pattern that was previously used.
-target_link_libraries(keystone_concurrency PUBLIC spdlog::spdlog fmt::fmt
-                                                   concurrentqueue::concurrentqueue)
+# Issue #323: Resolve circular dependency. Link concurrency library to all its
+# external dependencies explicitly. This ensures spdlog, fmt, and
+# concurrentqueue are available during compilation, breaking the circular
+# dependency pattern that was previously used.
+target_link_libraries(
+  keystone_concurrency PUBLIC spdlog::spdlog fmt::fmt
+                              concurrentqueue::concurrentqueue)
 
-# Explicitly add include directories for Conan packages. Some CMake versions
-# may not properly propagate INTERFACE_INCLUDE_DIRECTORIES from external targets.
-target_include_directories(keystone_concurrency PUBLIC
-  ${spdlog_INCLUDE_DIRS_RELEASE}
-  ${fmt_INCLUDE_DIRS_RELEASE}
-  ${concurrentqueue_INCLUDE_DIRS_RELEASE})
+# Explicitly add include directories for Conan packages. Some CMake versions may
+# not properly propagate INTERFACE_INCLUDE_DIRECTORIES from external targets.
+target_include_directories(
+  keystone_concurrency
+  PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE} ${fmt_INCLUDE_DIRS_RELEASE}
+         ${concurrentqueue_INCLUDE_DIRS_RELEASE})
 # keystone_core needs concurrency components for Logger usage
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
@@ -437,7 +440,7 @@ add_executable(
   tests/unit/test_message_serializer.cpp
   # DISABLED: Async API not yet implemented
   # tests/unit/test_message_bus_async.cpp
-  tests/unit/test_async_task_agent.cpp  # Issue #376: isFailed() guard
+  tests/unit/test_async_task_agent.cpp # Issue #376: isFailed() guard
   tests/unit/test_message_priority.cpp
   tests/unit/test_agent_core.cpp # Additional coverage for AgentCore
   tests/unit/test_agent_id_interning.cpp # Phase A2: Agent ID interning tests
@@ -554,8 +557,8 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 
 gtest_discover_tests(simulation_unit_tests)
 
-# Transport library — NATS connection with TLS support (issue #122)
-# and NATSListener pull-based fetch loop (issues #178, #205, #307)
+# Transport library — NATS connection with TLS support (issue #122) and
+# NATSListener pull-based fetch loop (issues #178, #205, #307)
 add_library(keystone_transport src/transport/nats_connection.cpp
                                src/network/nats_listener.cpp)
 
@@ -566,9 +569,9 @@ target_include_directories(
 target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt)
 
 # Explicitly add spdlog and fmt include directories for Conan packages
-target_include_directories(keystone_transport PUBLIC
-  ${spdlog_INCLUDE_DIRS_RELEASE}
-  ${fmt_INCLUDE_DIRS_RELEASE})
+target_include_directories(
+  keystone_transport PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE}
+                            ${fmt_INCLUDE_DIRS_RELEASE})
 
 # Unit Tests — NATS transport (issue #122)
 add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
@@ -595,11 +598,13 @@ target_link_libraries(nats_integration_tests keystone_agents keystone_core
 
 gtest_discover_tests(nats_integration_tests)
 
-# TLS Handshake Integration Tests (Issue #275)
-# Opt-in: requires nats-server and openssl on PATH at test runtime.
-# Disabled by default so CI environments without nats-server are not broken.
-option(ENABLE_TLS_INTEGRATION_TESTS
-       "Enable TLS handshake integration tests (requires nats-server and openssl)" OFF)
+# TLS Handshake Integration Tests (Issue #275) Opt-in: requires nats-server and
+# openssl on PATH at test runtime. Disabled by default so CI environments
+# without nats-server are not broken.
+option(
+  ENABLE_TLS_INTEGRATION_TESTS
+  "Enable TLS handshake integration tests (requires nats-server and openssl)"
+  OFF)
 
 if(ENABLE_TLS_INTEGRATION_TESTS)
   add_executable(tls_integration_tests
@@ -610,19 +615,20 @@ if(ENABLE_TLS_INTEGRATION_TESTS)
 
   gtest_discover_tests(tls_integration_tests)
 
-  message(STATUS "TLS integration tests enabled (ENABLE_TLS_INTEGRATION_TESTS=ON)")
+  message(
+    STATUS "TLS integration tests enabled (ENABLE_TLS_INTEGRATION_TESTS=ON)")
 else()
   message(
     STATUS
-    "TLS integration tests disabled. Use -DENABLE_TLS_INTEGRATION_TESTS=ON to enable (requires nats-server + openssl)."
+      "TLS integration tests disabled. Use -DENABLE_TLS_INTEGRATION_TESTS=ON to enable (requires nats-server + openssl)."
   )
 endif()
 # Integration Tests: SIGTERM mid-flight graceful shutdown (Issue #303)
 add_executable(scheduler_sigterm_tests
                tests/integration/test_scheduler_sigterm.cpp)
 
-target_link_libraries(scheduler_sigterm_tests keystone_concurrency keystone_core
-                      GTest::gtest_main)
+target_link_libraries(scheduler_sigterm_tests keystone_concurrency
+                      keystone_core GTest::gtest_main)
 
 gtest_discover_tests(scheduler_sigterm_tests)
 
@@ -745,7 +751,8 @@ if(ENABLE_FUZZING)
   message(STATUS "Run with: ./<fuzz_target> -max_len=4096 -runs=1000000")
 endif()
 
-# =====================================================================# Installation Rules
+# =====================================================================#
+# Installation Rules
 # =====================================================================
 include(GNUInstallDirs)
 
@@ -765,7 +772,8 @@ if(ENABLE_GRPC)
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
 endif()
 
-# =====================================================================# Version Information (needed early for CMake package config)
+# =====================================================================# Version
+# Information (needed early for CMake package config)
 # =====================================================================
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
@@ -885,7 +893,8 @@ if(ENABLE_GRPC)
     PATTERN "*.proto")
 endif()
 
-# =====================================================================# CPack Configuration
+# =====================================================================# CPack
+# Configuration
 # =====================================================================
 set(CPACK_PACKAGE_NAME "ProjectKeystone")
 set(CPACK_PACKAGE_VENDOR "ProjectKeystone Development Team")

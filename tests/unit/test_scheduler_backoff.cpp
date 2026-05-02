@@ -8,13 +8,13 @@
  * - No work is lost during backoff phases
  */
 
-#include "concurrency/work_stealing_scheduler.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "concurrency/work_stealing_scheduler.hpp"
 
 using namespace keystone::concurrency;
 using namespace std::chrono_literals;
@@ -31,7 +31,8 @@ class SchedulerBackoffTest : public ::testing::Test {
   }
 
   // Helper: Measure CPU time over a duration
-  double measureCPUUsage(std::function<void()> workload, std::chrono::milliseconds duration) {
+  double measureCPUUsage(std::function<void()> workload,
+                         std::chrono::milliseconds duration) {
     auto start_time = std::chrono::steady_clock::now();
     auto start_cpu = std::clock();
 
@@ -44,8 +45,9 @@ class SchedulerBackoffTest : public ::testing::Test {
     auto end_time = std::chrono::steady_clock::now();
 
     double cpu_time_ms = 1000.0 * (end_cpu - start_cpu) / CLOCKS_PER_SEC;
-    auto wall_time_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+    auto wall_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            end_time - start_time)
+                            .count();
 
     return (cpu_time_ms / wall_time_ms) * 100.0;  // Percentage
   }
@@ -60,7 +62,8 @@ TEST_F(SchedulerBackoffTest, SpinPhaseFindsWork) {
   auto start = std::make_shared<std::chrono::steady_clock::time_point>();
 
   // Submit work immediately (should be found in SPIN phase)
-  scheduler.submit([work_found, start]() { *start = std::chrono::steady_clock::now(); });
+  scheduler.submit(
+      [work_found, start]() { *start = std::chrono::steady_clock::now(); });
 
   // Submit another work that measures latency
   std::this_thread::sleep_for(1ms);  // Let first work execute
@@ -68,17 +71,18 @@ TEST_F(SchedulerBackoffTest, SpinPhaseFindsWork) {
 
   scheduler.submit([work_found, start, submit_time]() {
     auto execute_time = std::chrono::steady_clock::now();
-    auto latency =
-        std::chrono::duration_cast<std::chrono::microseconds>(execute_time - submit_time).count();
+    auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
+                       execute_time - submit_time)
+                       .count();
 
     // Should be found in SPIN phase (< 10μs typical)
     // Under sanitizers the overhead is significant; use a relaxed limit.
 #if defined(__has_feature)
-#  if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
     EXPECT_LT(latency, 5000);
-#  else
+#else
     EXPECT_LT(latency, 200);
-#  endif
+#endif
 #elif defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
     EXPECT_LT(latency, 5000);
 #else
@@ -107,8 +111,9 @@ TEST_F(SchedulerBackoffTest, YieldPhaseFindsWork) {
 
   scheduler.submit([work_found, submit_time]() {
     auto execute_time = std::chrono::steady_clock::now();
-    auto latency =
-        std::chrono::duration_cast<std::chrono::microseconds>(execute_time - submit_time).count();
+    auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
+                       execute_time - submit_time)
+                       .count();
 
     // Should be found in YIELD phase (< 100μs typical)
     // Allow up to 2000μs for safety (CI systems can be slower)
@@ -135,8 +140,9 @@ TEST_F(SchedulerBackoffTest, SleepPhaseFindsWork) {
 
   scheduler.submit([work_found, submit_time]() {
     auto execute_time = std::chrono::steady_clock::now();
-    auto latency =
-        std::chrono::duration_cast<std::chrono::milliseconds>(execute_time - submit_time).count();
+    auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       execute_time - submit_time)
+                       .count();
 
     // With wake-up notification, should be < 2ms
     EXPECT_LT(latency, 2);
@@ -243,8 +249,9 @@ TEST_F(SchedulerBackoffTest, LatencyUnderLoad) {
     auto submit_time = std::chrono::steady_clock::now();
     scheduler.submit([submit_time, total_latency_us, task_count]() {
       auto execute_time = std::chrono::steady_clock::now();
-      auto latency =
-          std::chrono::duration_cast<std::chrono::microseconds>(execute_time - submit_time).count();
+      auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
+                         execute_time - submit_time)
+                         .count();
 
       total_latency_us->fetch_add(latency);
       task_count->fetch_add(1);
@@ -316,7 +323,9 @@ TEST_F(SchedulerBackoffTest, ShutdownWakesSleepingWorkers) {
   auto shutdown_end = std::chrono::steady_clock::now();
 
   auto shutdown_duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(shutdown_end - shutdown_start).count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(shutdown_end -
+                                                            shutdown_start)
+          .count();
 
   // Shutdown should be fast due to wake-up notification
   EXPECT_LT(shutdown_duration, 100);

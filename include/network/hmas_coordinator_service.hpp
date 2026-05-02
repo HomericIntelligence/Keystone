@@ -1,10 +1,6 @@
 #pragma once
 
-#include "core/i_message_router.hpp"
-#include "network/service_registry.hpp"
-#include "network/task_phase_utils.hpp"
-#include "network/task_router.hpp"
-#include "network/yaml_parser.hpp"
+#include <grpcpp/grpcpp.h>
 
 #include <cstdint>
 #include <memory>
@@ -12,9 +8,12 @@
 #include <string>
 #include <unordered_map>
 
-#include <grpcpp/grpcpp.h>
-
+#include "core/i_message_router.hpp"
 #include "hmas_coordinator.grpc.pb.h"
+#include "network/service_registry.hpp"
+#include "network/task_phase_utils.hpp"
+#include "network/task_router.hpp"
+#include "network/yaml_parser.hpp"
 
 namespace keystone {
 namespace network {
@@ -53,9 +52,9 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
                           hmas::TaskResponse* response) override;
 
   /// Stream task status updates (server-side streaming)
-  grpc::Status StreamTaskStatus(grpc::ServerContext* context,
-                                const hmas::TaskStatusRequest* request,
-                                grpc::ServerWriter<hmas::TaskStatusUpdate>* writer) override;
+  grpc::Status StreamTaskStatus(
+      grpc::ServerContext* context, const hmas::TaskStatusRequest* request,
+      grpc::ServerWriter<hmas::TaskStatusUpdate>* writer) override;
 
   /// Get final task result
   grpc::Status GetTaskResult(grpc::ServerContext* context,
@@ -84,8 +83,7 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// @param phase New phase
   /// @param progress Progress percentage (0-100)
   /// @param current_subtask Currently executing subtask name
-  void updateTaskStatus(const std::string& task_id,
-                        hmas::TaskPhase phase,
+  void updateTaskStatus(const std::string& task_id, hmas::TaskPhase phase,
                         int32_t progress = 0,
                         const std::string& current_subtask = "");
 
@@ -103,11 +101,14 @@ class HMASCoordinatorServiceImpl final : public hmas::HMASCoordinator::Service {
   /// Clean up completed/failed tasks older than threshold
   /// @param age_threshold_ms Age threshold in milliseconds
   /// @return Number of tasks cleaned up
-  int32_t cleanupOldTasks(int64_t age_threshold_ms = 3600000);  // Default: 1 hour
+  int32_t cleanupOldTasks(
+      int64_t age_threshold_ms = 3600000);  // Default: 1 hour
 
   /// Set the message router used to notify agents of task lifecycle events.
-  /// When set, CancelTask sends a CANCEL_TASK KeystoneMessage to the assigned agent.
-  /// @param router Pointer to IMessageRouter (must outlive this object; may be nullptr)
+  /// When set, CancelTask sends a CANCEL_TASK KeystoneMessage to the assigned
+  /// agent.
+  /// @param router Pointer to IMessageRouter (must outlive this object; may be
+  /// nullptr)
   void setMessageRouter(core::IMessageRouter* router);
 
  private:

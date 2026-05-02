@@ -12,15 +12,15 @@
 // Build with: cmake -DENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++ ..
 // Run with: ./fuzz_message_bus_routing -max_len=4096 -runs=1000000
 
-#include "agents/base_agent.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "agents/base_agent.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone;
 using namespace keystone::core;
@@ -59,15 +59,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       offset++;
 
       // Extract string length (limit to prevent excessive allocations)
-      if (offset >= size)
-        break;
+      if (offset >= size) break;
       uint8_t str_len = std::min(data[offset], uint8_t(64));
       offset++;
 
       // Extract agent ID string
-      if (offset + str_len > size)
-        break;
-      std::string agent_id(reinterpret_cast<const char*>(data + offset), str_len);
+      if (offset + str_len > size) break;
+      std::string agent_id(reinterpret_cast<const char*>(data + offset),
+                           str_len);
       offset += str_len;
 
       switch (op_type) {
@@ -93,26 +92,24 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         case 3: {
           // Try to route a message
-          if (offset + 2 > size)
-            break;
+          if (offset + 2 > size) break;
 
           // Extract sender and receiver lengths
           uint8_t sender_len = std::min(data[offset], uint8_t(32));
           offset++;
 
-          if (offset + sender_len > size)
-            break;
-          std::string sender(reinterpret_cast<const char*>(data + offset), sender_len);
+          if (offset + sender_len > size) break;
+          std::string sender(reinterpret_cast<const char*>(data + offset),
+                             sender_len);
           offset += sender_len;
 
-          if (offset >= size)
-            break;
+          if (offset >= size) break;
           uint8_t receiver_len = std::min(data[offset], uint8_t(32));
           offset++;
 
-          if (offset + receiver_len > size)
-            break;
-          std::string receiver(reinterpret_cast<const char*>(data + offset), receiver_len);
+          if (offset + receiver_len > size) break;
+          std::string receiver(reinterpret_cast<const char*>(data + offset),
+                               receiver_len);
           offset += receiver_len;
 
           // Create and route message

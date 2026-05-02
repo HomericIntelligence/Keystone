@@ -1,9 +1,5 @@
 #pragma once
 
-#include "concurrency/logger.hpp"
-#include "concurrency/pull_or_steal.hpp"
-#include "concurrency/work_stealing_queue.hpp"
-
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -11,6 +7,10 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include "concurrency/logger.hpp"
+#include "concurrency/pull_or_steal.hpp"
+#include "concurrency/work_stealing_queue.hpp"
 
 namespace keystone {
 namespace concurrency {
@@ -54,8 +54,9 @@ class WorkStealingScheduler {
    * Phase D: CPU affinity improves cache locality by preventing thread
    * migration. When enabled, worker i is pinned to CPU core (i % num_cores).
    */
-  explicit WorkStealingScheduler(size_t num_workers = std::thread::hardware_concurrency(),
-                                 bool enable_cpu_affinity = false);
+  explicit WorkStealingScheduler(
+      size_t num_workers = std::thread::hardware_concurrency(),
+      bool enable_cpu_affinity = false);
 
   /**
    * @brief Destructor - ensures graceful shutdown
@@ -135,10 +136,11 @@ class WorkStealingScheduler {
   /**
    * @brief Try to steal work from a random worker queue (for NUMA simulation)
    *
-   * This method is used by SimulatedNUMANode to implement cross-node work stealing.
-   * It attempts to steal from a random worker's queue.
+   * This method is used by SimulatedNUMANode to implement cross-node work
+   * stealing. It attempts to steal from a random worker's queue.
    *
-   * @return std::optional<std::function<void()>> Stolen work item, or nullopt if no work available
+   * @return std::optional<std::function<void()>> Stolen work item, or nullopt
+   * if no work available
    */
   std::optional<std::function<void()>> tryStealWork();
 
@@ -177,10 +179,12 @@ class WorkStealingScheduler {
    * Shared inner loop body for all three backoff phases.
    *
    * @param worker_index This worker's index
-   * @param phase_label Log label for the calling phase ("SPIN", "YIELD", "SLEEP")
+   * @param phase_label Log label for the calling phase ("SPIN", "YIELD",
+   * "SLEEP")
    * @return Work item if found, nullopt otherwise
    */
-  std::optional<WorkItem> tryStealOnce(size_t worker_index, const char* phase_label);
+  std::optional<WorkItem> tryStealOnce(size_t worker_index,
+                                       const char* phase_label);
 
   /**
    * @brief Get next worker index for round-robin submission
@@ -197,7 +201,8 @@ class WorkStealingScheduler {
    */
   void setCPUAffinity(size_t worker_index);
 
-  // Maximum number of worker threads (prevents DoS via excessive thread creation)
+  // Maximum number of worker threads (prevents DoS via excessive thread
+  // creation)
   static constexpr size_t MAX_WORKER_THREADS = 256;
 
   // Stream C1: 3-phase backoff thresholds

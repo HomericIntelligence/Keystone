@@ -1,13 +1,13 @@
-#include "agents/agent_core.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <string>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/agent_core.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone;
 using namespace keystone::core;
@@ -18,7 +18,8 @@ using namespace keystone::agents;
  */
 class TestPriorityAgent : public AgentCore {
  public:
-  explicit TestPriorityAgent(const std::string& agent_id) : AgentCore(agent_id) {}
+  explicit TestPriorityAgent(const std::string& agent_id)
+      : AgentCore(agent_id) {}
 
   std::vector<std::string> processed_order;
 
@@ -39,10 +40,12 @@ TEST(MessagePriorityTest, HighPriorityProcessedFirst) {
   auto agent = std::make_shared<TestPriorityAgent>("test_agent");
 
   // Send messages in NORMAL, HIGH, LOW order
-  auto normal_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL");
+  auto normal_msg =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL");
   normal_msg.priority = Priority::NORMAL;
 
-  auto high_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH");
+  auto high_msg =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH");
   high_msg.priority = Priority::HIGH;
 
   auto low_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "LOW");
@@ -102,13 +105,15 @@ TEST(MessagePriorityTest, MixedPriorityOrdering) {
   auto low1 = KeystoneMessage::create("sender", "test_agent", "cmd", "LOW1");
   low1.priority = Priority::LOW;
 
-  auto normal1 = KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL1");
+  auto normal1 =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL1");
   normal1.priority = Priority::NORMAL;
 
   auto high1 = KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH1");
   high1.priority = Priority::HIGH;
 
-  auto normal2 = KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL2");
+  auto normal2 =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL2");
   normal2.priority = Priority::NORMAL;
 
   auto high2 = KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH2");
@@ -157,10 +162,12 @@ TEST(MessagePriorityTest, GetMessageRespectsPriority) {
   auto low_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "LOW");
   low_msg.priority = Priority::LOW;
 
-  auto normal_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL");
+  auto normal_msg =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "NORMAL");
   normal_msg.priority = Priority::NORMAL;
 
-  auto high_msg = KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH");
+  auto high_msg =
+      KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH");
   high_msg.priority = Priority::HIGH;
 
   agent->receiveMessage(low_msg);
@@ -208,15 +215,18 @@ TEST(MessagePriorityTest, SetCustomFairnessInterval) {
 
   // Set to 50ms (low-latency agent)
   agent->setLowPriorityCheckInterval(std::chrono::milliseconds{50});
-  EXPECT_EQ(agent->getLowPriorityCheckInterval(), std::chrono::milliseconds{50});
+  EXPECT_EQ(agent->getLowPriorityCheckInterval(),
+            std::chrono::milliseconds{50});
 
   // Set to 500ms (high-throughput agent)
   agent->setLowPriorityCheckInterval(std::chrono::milliseconds{500});
-  EXPECT_EQ(agent->getLowPriorityCheckInterval(), std::chrono::milliseconds{500});
+  EXPECT_EQ(agent->getLowPriorityCheckInterval(),
+            std::chrono::milliseconds{500});
 
   // Set to 10ms (ultra-low-latency)
   agent->setLowPriorityCheckInterval(std::chrono::milliseconds{10});
-  EXPECT_EQ(agent->getLowPriorityCheckInterval(), std::chrono::milliseconds{10});
+  EXPECT_EQ(agent->getLowPriorityCheckInterval(),
+            std::chrono::milliseconds{10});
 }
 
 /**
@@ -224,15 +234,19 @@ TEST(MessagePriorityTest, SetCustomFairnessInterval) {
  */
 TEST(MessagePriorityTest, DifferentAgentsDifferentIntervals) {
   auto low_latency_agent = std::make_shared<TestPriorityAgent>("low_latency");
-  auto high_throughput_agent = std::make_shared<TestPriorityAgent>("high_throughput");
+  auto high_throughput_agent =
+      std::make_shared<TestPriorityAgent>("high_throughput");
 
   // Configure different intervals
   low_latency_agent->setLowPriorityCheckInterval(std::chrono::milliseconds{10});
-  high_throughput_agent->setLowPriorityCheckInterval(std::chrono::milliseconds{500});
+  high_throughput_agent->setLowPriorityCheckInterval(
+      std::chrono::milliseconds{500});
 
   // Verify they retain separate configurations
-  EXPECT_EQ(low_latency_agent->getLowPriorityCheckInterval(), std::chrono::milliseconds{10});
-  EXPECT_EQ(high_throughput_agent->getLowPriorityCheckInterval(), std::chrono::milliseconds{500});
+  EXPECT_EQ(low_latency_agent->getLowPriorityCheckInterval(),
+            std::chrono::milliseconds{10});
+  EXPECT_EQ(high_throughput_agent->getLowPriorityCheckInterval(),
+            std::chrono::milliseconds{500});
 }
 
 /**
@@ -255,8 +269,8 @@ TEST(MessagePriorityTest, FairnessMechanismUsesConfiguredInterval) {
 
   // Send many HIGH priority messages after
   for (int32_t i = 0; i < 5; ++i) {
-    auto high_msg =
-        KeystoneMessage::create("sender", "test_agent", "cmd", "HIGH" + std::to_string(i));
+    auto high_msg = KeystoneMessage::create("sender", "test_agent", "cmd",
+                                            "HIGH" + std::to_string(i));
     high_msg.priority = Priority::HIGH;
     agent->receiveMessage(high_msg);
   }
@@ -296,7 +310,8 @@ TEST(MessagePriorityTest, ConcurrentIntervalSettingThreadSafe) {
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < 10; ++i) {
     threads.emplace_back([&agent, i]() {
-      agent->setLowPriorityCheckInterval(std::chrono::milliseconds{10 + i * 10});
+      agent->setLowPriorityCheckInterval(
+          std::chrono::milliseconds{10 + i * 10});
     });
   }
 

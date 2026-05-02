@@ -1,9 +1,3 @@
-#include "core/message_bus.hpp"
-#include "monitoring/health_check_server.hpp"
-#include "monitoring/nats_status.hpp"
-#include "network/nats_listener.hpp"
-#include "transport/nats_connection.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -13,6 +7,12 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "core/message_bus.hpp"
+#include "monitoring/health_check_server.hpp"
+#include "monitoring/nats_status.hpp"
+#include "network/nats_listener.hpp"
+#include "transport/nats_connection.hpp"
 
 namespace {
 std::atomic<bool> g_stop{false};
@@ -32,7 +32,8 @@ int main() {
   std::signal(SIGINT, signalHandler);
 
   keystone::monitoring::NatsStatusTracker nats_status;
-  keystone::monitoring::HealthCheckServer health_server(8080, nullptr, &nats_status);
+  keystone::monitoring::HealthCheckServer health_server(8080, nullptr,
+                                                        &nats_status);
 
   if (!health_server.start()) {
     std::cerr << "keystone-daemon: failed to start health check server\n";
@@ -53,9 +54,10 @@ int main() {
   //
   // Configuration is drawn from environment variables so the binary stays
   // zero-config by default:
-  //   KEYSTONE_NATS_URL      — NATS server URL   (default: nats://localhost:4222)
-  //   KEYSTONE_NATS_SUBJECT  — subject pattern   (default: hi.tasks.>)
-  //   KEYSTONE_NATS_DURABLE  — durable consumer  (default: keystone-daemon)
+  //   KEYSTONE_NATS_URL      — NATS server URL   (default:
+  //   nats://localhost:4222) KEYSTONE_NATS_SUBJECT  — subject pattern (default:
+  //   hi.tasks.>) KEYSTONE_NATS_DURABLE  — durable consumer  (default:
+  //   keystone-daemon)
   // -------------------------------------------------------------------------
 
   keystone::transport::NatsConfig nats_cfg;
@@ -69,34 +71,39 @@ int main() {
   // DAG-advance callback: log the event (production code would call the real
   // DAG advancer once it is wired in from ProjectAgamemnon).
   auto dag_advance = [](std::string_view team_id, std::string_view task_id) {
-    std::cout << "keystone-daemon: dag_advance team=" << team_id << " task=" << task_id << '\n';
+    std::cout << "keystone-daemon: dag_advance team=" << team_id
+              << " task=" << task_id << '\n';
   };
 
   keystone::transport::NatsConnection nats_conn(nats_cfg);
   keystone::network::NATSListener listener(listener_cfg, dag_advance);
 
-  // Wire NatsConnection into MessageBus for transparent off-host forwarding (Issue #206).
-  // When a message cannot be delivered locally, MessageBus will forward it via NATS.
-  message_bus.setNatsPublisher(
-      [&nats_conn](std::string_view subject, std::span<const std::byte> payload) {
-        // Publish message to NATS subject for off-host delivery.
-        // This callback is invoked when local routing fails.
-        natsConnection* nc = nats_conn.handle();
-        if (nc != nullptr) {
-          natsStatus s = natsConnection_Publish(nc,
-                                                subject.data(),
-                                                reinterpret_cast<const char*>(payload.data()),
-                                                static_cast<int>(payload.size()));
-          if (s != NATS_OK) {
-            std::cerr << "keystone-daemon: natsConnection_Publish failed subject=" << subject
-                      << " status=" << static_cast<int>(s) << '\n';
-          }
-        }
-      });
+  // Wire NatsConnection into MessageBus for transparent off-host forwarding
+  // (Issue #206). When a message cannot be delivered locally, MessageBus will
+  // forward it via NATS.
+  message_bus.setNatsPublisher([&nats_conn](
+                                   std::string_view subject,
+                                   std::span<const std::byte> payload) {
+    // Publish message to NATS subject for off-host delivery.
+    // This callback is invoked when local routing fails.
+    natsConnection* nc = nats_conn.handle();
+    if (nc != nullptr) {
+      natsStatus s = natsConnection_Publish(
+          nc, subject.data(), reinterpret_cast<const char*>(payload.data()),
+          static_cast<int>(payload.size()));
+      if (s != NATS_OK) {
+        std::cerr << "keystone-daemon: natsConnection_Publish failed subject="
+                  << subject << " status=" << static_cast<int>(s) << '\n';
+      }
+    }
+  });
 
-  // Wire NatsStatusTracker callbacks into NATS connection lifecycle (Issue #210).
-  nats_conn.setDisconnectedCallback([&nats_status]() { nats_status.setDisconnected(); });
-  nats_conn.setReconnectedCallback([&nats_status]() { nats_status.setConnected(); });
+  // Wire NatsStatusTracker callbacks into NATS connection lifecycle (Issue
+  // #210).
+  nats_conn.setDisconnectedCallback(
+      [&nats_status]() { nats_status.setDisconnected(); });
+  nats_conn.setReconnectedCallback(
+      [&nats_status]() { nats_status.setConnected(); });
 
   // Attempt to connect to NATS; log a warning but continue if unavailable so
   // the health endpoint remains reachable.
@@ -107,15 +114,15 @@ int main() {
     if (js != nullptr) {
       natsStatus s = listener.start(js);
       if (s != NATS_OK) {
-        std::cerr << "keystone-daemon: NATSListener::start failed status=" << static_cast<int>(s)
-                  << " (continuing without NATS)\n";
+        std::cerr << "keystone-daemon: NATSListener::start failed status="
+                  << static_cast<int>(s) << " (continuing without NATS)\n";
       } else {
-        std::cout << "keystone-daemon: NATSListener active subject=" << listener_cfg.subject
-                  << '\n';
+        std::cout << "keystone-daemon: NATSListener active subject="
+                  << listener_cfg.subject << '\n';
       }
     } else {
-      std::cerr
-          << "keystone-daemon: failed to obtain JetStream context (continuing without NATS)\n";
+      std::cerr << "keystone-daemon: failed to obtain JetStream context "
+                   "(continuing without NATS)\n";
     }
   } else {
     std::cerr << "keystone-daemon: NATS unavailable at " << nats_cfg.url

@@ -89,8 +89,8 @@
 #### Edge Case Tests (5 tests, ~10ms)
 
 ```bash
-./distributed_grpc_tests \
-  --gtest_filter="*Invalid*:*Duplicate*:*Unregister*:*Reset*:*Cleanup*"
+./distributed_grpc_tests --gtest_filter="*Invalid*" --gtest_filter="*Duplicate*" --gtest_filter="*Unregister*"
+--gtest_filter="*Reset*" --gtest_filter="*Cleanup*"
 ```
 
 - InvalidYamlParsing
@@ -112,7 +112,9 @@
 Run these after every code change:
 
 ```bash
-./distributed_grpc_tests --gtest_filter="*Yaml*:*ServiceRegistry*:*LoadBalancing*:*TaskRouting*:*TaskState*:*Integration*:*Invalid*:*Duplicate*:*Unregister*:*Reset*:*Cleanup*:*Strategy*"
+./distributed_grpc_tests
+--gtest_filter="*Yaml*:*ServiceRegistry*:*LoadBalancing*:*TaskRouting*:*TaskState*:*Integration*:*Invalid*:*Duplicate*:*
+Unregister*:*Reset*:*Cleanup*:*Strategy*"
 ```
 
 **Expected time**: ~100ms

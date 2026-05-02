@@ -6,8 +6,8 @@
 
 ## Overview
 
-This document describes the comprehensive End-to-End (E2E) test suite for Phase 8's distributed multi-node HMAS system
-using gRPC.
+This document describes the comprehensive End-to-End (E2E) test suite for
+Phase 8's distributed multi-node HMAS system using gRPC.
 
 ### Test Coverage
 
@@ -343,7 +343,7 @@ auto spec = YamlSpecBuilder()
 - Default values for common fields
 - Type-safe construction
 
-### waitFor\<Predicate\>
+### waitFor<Predicate>
 
 Timeout-based condition waiting:
 
