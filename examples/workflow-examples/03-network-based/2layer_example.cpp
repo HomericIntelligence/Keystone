@@ -1,9 +1,11 @@
 /**
  * @file 2layer_example.cpp
- * @brief Network-Based 2-Layer Example: Chief (Machine A) → TaskAgent (Machine B)
+ * @brief Network-Based 2-Layer Example: Chief (Machine A) → TaskAgent (Machine
+ * B)
  *
- * This example demonstrates distributed HMAS using gRPC for network communication.
- * Two agents run on separate machines and communicate via gRPC Protocol Buffers.
+ * This example demonstrates distributed HMAS using gRPC for network
+ * communication. Two agents run on separate machines and communicate via gRPC
+ * Protocol Buffers.
  *
  * Architecture:
  * ┌──────────────────────────┐              ┌──────────────────────────┐
@@ -59,11 +61,11 @@
 
 #ifdef ENABLE_GRPC
 
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
-#include <chrono>
 
 // gRPC includes
 #include <grpcpp/grpcpp.h>
@@ -71,15 +73,15 @@
 // ProjectKeystone includes (assuming Phase 8 is enabled)
 #include <agents/chief_architect_agent.hpp>
 #include <agents/task_agent.hpp>
-#include <network/service_registry_client.hpp>
 #include <network/grpc_agent_service.hpp>
+#include <network/service_registry_client.hpp>
 
+using grpc::Channel;
+using grpc::ClientContext;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
-using grpc::Channel;
-using grpc::ClientContext;
 
 using namespace projectkeystone;
 
@@ -88,9 +90,9 @@ using namespace projectkeystone;
 // ═══════════════════════════════════════════════════════════════
 
 struct NetworkConfig {
-    std::string role;                // "chief" or "task"
-    std::string agent_address;       // This agent's gRPC address
-    std::string registry_address;    // ServiceRegistry address
+  std::string role;              // "chief" or "task"
+  std::string agent_address;     // This agent's gRPC address
+  std::string registry_address;  // ServiceRegistry address
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -101,81 +103,80 @@ struct NetworkConfig {
  * @brief Run TaskAgent with gRPC server
  */
 void run_task_agent(const NetworkConfig& config) {
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  Network 2-Layer Example: TaskAgent Process\n"
-              << "  Address: " << config.agent_address << "\n"
-              << "  Registry: " << config.registry_address << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  Network 2-Layer Example: TaskAgent Process\n"
+            << "  Address: " << config.agent_address << "\n"
+            << "  Registry: " << config.registry_address << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
 
-    // Create TaskAgent
-    std::cout << "[Task] Creating TaskAgent..." << std::endl;
-    auto task_agent = std::make_shared<TaskAgent>("task1", nullptr);
+  // Create TaskAgent
+  std::cout << "[Task] Creating TaskAgent..." << std::endl;
+  auto task_agent = std::make_shared<TaskAgent>("task1", nullptr);
 
-    // Create gRPC service for this agent
-    std::cout << "[Task] Creating gRPC service..." << std::endl;
-    GrpcAgentService grpc_service(task_agent);
+  // Create gRPC service for this agent
+  std::cout << "[Task] Creating gRPC service..." << std::endl;
+  GrpcAgentService grpc_service(task_agent);
 
-    // Build and start gRPC server
-    std::cout << "[Task] Starting gRPC server on " << config.agent_address
-              << std::endl;
-    ServerBuilder builder;
-    builder.AddListeningPort(config.agent_address,
-                              grpc::InsecureServerCredentials());
-    builder.RegisterService(&grpc_service);
-    std::unique_ptr<Server> server(builder.BuildAndStart());
+  // Build and start gRPC server
+  std::cout << "[Task] Starting gRPC server on " << config.agent_address
+            << std::endl;
+  ServerBuilder builder;
+  builder.AddListeningPort(config.agent_address,
+                           grpc::InsecureServerCredentials());
+  builder.RegisterService(&grpc_service);
+  std::unique_ptr<Server> server(builder.BuildAndStart());
 
-    if (!server) {
-        std::cerr << "ERROR: Failed to start gRPC server" << std::endl;
-        return;
+  if (!server) {
+    std::cerr << "ERROR: Failed to start gRPC server" << std::endl;
+    return;
+  }
+
+  std::cout << "[Task] gRPC server started successfully" << std::endl;
+
+  // Register with ServiceRegistry
+  std::cout << "[Task] Registering with ServiceRegistry..." << std::endl;
+  auto channel = grpc::CreateChannel(config.registry_address,
+                                     grpc::InsecureChannelCredentials());
+  ServiceRegistryClient registry_client(channel);
+
+  AgentInfo info;
+  info.agent_id = "task1";
+  info.agent_type = "TaskAgent";
+  info.address = config.agent_address;
+  info.capabilities.push_back("bash_execution");
+  info.metadata["version"] = "1.0.0";
+
+  bool registered = registry_client.RegisterAgent(info);
+  if (!registered) {
+    std::cerr << "ERROR: Failed to register with ServiceRegistry" << std::endl;
+    return;
+  }
+
+  std::cout << "[Task] Successfully registered with ServiceRegistry"
+            << std::endl;
+
+  // Start heartbeat thread
+  std::cout << "[Task] Starting heartbeat thread..." << std::endl;
+  std::atomic<bool> running{true};
+  std::thread heartbeat_thread([&]() {
+    while (running) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      registry_client.Heartbeat("task1");
     }
+  });
 
-    std::cout << "[Task] gRPC server started successfully" << std::endl;
+  std::cout << "[Task] Ready to process commands" << std::endl;
 
-    // Register with ServiceRegistry
-    std::cout << "[Task] Registering with ServiceRegistry..." << std::endl;
-    auto channel = grpc::CreateChannel(config.registry_address,
-                                        grpc::InsecureChannelCredentials());
-    ServiceRegistryClient registry_client(channel);
+  // Wait for server to finish
+  server->Wait();
 
-    AgentInfo info;
-    info.agent_id = "task1";
-    info.agent_type = "TaskAgent";
-    info.address = config.agent_address;
-    info.capabilities.push_back("bash_execution");
-    info.metadata["version"] = "1.0.0";
+  // Cleanup
+  running = false;
+  heartbeat_thread.join();
 
-    bool registered = registry_client.RegisterAgent(info);
-    if (!registered) {
-        std::cerr << "ERROR: Failed to register with ServiceRegistry"
-                  << std::endl;
-        return;
-    }
-
-    std::cout << "[Task] Successfully registered with ServiceRegistry"
-              << std::endl;
-
-    // Start heartbeat thread
-    std::cout << "[Task] Starting heartbeat thread..." << std::endl;
-    std::atomic<bool> running{true};
-    std::thread heartbeat_thread([&]() {
-        while (running) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            registry_client.Heartbeat("task1");
-        }
-    });
-
-    std::cout << "[Task] Ready to process commands" << std::endl;
-
-    // Wait for server to finish
-    server->Wait();
-
-    // Cleanup
-    running = false;
-    heartbeat_thread.join();
-
-    std::cout << "[Task] TaskAgent process shutting down" << std::endl;
+  std::cout << "[Task] TaskAgent process shutting down" << std::endl;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -186,81 +187,80 @@ void run_task_agent(const NetworkConfig& config) {
  * @brief Run Chief with gRPC client
  */
 void run_chief(const NetworkConfig& config) {
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  Network 2-Layer Example: Chief Process\n"
-              << "  Address: " << config.agent_address << "\n"
-              << "  Registry: " << config.registry_address << "\n"
-              << "═══════════════════════════════════════════════════════\n"
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  Network 2-Layer Example: Chief Process\n"
+            << "  Address: " << config.agent_address << "\n"
+            << "  Registry: " << config.registry_address << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
+
+  // Wait for TaskAgent to register
+  std::cout << "[Chief] Waiting for TaskAgent to register..." << std::endl;
+  std::this_thread::sleep_for(std::chrono::seconds(2));
+
+  // Connect to ServiceRegistry
+  std::cout << "[Chief] Connecting to ServiceRegistry..." << std::endl;
+  auto channel = grpc::CreateChannel(config.registry_address,
+                                     grpc::InsecureChannelCredentials());
+  ServiceRegistryClient registry_client(channel);
+
+  // Query for TaskAgents
+  std::cout << "[Chief] Querying for TaskAgents..." << std::endl;
+  AgentQuery query;
+  query.agent_type = "TaskAgent";
+
+  auto agents = registry_client.QueryAgents(query);
+  if (agents.empty()) {
+    std::cerr << "ERROR: No TaskAgents found!" << std::endl;
+    return;
+  }
+
+  std::cout << "[Chief] Found " << agents.size() << " TaskAgent(s)"
+            << std::endl;
+
+  // Get TaskAgent address
+  std::string task_address = agents[0].address;
+  std::cout << "[Chief] TaskAgent address: " << task_address << std::endl;
+
+  // Create gRPC channel to TaskAgent
+  std::cout << "[Chief] Creating gRPC channel to TaskAgent..." << std::endl;
+  auto task_channel =
+      grpc::CreateChannel(task_address, grpc::InsecureChannelCredentials());
+  auto task_stub = AgentService::NewStub(task_channel);
+
+  // Send command to TaskAgent
+  std::string command = "echo 'Hello from distributed HMAS!'";
+  std::cout << "[Chief] Sending command to TaskAgent: " << command << std::endl;
+
+  ClientContext context;
+  Message msg;
+  msg.set_msg_id(generate_uuid());
+  msg.set_sender_id("chief");
+  msg.set_receiver_id("task1");
+  msg.set_command(command);
+  msg.set_action_type(ActionType::EXECUTE);
+
+  Response response;
+  Status status = task_stub->ProcessMessage(&context, msg, &response);
+
+  if (!status.ok()) {
+    std::cerr << "ERROR: gRPC call failed: " << status.error_message()
               << std::endl;
+    return;
+  }
 
-    // Wait for TaskAgent to register
-    std::cout << "[Chief] Waiting for TaskAgent to register..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+  std::cout << "[Chief] Received response from TaskAgent:" << std::endl;
+  std::cout << "  Result: " << response.result() << std::endl;
+  std::cout << "  Status: "
+            << (response.status() == Response::SUCCESS ? "Success" : "Error")
+            << std::endl;
 
-    // Connect to ServiceRegistry
-    std::cout << "[Chief] Connecting to ServiceRegistry..." << std::endl;
-    auto channel = grpc::CreateChannel(config.registry_address,
-                                        grpc::InsecureChannelCredentials());
-    ServiceRegistryClient registry_client(channel);
-
-    // Query for TaskAgents
-    std::cout << "[Chief] Querying for TaskAgents..." << std::endl;
-    AgentQuery query;
-    query.agent_type = "TaskAgent";
-
-    auto agents = registry_client.QueryAgents(query);
-    if (agents.empty()) {
-        std::cerr << "ERROR: No TaskAgents found!" << std::endl;
-        return;
-    }
-
-    std::cout << "[Chief] Found " << agents.size() << " TaskAgent(s)"
-              << std::endl;
-
-    // Get TaskAgent address
-    std::string task_address = agents[0].address;
-    std::cout << "[Chief] TaskAgent address: " << task_address << std::endl;
-
-    // Create gRPC channel to TaskAgent
-    std::cout << "[Chief] Creating gRPC channel to TaskAgent..." << std::endl;
-    auto task_channel = grpc::CreateChannel(task_address,
-                                             grpc::InsecureChannelCredentials());
-    auto task_stub = AgentService::NewStub(task_channel);
-
-    // Send command to TaskAgent
-    std::string command = "echo 'Hello from distributed HMAS!'";
-    std::cout << "[Chief] Sending command to TaskAgent: " << command
-              << std::endl;
-
-    ClientContext context;
-    Message msg;
-    msg.set_msg_id(generate_uuid());
-    msg.set_sender_id("chief");
-    msg.set_receiver_id("task1");
-    msg.set_command(command);
-    msg.set_action_type(ActionType::EXECUTE);
-
-    Response response;
-    Status status = task_stub->ProcessMessage(&context, msg, &response);
-
-    if (!status.ok()) {
-        std::cerr << "ERROR: gRPC call failed: " << status.error_message()
-                  << std::endl;
-        return;
-    }
-
-    std::cout << "[Chief] Received response from TaskAgent:" << std::endl;
-    std::cout << "  Result: " << response.result() << std::endl;
-    std::cout << "  Status: "
-              << (response.status() == Response::SUCCESS ? "Success" : "Error")
-              << std::endl;
-
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  Chief Process Complete\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  Chief Process Complete\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -268,65 +268,63 @@ void run_chief(const NetworkConfig& config) {
 // ═══════════════════════════════════════════════════════════════
 
 int main(int argc, char* argv[]) {
-    NetworkConfig config;
+  NetworkConfig config;
 
-    // Parse command-line arguments
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg.find("--role=") == 0) {
-            config.role = arg.substr(7);
-        } else if (arg.find("--address=") == 0) {
-            config.agent_address = arg.substr(10);
-        } else if (arg.find("--registry=") == 0) {
-            config.registry_address = arg.substr(11);
-        }
+  // Parse command-line arguments
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg.find("--role=") == 0) {
+      config.role = arg.substr(7);
+    } else if (arg.find("--address=") == 0) {
+      config.agent_address = arg.substr(10);
+    } else if (arg.find("--registry=") == 0) {
+      config.registry_address = arg.substr(11);
     }
+  }
 
-    // Validate configuration
-    if (config.role.empty() || config.agent_address.empty() ||
-        config.registry_address.empty()) {
-        std::cerr << "Usage: " << argv[0] << "\n"
-                  << "  --role=<chief|task>\n"
-                  << "  --address=<ip:port>\n"
-                  << "  --registry=<registry-ip:port>\n"
-                  << "\nExample:\n"
-                  << "  # TaskAgent:\n"
-                  << "  " << argv[0]
-                  << " --role=task --address=192.168.1.11:50100"
-                  << " --registry=192.168.1.20:50051\n"
-                  << "\n  # Chief:\n"
-                  << "  " << argv[0]
-                  << " --role=chief --address=192.168.1.10:50200"
-                  << " --registry=192.168.1.20:50051\n";
-        return 1;
+  // Validate configuration
+  if (config.role.empty() || config.agent_address.empty() ||
+      config.registry_address.empty()) {
+    std::cerr << "Usage: " << argv[0] << "\n"
+              << "  --role=<chief|task>\n"
+              << "  --address=<ip:port>\n"
+              << "  --registry=<registry-ip:port>\n"
+              << "\nExample:\n"
+              << "  # TaskAgent:\n"
+              << "  " << argv[0] << " --role=task --address=192.168.1.11:50100"
+              << " --registry=192.168.1.20:50051\n"
+              << "\n  # Chief:\n"
+              << "  " << argv[0] << " --role=chief --address=192.168.1.10:50200"
+              << " --registry=192.168.1.20:50051\n";
+    return 1;
+  }
+
+  try {
+    if (config.role == "task") {
+      run_task_agent(config);
+    } else if (config.role == "chief") {
+      run_chief(config);
+    } else {
+      std::cerr << "Invalid role: " << config.role << std::endl;
+      std::cerr << "Valid roles: chief, task" << std::endl;
+      return 1;
     }
+  } catch (const std::exception& e) {
+    std::cerr << "ERROR: " << e.what() << std::endl;
+    return 1;
+  }
 
-    try {
-        if (config.role == "task") {
-            run_task_agent(config);
-        } else if (config.role == "chief") {
-            run_chief(config);
-        } else {
-            std::cerr << "Invalid role: " << config.role << std::endl;
-            std::cerr << "Valid roles: chief, task" << std::endl;
-            return 1;
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl;
-        return 1;
-    }
-
-    return 0;
+  return 0;
 }
 
 #else  // !ENABLE_GRPC
 
 int main() {
-    std::cout << "\n"
-              << "Network-based examples require gRPC support.\n"
-              << "Please rebuild with: cmake -DENABLE_GRPC=ON ..\n"
-              << std::endl;
-    return 1;
+  std::cout << "\n"
+            << "Network-based examples require gRPC support.\n"
+            << "Please rebuild with: cmake -DENABLE_GRPC=ON ..\n"
+            << std::endl;
+  return 1;
 }
 
 #endif  // ENABLE_GRPC

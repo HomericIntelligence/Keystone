@@ -1,13 +1,13 @@
-#include "agents/task_agent.hpp"
-#include "core/agent_id_interning.hpp"
-#include "core/message_bus.hpp"
+#include <benchmark/benchmark.h>
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-#include <benchmark/benchmark.h>
+#include "agents/task_agent.hpp"
+#include "core/agent_id_interning.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone::core;
 using namespace keystone::agents;
@@ -23,7 +23,9 @@ class StringBasedRegistry {
     agents_[id] = agent;
   }
 
-  bool hasAgent(const std::string& id) const { return agents_.find(id) != agents_.end(); }
+  bool hasAgent(const std::string& id) const {
+    return agents_.find(id) != agents_.end();
+  }
 
   std::shared_ptr<AgentCore> getAgent(const std::string& id) const {
     auto it = agents_.find(id);
@@ -52,8 +54,7 @@ class IntegerBasedRegistry {
 
   std::shared_ptr<AgentCore> getAgent(const std::string& id) const {
     auto int_id = interning_.tryGetId(id);
-    if (!int_id)
-      return nullptr;
+    if (!int_id) return nullptr;
     auto it = agents_.find(*int_id);
     return (it != agents_.end()) ? it->second : nullptr;
   }
@@ -202,7 +203,8 @@ static void BM_RouteMessage_MessageBus(benchmark::State& state) {
   int32_t msg_idx = 0;
   for (auto _ : state) {
     std::string receiver_id = "agent_" + std::to_string(msg_idx++ % 1000);
-    KeystoneMessage msg = KeystoneMessage::create("sender", receiver_id, "test_command");
+    KeystoneMessage msg =
+        KeystoneMessage::create("sender", receiver_id, "test_command");
     benchmark::DoNotOptimize(bus.routeMessage(msg));
   }
 

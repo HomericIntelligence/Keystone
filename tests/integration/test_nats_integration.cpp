@@ -8,7 +8,8 @@
  * Prerequisites:
  *   - Set KEYSTONE_INTEGRATION_TESTS=1 to enable NATS-dependent tests.
  *   - Set NATS_URL=nats://localhost:4222 (default) to specify the NATS server.
- *   - Run `docker-compose -f docker-compose.test.yml up` to start a NATS server.
+ *   - Run `docker-compose -f docker-compose.test.yml up` to start a NATS
+ * server.
  *
  * Tests always run (no NATS required):
  *   - PipelineLocalEventTriggersAgentProcessing
@@ -23,12 +24,7 @@
  *   - NatsShutdownDrainsSubscription
  */
 
-#include "agents/task_agent.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-#include "monitoring/nats_status.hpp"
-#include "network/nats_listener.hpp"
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
@@ -40,7 +36,12 @@
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/task_agent.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+#include "monitoring/nats_status.hpp"
+#include "network/nats_listener.hpp"
+#include "transport/nats_connection.hpp"
 
 using namespace keystone::core;
 using namespace keystone::agents;
@@ -63,14 +64,14 @@ bool integrationTestsEnabled() {
 }
 
 /// Returns the NATS URL for integration tests.
-std::string natsUrl() {
-  return getEnv("NATS_URL", "nats://localhost:4222");
-}
+std::string natsUrl() { return getEnv("NATS_URL", "nats://localhost:4222"); }
 
 /// Wait up to `timeout` for `predicate` to become true.  Returns true on
 /// success, false on timeout.
 template <typename Pred>
-bool waitFor(Pred predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds{500}) {
+bool waitFor(Pred predicate,
+             std::chrono::milliseconds timeout = std::chrono::milliseconds{
+                 500}) {
   const auto deadline = std::chrono::steady_clock::now() + timeout;
   while (std::chrono::steady_clock::now() < deadline) {
     if (predicate()) {
@@ -116,11 +117,10 @@ TEST_F(NatsIntegrationTest, PipelineLocalEventTriggersAgentProcessing) {
   const std::string nats_payload =
       R"({"task_id":"t-001","command":"advance_dag","dag_id":"dag-42"})";
 
-  auto msg = KeystoneMessage::create("nats_bridge",     // sender: the transparent bridge
-                                     "pipeline_agent",  // receiver: the consuming agent
-                                     ActionType::EXECUTE,
-                                     "nats-session-001",
-                                     nats_payload);
+  auto msg = KeystoneMessage::create(
+      "nats_bridge",     // sender: the transparent bridge
+      "pipeline_agent",  // receiver: the consuming agent
+      ActionType::EXECUTE, "nats-session-001", nats_payload);
 
   EXPECT_TRUE(bus_->routeMessage(msg));
 
@@ -197,17 +197,15 @@ TEST_F(NatsIntegrationTest, PipelineShutdownDrainsCleanly) {
   // Queue several work messages before the shutdown signal.
   constexpr int32_t kWorkMessages = 5;
   for (int32_t i = 0; i < kWorkMessages; ++i) {
-    auto work = KeystoneMessage::create("bridge",
-                                        "drain_agent",
-                                        ActionType::EXECUTE,
-                                        "session-drain",
+    auto work = KeystoneMessage::create("bridge", "drain_agent",
+                                        ActionType::EXECUTE, "session-drain",
                                         "payload-" + std::to_string(i));
     EXPECT_TRUE(bus_->routeMessage(work));
   }
 
   // Issue shutdown signal (last in queue).
-  auto shutdown_msg =
-      KeystoneMessage::create("bridge", "drain_agent", ActionType::SHUTDOWN, "session-drain");
+  auto shutdown_msg = KeystoneMessage::create(
+      "bridge", "drain_agent", ActionType::SHUTDOWN, "session-drain");
   EXPECT_TRUE(bus_->routeMessage(shutdown_msg));
 
   // Drain: consume all kWorkMessages + 1 shutdown.
@@ -245,10 +243,12 @@ TEST_F(NatsIntegrationTest, PipelinePriorityMessagesDeliveredInOrder) {
   bus_->registerAgent(agent->getAgentId(), agent);
 
   // Route a NORMAL priority message first, then a HIGH priority one.
-  auto normal_msg = KeystoneMessage::create("bridge", "priority_agent", "normal-work");
+  auto normal_msg =
+      KeystoneMessage::create("bridge", "priority_agent", "normal-work");
   normal_msg.priority = Priority::NORMAL;
 
-  auto high_msg = KeystoneMessage::create("bridge", "priority_agent", "urgent-work");
+  auto high_msg =
+      KeystoneMessage::create("bridge", "priority_agent", "urgent-work");
   high_msg.priority = Priority::HIGH;
 
   EXPECT_TRUE(bus_->routeMessage(normal_msg));
@@ -277,16 +277,15 @@ TEST_F(NatsIntegrationTest, PipelineCancellationPropagates) {
   bus_->registerAgent(agent->getAgentId(), agent);
 
   // First, dispatch a long-running task.
-  auto task_msg = KeystoneMessage::create(
-      "bridge", "cancel_target", ActionType::EXECUTE, "session-cancel", "long-running-payload");
+  auto task_msg =
+      KeystoneMessage::create("bridge", "cancel_target", ActionType::EXECUTE,
+                              "session-cancel", "long-running-payload");
   task_msg.task_id = "task-xyz-99";
   EXPECT_TRUE(bus_->routeMessage(task_msg));
 
   // Now send a cancellation for the same task ID.
-  auto cancel_msg = KeystoneMessage::createCancellation("bridge",
-                                                        "cancel_target",
-                                                        "task-xyz-99",
-                                                        "session-cancel");
+  auto cancel_msg = KeystoneMessage::createCancellation(
+      "bridge", "cancel_target", "task-xyz-99", "session-cancel");
   EXPECT_TRUE(bus_->routeMessage(cancel_msg));
 
   // Drain both messages.
@@ -306,18 +305,20 @@ TEST_F(NatsIntegrationTest, PipelineCancellationPropagates) {
       },
       std::chrono::milliseconds{1000});
 
-  EXPECT_TRUE(drained) << "Did not receive both EXECUTE and CANCEL_TASK messages";
+  EXPECT_TRUE(drained)
+      << "Did not receive both EXECUTE and CANCEL_TASK messages";
   EXPECT_TRUE(got_execute);
   EXPECT_TRUE(got_cancel);
 }
 
 /**
- * @brief NatsStatusTracker callbacks are wired to NatsConnection lifecycle events.
+ * @brief NatsStatusTracker callbacks are wired to NatsConnection lifecycle
+ * events.
  *
  * Verifies that when NatsConnection fires disconnected/reconnected callbacks,
- * the NatsStatusTracker is updated accordingly (issue #210). This is a unit test
- * wrapped in an integration test class for convenience, does not require a NATS
- * server.
+ * the NatsStatusTracker is updated accordingly (issue #210). This is a unit
+ * test wrapped in an integration test class for convenience, does not require a
+ * NATS server.
  */
 TEST_F(NatsIntegrationTest, NatsStatusTrackerWiredToConnectionCallbacks) {
   using namespace keystone::transport;
@@ -331,15 +332,18 @@ TEST_F(NatsIntegrationTest, NatsStatusTrackerWiredToConnectionCallbacks) {
   conn.setReconnectedCallback([&tracker]() { tracker.setConnected(); });
 
   // Initially disconnected
-  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kDisconnected);
+  EXPECT_EQ(tracker.state(),
+            keystone::monitoring::NatsConnectionState::kDisconnected);
 
   // Simulate disconnection
   tracker.setDisconnected();
-  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kDisconnected);
+  EXPECT_EQ(tracker.state(),
+            keystone::monitoring::NatsConnectionState::kDisconnected);
 
   // Simulate reconnection
   tracker.setConnected();
-  EXPECT_EQ(tracker.state(), keystone::monitoring::NatsConnectionState::kConnected);
+  EXPECT_EQ(tracker.state(),
+            keystone::monitoring::NatsConnectionState::kConnected);
 
   // lastSuccessEpochMs should be updated
   int64_t ts = tracker.lastSuccessEpochMs();
@@ -355,10 +359,11 @@ class NatsServerTest : public NatsIntegrationTest {
   void SetUp() override {
     NatsIntegrationTest::SetUp();
     if (!integrationTestsEnabled()) {
-      GTEST_SKIP() << "NATS integration tests disabled. "
-                      "Set KEYSTONE_INTEGRATION_TESTS=1 and start a NATS server "
-                      "at "
-                   << natsUrl() << " (see tests/integration/README.md).";
+      GTEST_SKIP()
+          << "NATS integration tests disabled. "
+             "Set KEYSTONE_INTEGRATION_TESTS=1 and start a NATS server "
+             "at "
+          << natsUrl() << " (see tests/integration/README.md).";
     }
   }
 };
@@ -384,10 +389,12 @@ TEST_F(NatsServerTest, NatsConnectionSucceeds) {
   }
 
   // Use nc (netcat) to test TCP connectivity; fall back to bash /dev/tcp.
-  std::string check_cmd = "bash -c 'echo > /dev/tcp/" + host + "/" + port + "' 2>/dev/null";
+  std::string check_cmd =
+      "bash -c 'echo > /dev/tcp/" + host + "/" + port + "' 2>/dev/null";
   int32_t rc = std::system(check_cmd.c_str());  // NOLINT(cert-env33-c)
   EXPECT_EQ(rc, 0) << "Could not connect to NATS server at " << url
-                   << ". Is the server running? (docker-compose -f docker-compose.test.yml up)";
+                   << ". Is the server running? (docker-compose -f "
+                      "docker-compose.test.yml up)";
 }
 
 /**
@@ -413,7 +420,8 @@ TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
       R"({"task_id":"t-002","action":"advance_dag","dag_id":"dag-prod-01","priority":"HIGH"})";
 
   auto bridged_msg = KeystoneMessage::create(
-      "nats-bridge", "myrmidon-pipeline-0", ActionType::EXECUTE, "nats-e2e-session", nats_payload);
+      "nats-bridge", "myrmidon-pipeline-0", ActionType::EXECUTE,
+      "nats-e2e-session", nats_payload);
   bridged_msg.priority = Priority::HIGH;
   bridged_msg.task_id = "t-002";
 
@@ -426,7 +434,8 @@ TEST_F(NatsServerTest, NatsEventTriggersPipelineAdvance) {
         return evt.has_value();
       },
       std::chrono::milliseconds{2000});
-  ASSERT_TRUE(received) << "Pipeline agent did not receive the advance_dag event";
+  ASSERT_TRUE(received)
+      << "Pipeline agent did not receive the advance_dag event";
   ASSERT_TRUE(evt.has_value());
 
   EXPECT_EQ(evt->action_type, ActionType::EXECUTE);
@@ -449,19 +458,16 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
 
   constexpr int32_t kPending = 3;
   for (int32_t i = 0; i < kPending; ++i) {
-    auto work = KeystoneMessage::create("nats-bridge",
-                                        "myrmidon-tasks-0",
-                                        ActionType::EXECUTE,
-                                        "drain-session",
+    auto work = KeystoneMessage::create("nats-bridge", "myrmidon-tasks-0",
+                                        ActionType::EXECUTE, "drain-session",
                                         "pending-task-" + std::to_string(i));
     EXPECT_TRUE(bus_->routeMessage(work));
   }
 
-  // Shutdown signal arrives after the work messages (e.g., from SIGTERM handler).
-  auto shutdown = KeystoneMessage::create("nats-bridge",
-                                          "myrmidon-tasks-0",
-                                          ActionType::SHUTDOWN,
-                                          "drain-session");
+  // Shutdown signal arrives after the work messages (e.g., from SIGTERM
+  // handler).
+  auto shutdown = KeystoneMessage::create(
+      "nats-bridge", "myrmidon-tasks-0", ActionType::SHUTDOWN, "drain-session");
   EXPECT_TRUE(bus_->routeMessage(shutdown));
 
   int32_t count = 0;
@@ -478,8 +484,8 @@ TEST_F(NatsServerTest, NatsShutdownDrainsSubscription) {
       },
       std::chrono::milliseconds{5000});
 
-  EXPECT_TRUE(ok) << "Drain timed out; only received " << count << " of " << (kPending + 1)
-                  << " messages";
+  EXPECT_TRUE(ok) << "Drain timed out; only received " << count << " of "
+                  << (kPending + 1) << " messages";
   EXPECT_TRUE(saw_shutdown) << "Shutdown message was not delivered";
   EXPECT_EQ(count, kPending + 1);
 }
@@ -499,10 +505,12 @@ TEST_F(NatsServerTest, NatsMultiAgentRouting) {
   bus_->registerAgent(agent2->getAgentId(), agent2);
 
   // Route two different messages to two different agents
-  auto msg1 = KeystoneMessage::create(
-      "nats-bridge", "myrmidon-pipeline-0", ActionType::EXECUTE, "session-multi", "pipeline-work");
-  auto msg2 = KeystoneMessage::create(
-      "nats-bridge", "myrmidon-research-0", ActionType::EXECUTE, "session-multi", "research-work");
+  auto msg1 = KeystoneMessage::create("nats-bridge", "myrmidon-pipeline-0",
+                                      ActionType::EXECUTE, "session-multi",
+                                      "pipeline-work");
+  auto msg2 = KeystoneMessage::create("nats-bridge", "myrmidon-research-0",
+                                      ActionType::EXECUTE, "session-multi",
+                                      "research-work");
 
   EXPECT_TRUE(bus_->routeMessage(msg1));
   EXPECT_TRUE(bus_->routeMessage(msg2));
@@ -531,8 +539,9 @@ TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
   const std::string nats_payload =
       R"({"result":"task succeeded","output":{"code":0,"message":"ok"}})";
 
-  auto msg = KeystoneMessage::create(
-      "nats-bridge", "schema_validator", ActionType::EXECUTE, "schema-session", nats_payload);
+  auto msg = KeystoneMessage::create("nats-bridge", "schema_validator",
+                                     ActionType::EXECUTE, "schema-session",
+                                     nats_payload);
 
   EXPECT_TRUE(bus_->routeMessage(msg));
 
@@ -541,7 +550,8 @@ TEST_F(NatsServerTest, NatsSubjectDecodingRespectesSchema) {
 
   auto m = agent->getMessage();
   ASSERT_TRUE(m.has_value());
-  EXPECT_EQ(m->sender_id, "nats-bridge") << "Sender should be the transparent bridge agent ID";
+  EXPECT_EQ(m->sender_id, "nats-bridge")
+      << "Sender should be the transparent bridge agent ID";
 }
 
 // ===========================================================================
@@ -577,7 +587,8 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
 
   // Create a stream for this test (hi.tasks if not already present)
   jsStreamInfo* stream_info = nullptr;
-  natsStatus s = js_GetStreamInfo(&stream_info, js, "hi-tasks", nullptr, nullptr);
+  natsStatus s =
+      js_GetStreamInfo(&stream_info, js, "hi-tasks", nullptr, nullptr);
   if (s != NATS_OK) {
     // Stream doesn't exist; create it
     jsStreamConfig stream_cfg;
@@ -589,7 +600,8 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
     stream_cfg.MaxAge = 3600000;  // 1 hour
 
     s = js_AddStream(nullptr, js, &stream_cfg, nullptr, nullptr);
-    ASSERT_EQ(s, NATS_OK) << "Failed to create hi-tasks stream: " << natsStatus_GetText(s);
+    ASSERT_EQ(s, NATS_OK) << "Failed to create hi-tasks stream: "
+                          << natsStatus_GetText(s);
   } else {
     jsStreamInfo_Destroy(stream_info);
   }
@@ -599,20 +611,26 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
   jsConsumerConfig_Init(&consumer_cfg);
   consumer_cfg.Durable = "test-listener-consumer";
   consumer_cfg.DeliverPolicy = js_DeliverLastPerSubject;
-  consumer_cfg.MaxAckPending = 1;  // Rate-limiting: one unacked message at a time
+  consumer_cfg.MaxAckPending =
+      1;  // Rate-limiting: one unacked message at a time
 
-  natsStatus consumer_s = js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
+  natsStatus consumer_s =
+      js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
   // It's OK if consumer already exists (JSConsumerNameExistErr)
   if (consumer_s != NATS_OK) {
-    EXPECT_EQ(static_cast<int>(consumer_s), static_cast<int>(JSConsumerNameExistErr))
-        << "Unexpected consumer creation failure: " << natsStatus_GetText(consumer_s);
+    EXPECT_EQ(static_cast<int>(consumer_s),
+              static_cast<int>(JSConsumerNameExistErr))
+        << "Unexpected consumer creation failure: "
+        << natsStatus_GetText(consumer_s);
   }
 
   // Publish a well-formed message to hi.tasks.>
   const char* test_subject = "hi.tasks.team-001.task-abc123.completed";
   const char* test_payload = R"({"status":"completed"})";
-  natsStatus pub_s = natsConnection_PublishString(conn.handle(), test_subject, test_payload);
-  ASSERT_EQ(pub_s, NATS_OK) << "Failed to publish test message: " << natsStatus_GetText(pub_s);
+  natsStatus pub_s =
+      natsConnection_PublishString(conn.handle(), test_subject, test_payload);
+  ASSERT_EQ(pub_s, NATS_OK)
+      << "Failed to publish test message: " << natsStatus_GetText(pub_s);
 
   // Give JetStream a moment to process the publish
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
@@ -627,21 +645,25 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
   listener_cfg.durable_name = "test-listener-consumer";
   listener_cfg.max_ack_pending = 1;
 
-  NATSListener listener(listener_cfg, [&](std::string_view team_id, std::string_view task_id) {
-    captured_team_id = std::string(team_id);
-    captured_task_id = std::string(task_id);
-    dag_advances++;
-  });
+  NATSListener listener(
+      listener_cfg, [&](std::string_view team_id, std::string_view task_id) {
+        captured_team_id = std::string(team_id);
+        captured_task_id = std::string(task_id);
+        dag_advances++;
+      });
 
   // Start the listener
   natsStatus listen_s = listener.start(js);
-  ASSERT_EQ(listen_s, NATS_OK) << "Failed to start listener: " << natsStatus_GetText(listen_s);
+  ASSERT_EQ(listen_s, NATS_OK)
+      << "Failed to start listener: " << natsStatus_GetText(listen_s);
 
   // Wait for the callback to fire (listener runs on a callback thread)
   bool listener_fired = waitFor([&]() { return dag_advances.load() > 0; },
                                 std::chrono::milliseconds{2000});
-  EXPECT_TRUE(listener_fired) << "NATSListener did not process the published message";
-  EXPECT_EQ(dag_advances, 1) << "Expected exactly 1 DAG advance, got " << dag_advances;
+  EXPECT_TRUE(listener_fired)
+      << "NATSListener did not process the published message";
+  EXPECT_EQ(dag_advances, 1)
+      << "Expected exactly 1 DAG advance, got " << dag_advances;
   EXPECT_EQ(captured_team_id, "team-001");
   EXPECT_EQ(captured_task_id, "task-abc123");
 
@@ -658,7 +680,8 @@ TEST_F(NatsServerTest, NATSListenerProcessesMessagesFromRealServer) {
  * connection is properly cleaned up on disconnect.
  *
  * Note: Full reconnection testing (server killed mid-connection) requires
- * Docker or nats-server binary on PATH. This test focuses on basic connectivity.
+ * Docker or nats-server binary on PATH. This test focuses on basic
+ * connectivity.
  */
 TEST_F(NatsServerTest, NatsConnectionConnectsAndDisconnects) {
   using namespace keystone::transport;
@@ -751,7 +774,8 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
 
   for (const auto& test : tests) {
     auto cls = NATSListener::classify_subject(test.subject);
-    EXPECT_EQ(cls.verdict, test.expected_verdict) << "Subject: " << test.subject;
+    EXPECT_EQ(cls.verdict, test.expected_verdict)
+        << "Subject: " << test.subject;
   }
 
   // Integration test: publish a malformed message and verify it's rejected
@@ -765,7 +789,8 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
 
   // Create stream if needed
   jsStreamInfo* stream_info = nullptr;
-  natsStatus s = js_GetStreamInfo(&stream_info, js, "hi-tasks", nullptr, nullptr);
+  natsStatus s =
+      js_GetStreamInfo(&stream_info, js, "hi-tasks", nullptr, nullptr);
   if (s == NATS_OK) {
     jsStreamInfo_Destroy(stream_info);
   } else {
@@ -784,18 +809,20 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
   consumer_cfg.Durable = "test-malformed-consumer";
   consumer_cfg.DeliverPolicy = js_DeliverLastPerSubject;
   consumer_cfg.MaxAckPending = 1;
-  natsStatus consumer_s = js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
+  natsStatus consumer_s =
+      js_AddConsumer(nullptr, js, "hi-tasks", &consumer_cfg, nullptr, nullptr);
   (void)consumer_s;  // OK if already exists
 
   // Publish a malformed message
-  natsStatus pub_s = natsConnection_PublishString(conn.handle(),
-                                                  "hi.tasks.bad",
-                                                  "{}");  // Only 3 parts, malformed
+  natsStatus pub_s =
+      natsConnection_PublishString(conn.handle(), "hi.tasks.bad",
+                                   "{}");  // Only 3 parts, malformed
   ASSERT_EQ(pub_s, NATS_OK);
 
   std::this_thread::sleep_for(std::chrono::milliseconds{100});
 
-  // Create listener with callback that should NOT be invoked for malformed messages
+  // Create listener with callback that should NOT be invoked for malformed
+  // messages
   std::atomic<int32_t> dag_advances{0};
 
   NATSListenerConfig listener_cfg;
@@ -814,7 +841,8 @@ TEST_F(NatsServerTest, NATSListenerRejectsMalformedSubjects) {
   std::this_thread::sleep_for(std::chrono::milliseconds{500});
 
   // Callback should never fire for malformed message
-  EXPECT_EQ(dag_advances, 0) << "DAG callback should not fire for malformed subject";
+  EXPECT_EQ(dag_advances, 0)
+      << "DAG callback should not fire for malformed subject";
 
   listener.stop();
   conn.disconnect();

@@ -19,189 +19,188 @@
  * - C++20 coroutines for async processing
  */
 
-#include <iostream>
-#include <memory>
-#include <chrono>
 #include <agents/chief_architect_agent.hpp>
 #include <agents/task_agent.hpp>
-#include <core/message_bus.hpp>
+#include <chrono>
 #include <core/message.hpp>
+#include <core/message_bus.hpp>
+#include <iostream>
+#include <memory>
 
 using namespace projectkeystone;
 
 // ANSI color codes for better output readability
 namespace Color {
-    const char* RESET = "\033[0m";
-    const char* CHIEF = "\033[1;34m";  // Blue
-    const char* TASK = "\033[1;32m";   // Green
-    const char* BUS = "\033[1;33m";    // Yellow
-    const char* INFO = "\033[1;36m";   // Cyan
-}
+const char* RESET = "\033[0m";
+const char* CHIEF = "\033[1;34m";  // Blue
+const char* TASK = "\033[1;32m";   // Green
+const char* BUS = "\033[1;33m";    // Yellow
+const char* INFO = "\033[1;36m";   // Cyan
+}  // namespace Color
 
 /**
  * @brief Print a formatted log message with timestamp
  */
 void log(const std::string& agent, const std::string& message,
          const char* color = Color::INFO) {
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
-    std::cout << color << "[" << agent << "] " << message
-              << Color::RESET << std::endl;
+  auto now = std::chrono::system_clock::now();
+  auto time = std::chrono::system_clock::to_time_t(now);
+  std::cout << color << "[" << agent << "] " << message << Color::RESET
+            << std::endl;
 }
 
 int main() {
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  Thread-Based 2-Layer Example: Chief → TaskAgent\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  Thread-Based 2-Layer Example: Chief → TaskAgent\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 1: Create MessageBus
-    // ─────────────────────────────────────────────────────────────
-    log("Setup", "Creating MessageBus...", Color::INFO);
-    auto bus = std::make_shared<MessageBus>();
+  // ─────────────────────────────────────────────────────────────
+  // STEP 1: Create MessageBus
+  // ─────────────────────────────────────────────────────────────
+  log("Setup", "Creating MessageBus...", Color::INFO);
+  auto bus = std::make_shared<MessageBus>();
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 2: Create Agents
-    // ─────────────────────────────────────────────────────────────
-    log("Setup", "Creating ChiefArchitectAgent...", Color::INFO);
-    auto chief = std::make_shared<ChiefArchitectAgent>("chief", bus);
+  // ─────────────────────────────────────────────────────────────
+  // STEP 2: Create Agents
+  // ─────────────────────────────────────────────────────────────
+  log("Setup", "Creating ChiefArchitectAgent...", Color::INFO);
+  auto chief = std::make_shared<ChiefArchitectAgent>("chief", bus);
 
-    log("Setup", "Creating TaskAgent...", Color::INFO);
-    auto task = std::make_shared<TaskAgent>("task1", bus);
+  log("Setup", "Creating TaskAgent...", Color::INFO);
+  auto task = std::make_shared<TaskAgent>("task1", bus);
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 3: Register Agents with MessageBus
-    // ─────────────────────────────────────────────────────────────
-    log("Setup", "Registering agents with MessageBus...", Color::INFO);
-    bus->registerAgent("chief", chief);
-    bus->registerAgent("task1", task);
+  // ─────────────────────────────────────────────────────────────
+  // STEP 3: Register Agents with MessageBus
+  // ─────────────────────────────────────────────────────────────
+  log("Setup", "Registering agents with MessageBus...", Color::INFO);
+  bus->registerAgent("chief", chief);
+  bus->registerAgent("task1", task);
 
-    std::cout << "\n✓ Setup Complete\n" << std::endl;
+  std::cout << "\n✓ Setup Complete\n" << std::endl;
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 4: Chief sends command to TaskAgent
-    // ─────────────────────────────────────────────────────────────
-    std::string command = "echo 'Hello from HMAS!'";
-    log("Chief", "Sending command to TaskAgent: " + command, Color::CHIEF);
+  // ─────────────────────────────────────────────────────────────
+  // STEP 4: Chief sends command to TaskAgent
+  // ─────────────────────────────────────────────────────────────
+  std::string command = "echo 'Hello from HMAS!'";
+  log("Chief", "Sending command to TaskAgent: " + command, Color::CHIEF);
 
-    auto goal_msg = KeystoneMessage::create(
-        "chief",           // sender_id
-        "task1",           // receiver_id
-        command,           // command
-        ActionType::EXECUTE,  // action type
-        Priority::NORMAL   // priority
-    );
+  auto goal_msg = KeystoneMessage::create("chief",              // sender_id
+                                          "task1",              // receiver_id
+                                          command,              // command
+                                          ActionType::EXECUTE,  // action type
+                                          Priority::NORMAL      // priority
+  );
 
-    chief->sendMessage(goal_msg);
-    log("Bus", "Routed message " + goal_msg.msg_id + " from chief to task1",
-        Color::BUS);
+  chief->sendMessage(goal_msg);
+  log("Bus", "Routed message " + goal_msg.msg_id + " from chief to task1",
+      Color::BUS);
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 5: TaskAgent receives and processes message
-    // ─────────────────────────────────────────────────────────────
-    log("Task", "Retrieving message from inbox...", Color::TASK);
-    auto task_msg_opt = task->getMessage();
+  // ─────────────────────────────────────────────────────────────
+  // STEP 5: TaskAgent receives and processes message
+  // ─────────────────────────────────────────────────────────────
+  log("Task", "Retrieving message from inbox...", Color::TASK);
+  auto task_msg_opt = task->getMessage();
 
-    if (!task_msg_opt) {
-        std::cerr << "ERROR: TaskAgent did not receive message!" << std::endl;
-        return 1;
-    }
+  if (!task_msg_opt) {
+    std::cerr << "ERROR: TaskAgent did not receive message!" << std::endl;
+    return 1;
+  }
 
-    auto task_msg = *task_msg_opt;
-    log("Task", "Received command: " + task_msg.command, Color::TASK);
-    log("Task", "Executing bash command...", Color::TASK);
+  auto task_msg = *task_msg_opt;
+  log("Task", "Received command: " + task_msg.command, Color::TASK);
+  log("Task", "Executing bash command...", Color::TASK);
 
-    // Process message asynchronously using C++20 coroutines
-    auto task_response = task->processMessage(task_msg).get();
+  // Process message asynchronously using C++20 coroutines
+  auto task_response = task->processMessage(task_msg).get();
 
-    if (task_response.status == Response::Status::Success) {
-        log("Task", "Command executed successfully", Color::TASK);
-        log("Task", "Result: " + task_response.result, Color::TASK);
-        log("Task", "Sending result back to chief", Color::TASK);
-    } else {
-        log("Task", "Command execution failed: " + task_response.result,
-            Color::TASK);
-    }
+  if (task_response.status == Response::Status::Success) {
+    log("Task", "Command executed successfully", Color::TASK);
+    log("Task", "Result: " + task_response.result, Color::TASK);
+    log("Task", "Sending result back to chief", Color::TASK);
+  } else {
+    log("Task", "Command execution failed: " + task_response.result,
+        Color::TASK);
+  }
 
-    log("Bus", "Routed response " + task_response.msg_id +
-                " from task1 to chief", Color::BUS);
+  log("Bus", "Routed response " + task_response.msg_id + " from task1 to chief",
+      Color::BUS);
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 6: Chief receives result from TaskAgent
-    // ─────────────────────────────────────────────────────────────
-    log("Chief", "Retrieving response from inbox...", Color::CHIEF);
-    auto chief_msg_opt = chief->getMessage();
+  // ─────────────────────────────────────────────────────────────
+  // STEP 6: Chief receives result from TaskAgent
+  // ─────────────────────────────────────────────────────────────
+  log("Chief", "Retrieving response from inbox...", Color::CHIEF);
+  auto chief_msg_opt = chief->getMessage();
 
-    if (!chief_msg_opt) {
-        std::cerr << "ERROR: Chief did not receive response!" << std::endl;
-        return 1;
-    }
+  if (!chief_msg_opt) {
+    std::cerr << "ERROR: Chief did not receive response!" << std::endl;
+    return 1;
+  }
 
-    auto chief_msg = *chief_msg_opt;
-    log("Chief", "Received result from TaskAgent", Color::CHIEF);
+  auto chief_msg = *chief_msg_opt;
+  log("Chief", "Received result from TaskAgent", Color::CHIEF);
 
-    // Process response
-    auto chief_response = chief->processMessage(chief_msg).get();
+  // Process response
+  auto chief_response = chief->processMessage(chief_msg).get();
 
-    // ─────────────────────────────────────────────────────────────
-    // STEP 7: Display Final Result
-    // ─────────────────────────────────────────────────────────────
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << "  FINAL RESULT\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  // ─────────────────────────────────────────────────────────────
+  // STEP 7: Display Final Result
+  // ─────────────────────────────────────────────────────────────
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << "  FINAL RESULT\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
 
-    std::cout << Color::INFO << "Command:  " << Color::RESET << command
-              << std::endl;
-    std::cout << Color::INFO << "Result:   " << Color::RESET
-              << chief_response.result << std::endl;
-    std::cout << Color::INFO << "Status:   " << Color::RESET
-              << (chief_response.status == Response::Status::Success
-                      ? "✓ Success" : "✗ Failed")
-              << std::endl;
+  std::cout << Color::INFO << "Command:  " << Color::RESET << command
+            << std::endl;
+  std::cout << Color::INFO << "Result:   " << Color::RESET
+            << chief_response.result << std::endl;
+  std::cout << Color::INFO << "Status:   " << Color::RESET
+            << (chief_response.status == Response::Status::Success ? "✓ Success"
+                                                                   : "✗ Failed")
+            << std::endl;
 
-    std::cout << "\n"
-              << "═══════════════════════════════════════════════════════\n"
-              << std::endl;
+  std::cout << "\n"
+            << "═══════════════════════════════════════════════════════\n"
+            << std::endl;
 
-    // ─────────────────────────────────────────────────────────────
-    // Architecture Diagram
-    // ─────────────────────────────────────────────────────────────
-    std::cout << "\nArchitecture:\n"
-              << "┌─────────────────────────────────────────┐\n"
-              << "│       Single Process (Thread-Based)      │\n"
-              << "│                                          │\n"
-              << "│  ┌────────────────────────────────────┐ │\n"
-              << "│  │         MessageBus                 │ │\n"
-              << "│  │  (Lock-Free Concurrent Queues)     │ │\n"
-              << "│  └──────────┬─────────────────────────┘ │\n"
-              << "│             │                           │\n"
-              << "│             │                           │\n"
-              << "│      ┌──────┴───────┐                  │\n"
-              << "│      ↓              ↓                  │\n"
-              << "│  ┌────────┐    ┌─────────┐             │\n"
-              << "│  │ Chief  │    │  Task   │             │\n"
-              << "│  │ Thread │ ←→ │ Thread  │             │\n"
-              << "│  └────────┘    └─────────┘             │\n"
-              << "│                                          │\n"
-              << "│  Level 0       Level 3                  │\n"
-              << "└─────────────────────────────────────────┘\n"
-              << std::endl;
+  // ─────────────────────────────────────────────────────────────
+  // Architecture Diagram
+  // ─────────────────────────────────────────────────────────────
+  std::cout << "\nArchitecture:\n"
+            << "┌─────────────────────────────────────────┐\n"
+            << "│       Single Process (Thread-Based)      │\n"
+            << "│                                          │\n"
+            << "│  ┌────────────────────────────────────┐ │\n"
+            << "│  │         MessageBus                 │ │\n"
+            << "│  │  (Lock-Free Concurrent Queues)     │ │\n"
+            << "│  └──────────┬─────────────────────────┘ │\n"
+            << "│             │                           │\n"
+            << "│             │                           │\n"
+            << "│      ┌──────┴───────┐                  │\n"
+            << "│      ↓              ↓                  │\n"
+            << "│  ┌────────┐    ┌─────────┐             │\n"
+            << "│  │ Chief  │    │  Task   │             │\n"
+            << "│  │ Thread │ ←→ │ Thread  │             │\n"
+            << "│  └────────┘    └─────────┘             │\n"
+            << "│                                          │\n"
+            << "│  Level 0       Level 3                  │\n"
+            << "└─────────────────────────────────────────┘\n"
+            << std::endl;
 
-    // ─────────────────────────────────────────────────────────────
-    // Message Flow Summary
-    // ─────────────────────────────────────────────────────────────
-    std::cout << "Message Flow:\n"
-              << "1. Chief → MessageBus → TaskAgent (EXECUTE command)\n"
-              << "2. TaskAgent executes bash command\n"
-              << "3. TaskAgent → MessageBus → Chief (RETURN_RESULT)\n"
-              << "4. Chief processes result\n"
-              << std::endl;
+  // ─────────────────────────────────────────────────────────────
+  // Message Flow Summary
+  // ─────────────────────────────────────────────────────────────
+  std::cout << "Message Flow:\n"
+            << "1. Chief → MessageBus → TaskAgent (EXECUTE command)\n"
+            << "2. TaskAgent executes bash command\n"
+            << "3. TaskAgent → MessageBus → Chief (RETURN_RESULT)\n"
+            << "4. Chief processes result\n"
+            << std::endl;
 
-    return 0;
+  return 0;
 }
 
 /**

@@ -32,29 +32,37 @@ Thread-based deployment is the **simplest and fastest** communication model:
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
+┌───────────────────────────────────────
+───────────────────┐
 │                   Single Process                          │
 │                                                           │
-│  ┌─────────────────────────────────────────────────┐     │
+│  
+┌───────────────────────────────────────
+──────────┐     │
 │  │           MessageBus (Shared)                   │     │
 │  │  - Agent registry (thread-safe map)             │     │
 │  │  - Routes messages by receiver_id               │     │
 │  │  - Supports sync/async delivery                 │     │
-│  └──────────┬──────────────┬──────────────┬────────┘     │
+│  
+└──────────┬──────────────┬─────────────
+─┬────────┘     │
 │             │              │              │              │
 │             ↓              ↓              ↓              │
-│  ┌────────────────┐ ┌──────────────┐ ┌─────────────┐    │
+│  ┌────────────────┐ ┌──────────────┐
+┌─────────────┐    │
 │  │ ChiefArchitect │ │  ModuleLead  │ │  TaskAgent  │    │
 │  │   (Thread 1)   │ │  (Thread 2)  │ │  (Thread 3) │    │
 │  │                │ │              │ │             │    │
 │  │  Inbox:        │ │  Inbox:      │ │  Inbox:     │    │
 │  │  [Queue]       │ │  [Queue]     │ │  [Queue]    │    │
-│  └────────────────┘ └──────────────┘ └─────────────┘    │
+│  └────────────────┘ └──────────────┘
+└─────────────┘    │
 │                                                           │
 │  Lock-Free Concurrent Queues (moodycamel)                │
 │  Priority-Based Message Routing (HIGH, NORMAL, LOW)      │
 │  Time-Based Fairness (prevents starvation)               │
-└──────────────────────────────────────────────────────────┘
+└───────────────────────────────────────
+───────────────────┘
 ```
 
 ### Key Components
@@ -194,7 +202,9 @@ TaskAgents.
 ModuleLead State Machine:
 IDLE → PLANNING → WAITING_FOR_TASKS → SYNTHESIZING → IDLE
   ^                                                      |
-  └──────────────────────────────────────────────────────┘
+
+└───────────────────────────────────────
+───────────────┘
 ```
 
 **Code Highlights**:

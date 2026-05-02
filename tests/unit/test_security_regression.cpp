@@ -12,17 +12,17 @@
  * - MEDIUM: Modulo by zero
  */
 
-#include "core/agent_id_interning.hpp"
-#include "core/config.hpp"
-#include "core/metrics.hpp"
-#include "core/profiling.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <limits>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "core/agent_id_interning.hpp"
+#include "core/config.hpp"
+#include "core/metrics.hpp"
+#include "core/profiling.hpp"
 
 namespace keystone {
 namespace {
@@ -109,7 +109,8 @@ TEST(SecurityRegressionTest, LeadAgentBaseSubtaskOverflow) {
   // This test verifies the compile-time limit check exists
 
   // INT_MAX is 2,147,483,647 on most systems
-  constexpr size_t max_safe_size = static_cast<size_t>(std::numeric_limits<int>::max());
+  constexpr size_t max_safe_size =
+      static_cast<size_t>(std::numeric_limits<int>::max());
   constexpr size_t unsafe_size = max_safe_size + 1;
 
   EXPECT_GT(unsafe_size, max_safe_size);
@@ -171,8 +172,9 @@ TEST(SecurityRegressionTest, AgentIdInterningOverflow) {
 TEST(SecurityRegressionTest, ConfigWatermarkValidation) {
   // Test that watermark configuration is validated at compile time
 
-  size_t watermark = static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE *
-                                         core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
+  size_t watermark =
+      static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE *
+                          core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
   size_t max_size = core::Config::AGENT_MAX_QUEUE_SIZE;
 
   // Watermark must be less than max size
@@ -183,7 +185,8 @@ TEST(SecurityRegressionTest, ConfigWatermarkValidation) {
   EXPECT_EQ(watermark, static_cast<size_t>(max_size * 0.8));
 
   // Verify it's a reasonable percentage
-  double percent = static_cast<double>(watermark) / static_cast<double>(max_size);
+  double percent =
+      static_cast<double>(watermark) / static_cast<double>(max_size);
   EXPECT_GT(percent, 0.0);
   EXPECT_LT(percent, 1.0);
 }
@@ -240,15 +243,17 @@ TEST(SecurityRegressionTest, NumericLimitsConstants) {
 
   EXPECT_EQ(std::numeric_limits<uint32_t>::max(), 4294967295u);
 
-  EXPECT_GT(std::numeric_limits<int64_t>::max(), std::numeric_limits<int32_t>::max());
+  EXPECT_GT(std::numeric_limits<int64_t>::max(),
+            std::numeric_limits<int32_t>::max());
 }
 
 TEST(SecurityRegressionTest, StaticAssertCompileTime) {
   // Verify that static_assert validations don't affect runtime
 
   // Config watermark validation (compile-time check)
-  size_t watermark = static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE *
-                                         core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
+  size_t watermark =
+      static_cast<size_t>(core::Config::AGENT_MAX_QUEUE_SIZE *
+                          core::Config::AGENT_QUEUE_LOW_WATERMARK_PERCENT);
   EXPECT_GT(watermark, 0u);
 
   // If static_assert failed, this code wouldn't compile

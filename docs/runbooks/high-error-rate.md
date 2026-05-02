@@ -35,8 +35,8 @@ kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
 curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])'
 
 # Check per-agent breakdown
-curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])' \
-  | jq '.data.result[] | {agent: .metric.agent_id, rate: .value[1]}'
+curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])' | jq '.data.result[] | {agent:
+.metric.agent_id, rate: .value[1]}'
 ```
 
 ### 2. Check System Health
@@ -294,7 +294,8 @@ curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
 kubectl scale deployment/hmas --replicas=5 -n projectkeystone
 
 # Monitor for improvement (2-3 minutes)
-watch 'curl -s "http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])" | jq ".data.result[0].value[1]"'
+watch 'curl -s "http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])" | jq
+".data.result[0].value[1]"'
 ```
 
 ### Step 2: Identify Bottleneck

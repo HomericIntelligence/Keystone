@@ -13,16 +13,16 @@
  * - Multi-agent coordination
  */
 
-#include "agents/chief_architect_agent.hpp"
-#include "agents/module_lead_agent.hpp"
-#include "agents/task_agent.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <sstream>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/chief_architect_agent.hpp"
+#include "agents/module_lead_agent.hpp"
+#include "agents/task_agent.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone::agents;
 using namespace keystone::core;
@@ -53,7 +53,8 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
     task_agents.push_back(agent);
   }
 
-  // Register all agents with MessageBus (using shared_ptr for safe lifetime management)
+  // Register all agents with MessageBus (using shared_ptr for safe lifetime
+  // management)
   bus->registerAgent(chief->getAgentId(), chief);
   bus->registerAgent(module_lead->getAgentId(), module_lead);
   for (const auto& agent : task_agents) {
@@ -79,18 +80,20 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   // ACT: ChiefArchitect sends module-level goal to ModuleLead
   std::string module_goal = "Calculate sum of: 10 + 20 + 30";
 
-  auto msg_to_module = KeystoneMessage::create(chief->getAgentId(),
-                                               module_lead->getAgentId(),
-                                               module_goal);
+  auto msg_to_module = KeystoneMessage::create(
+      chief->getAgentId(), module_lead->getAgentId(), module_goal);
 
-  std::cout << "1. ChiefArchitect sends goal to ModuleLead: " << module_goal << std::endl;
+  std::cout << "1. ChiefArchitect sends goal to ModuleLead: " << module_goal
+            << std::endl;
   chief->sendMessage(msg_to_module);
 
   // ModuleLead receives and processes the goal
   auto module_msg = module_lead->getMessage();
-  ASSERT_TRUE(module_msg.has_value()) << "ModuleLead should receive goal from ChiefArchitect";
+  ASSERT_TRUE(module_msg.has_value())
+      << "ModuleLead should receive goal from ChiefArchitect";
 
-  std::cout << "2. ModuleLead receives goal and decomposes into tasks..." << std::endl;
+  std::cout << "2. ModuleLead receives goal and decomposes into tasks..."
+            << std::endl;
   auto module_response = module_lead->processMessage(*module_msg).get();
 
   // ModuleLead should decompose into 3 tasks and send to TaskAgents
@@ -106,8 +109,8 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   for (auto& agent : task_agents) {
     auto task_msg = agent->getMessage();
     if (task_msg.has_value()) {
-      std::cout << "   - " << agent->getAgentId() << " processes task: " << task_msg->command
-                << std::endl;
+      std::cout << "   - " << agent->getAgentId()
+                << " processes task: " << task_msg->command << std::endl;
       auto task_response = agent->processMessage(*task_msg).get();
       tasks_processed++;
     }
@@ -122,7 +125,8 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   for (int32_t i = 0; i < 3; ++i) {
     auto result_msg = module_lead->getMessage();
     if (result_msg.has_value()) {
-      std::cout << "   - Received result: " << result_msg->payload.value_or("") << std::endl;
+      std::cout << "   - Received result: " << result_msg->payload.value_or("")
+                << std::endl;
       module_lead->processMessage(*result_msg).get();
       results_received++;
     }
@@ -134,38 +138,42 @@ TEST(E2E_Phase2, ModuleLeadSynthesizesTaskResults) {
   std::cout << "5. ModuleLead synthesizes results..." << std::endl;
   auto synthesized_result = module_lead->synthesizeResults();
 
-  auto final_msg = KeystoneMessage::create(module_lead->getAgentId(),
-                                           chief->getAgentId(),
-                                           "module_result",
-                                           synthesized_result);
+  auto final_msg =
+      KeystoneMessage::create(module_lead->getAgentId(), chief->getAgentId(),
+                              "module_result", synthesized_result);
   module_lead->sendMessage(final_msg);
 
   // ChiefArchitect receives synthesized result
   std::cout << "6. ChiefArchitect receives synthesized result..." << std::endl;
   auto chief_result_msg = chief->getMessage();
-  ASSERT_TRUE(chief_result_msg.has_value()) << "ChiefArchitect should receive synthesized result";
+  ASSERT_TRUE(chief_result_msg.has_value())
+      << "ChiefArchitect should receive synthesized result";
 
   auto final_response = chief->processMessage(*chief_result_msg).get();
 
   // ASSERT: Verify synthesis
-  EXPECT_EQ(final_response.status, Response::Status::Success) << "Module synthesis should succeed";
+  EXPECT_EQ(final_response.status, Response::Status::Success)
+      << "Module synthesis should succeed";
 
   // Expected synthesis: "10 + 20 + 30 = 60"
   std::string expected_synthesis = "60";  // Sum of 10, 20, 30
   EXPECT_NE(final_response.result.find(expected_synthesis), std::string::npos)
       << "Synthesized result should contain sum: " << expected_synthesis;
 
-  std::cout << "✓ ModuleLead successfully synthesized: " << final_response.result << std::endl;
+  std::cout << "✓ ModuleLead successfully synthesized: "
+            << final_response.result << std::endl;
 
   // Verify all TaskAgents participated
   for (const auto& agent : task_agents) {
     auto history = agent->getCommandHistory();
-    EXPECT_EQ(history.size(), 1u) << agent->getAgentId() << " should execute exactly 1 task";
+    EXPECT_EQ(history.size(), 1u)
+        << agent->getAgentId() << " should execute exactly 1 task";
   }
 
   // Verify ModuleLead state transitions
   auto execution_trace = module_lead->getExecutionTrace();
-  EXPECT_GE(execution_trace.size(), 3) << "ModuleLead should track state transitions";
+  EXPECT_GE(execution_trace.size(), 3)
+      << "ModuleLead should track state transitions";
 
   std::cout << "\nExecution trace:";
   for (const auto& state : execution_trace) {
@@ -215,7 +223,8 @@ TEST(E2E_Phase2, ModuleLeadHandlesVariableTaskCount) {
   // ACT: Goal requiring only 2 tasks
   std::string module_goal = "Calculate: 100 + 200";
 
-  auto msg = KeystoneMessage::create(chief->getAgentId(), module_lead->getAgentId(), module_goal);
+  auto msg = KeystoneMessage::create(chief->getAgentId(),
+                                     module_lead->getAgentId(), module_goal);
 
   chief->sendMessage(msg);
 
@@ -244,9 +253,11 @@ TEST(E2E_Phase2, ModuleLeadHandlesVariableTaskCount) {
   }
 
   auto synthesized = module_lead->synthesizeResults();
-  EXPECT_NE(synthesized.find("300"), std::string::npos) << "Should synthesize to 300";
+  EXPECT_NE(synthesized.find("300"), std::string::npos)
+      << "Should synthesize to 300";
 
-  std::cout << "✓ ModuleLead handled 2 tasks correctly: " << synthesized << std::endl;
+  std::cout << "✓ ModuleLead handled 2 tasks correctly: " << synthesized
+            << std::endl;
 }
 
 int main(int argc, char** argv) {

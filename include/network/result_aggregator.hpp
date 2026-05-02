@@ -27,14 +27,14 @@ class ResultAggregator {
   /// @param timeout Timeout duration
   /// @param expected_count Number of expected subtask results
   ResultAggregator(AggregationStrategy strategy,
-                   std::chrono::milliseconds timeout,
-                   size_t expected_count);
+                   std::chrono::milliseconds timeout, size_t expected_count);
 
   /// Add a subtask result
   /// @param subtask_name Name of the subtask
   /// @param result Task result to add
   /// @return true if aggregation is now complete, false otherwise
-  bool addResult(const std::string& subtask_name, const hmas::TaskResult& result);
+  bool addResult(const std::string& subtask_name,
+                 const hmas::TaskResult& result);
 
   /// Check if aggregation is complete
   /// @return true if enough results received per strategy
@@ -70,11 +70,13 @@ class ResultAggregator {
   /// Get individual result
   /// @param subtask_name Name of subtask
   /// @return Result if found, nullopt otherwise
-  std::optional<hmas::TaskResult> getResult(const std::string& subtask_name) const;
+  std::optional<hmas::TaskResult> getResult(
+      const std::string& subtask_name) const;
 
   /// Get all results
   /// @return Map of subtask_name -> TaskResult
-  const std::unordered_map<std::string, hmas::TaskResult>& getAllResults() const {
+  const std::unordered_map<std::string, hmas::TaskResult>& getAllResults()
+      const {
     return results_;
   }
 

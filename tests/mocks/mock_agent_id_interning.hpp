@@ -1,10 +1,10 @@
 #pragma once
 
+#include <gmock/gmock.h>
+
 #include <cstdint>
 #include <optional>
 #include <string>
-
-#include <gmock/gmock.h>
 
 namespace keystone::test {
 
@@ -38,7 +38,8 @@ class MockAgentIdInterning {
    *
    * Lookup integer ID for existing agent string
    */
-  MOCK_METHOD(std::optional<uint32_t>, tryGetId, (const std::string& agent_id), (const));
+  MOCK_METHOD(std::optional<uint32_t>, tryGetId, (const std::string& agent_id),
+              (const));
 
   /**
    * @brief Mock for tryGetString() method

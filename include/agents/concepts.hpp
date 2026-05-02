@@ -1,11 +1,11 @@
 #pragma once
 
-#include "concurrency/task.hpp"
-#include "core/message.hpp"
-
 #include <concepts>
 #include <memory>
 #include <string>
+
+#include "concurrency/task.hpp"
+#include "core/message.hpp"
 
 // Forward declarations to avoid circular dependencies
 namespace keystone {
@@ -56,9 +56,10 @@ concept MessageSender = requires(T& sender, const core::KeystoneMessage& msg) {
  * This concept captures the ability to receive messages into an inbox.
  */
 template <typename T>
-concept MessageReceiver = requires(T& receiver, const core::KeystoneMessage& msg) {
-  { receiver.receiveMessage(msg) } -> std::same_as<void>;
-};
+concept MessageReceiver =
+    requires(T& receiver, const core::KeystoneMessage& msg) {
+      { receiver.receiveMessage(msg) } -> std::same_as<void>;
+    };
 
 /**
  * @brief Concept for asynchronous message handlers
@@ -66,12 +67,16 @@ concept MessageReceiver = requires(T& receiver, const core::KeystoneMessage& msg
  * Requires:
  * - processMessage(KeystoneMessage) method returning Task<Response>
  *
- * This is the core processing interface for async agents using C++20 coroutines.
+ * This is the core processing interface for async agents using C++20
+ * coroutines.
  */
 template <typename T>
-concept AsyncMessageHandler = requires(T& handler, const core::KeystoneMessage& msg) {
-  { handler.processMessage(msg) } -> std::same_as<concurrency::Task<core::Response>>;
-};
+concept AsyncMessageHandler =
+    requires(T& handler, const core::KeystoneMessage& msg) {
+      {
+        handler.processMessage(msg)
+      } -> std::same_as<concurrency::Task<core::Response>>;
+    };
 
 /**
  * @brief Complete agent concept (async version)
@@ -100,7 +105,8 @@ concept AsyncMessageHandler = requires(T& handler, const core::KeystoneMessage& 
  * - Enables generic agent algorithms
  */
 template <typename T>
-concept Agent = Identifiable<T> && MessageSender<T> && MessageReceiver<T> && AsyncMessageHandler<T>;
+concept Agent = Identifiable<T> && MessageSender<T> && MessageReceiver<T> &&
+                AsyncMessageHandler<T>;
 
 /**
  * @brief Concept for agents that support scheduler integration
@@ -112,8 +118,8 @@ concept Agent = Identifiable<T> && MessageSender<T> && MessageReceiver<T> && Asy
  * for concurrent task execution.
  */
 template <typename T>
-concept SchedulerAware = requires(T& agent,
-                                  keystone::concurrency::WorkStealingScheduler* scheduler) {
+concept SchedulerAware = requires(
+    T& agent, keystone::concurrency::WorkStealingScheduler* scheduler) {
   { agent.setScheduler(scheduler) } -> std::same_as<void>;
 };
 
@@ -129,9 +135,10 @@ concept SchedulerAware = requires(T& agent,
  * This concept is for agents that can be connected to a message router.
  */
 template <typename T>
-concept MessageBusAware = requires(T& agent, keystone::core::IMessageRouter* router) {
-  { agent.setMessageBus(router) } -> std::same_as<void>;
-};
+concept MessageBusAware =
+    requires(T& agent, keystone::core::IMessageRouter* router) {
+      { agent.setMessageBus(router) } -> std::same_as<void>;
+    };
 
 /**
  * @brief Complete concept for fully-integrated agents

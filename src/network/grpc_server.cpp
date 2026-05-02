@@ -1,12 +1,12 @@
 #include "network/grpc_server.hpp"
 
+#include <grpcpp/security/server_credentials.h>
+#include <grpcpp/server_builder.h>
+
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-
-#include <grpcpp/security/server_credentials.h>
-#include <grpcpp/server_builder.h>
 
 namespace keystone::network {
 
@@ -52,7 +52,8 @@ GrpcServer::~GrpcServer() {
 
 void GrpcServer::registerService(grpc::Service* service) {
   if (started_) {
-    throw std::runtime_error("Cannot register service after server has started");
+    throw std::runtime_error(
+        "Cannot register service after server has started");
   }
   services_.push_back(service);
 }
@@ -89,7 +90,8 @@ bool GrpcServer::start() {
 
 void GrpcServer::stop(int grace_period_ms) {
   if (server_) {
-    auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(grace_period_ms);
+    auto deadline = std::chrono::system_clock::now() +
+                    std::chrono::milliseconds(grace_period_ms);
     server_->Shutdown(deadline);
     server_.reset();
     started_ = false;
@@ -147,7 +149,8 @@ std::shared_ptr<grpc::ServerCredentials> GrpcServer::buildCredentials() {
 
       return grpc::SslServerCredentials(ssl_opts);
     } catch (const std::exception& e) {
-      throw std::runtime_error(std::string("Failed to load TLS credentials: ") + e.what());
+      throw std::runtime_error(std::string("Failed to load TLS credentials: ") +
+                               e.what());
     }
   } else {
     return grpc::InsecureServerCredentials();

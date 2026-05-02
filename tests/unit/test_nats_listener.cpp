@@ -7,12 +7,12 @@
  * acked, naked, or triggers a DAG callback is covered here (issue #86).
  */
 
-#include "network/nats_listener.hpp"
+#include <gtest/gtest.h>
 
 #include <stdexcept>
 #include <string>
 
-#include <gtest/gtest.h>
+#include "network/nats_listener.hpp"
 
 using keystone::network::NATSListener;
 using keystone::network::NATSListenerConfig;
@@ -42,7 +42,8 @@ TEST(NATSListenerClassify, MalformedSubject_NoParts) {
 // ---------------------------------------------------------------------------
 
 TEST(NATSListenerClassify, UnsafeTeamId_PathTraversal) {
-  auto cls = NATSListener::classify_subject("hi.tasks.../../etc/passwd.task1.completed");
+  auto cls = NATSListener::classify_subject(
+      "hi.tasks.../../etc/passwd.task1.completed");
   EXPECT_EQ(cls.verdict, SubjectVerdict::kUnsafeToken);
 }
 
@@ -144,5 +145,6 @@ TEST(NATSListenerConstruct, ValidConstruct) {
   cfg.subject = "hi.tasks.>";
   cfg.durable_name = "test-consumer";
   bool called = false;
-  EXPECT_NO_THROW(NATSListener(cfg, [&](std::string_view, std::string_view) { called = true; }));
+  EXPECT_NO_THROW(NATSListener(
+      cfg, [&](std::string_view, std::string_view) { called = true; }));
 }

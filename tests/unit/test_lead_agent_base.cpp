@@ -12,12 +12,12 @@
  * Total: 22 tests
  */
 
+#include <gtest/gtest.h>
+
 #include "agents/lead_agent_base.hpp"
 #include "agents/lead_agent_base_impl.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -26,7 +26,13 @@ using namespace keystone::test;
 // Test State Enum
 // ============================================================================
 
-enum class TestLeadState { IDLE, PLANNING, WAITING_FOR_SUBORDINATES, AGGREGATING, ERROR };
+enum class TestLeadState {
+  IDLE,
+  PLANNING,
+  WAITING_FOR_SUBORDINATES,
+  AGGREGATING,
+  ERROR
+};
 
 // ============================================================================
 // Concrete Test Implementation of LeadAgentBase
@@ -43,12 +49,9 @@ class TestLeadAgent : public agents::LeadAgentBase<TestLeadState> {
   using State = TestLeadState;
 
   explicit TestLeadAgent(const std::string& agent_id)
-      : LeadAgentBase<State>(agent_id,
-                             State::IDLE,
-                             State::PLANNING,
+      : LeadAgentBase<State>(agent_id, State::IDLE, State::PLANNING,
                              State::WAITING_FOR_SUBORDINATES,
-                             State::AGGREGATING,
-                             State::ERROR) {}
+                             State::AGGREGATING, State::ERROR) {}
 
   // Track which methods were called
   mutable std::vector<std::string> method_calls_;
@@ -86,7 +89,8 @@ class TestLeadAgent : public agents::LeadAgentBase<TestLeadState> {
 
     // Simulate delegation by creating messages
     for (const auto& subtask : subtasks) {
-      auto msg = core::KeystoneMessage::create(agent_id_, "subordinate", subtask);
+      auto msg =
+          core::KeystoneMessage::create(agent_id_, "subordinate", subtask);
       // Track pending subordinate (simplified - just count)
       coordination_.trackPendingSubordinate(msg.msg_id, "subordinate");
     }
@@ -97,13 +101,15 @@ class TestLeadAgent : public agents::LeadAgentBase<TestLeadState> {
     return msg.command == "result";
   }
 
-  void processSubordinateResult(const core::KeystoneMessage& result_msg) override {
+  void processSubordinateResult(
+      const core::KeystoneMessage& result_msg) override {
     method_calls_.push_back("processSubordinateResult");
 
     if (result_msg.payload) {
       bool all_complete = coordination_.recordResult(*result_msg.payload);
       if (all_complete) {
-        coordination_.transitionTo(State::AGGREGATING, stateToString(State::AGGREGATING));
+        coordination_.transitionTo(State::AGGREGATING,
+                                   stateToString(State::AGGREGATING));
       }
     }
   }
@@ -160,8 +166,10 @@ class LeadAgentBaseTest : public AgentTestFixture {
 // ============================================================================
 
 TEST_F(LeadAgentBaseTest, ProcessMessageIsTemplateMethod) {
-  // Verify that processMessage orchestrates the hook methods in the correct order
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2,task3");
+  // Verify that processMessage orchestrates the hook methods in the correct
+  // order
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2,task3");
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(msg));
@@ -180,9 +188,9 @@ TEST_F(LeadAgentBaseTest, ProcessMessageIsTemplateMethod) {
                         "delegateSubtasks") != agent_->method_calls_.end());
 
   // Should call stateToString multiple times for transitions
-  size_t state_to_string_count = std::count(agent_->method_calls_.begin(),
-                                            agent_->method_calls_.end(),
-                                            "stateToString");
+  size_t state_to_string_count =
+      std::count(agent_->method_calls_.begin(), agent_->method_calls_.end(),
+                 "stateToString");
   EXPECT_GE(state_to_string_count, 2);  // At least PLANNING and WAITING states
 }
 
@@ -193,18 +201,17 @@ TEST_F(LeadAgentBaseTest, TemplateMethodCannotBeOverridden) {
 }
 
 TEST_F(LeadAgentBaseTest, HookMethodsAreCalledInCorrectOrder) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(msg));
 
   // Find indices of key method calls
   auto decompose_it = std::find(agent_->method_calls_.begin(),
-                                agent_->method_calls_.end(),
-                                "decomposeGoal");
+                                agent_->method_calls_.end(), "decomposeGoal");
   auto delegate_it = std::find(agent_->method_calls_.begin(),
-                               agent_->method_calls_.end(),
-                               "delegateSubtasks");
+                               agent_->method_calls_.end(), "delegateSubtasks");
 
   ASSERT_NE(decompose_it, agent_->method_calls_.end());
   ASSERT_NE(delegate_it, agent_->method_calls_.end());
@@ -215,7 +222,8 @@ TEST_F(LeadAgentBaseTest, HookMethodsAreCalledInCorrectOrder) {
 }
 
 TEST_F(LeadAgentBaseTest, TemplateMethodTransitionsStatesCorrectly) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   // Initial state should be IDLE
   EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::IDLE);
@@ -223,11 +231,13 @@ TEST_F(LeadAgentBaseTest, TemplateMethodTransitionsStatesCorrectly) {
   concurrency::sync_await(agent_->processMessage(msg));
 
   // After processing, should be in WAITING_FOR_SUBORDINATES state
-  EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::WAITING_FOR_SUBORDINATES);
+  EXPECT_EQ(agent_->getCoordination().getCurrentState(),
+            TestLeadState::WAITING_FOR_SUBORDINATES);
 }
 
 TEST_F(LeadAgentBaseTest, TemplateMethodSetsCurrentGoal) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2,task3");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2,task3");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
@@ -240,7 +250,8 @@ TEST_F(LeadAgentBaseTest, TemplateMethodSetsCurrentGoal) {
 // ============================================================================
 
 TEST_F(LeadAgentBaseTest, DecomposeGoalHookIsCalled) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(msg));
@@ -251,7 +262,8 @@ TEST_F(LeadAgentBaseTest, DecomposeGoalHookIsCalled) {
 }
 
 TEST_F(LeadAgentBaseTest, DecomposeGoalReceivesCorrectGoal) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "alpha,beta,gamma");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "alpha,beta,gamma");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
@@ -263,7 +275,8 @@ TEST_F(LeadAgentBaseTest, DecomposeGoalReceivesCorrectGoal) {
 }
 
 TEST_F(LeadAgentBaseTest, DelegateSubtasksHookIsCalled) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(msg));
@@ -274,7 +287,8 @@ TEST_F(LeadAgentBaseTest, DelegateSubtasksHookIsCalled) {
 }
 
 TEST_F(LeadAgentBaseTest, DelegateSubtasksReceivesDecomposedTasks) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2,task3");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2,task3");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
@@ -286,7 +300,8 @@ TEST_F(LeadAgentBaseTest, DelegateSubtasksReceivesDecomposedTasks) {
 }
 
 TEST_F(LeadAgentBaseTest, IsSubordinateResultHookIsCalled) {
-  auto result_msg = core::KeystoneMessage::create("subordinate", agent_->getAgentId(), "result");
+  auto result_msg = core::KeystoneMessage::create(
+      "subordinate", agent_->getAgentId(), "result");
   result_msg.payload = "result_data";
 
   agent_->method_calls_.clear();
@@ -299,19 +314,21 @@ TEST_F(LeadAgentBaseTest, IsSubordinateResultHookIsCalled) {
 
 TEST_F(LeadAgentBaseTest, ProcessSubordinateResultHookIsCalledForResults) {
   // First, set up pending subordinates
-  auto task_msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
+  auto task_msg =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
   concurrency::sync_await(agent_->processMessage(task_msg));
 
   // Now send a result
-  auto result_msg = core::KeystoneMessage::create("subordinate", agent_->getAgentId(), "result");
+  auto result_msg = core::KeystoneMessage::create(
+      "subordinate", agent_->getAgentId(), "result");
   result_msg.payload = "result_data";
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(result_msg));
 
-  EXPECT_TRUE(std::find(agent_->method_calls_.begin(),
-                        agent_->method_calls_.end(),
-                        "processSubordinateResult") != agent_->method_calls_.end());
+  EXPECT_TRUE(
+      std::find(agent_->method_calls_.begin(), agent_->method_calls_.end(),
+                "processSubordinateResult") != agent_->method_calls_.end());
 }
 
 // ============================================================================
@@ -323,7 +340,8 @@ TEST_F(LeadAgentBaseTest, InitialStateIsIdle) {
 }
 
 TEST_F(LeadAgentBaseTest, TransitionsToPlanningWhenReceivingGoal) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   // Start in IDLE
   EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::IDLE);
@@ -332,32 +350,39 @@ TEST_F(LeadAgentBaseTest, TransitionsToPlanningWhenReceivingGoal) {
   concurrency::sync_await(agent_->processMessage(msg));
 
   // Should end in WAITING (after going through PLANNING)
-  EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::WAITING_FOR_SUBORDINATES);
+  EXPECT_EQ(agent_->getCoordination().getCurrentState(),
+            TestLeadState::WAITING_FOR_SUBORDINATES);
 }
 
 TEST_F(LeadAgentBaseTest, TransitionsToWaitingAfterDelegation) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
   // After delegation, should be waiting for subordinates
-  EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::WAITING_FOR_SUBORDINATES);
+  EXPECT_EQ(agent_->getCoordination().getCurrentState(),
+            TestLeadState::WAITING_FOR_SUBORDINATES);
 }
 
 TEST_F(LeadAgentBaseTest, TransitionsToAggregatingWhenAllResultsReceived) {
   // Set up with one task
-  auto task_msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
+  auto task_msg =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
   concurrency::sync_await(agent_->processMessage(task_msg));
 
-  EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::WAITING_FOR_SUBORDINATES);
+  EXPECT_EQ(agent_->getCoordination().getCurrentState(),
+            TestLeadState::WAITING_FOR_SUBORDINATES);
 
   // Send result
-  auto result_msg = core::KeystoneMessage::create("subordinate", agent_->getAgentId(), "result");
+  auto result_msg = core::KeystoneMessage::create(
+      "subordinate", agent_->getAgentId(), "result");
   result_msg.payload = "result_data";
   concurrency::sync_await(agent_->processMessage(result_msg));
 
   // Should transition to AGGREGATING when all results received
-  EXPECT_EQ(agent_->getCoordination().getCurrentState(), TestLeadState::AGGREGATING);
+  EXPECT_EQ(agent_->getCoordination().getCurrentState(),
+            TestLeadState::AGGREGATING);
 }
 
 // ============================================================================
@@ -367,7 +392,8 @@ TEST_F(LeadAgentBaseTest, TransitionsToAggregatingWhenAllResultsReceived) {
 TEST_F(LeadAgentBaseTest, TransitionsToErrorWhenDecomposeFails) {
   agent_->should_fail_decompose_ = true;
 
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   auto response = concurrency::sync_await(agent_->processMessage(msg));
 
@@ -381,7 +407,8 @@ TEST_F(LeadAgentBaseTest, TransitionsToErrorWhenDecomposeFails) {
 TEST_F(LeadAgentBaseTest, DoesNotDelegateWhenDecomposeFails) {
   agent_->should_fail_decompose_ = true;
 
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2");
 
   agent_->method_calls_.clear();
   concurrency::sync_await(agent_->processMessage(msg));
@@ -394,17 +421,20 @@ TEST_F(LeadAgentBaseTest, DoesNotDelegateWhenDecomposeFails) {
 
 TEST_F(LeadAgentBaseTest, HandlesCancellationRequests) {
   // First, start a task
-  auto task_msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2");
+  auto task_msg = core::KeystoneMessage::create(
+      "requester", agent_->getAgentId(), "task1,task2");
   concurrency::sync_await(agent_->processMessage(task_msg));
 
   // Now send cancellation
-  auto cancel_msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "");
+  auto cancel_msg =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "");
   cancel_msg.action_type = core::ActionType::CANCEL_TASK;
 
   auto response = concurrency::sync_await(agent_->processMessage(cancel_msg));
 
   // Should handle cancellation gracefully
-  EXPECT_TRUE(response.success || !response.success);  // Either outcome is valid
+  EXPECT_TRUE(response.success ||
+              !response.success);  // Either outcome is valid
 }
 
 // ============================================================================
@@ -412,7 +442,8 @@ TEST_F(LeadAgentBaseTest, HandlesCancellationRequests) {
 // ============================================================================
 
 TEST_F(LeadAgentBaseTest, TracksRequesterIdFromInitialMessage) {
-  auto msg = core::KeystoneMessage::create("requester_123", agent_->getAgentId(), "task1");
+  auto msg = core::KeystoneMessage::create("requester_123",
+                                           agent_->getAgentId(), "task1");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
@@ -422,11 +453,13 @@ TEST_F(LeadAgentBaseTest, TracksRequesterIdFromInitialMessage) {
 
 TEST_F(LeadAgentBaseTest, RecordsResultsFromSubordinates) {
   // Set up with one task
-  auto task_msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
+  auto task_msg =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
   concurrency::sync_await(agent_->processMessage(task_msg));
 
   // Send result
-  auto result_msg = core::KeystoneMessage::create("subordinate", agent_->getAgentId(), "result");
+  auto result_msg = core::KeystoneMessage::create(
+      "subordinate", agent_->getAgentId(), "result");
   result_msg.payload = "result_data";
   concurrency::sync_await(agent_->processMessage(result_msg));
 
@@ -437,7 +470,8 @@ TEST_F(LeadAgentBaseTest, RecordsResultsFromSubordinates) {
 }
 
 TEST_F(LeadAgentBaseTest, InitializesCoordinationWithCorrectSubtaskCount) {
-  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1,task2,task3");
+  auto msg = core::KeystoneMessage::create("requester", agent_->getAgentId(),
+                                           "task1,task2,task3");
 
   concurrency::sync_await(agent_->processMessage(msg));
 
@@ -447,10 +481,12 @@ TEST_F(LeadAgentBaseTest, InitializesCoordinationWithCorrectSubtaskCount) {
 
 TEST_F(LeadAgentBaseTest, AllowsMultipleGoalProcessing) {
   // Process first goal
-  auto msg1 = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
+  auto msg1 =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "task1");
   concurrency::sync_await(agent_->processMessage(msg1));
 
-  auto result1 = core::KeystoneMessage::create("subordinate", agent_->getAgentId(), "result");
+  auto result1 = core::KeystoneMessage::create("subordinate",
+                                               agent_->getAgentId(), "result");
   result1.payload = "result1";
   concurrency::sync_await(agent_->processMessage(result1));
 
@@ -460,7 +496,8 @@ TEST_F(LeadAgentBaseTest, AllowsMultipleGoalProcessing) {
               state_after_first == TestLeadState::IDLE);
 
   // Should be able to process second goal
-  auto msg2 = core::KeystoneMessage::create("requester", agent_->getAgentId(), "task2");
+  auto msg2 =
+      core::KeystoneMessage::create("requester", agent_->getAgentId(), "task2");
   auto response2 = concurrency::sync_await(agent_->processMessage(msg2));
 
   // Second goal should be accepted

@@ -1,12 +1,12 @@
 #pragma once
 
+#include <nats.h>
+
 #include <atomic>
 #include <functional>
 #include <string>
 #include <string_view>
 #include <thread>
-
-#include <nats.h>
 
 namespace keystone {
 namespace network {
@@ -16,11 +16,13 @@ struct NATSListenerConfig {
   std::string subject;       ///< NATS subject pattern, e.g. "hi.tasks.>"
   std::string durable_name;  ///< Durable consumer name for JetStream
   int max_ack_pending{1};    ///< Max unacked messages per CLAUDE.md rate-limit
-  int max_attempts{3};       ///< Maximum subscribe attempts before giving up (issue #331)
+  int max_attempts{
+      3};  ///< Maximum subscribe attempts before giving up (issue #331)
 };
 
 /// Callback invoked when a terminal task event advances the DAG.
-using AdvanceDagCallback = std::function<void(std::string_view team_id, std::string_view task_id)>;
+using AdvanceDagCallback =
+    std::function<void(std::string_view team_id, std::string_view task_id)>;
 
 /// Result of parsing a NATS subject token.
 enum class SubjectVerdict {
@@ -28,7 +30,7 @@ enum class SubjectVerdict {
   kUnsafeToken,      ///< team_id or task_id contains disallowed chars — nak
   kUnknownVerb,      ///< Verb not in the known set — ack, no DAG advance
   kNonTerminalVerb,  ///< Known verb but not terminal (e.g. "updated") — ack
-  kTerminal,         ///< Terminal verb ("completed"/"failed") — invoke callback
+  kTerminal,  ///< Terminal verb ("completed"/"failed") — invoke callback
 };
 
 /// Parsed fields extracted from a NATS subject.
@@ -57,7 +59,8 @@ class NATSListener {
 
   /// Subscribe to the configured subject on the given JetStream context and
   /// start the pull-based fetch loop on an internal thread.
-  /// @param js JetStream context (must outlive the listener or until stop() is called)
+  /// @param js JetStream context (must outlive the listener or until stop() is
+  /// called)
   /// @return NATS_OK on success.
   natsStatus start(jsCtx* js);
 
@@ -68,7 +71,8 @@ class NATSListener {
 
   /// Parse a NATS subject into a SubjectClassification.
   /// Exposed as public static for direct unit testing without a NATS server.
-  static SubjectClassification classify_subject(std::string_view subject) noexcept;
+  static SubjectClassification classify_subject(
+      std::string_view subject) noexcept;
 
  private:
   /// Pull-based fetch loop running on listener_thread_.

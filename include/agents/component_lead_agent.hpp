@@ -1,17 +1,17 @@
 #pragma once
 
-#include "agents/async_agent.hpp"
-#include "agents/coordination_state.hpp"
-#include "agents/lead_agent_base.hpp"
-
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "agents/async_agent.hpp"
+#include "agents/coordination_state.hpp"
+#include "agents/lead_agent_base.hpp"
+
 #ifdef ENABLE_GRPC
-#  include "network/result_aggregator.hpp"
-#  include "network/yaml_parser.hpp"
+#include "network/result_aggregator.hpp"
+#include "network/yaml_parser.hpp"
 #endif
 
 namespace keystone {
@@ -96,7 +96,8 @@ class ComponentLeadAgent : public LeadAgentBase<ComponentLeadState> {
   void processYamlComponent(const std::string& yaml_spec);
 
   /**
-   * @brief Handle a gRPC TaskResult callback from a child ModuleLeadAgent (Issue #186)
+   * @brief Handle a gRPC TaskResult callback from a child ModuleLeadAgent
+   * (Issue #186)
    *
    * Called externally when the coordinator delivers a module result via gRPC.
    * Checks hmas::TaskResult::success() and calls coordination_.recordFailure()
@@ -106,7 +107,8 @@ class ComponentLeadAgent : public LeadAgentBase<ComponentLeadState> {
    * @param subtask_id Identifier of the child module task (child task_id)
    * @param result     gRPC TaskResult from the coordinator
    */
-  void processTaskResult(const std::string& subtask_id, const hmas::TaskResult& result);
+  void processTaskResult(const std::string& subtask_id,
+                         const hmas::TaskResult& result);
 
   /**
    * @brief Start heartbeat thread (sends heartbeat every 1s)
@@ -155,7 +157,8 @@ class ComponentLeadAgent : public LeadAgentBase<ComponentLeadState> {
    *
    * @param result_msg Message containing module result
    */
-  void processSubordinateResult(const core::KeystoneMessage& result_msg) override;
+  void processSubordinateResult(
+      const core::KeystoneMessage& result_msg) override;
 
   /**
    * @brief Convert state enum to string (HOOK METHOD)

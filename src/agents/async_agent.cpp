@@ -23,18 +23,21 @@ void AsyncAgent::receiveMessage(const core::KeystoneMessage& msg) {
     if (!self) {
       return;  // Agent was destroyed while lambda was queued
     }
-    // processMessage returns a Task<Response>; drive it to completion synchronously
-    // on the worker thread. The thread-local scheduler is set, so any co_await
-    // inside processMessage routes continuations through the worker pool.
+    // processMessage returns a Task<Response>; drive it to completion
+    // synchronously on the worker thread. The thread-local scheduler is set, so
+    // any co_await inside processMessage routes continuations through the
+    // worker pool.
     auto task = self->processMessage(msg);
     task.get();
   });
 }
 
-core::Response AsyncAgent::handleCancellation(const core::KeystoneMessage& msg) {
+core::Response AsyncAgent::handleCancellation(
+    const core::KeystoneMessage& msg) {
   // Extract task_id from the cancellation message
   if (!msg.task_id.has_value()) {
-    return core::Response::createError(msg, agent_id_, "CANCEL_TASK message missing task_id");
+    return core::Response::createError(msg, agent_id_,
+                                       "CANCEL_TASK message missing task_id");
   }
 
   const std::string& task_id = *msg.task_id;
@@ -43,9 +46,8 @@ core::Response AsyncAgent::handleCancellation(const core::KeystoneMessage& msg) 
   requestCancellation(task_id);
 
   // Return acknowledgement
-  return core::Response::createSuccess(msg,
-                                       agent_id_,
-                                       "Task " + task_id + " marked for cancellation");
+  return core::Response::createSuccess(
+      msg, agent_id_, "Task " + task_id + " marked for cancellation");
 }
 
 }  // namespace agents

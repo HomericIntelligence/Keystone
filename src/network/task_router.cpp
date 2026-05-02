@@ -5,20 +5,20 @@
 
 namespace keystone::network {
 
-TaskRouter::TaskRouter(std::shared_ptr<ServiceRegistry> registry, LoadBalancingStrategy strategy)
+TaskRouter::TaskRouter(std::shared_ptr<ServiceRegistry> registry,
+                       LoadBalancingStrategy strategy)
     : registry_(std::move(registry)), strategy_(strategy) {}
 
 TaskRoutingResult TaskRouter::routeTask(const HierarchicalTaskSpec& spec) {
-  return routeTask(spec.routing.target_level,
-                   spec.routing.target_agent_type,
+  return routeTask(spec.routing.target_level, spec.routing.target_agent_type,
                    spec.payload.required_capabilities,
                    spec.routing.target_agent_id.value_or(""));
 }
 
-TaskRoutingResult TaskRouter::routeTask(int target_level,
-                                        const std::string& target_agent_type,
-                                        const std::vector<std::string>& required_capabilities,
-                                        const std::string& preferred_agent_id) {
+TaskRoutingResult TaskRouter::routeTask(
+    int target_level, const std::string& target_agent_type,
+    const std::vector<std::string>& required_capabilities,
+    const std::string& preferred_agent_id) {
   TaskRoutingResult result;
 
   // If specific agent ID is provided, try to use it
@@ -28,7 +28,8 @@ TaskRoutingResult TaskRouter::routeTask(int target_level,
       const auto& agent = agent_opt.value();
 
       // Verify agent is alive and matches criteria
-      if (registry_->isAgentAlive(preferred_agent_id) && agent.level == target_level &&
+      if (registry_->isAgentAlive(preferred_agent_id) &&
+          agent.level == target_level &&
           agent.agent_type == target_agent_type) {
         result.success = true;
         result.target_agent_id = agent.agent_id;
@@ -41,12 +42,14 @@ TaskRoutingResult TaskRouter::routeTask(int target_level,
   }
 
   // Select agent based on criteria
-  auto selected_agent = selectAgent(target_level, target_agent_type, required_capabilities);
+  auto selected_agent =
+      selectAgent(target_level, target_agent_type, required_capabilities);
 
   if (!selected_agent.has_value()) {
     result.success = false;
-    result.error_message = "No available agent found for level=" + std::to_string(target_level) +
-                           ", type=" + target_agent_type;
+    result.error_message =
+        "No available agent found for level=" + std::to_string(target_level) +
+        ", type=" + target_agent_type;
     return result;
   }
 
@@ -57,16 +60,14 @@ TaskRoutingResult TaskRouter::routeTask(int target_level,
 }
 
 std::optional<AgentRegistrationInfo> TaskRouter::selectAgent(
-    int target_level,
-    const std::string& agent_type,
+    int target_level, const std::string& agent_type,
     const std::vector<std::string>& required_capabilities) {
   // Query registry for matching agents
-  auto candidates = registry_->queryAgents(agent_type,
-                                           target_level,
-                                           required_capabilities,
-                                           0,    // max_results = 0 (unlimited)
-                                           true  // only_alive = true
-  );
+  auto candidates =
+      registry_->queryAgents(agent_type, target_level, required_capabilities,
+                             0,    // max_results = 0 (unlimited)
+                             true  // only_alive = true
+      );
 
   if (candidates.empty()) {
     return std::nullopt;
@@ -104,12 +105,11 @@ std::optional<AgentRegistrationInfo> TaskRouter::selectLeastLoaded(
   }
 
   // Find agent with minimum active tasks
-  auto min_it = std::min_element(candidates.begin(),
-                                 candidates.end(),
-                                 [](const AgentRegistrationInfo& a,
-                                    const AgentRegistrationInfo& b) {
-                                   return a.active_tasks < b.active_tasks;
-                                 });
+  auto min_it = std::min_element(
+      candidates.begin(), candidates.end(),
+      [](const AgentRegistrationInfo& a, const AgentRegistrationInfo& b) {
+        return a.active_tasks < b.active_tasks;
+      });
 
   return *min_it;
 }

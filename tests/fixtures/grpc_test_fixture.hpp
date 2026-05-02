@@ -2,10 +2,10 @@
 
 #ifdef ENABLE_GRPC
 
-#  include <memory>
-#  include <string>
+#include <gtest/gtest.h>
 
-#  include <gtest/gtest.h>
+#include <memory>
+#include <string>
 
 // Forward declarations
 namespace keystone {
@@ -67,14 +67,18 @@ class GrpcTestFixture : public ::testing::Test {
    * @brief Get shared ServiceRegistry instance (for test assertions)
    * @return Shared pointer to ServiceRegistry
    */
-  std::shared_ptr<keystone::network::ServiceRegistry> getRegistry() const { return registry_; }
+  std::shared_ptr<keystone::network::ServiceRegistry> getRegistry() const {
+    return registry_;
+  }
 
  private:
   // Service implementations
   std::shared_ptr<keystone::network::ServiceRegistry> registry_;
   std::shared_ptr<keystone::network::TaskRouter> router_;
-  std::shared_ptr<keystone::network::ServiceRegistryServiceImpl> registry_service_;
-  std::shared_ptr<keystone::network::HMASCoordinatorServiceImpl> coordinator_service_;
+  std::shared_ptr<keystone::network::ServiceRegistryServiceImpl>
+      registry_service_;
+  std::shared_ptr<keystone::network::HMASCoordinatorServiceImpl>
+      coordinator_service_;
 
   // gRPC servers
   std::unique_ptr<keystone::network::GrpcServer> coordinator_server_;

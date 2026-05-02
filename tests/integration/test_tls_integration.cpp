@@ -19,7 +19,7 @@
  * may lack nats-server.
  */
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 #include <array>
 #include <chrono>
@@ -31,7 +31,7 @@
 #include <string>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 namespace {
 
@@ -167,7 +167,9 @@ class TlsIntegrationTest : public ::testing::Test {
   // -----------------------------------------------------------------------
 
   static std::string caPath() { return tmp_dir_ + "/ca.pem"; }
-  static std::string serverUrl() { return "tls://127.0.0.1:" + std::to_string(kTlsTestPort); }
+  static std::string serverUrl() {
+    return "tls://127.0.0.1:" + std::to_string(kTlsTestPort);
+  }
 
  private:
   // -----------------------------------------------------------------------
@@ -283,7 +285,8 @@ class TlsIntegrationTest : public ::testing::Test {
    */
   static bool startNatsServer() {
     const std::string log_path = tmp_dir_ + "/nats-server.log";
-    std::string cmd = nats_server_path_ + " -c " + nats_config_path_ + " > " + log_path +
+    std::string cmd = nats_server_path_ + " -c " + nats_config_path_ + " > " +
+                      log_path +
                       " 2>&1 &"
                       " echo $!";
     // NOLINTNEXTLINE(cert-env33-c)
@@ -300,7 +303,8 @@ class TlsIntegrationTest : public ::testing::Test {
 
     // Strip whitespace
     while (!pid_str.empty() &&
-           (pid_str.back() == '\n' || pid_str.back() == '\r' || pid_str.back() == ' ')) {
+           (pid_str.back() == '\n' || pid_str.back() == '\r' ||
+            pid_str.back() == ' ')) {
       pid_str.pop_back();
     }
     if (pid_str.empty()) {
@@ -313,11 +317,12 @@ class TlsIntegrationTest : public ::testing::Test {
     }
 
     // Poll until nats-server accepts TCP connections on kTlsTestPort.
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{3};
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds{3};
     while (std::chrono::steady_clock::now() < deadline) {
       // Use bash /dev/tcp to test TCP reachability.
-      std::string probe = "bash -c 'echo > /dev/tcp/127.0.0.1/" + std::to_string(kTlsTestPort) +
-                          "' > /dev/null 2>&1";
+      std::string probe = "bash -c 'echo > /dev/tcp/127.0.0.1/" +
+                          std::to_string(kTlsTestPort) + "' > /dev/null 2>&1";
       if (runCommand(probe) == 0) {
         // Server is accepting connections.
         return true;
@@ -333,7 +338,8 @@ class TlsIntegrationTest : public ::testing::Test {
   static void stopNatsServer() {
     if (nats_server_pid_ > 0) {
       // Send SIGTERM, then SIGKILL after a short wait.
-      std::string cmd = "kill " + std::to_string(nats_server_pid_) + " > /dev/null 2>&1";
+      std::string cmd =
+          "kill " + std::to_string(nats_server_pid_) + " > /dev/null 2>&1";
       runCommand(cmd);
       std::this_thread::sleep_for(std::chrono::milliseconds{200});
       cmd = "kill -9 " + std::to_string(nats_server_pid_) + " > /dev/null 2>&1";
@@ -415,19 +421,23 @@ TEST_F(TlsIntegrationTest, ConnectWithSelfSignedCert) {
 
   const bool connected = conn.connect();
   ASSERT_TRUE(connected)
-      << "NatsConnection::connect() failed for TLS server at " << serverUrl() << " with CA cert "
-      << caPath() << ". Check that nats-server started correctly and the cert was generated.";
+      << "NatsConnection::connect() failed for TLS server at " << serverUrl()
+      << " with CA cert " << caPath()
+      << ". Check that nats-server started correctly and the cert was "
+         "generated.";
 
   EXPECT_EQ(conn.getState(), NatsConnectionState::CONNECTED)
       << "State must be CONNECTED after successful connect()";
   EXPECT_TRUE(conn.isConnected()) << "isConnected() must return true";
-  EXPECT_NE(conn.handle(), nullptr) << "Raw handle must be non-null after connect()";
+  EXPECT_NE(conn.handle(), nullptr)
+      << "Raw handle must be non-null after connect()";
 
   conn.disconnect();
 
   EXPECT_EQ(conn.getState(), NatsConnectionState::DISCONNECTED)
       << "State must be DISCONNECTED after disconnect()";
-  EXPECT_FALSE(conn.isConnected()) << "isConnected() must return false after disconnect()";
+  EXPECT_FALSE(conn.isConnected())
+      << "isConnected() must return false after disconnect()";
 }
 
 /**
@@ -452,8 +462,9 @@ TEST_F(TlsIntegrationTest, ConnectWithoutCaCertFails) {
 
   const bool connected = conn.connect();
   // The connection must fail because the server cert is not trusted.
-  EXPECT_FALSE(connected) << "connect() should fail when CA cert is absent and the server uses a "
-                             "self-signed certificate not in the system trust store";
+  EXPECT_FALSE(connected)
+      << "connect() should fail when CA cert is absent and the server uses a "
+         "self-signed certificate not in the system trust store";
 
   EXPECT_FALSE(conn.isConnected());
 }

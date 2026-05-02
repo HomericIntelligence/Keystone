@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100 \
     && update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 \
-    && pip install conan --break-system-packages \
+    && pip install --no-cache-dir conan==2.0.0 --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
 # Detect Conan profile and install dependencies

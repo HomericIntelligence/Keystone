@@ -18,9 +18,7 @@ ThreadPool::ThreadPool(size_t num_threads) {
   }
 }
 
-ThreadPool::~ThreadPool() {
-  shutdown();
-}
+ThreadPool::~ThreadPool() { shutdown(); }
 
 void ThreadPool::submit(std::function<void()> func) {
   {
@@ -86,8 +84,9 @@ void ThreadPool::worker_loop() {
       std::unique_lock<std::mutex> lock(queue_mutex_);
 
       // Wait for work or shutdown
-      condition_.wait(lock,
-                      [this]() { return shutdown_requested_.load() || !work_queue_.empty(); });
+      condition_.wait(lock, [this]() {
+        return shutdown_requested_.load() || !work_queue_.empty();
+      });
 
       // Exit if shutdown and no more work
       if (shutdown_requested_.load() && work_queue_.empty()) {

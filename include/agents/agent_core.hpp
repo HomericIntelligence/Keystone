@@ -1,8 +1,5 @@
 #pragma once
 
-#include "core/config.hpp"  // FIX m3: Centralized configuration
-#include "core/message.hpp"
-
 #include <atomic>
 #include <chrono>  // FIX M2: For time-based priority fairness
 #include <mutex>
@@ -11,18 +8,22 @@
 #include <unordered_set>
 
 #include "concurrentqueue.h"
+#include "core/config.hpp"  // FIX m3: Centralized configuration
+#include "core/message.hpp"
 
 namespace keystone {
 
 // Forward declarations from core and concurrency namespaces
-// CRITICAL: These declarations must be INSIDE keystone namespace but OUTSIDE agents namespace
-// to prevent C++ namespace collision. If placed before "namespace keystone {}", the compiler
-// creates "keystone::core::MessageBus" but the actual class is defined as
-// "keystone::core::MessageBus", causing a doubling bug where both "keystone::core::MessageBus" and
-// "keystone::keystone::core::MessageBus" exist in the symbol table. By placing them here, we
-// correctly forward-declare the classes in the keystone::core and keystone::concurrency namespaces
-// while allowing agent_base.hpp to use them without including their headers. FIX ISP (Issue #46):
-// Forward declare IMessageRouter instead of MessageBus
+// CRITICAL: These declarations must be INSIDE keystone namespace but OUTSIDE
+// agents namespace to prevent C++ namespace collision. If placed before
+// "namespace keystone {}", the compiler creates "keystone::core::MessageBus"
+// but the actual class is defined as "keystone::core::MessageBus", causing a
+// doubling bug where both "keystone::core::MessageBus" and
+// "keystone::keystone::core::MessageBus" exist in the symbol table. By placing
+// them here, we correctly forward-declare the classes in the keystone::core and
+// keystone::concurrency namespaces while allowing agent_base.hpp to use them
+// without including their headers. FIX ISP (Issue #46): Forward declare
+// IMessageRouter instead of MessageBus
 namespace core {
 class IMessageRouter;
 }
@@ -103,7 +104,8 @@ class AgentCore {
    * pull model is used: messages go to the inbox and callers must call
    * getMessage() + processMessage() manually.
    *
-   * @param scheduler Pointer to scheduler (must outlive agent), or nullptr to disable
+   * @param scheduler Pointer to scheduler (must outlive agent), or nullptr to
+   * disable
    */
   void setScheduler(concurrency::WorkStealingScheduler* scheduler) {
     scheduler_.store(scheduler, std::memory_order_release);
@@ -141,8 +143,8 @@ class AgentCore {
    * @endcode
    */
   void setLowPriorityCheckInterval(std::chrono::milliseconds interval) {
-    // FIX SAFE-002: Use memory_order_release to ensure visibility to other threads
-    // This ensures getMessage() threads see the updated interval value
+    // FIX SAFE-002: Use memory_order_release to ensure visibility to other
+    // threads This ensures getMessage() threads see the updated interval value
     low_priority_check_interval_ns_.store(
         std::chrono::duration_cast<std::chrono::nanoseconds>(interval).count(),
         std::memory_order_release);
@@ -154,9 +156,11 @@ class AgentCore {
    * @return std::chrono::milliseconds Current check interval
    */
   std::chrono::milliseconds getLowPriorityCheckInterval() const {
-    // FIX SAFE-002: Use memory_order_acquire to see writes from setLowPriorityCheckInterval
+    // FIX SAFE-002: Use memory_order_acquire to see writes from
+    // setLowPriorityCheckInterval
     return std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::nanoseconds{low_priority_check_interval_ns_.load(std::memory_order_acquire)});
+        std::chrono::nanoseconds{
+            low_priority_check_interval_ns_.load(std::memory_order_acquire)});
   }
 
   /**
@@ -205,7 +209,8 @@ class AgentCore {
   std::string agent_id_;
   // FIX ISP (Issue #46): Use IMessageRouter* instead of MessageBus*
   core::IMessageRouter* message_bus_{nullptr};
-  // Stored scheduler for auto-processing (AsyncAgent uses this in receiveMessage)
+  // Stored scheduler for auto-processing (AsyncAgent uses this in
+  // receiveMessage)
   std::atomic<concurrency::WorkStealingScheduler*> scheduler_{nullptr};
 
   // Phase C: Priority-based lock-free inboxes
@@ -218,15 +223,18 @@ class AgentCore {
   // FIX C1: Anti-starvation using time-based fairness (not count-based)
   // Force-check lower priorities every N milliseconds to prevent starvation
   // under sustained HIGH priority load
-  // THREAD-SAFE: Using atomic to prevent data races from concurrent getMessage() calls
+  // THREAD-SAFE: Using atomic to prevent data races from concurrent
+  // getMessage() calls
   std::atomic<int64_t> last_low_priority_check_ns_;
 
-  // Issue #23: Per-agent configurable fairness interval (defaults to Config value)
-  // THREAD-SAFE: Atomic for lock-free read/write from concurrent getMessage() and setter
+  // Issue #23: Per-agent configurable fairness interval (defaults to Config
+  // value) THREAD-SAFE: Atomic for lock-free read/write from concurrent
+  // getMessage() and setter
   std::atomic<int64_t> low_priority_check_interval_ns_;
 
   // FIX M1: Backpressure - Queue size limits to prevent memory exhaustion
-  std::atomic<bool> backpressure_applied_{false};  ///< Flag when backpressure is active
+  std::atomic<bool> backpressure_applied_{
+      false};  ///< Flag when backpressure is active
 
   // Phase 1.2 (Issue #52): Cancellation tracking
   // Thread-safe: Using mutex to protect set operations

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "monitoring/nats_status.hpp"
-
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -9,6 +7,8 @@
 #include <mutex>
 #include <string>
 #include <thread>
+
+#include "monitoring/nats_status.hpp"
 
 namespace keystone {
 namespace monitoring {
@@ -50,14 +50,16 @@ class HealthCheckServer {
    * @brief Construct health check server with configuration
    * @param port HTTP server port (default: 8080 for Kubernetes)
    * @param readiness_check Optional custom readiness check function
-   * @param nats_status Optional NATS status tracker (non-owning); used by /v1/health
+   * @param nats_status Optional NATS status tracker (non-owning); used by
+   * /v1/health
    * @param nats_connection_check Optional NATS connection check (issue #204);
-   *        when supplied the readiness probe is not ready until this returns true
+   *        when supplied the readiness probe is not ready until this returns
+   * true
    */
-  explicit HealthCheckServer(uint16_t port = 8080,
-                             ReadinessCheck readiness_check = nullptr,
-                             NatsStatusTracker* nats_status = nullptr,
-                             NatsConnectionCheck nats_connection_check = nullptr);
+  explicit HealthCheckServer(
+      uint16_t port = 8080, ReadinessCheck readiness_check = nullptr,
+      NatsStatusTracker* nats_status = nullptr,
+      NatsConnectionCheck nats_connection_check = nullptr);
 
   /**
    * @brief Destructor - stops server if running
@@ -136,7 +138,8 @@ class HealthCheckServer {
    * @param nats_status Optional NATS tracker (may be nullptr)
    * @return JSON body string
    */
-  static std::string generateV1HealthResponse(const NatsStatusTracker* nats_status);
+  static std::string generateV1HealthResponse(
+      const NatsStatusTracker* nats_status);
 
   std::atomic<uint16_t> port_;
   std::atomic<bool> running_{false};
@@ -144,8 +147,9 @@ class HealthCheckServer {
   std::atomic<int> server_fd_{-1};
   mutable std::mutex readiness_mutex_;
   ReadinessCheck readiness_check_;
-  NatsConnectionCheck nats_connection_check_;  // issue #204: gates /ready on NATS connectivity
-  NatsStatusTracker* nats_status_{nullptr};    // non-owning
+  NatsConnectionCheck
+      nats_connection_check_;  // issue #204: gates /ready on NATS connectivity
+  NatsStatusTracker* nats_status_{nullptr};  // non-owning
 };
 
 }  // namespace monitoring

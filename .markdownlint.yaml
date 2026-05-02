@@ -15,7 +15,13 @@ MD013:
 
 # MD033: Inline HTML
 MD033:
-  allowed_elements: [T, img, br, details, summary]  # Allow common HTML elements
+  allowed_elements: [T, img, br, details, summary, predicate, void, atomic]  # Allow common HTML elements
+
+# MD024: Duplicate headings (common in technical docs with repeated sections)
+MD024: false  # Allow duplicate headings in different sections
+
+# MD029: Ordered list prefix (common in planning docs with numbered phases)
+MD029: false  # Allow flexible ordered list numbering
 
 # MD024: Multiple headings with the same content
 MD024:

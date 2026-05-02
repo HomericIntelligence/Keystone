@@ -1,13 +1,13 @@
 #include "agents/task_execution_strategy.hpp"
 
-#include "core/error_sanitizer.hpp"
-
 #include <array>
 #include <cstdint>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+
+#include "core/error_sanitizer.hpp"
 
 namespace keystone {
 namespace agents {
@@ -29,7 +29,8 @@ static const std::unordered_set<std::string> ALLOWED_COMMANDS = {
     "bc"       // Calculator
 };
 
-concurrency::Task<core::Response> TaskExecutionStrategy::process(const core::KeystoneMessage& msg) {
+concurrency::Task<core::Response> TaskExecutionStrategy::process(
+    const core::KeystoneMessage& msg) {
   try {
     // Execute the bash command
     std::string result = executeBashCommand(msg.command);
@@ -43,7 +44,8 @@ concurrency::Task<core::Response> TaskExecutionStrategy::process(const core::Key
     std::string sanitized_error = core::sanitizeErrorMessage(e.what());
 
     // Create error response with sanitized message
-    auto response = core::Response::createError(msg, "strategy", sanitized_error);
+    auto response =
+        core::Response::createError(msg, "strategy", sanitized_error);
     co_return response;
   }
 }
@@ -81,14 +83,15 @@ bool TaskExecutionStrategy::isCommandAllowed(const std::string& command) const {
     const std::string very_dangerous = ";|&`$<>!{}[]";
     if (args.find_first_of(very_dangerous) == std::string::npos &&
         args.find("..") == std::string::npos) {  // No directory traversal
-      return true;                               // SAFE: Whitelisted command with safe arguments
+      return true;  // SAFE: Whitelisted command with safe arguments
     }
   }
 
   return false;  // DEFAULT: REJECT
 }
 
-std::string TaskExecutionStrategy::executeBashCommand(const std::string& cmd) const {
+std::string TaskExecutionStrategy::executeBashCommand(
+    const std::string& cmd) const {
   // Validate command BEFORE execution
   if (!isCommandAllowed(cmd)) {
     std::stringstream ss;
@@ -99,8 +102,7 @@ std::string TaskExecutionStrategy::executeBashCommand(const std::string& cmd) co
     ss << "  3. Whitelisted commands: ";
     bool first = true;
     for (const auto& command : ALLOWED_COMMANDS) {
-      if (!first)
-        ss << ", ";
+      if (!first) ss << ", ";
       ss << command;
       first = false;
     }

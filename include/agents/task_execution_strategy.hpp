@@ -1,11 +1,11 @@
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "agents/message_processing_strategy.hpp"
 #include "concurrency/task.hpp"
 #include "core/message.hpp"
-
-#include <memory>
-#include <string>
 
 namespace keystone {
 namespace agents {
@@ -45,7 +45,8 @@ class TaskExecutionStrategy : public MessageProcessingStrategy {
    * @param msg Message containing bash command in payload
    * @return Task<Response> Result of command execution
    */
-  concurrency::Task<core::Response> process(const core::KeystoneMessage& msg) override;
+  concurrency::Task<core::Response> process(
+      const core::KeystoneMessage& msg) override;
 
  private:
   /**
@@ -75,16 +76,16 @@ class TaskExecutionStrategy : public MessageProcessingStrategy {
     FILE* fp;
     explicit PipeHandle(FILE* f) : fp(f) {}
     ~PipeHandle() {
-      if (fp)
-        pclose(fp);
+      if (fp) pclose(fp);
     }
     PipeHandle(const PipeHandle&) = delete;
     PipeHandle& operator=(const PipeHandle&) = delete;
-    PipeHandle(PipeHandle&& other) noexcept : fp(other.fp) { other.fp = nullptr; }
+    PipeHandle(PipeHandle&& other) noexcept : fp(other.fp) {
+      other.fp = nullptr;
+    }
     PipeHandle& operator=(PipeHandle&& other) noexcept {
       if (this != &other) {
-        if (fp)
-          pclose(fp);
+        if (fp) pclose(fp);
         fp = other.fp;
         other.fp = nullptr;
       }

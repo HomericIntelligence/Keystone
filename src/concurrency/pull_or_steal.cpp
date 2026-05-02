@@ -14,8 +14,7 @@ namespace concurrency {
 
 PullOrSteal::PullOrSteal(WorkStealingQueue& own_queue,
                          std::vector<WorkStealingQueue*>& all_queues,
-                         size_t worker_index,
-                         std::atomic<bool>& shutdown_flag)
+                         size_t worker_index, std::atomic<bool>& shutdown_flag)
     : own_queue_(own_queue),
       all_queues_(all_queues),
       worker_index_(worker_index),
@@ -106,11 +105,10 @@ std::optional<WorkItem> PullOrSteal::trySteal() {
 
 // PullOrStealWithTimeout implementation
 
-PullOrStealWithTimeout::PullOrStealWithTimeout(WorkStealingQueue& own_queue,
-                                               std::vector<WorkStealingQueue*>& all_queues,
-                                               size_t worker_index,
-                                               std::atomic<bool>& shutdown_flag,
-                                               std::chrono::milliseconds timeout)
+PullOrStealWithTimeout::PullOrStealWithTimeout(
+    WorkStealingQueue& own_queue, std::vector<WorkStealingQueue*>& all_queues,
+    size_t worker_index, std::atomic<bool>& shutdown_flag,
+    std::chrono::milliseconds timeout)
     : own_queue_(own_queue),
       all_queues_(all_queues),
       worker_index_(worker_index),
@@ -134,7 +132,8 @@ bool PullOrStealWithTimeout::await_ready() noexcept {
   return false;
 }
 
-void PullOrStealWithTimeout::await_suspend(std::coroutine_handle<> handle) noexcept {
+void PullOrStealWithTimeout::await_suspend(
+    std::coroutine_handle<> handle) noexcept {
   awaiting_coroutine_ = handle;
 
   auto elapsed = std::chrono::steady_clock::now() - start_time_;
@@ -144,8 +143,11 @@ void PullOrStealWithTimeout::await_suspend(std::coroutine_handle<> handle) noexc
     result_ = std::nullopt;
   } else {
     // Wait for remaining time or until work arrives
-    auto remaining = timeout_ - std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
-    std::this_thread::sleep_for(std::min(remaining, std::chrono::milliseconds(10)));
+    auto remaining =
+        timeout_ -
+        std::chrono::duration_cast<std::chrono::milliseconds>(elapsed);
+    std::this_thread::sleep_for(
+        std::min(remaining, std::chrono::milliseconds(10)));
 
     result_ = own_queue_.pop();
     if (!result_.has_value()) {

@@ -14,7 +14,8 @@
 namespace keystone {
 namespace concurrency {
 
-WorkStealingQueue::WorkStealingQueue(size_t initial_capacity) : queue_(initial_capacity) {}
+WorkStealingQueue::WorkStealingQueue(size_t initial_capacity)
+    : queue_(initial_capacity) {}
 
 void WorkStealingQueue::push(WorkItem item) {
   // FIX #284: Capture correlation ID on submission thread
@@ -44,13 +45,9 @@ std::optional<WorkItem> WorkStealingQueue::steal() {
   return std::nullopt;
 }
 
-size_t WorkStealingQueue::size_approx() const {
-  return queue_.size_approx();
-}
+size_t WorkStealingQueue::size_approx() const { return queue_.size_approx(); }
 
-bool WorkStealingQueue::empty() const {
-  return queue_.size_approx() == 0;
-}
+bool WorkStealingQueue::empty() const { return queue_.size_approx() == 0; }
 
 }  // namespace concurrency
 }  // namespace keystone

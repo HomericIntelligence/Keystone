@@ -45,7 +45,8 @@ class MessageProcessingStrategy {
    * @param msg The message to process
    * @return concurrency::Task<core::Response> Async task resolving to response
    */
-  virtual concurrency::Task<core::Response> process(const core::KeystoneMessage& msg) = 0;
+  virtual concurrency::Task<core::Response> process(
+      const core::KeystoneMessage& msg) = 0;
 };
 
 }  // namespace agents

@@ -50,10 +50,8 @@ class ServiceRegistry final {
   /// @param ip_port IP address and port (e.g., "192.168.1.100:50051")
   /// @param capabilities List of agent capabilities
   /// @return true if registered successfully, false if agent_id already exists
-  bool registerAgent(const std::string& agent_id,
-                     const std::string& agent_type,
-                     int32_t level,
-                     const std::string& ip_port,
+  bool registerAgent(const std::string& agent_id, const std::string& agent_type,
+                     int32_t level, const std::string& ip_port,
                      const std::vector<std::string>& capabilities);
 
   /// Update heartbeat for an agent
@@ -64,8 +62,7 @@ class ServiceRegistry final {
   /// @return true if agent exists, false otherwise
   bool updateHeartbeat(const std::string& agent_id,
                        float cpu_usage_percent = 0.0f,
-                       float memory_usage_mb = 0.0f,
-                       int32_t active_tasks = 0);
+                       float memory_usage_mb = 0.0f, int32_t active_tasks = 0);
 
   /// Unregister an agent
   /// @param agent_id Agent identifier
@@ -75,7 +72,8 @@ class ServiceRegistry final {
   /// Get agent information
   /// @param agent_id Agent identifier
   /// @return Agent info if found, nullopt otherwise
-  std::optional<AgentRegistrationInfo> getAgent(const std::string& agent_id) const;
+  std::optional<AgentRegistrationInfo> getAgent(
+      const std::string& agent_id) const;
 
   /// Query agents by criteria
   /// @param agent_type Filter by agent type (empty = all)
@@ -85,16 +83,15 @@ class ServiceRegistry final {
   /// @param only_alive Only return agents with recent heartbeat
   /// @return List of matching agents
   std::vector<AgentRegistrationInfo> queryAgents(
-      const std::string& agent_type = "",
-      int32_t level = -1,
+      const std::string& agent_type = "", int32_t level = -1,
       const std::vector<std::string>& required_capabilities = {},
-      int32_t max_results = 0,
-      bool only_alive = true) const;
+      int32_t max_results = 0, bool only_alive = true) const;
 
   /// List all registered agents
   /// @param only_alive Only return agents with recent heartbeat
   /// @return List of all agents
-  std::vector<AgentRegistrationInfo> listAllAgents(bool only_alive = true) const;
+  std::vector<AgentRegistrationInfo> listAllAgents(
+      bool only_alive = true) const;
 
   /// Check if an agent is alive (recent heartbeat)
   /// @param agent_id Agent identifier
@@ -106,10 +103,14 @@ class ServiceRegistry final {
   int32_t cleanupDeadAgents();
 
   /// Get heartbeat timeout
-  std::chrono::milliseconds getHeartbeatTimeout() const { return heartbeat_timeout_; }
+  std::chrono::milliseconds getHeartbeatTimeout() const {
+    return heartbeat_timeout_;
+  }
 
   /// Set heartbeat timeout
-  void setHeartbeatTimeout(std::chrono::milliseconds timeout) { heartbeat_timeout_ = timeout; }
+  void setHeartbeatTimeout(std::chrono::milliseconds timeout) {
+    heartbeat_timeout_ = timeout;
+  }
 
   /// Get number of registered agents
   size_t getAgentCount() const {
@@ -124,12 +125,14 @@ class ServiceRegistry final {
   static hmas::AgentInfo toProtoAgentInfo(const AgentRegistrationInfo& info);
 
   /// Convert from protobuf AgentRegistration
-  static AgentRegistrationInfo fromProtoRegistration(const hmas::AgentRegistration& reg);
+  static AgentRegistrationInfo fromProtoRegistration(
+      const hmas::AgentRegistration& reg);
 
  private:
   /// Check if agent has required capabilities
-  bool hasRequiredCapabilities(const AgentRegistrationInfo& agent,
-                               const std::vector<std::string>& required_capabilities) const;
+  bool hasRequiredCapabilities(
+      const AgentRegistrationInfo& agent,
+      const std::vector<std::string>& required_capabilities) const;
 
   /// Registry map: agent_id -> registration info
   std::unordered_map<std::string, AgentRegistrationInfo> agents_;
@@ -144,7 +147,8 @@ class ServiceRegistry final {
 /// gRPC Service implementation for ServiceRegistry
 class ServiceRegistryServiceImpl final : public hmas::ServiceRegistry::Service {
  public:
-  explicit ServiceRegistryServiceImpl(std::shared_ptr<ServiceRegistry> registry);
+  explicit ServiceRegistryServiceImpl(
+      std::shared_ptr<ServiceRegistry> registry);
 
   grpc::Status RegisterAgent(grpc::ServerContext* context,
                              const hmas::AgentRegistration* request,

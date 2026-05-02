@@ -12,12 +12,12 @@
  * Total: 16 tests
  */
 
+#include <gtest/gtest.h>
+
 #include "agents/component_lead_agent.hpp"
 #include "agents/module_lead_agent.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -53,7 +53,8 @@ TEST_F(ComponentLeadAgentTest, DecomposeComponentIntoModules) {
   component->setAvailableModuleLeads(module_ids);
 
   // Send component goal
-  auto msg = core::KeystoneMessage::create("chief", "component_1", "build feature X");
+  auto msg =
+      core::KeystoneMessage::create("chief", "component_1", "build feature X");
   component->receiveMessage(msg);
 
   auto received = component->getMessage();
@@ -124,8 +125,10 @@ TEST_F(ComponentLeadAgentTest, CoordinateTwoModuleLeads) {
   component->setAvailableModuleLeads(module_ids);
 
   // Send messages to modules
-  component->sendMessage(core::KeystoneMessage::create("component_1", "module_1", "goal1"));
-  component->sendMessage(core::KeystoneMessage::create("component_1", "module_2", "goal2"));
+  component->sendMessage(
+      core::KeystoneMessage::create("component_1", "module_1", "goal1"));
+  component->sendMessage(
+      core::KeystoneMessage::create("component_1", "module_2", "goal2"));
 
   // Both modules should receive messages
   auto r1 = module1->getMessage();
@@ -147,14 +150,15 @@ TEST_F(ComponentLeadAgentTest, CoordinateWithPartialFailures) {
   bus_->registerAgent(component->getAgentId(), component);
   bus_->registerAgent(module1->getAgentId(), module1);
 
-  std::vector<std::string> module_ids = {"module_1", "module_2"};  // module_2 doesn't exist
+  std::vector<std::string> module_ids = {"module_1",
+                                         "module_2"};  // module_2 doesn't exist
   component->setAvailableModuleLeads(module_ids);
 
   // Try to send to both (one will fail routing)
-  EXPECT_NO_THROW(
-      component->sendMessage(core::KeystoneMessage::create("component_1", "module_1", "goal1")));
   EXPECT_NO_THROW(component->sendMessage(
-      core::KeystoneMessage::create("component_1", "module_2", "goal2")));  // Will fail routing
+      core::KeystoneMessage::create("component_1", "module_1", "goal1")));
+  EXPECT_NO_THROW(component->sendMessage(core::KeystoneMessage::create(
+      "component_1", "module_2", "goal2")));  // Will fail routing
 }
 
 TEST_F(ComponentLeadAgentTest, WaitForAllModuleResults) {
@@ -174,8 +178,10 @@ TEST_F(ComponentLeadAgentTest, WaitForAllModuleResults) {
   component->setAvailableModuleLeads(module_ids);
 
   // Send module results back to component
-  module1->sendMessage(core::KeystoneMessage::create("module_1", "component_1", "result1"));
-  module2->sendMessage(core::KeystoneMessage::create("module_2", "component_1", "result2"));
+  module1->sendMessage(
+      core::KeystoneMessage::create("module_1", "component_1", "result1"));
+  module2->sendMessage(
+      core::KeystoneMessage::create("module_2", "component_1", "result2"));
 
   // Component should receive both results
   auto r1 = component->getMessage();
@@ -194,8 +200,10 @@ TEST_F(ComponentLeadAgentTest, ResultAggregation) {
   component->setAvailableModuleLeads(module_ids);
 
   // Simulate receiving results from modules
-  auto result1 = core::KeystoneMessage::create("module_1", "component_1", "module1_result");
-  auto result2 = core::KeystoneMessage::create("module_2", "component_1", "module2_result");
+  auto result1 = core::KeystoneMessage::create("module_1", "component_1",
+                                               "module1_result");
+  auto result2 = core::KeystoneMessage::create("module_2", "component_1",
+                                               "module2_result");
 
   component->receiveMessage(result1);
   component->receiveMessage(result2);
@@ -222,7 +230,8 @@ TEST_F(ComponentLeadAgentTest, StateTransitionFlow) {
   component->setAvailableModuleLeads(module_ids);
 
   // Initial state: IDLE
-  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::IDLE);
+  EXPECT_EQ(component->getCurrentState(),
+            agents::ComponentLeadAgent::State::IDLE);
 
   // Get execution trace (should be empty or just initialization)
   auto trace = component->getExecutionTrace();
@@ -255,20 +264,21 @@ TEST_F(ComponentLeadAgentTest, ModuleFailurePropagatedUpwardToRequester) {
 
   // parent_chief sends a goal to component_1 for 1 module
   component
-      ->processMessage(core::KeystoneMessage::create("parent_chief",
-                                                     "component_1",
-                                                     "Implement Core component: Messaging(10)"))
+      ->processMessage(core::KeystoneMessage::create(
+          "parent_chief", "component_1",
+          "Implement Core component: Messaging(10)"))
       .get();
 
   // component_1 is now in WAITING_FOR_MODULES waiting for module_1
   // Deliver a TASK_FAILED from module_1
-  auto failure_msg =
-      core::KeystoneMessage::create("module_1", "component_1", "module_result", "module crashed");
+  auto failure_msg = core::KeystoneMessage::create(
+      "module_1", "component_1", "module_result", "module crashed");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   component->processMessage(failure_msg).get();
 
   // ComponentLeadAgent must be in ERROR
-  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+  EXPECT_EQ(component->getCurrentState(),
+            agents::ComponentLeadAgent::State::ERROR);
 
   // parent_chief inbox should contain a TASK_FAILED from component_1
   bool received_failure = false;
@@ -279,7 +289,8 @@ TEST_F(ComponentLeadAgentTest, ModuleFailurePropagatedUpwardToRequester) {
       break;
     }
   }
-  EXPECT_TRUE(received_failure) << "Parent did not receive TASK_FAILED from ComponentLeadAgent";
+  EXPECT_TRUE(received_failure)
+      << "Parent did not receive TASK_FAILED from ComponentLeadAgent";
 }
 
 TEST_F(ComponentLeadAgentTest, ConcurrentCoordination) {
@@ -292,7 +303,8 @@ TEST_F(ComponentLeadAgentTest, ConcurrentCoordination) {
 
   // Send many messages concurrently
   for (int32_t i = 0; i < 50; ++i) {
-    auto msg = core::KeystoneMessage::create("sender", "component_1", "cmd" + std::to_string(i));
+    auto msg = core::KeystoneMessage::create("sender", "component_1",
+                                             "cmd" + std::to_string(i));
     EXPECT_NO_THROW(component->receiveMessage(msg));
   }
 
@@ -317,24 +329,26 @@ TEST_F(ComponentLeadAgentTest, SingleModuleFailureTransitionsToError) {
   std::vector<std::string> module_ids = {"module_1"};
   component->setAvailableModuleLeads(module_ids);
 
-  // Decompose "Messaging(10)" into 1 module goal, which initialises coordination
-  // for 1 expected result.
+  // Decompose "Messaging(10)" into 1 module goal, which initialises
+  // coordination for 1 expected result.
   component
-      ->processMessage(
-          core::KeystoneMessage::create("chief", "component_1", "Build Core: Messaging(10)"))
+      ->processMessage(core::KeystoneMessage::create(
+          "chief", "component_1", "Build Core: Messaging(10)"))
       .get();
 
   // Simulate the single module reporting failure
-  auto failure_msg =
-      core::KeystoneMessage::create("module_1", "component_1", "response", "compile error");
+  auto failure_msg = core::KeystoneMessage::create("module_1", "component_1",
+                                                   "response", "compile error");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   component->processMessage(failure_msg).get();
 
   // Agent must be in ERROR state — DAG is not deadlocked
-  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+  EXPECT_EQ(component->getCurrentState(),
+            agents::ComponentLeadAgent::State::ERROR);
 }
 
-TEST_F(ComponentLeadAgentTest, SynthesizeAfterModuleFailureReturnsErrorMessage) {
+TEST_F(ComponentLeadAgentTest,
+       SynthesizeAfterModuleFailureReturnsErrorMessage) {
   auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
   component->setMessageBus(bus_.get());
   bus_->registerAgent(component->getAgentId(), component);
@@ -345,21 +359,23 @@ TEST_F(ComponentLeadAgentTest, SynthesizeAfterModuleFailureReturnsErrorMessage) 
   // Decompose into 2 module goals
   component
       ->processMessage(core::KeystoneMessage::create(
-          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20)"))
+          "chief", "component_1",
+          "Build Core: Messaging(10) and Concurrency(20)"))
       .get();
 
   // One success
-  auto success_msg =
-      core::KeystoneMessage::create("module_1", "component_1", "module_result", "messaging done");
+  auto success_msg = core::KeystoneMessage::create(
+      "module_1", "component_1", "module_result", "messaging done");
   component->processMessage(success_msg).get();
 
   // One failure
-  auto failure_msg =
-      core::KeystoneMessage::create("module_2", "component_1", "response", "linker error");
+  auto failure_msg = core::KeystoneMessage::create("module_2", "component_1",
+                                                   "response", "linker error");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   component->processMessage(failure_msg).get();
 
-  EXPECT_EQ(component->getCurrentState(), agents::ComponentLeadAgent::State::ERROR);
+  EXPECT_EQ(component->getCurrentState(),
+            agents::ComponentLeadAgent::State::ERROR);
 
   // synthesizeComponentResult() must surface the error, not silently succeed
   auto result = component->synthesizeComponentResult();
@@ -377,12 +393,14 @@ TEST_F(ComponentLeadAgentTest, ModuleFailureBeforeAllResultsDoesNotDeadlock) {
   // Decompose into 3 module goals
   component
       ->processMessage(core::KeystoneMessage::create(
-          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20) and Storage(30)"))
+          "chief", "component_1",
+          "Build Core: Messaging(10) and Concurrency(20) and Storage(30)"))
       .get();
 
-  // First module fails immediately — must not leave the other two permanently pending
-  auto failure_msg =
-      core::KeystoneMessage::create("module_1", "component_1", "response", "fatal error");
+  // First module fails immediately — must not leave the other two permanently
+  // pending
+  auto failure_msg = core::KeystoneMessage::create("module_1", "component_1",
+                                                   "response", "fatal error");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   component->processMessage(failure_msg).get();
 
@@ -392,7 +410,8 @@ TEST_F(ComponentLeadAgentTest, ModuleFailureBeforeAllResultsDoesNotDeadlock) {
               state == agents::ComponentLeadAgent::State::WAITING_FOR_MODULES);
 }
 
-TEST_F(ComponentLeadAgentTest, SuccessResultAfterModuleFailureStillCountsTowardCompletion) {
+TEST_F(ComponentLeadAgentTest,
+       SuccessResultAfterModuleFailureStillCountsTowardCompletion) {
   auto component = std::make_shared<agents::ComponentLeadAgent>("component_1");
   component->setMessageBus(bus_.get());
   bus_->registerAgent(component->getAgentId(), component);
@@ -403,18 +422,20 @@ TEST_F(ComponentLeadAgentTest, SuccessResultAfterModuleFailureStillCountsTowardC
   // Decompose into 2 module goals
   component
       ->processMessage(core::KeystoneMessage::create(
-          "chief", "component_1", "Build Core: Messaging(10) and Concurrency(20)"))
+          "chief", "component_1",
+          "Build Core: Messaging(10) and Concurrency(20)"))
       .get();
 
   // Failure arrives first
-  auto failure_msg =
-      core::KeystoneMessage::create("module_1", "component_1", "response", "timeout");
+  auto failure_msg = core::KeystoneMessage::create("module_1", "component_1",
+                                                   "response", "timeout");
   failure_msg.action_type = core::ActionType::TASK_FAILED;
   component->processMessage(failure_msg).get();
 
-  // Then a success — all results are now terminal; agent must not remain WAITING
-  auto success_msg =
-      core::KeystoneMessage::create("module_2", "component_1", "module_result", "concurrency done");
+  // Then a success — all results are now terminal; agent must not remain
+  // WAITING
+  auto success_msg = core::KeystoneMessage::create(
+      "module_2", "component_1", "module_result", "concurrency done");
   component->processMessage(success_msg).get();
 
   auto state = component->getCurrentState();

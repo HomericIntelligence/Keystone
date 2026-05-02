@@ -11,14 +11,14 @@
  * 6. Parent receives acknowledgement
  */
 
-#include "agents/chief_architect_agent.hpp"
-#include "agents/task_agent.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "agents/chief_architect_agent.hpp"
+#include "agents/task_agent.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone::agents;
 using namespace keystone::core;
@@ -51,16 +51,16 @@ TEST(E2E_TaskCancellation, ParentCancelsChildTask) {
   const std::string task_id = "task_12345";
 
   // ACT: Parent sends cancellation request
-  auto cancel_msg = KeystoneMessage::createCancellation(chief->getAgentId(),
-                                                        task_agent->getAgentId(),
-                                                        task_id);
+  auto cancel_msg = KeystoneMessage::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), task_id);
 
   // Chief sends cancellation message
   chief->sendMessage(cancel_msg);
 
   // TaskAgent receives and processes the cancellation
   auto received_msg = task_agent->getMessage();
-  ASSERT_TRUE(received_msg.has_value()) << "TaskAgent should receive cancellation message";
+  ASSERT_TRUE(received_msg.has_value())
+      << "TaskAgent should receive cancellation message";
   EXPECT_EQ(received_msg->action_type, ActionType::CANCEL_TASK);
   ASSERT_TRUE(received_msg->task_id.has_value());
   EXPECT_EQ(*received_msg->task_id, task_id);
@@ -102,9 +102,8 @@ TEST(E2E_TaskCancellation, CancelSpecificTask) {
   const std::string task3 = "task_003";
 
   // ACT: Cancel only task2
-  auto cancel_msg = KeystoneMessage::createCancellation(chief->getAgentId(),
-                                                        task_agent->getAgentId(),
-                                                        task2);
+  auto cancel_msg = KeystoneMessage::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), task2);
 
   chief->sendMessage(cancel_msg);
 
@@ -135,16 +134,14 @@ TEST(E2E_TaskCancellation, CancellationHasHighPriority) {
   task_agent->setMessageBus(bus.get());
 
   // Send a LOW priority message first
-  auto low_msg = KeystoneMessage::create(chief->getAgentId(),
-                                         task_agent->getAgentId(),
-                                         "echo 'low priority'");
+  auto low_msg = KeystoneMessage::create(
+      chief->getAgentId(), task_agent->getAgentId(), "echo 'low priority'");
   low_msg.priority = Priority::LOW;
   chief->sendMessage(low_msg);
 
   // Send a HIGH priority cancellation message
-  auto cancel_msg = KeystoneMessage::createCancellation(chief->getAgentId(),
-                                                        task_agent->getAgentId(),
-                                                        "task_urgent");
+  auto cancel_msg = KeystoneMessage::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), "task_urgent");
 
   chief->sendMessage(cancel_msg);
 

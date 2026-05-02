@@ -50,7 +50,7 @@ struct TaskPayload {
 
 /// Task action
 struct TaskAction {
-  std::string type;                        // DECOMPOSE, EXECUTE, RETURN_RESULT, SHUTDOWN
+  std::string type;  // DECOMPOSE, EXECUTE, RETURN_RESULT, SHUTDOWN
   std::string content_type{"TEXT_PLAIN"};  // TEXT_PLAIN, BINARY_CISTA, JSON
   std::string priority{"NORMAL"};          // LOW, NORMAL, HIGH, CRITICAL
 };
@@ -83,8 +83,9 @@ struct TaskMetadata {
 
 /// Task status
 struct TaskStatus {
-  std::string phase{"PENDING"};  // PENDING, PLANNING, WAITING, EXECUTING, SYNTHESIZING,
-                                 // COMPLETED, FAILED, ERROR, TIMEOUT, CANCELLED
+  std::string phase{
+      "PENDING"};  // PENDING, PLANNING, WAITING, EXECUTING, SYNTHESIZING,
+                   // COMPLETED, FAILED, ERROR, TIMEOUT, CANCELLED
   std::optional<std::string> start_time;
   std::optional<std::string> completion_time;
   std::optional<std::string> result;
@@ -116,12 +117,14 @@ class YamlParser {
   /// Parse YAML string into HierarchicalTaskSpec
   /// @param yaml_str YAML string to parse
   /// @return Parsed task spec, or nullopt if parsing failed
-  static std::optional<HierarchicalTaskSpec> parseTaskSpec(const std::string& yaml_str);
+  static std::optional<HierarchicalTaskSpec> parseTaskSpec(
+      const std::string& yaml_str);
 
   /// Parse YAML node into HierarchicalTaskSpec
   /// @param node YAML node to parse
   /// @return Parsed task spec, or nullopt if parsing failed
-  static std::optional<HierarchicalTaskSpec> parseTaskSpec(const YAML::Node& node);
+  static std::optional<HierarchicalTaskSpec> parseTaskSpec(
+      const YAML::Node& node);
 
   /// Generate YAML string from HierarchicalTaskSpec
   /// @param spec Task spec to serialize
@@ -166,7 +169,8 @@ class YamlParser {
   static YAML::Node generateAggregation(const AggregationConfig& aggregation);
   static YAML::Node generateRetryPolicy(const RetryPolicy& policy);
   static YAML::Node generateStatus(const TaskStatus& status);
-  static YAML::Node generateSubtasks(const std::vector<SubtaskStatus>& subtasks);
+  static YAML::Node generateSubtasks(
+      const std::vector<SubtaskStatus>& subtasks);
 };
 
 }  // namespace network

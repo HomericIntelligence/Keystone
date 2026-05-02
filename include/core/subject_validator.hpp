@@ -42,9 +42,11 @@ inline const std::regex& natsTokenPattern() {
  * @throws std::invalid_argument if value is empty or contains unsafe
  * characters.
  */
-inline const std::string& validateSubjectToken(const std::string& value, const std::string& label) {
+inline const std::string& validateSubjectToken(const std::string& value,
+                                               const std::string& label) {
   if (value.empty() || !std::regex_match(value, safeIdPattern())) {
-    throw std::invalid_argument("Invalid " + label + ": unsafe characters in '" + value + "'");
+    throw std::invalid_argument("Invalid " + label +
+                                ": unsafe characters in '" + value + "'");
   }
   return value;
 }
@@ -77,8 +79,9 @@ inline const std::string& validateSubjectToken(const std::string& value, const s
 inline const std::string& validateNatsSubjectToken(const std::string& value,
                                                    const std::string& label) {
   if (value.empty() || !std::regex_match(value, natsTokenPattern())) {
-    throw std::invalid_argument("Invalid NATS token " + label +
-                                ": must be [a-zA-Z0-9_-], '*', or '>' -- got '" + value + "'");
+    throw std::invalid_argument(
+        "Invalid NATS token " + label +
+        ": must be [a-zA-Z0-9_-], '*', or '>' -- got '" + value + "'");
   }
   return value;
 }
@@ -112,7 +115,8 @@ inline const std::string& validateNatsSubjectToken(const std::string& value,
 inline const std::string& validateNatsSubject(const std::string& subject,
                                               const std::string& label) {
   if (subject.empty()) {
-    throw std::invalid_argument("Invalid NATS subject " + label + ": subject must not be empty");
+    throw std::invalid_argument("Invalid NATS subject " + label +
+                                ": subject must not be empty");
   }
 
   std::string_view remaining{subject};
@@ -122,7 +126,8 @@ inline const std::string& validateNatsSubject(const std::string& subject,
     if (saw_gt) {
       // A '>' token was already seen but there are more tokens after it.
       throw std::invalid_argument("Invalid NATS subject " + label +
-                                  ": '>' wildcard must be the last token in '" + subject + "'");
+                                  ": '>' wildcard must be the last token in '" +
+                                  subject + "'");
     }
 
     const auto dot_pos = remaining.find('.');
@@ -133,8 +138,9 @@ inline const std::string& validateNatsSubject(const std::string& subject,
     const std::string token{token_sv};
     // Validate the individual token (reuse natsTokenPattern).
     if (token.empty() || !std::regex_match(token, natsTokenPattern())) {
-      throw std::invalid_argument("Invalid NATS subject " + label + ": token '" + token +
-                                  "' in subject '" + subject + "' contains invalid characters");
+      throw std::invalid_argument("Invalid NATS subject " + label +
+                                  ": token '" + token + "' in subject '" +
+                                  subject + "' contains invalid characters");
     }
 
     if (token == ">") {

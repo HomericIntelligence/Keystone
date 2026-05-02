@@ -15,21 +15,28 @@
  * Coverage Target: 100% of CoordinationState public methods
  */
 
-#include "agents/coordination_state.hpp"
+#include <gtest/gtest.h>
 
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/coordination_state.hpp"
 
 #ifdef ENABLE_GRPC
-#  include "fixtures/grpc_test_fixture.hpp"
+#include "fixtures/grpc_test_fixture.hpp"
 #endif
 
 using namespace keystone::agents;
 
 // Test state enum matching ComponentLead/ModuleLead patterns
-enum class TestState { IDLE, PLANNING, WAITING, SYNTHESIZING, AGGREGATING, ERROR };
+enum class TestState {
+  IDLE,
+  PLANNING,
+  WAITING,
+  SYNTHESIZING,
+  AGGREGATING,
+  ERROR
+};
 
 // ============================================================================
 // Test Fixture
@@ -128,7 +135,8 @@ TEST_F(CoordinationStateTest, ThreadSafeStateTransitions) {
   // 10 threads concurrently transition states
   for (int32_t i = 0; i < NUM_THREADS; ++i) {
     threads.emplace_back([this, i]() {
-      TestState target = (i % 2 == 0) ? TestState::PLANNING : TestState::WAITING;
+      TestState target =
+          (i % 2 == 0) ? TestState::PLANNING : TestState::WAITING;
       std::string name = (i % 2 == 0) ? "PLANNING" : "WAITING";
       state_.transitionTo(target, name);
     });
@@ -140,7 +148,8 @@ TEST_F(CoordinationStateTest, ThreadSafeStateTransitions) {
 
   // Final state should be valid (no crash = success)
   auto final_state = state_.getCurrentState();
-  EXPECT_TRUE(final_state == TestState::PLANNING || final_state == TestState::WAITING);
+  EXPECT_TRUE(final_state == TestState::PLANNING ||
+              final_state == TestState::WAITING);
 }
 
 /**
@@ -252,7 +261,8 @@ TEST_F(CoordinationStateTest, RecordResultThreadSafety) {
 
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < NUM_THREADS; ++i) {
-    threads.emplace_back([this, i]() { state_.recordResult("result_" + std::to_string(i)); });
+    threads.emplace_back(
+        [this, i]() { state_.recordResult("result_" + std::to_string(i)); });
   }
 
   for (auto& t : threads) {
@@ -539,8 +549,9 @@ TEST_F(GrpcCoordinationStateTest, InitializeGrpcWithValidConfig) {
   auto coord_addr = getCoordinatorAddress();
   auto registry_addr = getRegistryAddress();
 
-  EXPECT_NO_THROW(state_.initializeGrpc(
-      "test_agent", coord_addr, registry_addr, "TestAgent", 2, {"capability1", "capability2"}, 10));
+  EXPECT_NO_THROW(state_.initializeGrpc("test_agent", coord_addr, registry_addr,
+                                        "TestAgent", 2,
+                                        {"capability1", "capability2"}, 10));
 }
 
 /**
@@ -552,10 +563,7 @@ TEST_F(CoordinationStateTest, InitializeGrpcWithInvalidConfig) {
   EXPECT_NO_THROW(state_.initializeGrpc("test_agent",
                                         "",  // Empty coordinator address
                                         "",  // Empty registry address
-                                        "TestAgent",
-                                        2,
-                                        {},
-                                        10));
+                                        "TestAgent", 2, {}, 10));
 }
 
 /**
@@ -576,15 +584,15 @@ TEST_F(GrpcCoordinationStateTest, QueryAvailableChildrenByType) {
   auto registry_addr = getRegistryAddress();
 
   // Initialize gRPC with in-process servers
-  state_.initializeGrpc(
-      "test_component", coord_addr, registry_addr, "ComponentLead", 1, {"coordination"}, 5);
+  state_.initializeGrpc("test_component", coord_addr, registry_addr,
+                        "ComponentLead", 1, {"coordination"}, 5);
 
   // Register some test agents in the ServiceRegistry
   auto registry = getRegistry();
-  registry->registerAgent(
-      "module_lead_1", "ModuleLead", 2, "localhost:60001", {"task_coordination"});
-  registry->registerAgent(
-      "module_lead_2", "ModuleLead", 2, "localhost:60002", {"task_coordination"});
+  registry->registerAgent("module_lead_1", "ModuleLead", 2, "localhost:60001",
+                          {"task_coordination"});
+  registry->registerAgent("module_lead_2", "ModuleLead", 2, "localhost:60002",
+                          {"task_coordination"});
 
   auto children = state_.queryAvailableChildren("ModuleLead");
   // Should find the 2 registered ModuleLead agents
@@ -710,7 +718,8 @@ TEST_F(CoordinationStateTest, RecordFailureThreadSafety) {
 
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < NUM_THREADS; ++i) {
-    threads.emplace_back([this, i]() { state_.recordFailure("error_" + std::to_string(i)); });
+    threads.emplace_back(
+        [this, i]() { state_.recordFailure("error_" + std::to_string(i)); });
   }
   for (auto& t : threads) {
     t.join();

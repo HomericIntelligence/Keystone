@@ -1,9 +1,9 @@
-#include "core/profiling.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/profiling.hpp"
 
 using namespace keystone::core;
 
@@ -67,8 +67,9 @@ TEST_F(ProfilingTest, PercentileCalculation) {
     GTEST_SKIP() << "Profiling disabled (KEYSTONE_PROFILE not set)";
   }
 
-  // Create known distribution with longer sleeps (10x) to minimize overhead impact
-  // Using 10-1000µs range so profiling overhead (~1000µs) becomes negligible percentage
+  // Create known distribution with longer sleeps (10x) to minimize overhead
+  // impact Using 10-1000µs range so profiling overhead (~1000µs) becomes
+  // negligible percentage
   for (int32_t i = 1; i <= 100; ++i) {
     auto session = ProfilingSession::start("percentiles");
     std::this_thread::sleep_for(std::chrono::microseconds(i * 10));

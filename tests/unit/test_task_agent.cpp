@@ -11,11 +11,11 @@
  * Total: 15 tests
  */
 
+#include <gtest/gtest.h>
+
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -117,7 +117,8 @@ TEST_F(TaskAgentTest, ExecuteCommandTimeout) {
   bus_->registerAgent(agent->getAgentId(), agent);
 
   // Command that sleeps (should complete without hanging test)
-  auto msg = core::KeystoneMessage::create("sender", "task_1", "echo timeout_test");
+  auto msg =
+      core::KeystoneMessage::create("sender", "task_1", "echo timeout_test");
   EXPECT_NO_THROW(agent->receiveMessage(msg));
 }
 

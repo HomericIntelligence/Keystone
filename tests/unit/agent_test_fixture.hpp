@@ -1,12 +1,12 @@
 #pragma once
 
-#include "core/message_bus.hpp"
-#include "mocks/mock_agents.hpp"
-#include "mocks/mock_message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <memory>
 
-#include <gtest/gtest.h>
+#include "core/message_bus.hpp"
+#include "mocks/mock_agents.hpp"
+#include "mocks/mock_message_bus.hpp"
 
 namespace keystone::test {
 

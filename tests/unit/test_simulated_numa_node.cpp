@@ -1,9 +1,9 @@
-#include "simulation/simulated_numa_node.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "simulation/simulated_numa_node.hpp"
 
 using namespace keystone::simulation;
 
@@ -143,7 +143,8 @@ TEST_F(SimulatedNUMANodeTest, QueueDepthTracking) {
 
   // Submit work that blocks briefly
   for (int32_t i = 0; i < 20; ++i) {
-    node.submit([&]() { std::this_thread::sleep_for(std::chrono::milliseconds(50)); });
+    node.submit(
+        [&]() { std::this_thread::sleep_for(std::chrono::milliseconds(50)); });
   }
 
   // Should have pending work
