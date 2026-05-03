@@ -26,6 +26,7 @@ addopts = "--cov=src/keystone --cov-report=term-missing --cov-report=xml --timeo
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
+timeout = 30
 markers = [
     "timeout: timeout marker for pytest (requires pytest-timeout)",
 ]
