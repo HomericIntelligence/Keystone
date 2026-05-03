@@ -96,7 +96,11 @@ void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& resu
 
   // Check if we've received all results
   if (all_complete) {
-    coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
+    if (coordination_.hasFailures()) {
+      coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
+    } else {
+      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
+    }
   }
 }
 
