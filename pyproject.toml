@@ -22,11 +22,10 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=src/keystone --cov-report=term-missing --cov-report=xml"
+addopts = "--cov=src/keystone --cov-report=term-missing --cov-report=xml --timeout=30 --timeout-method=thread"
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-timeout = 30
 markers = [
     "timeout: timeout marker for pytest (requires pytest-timeout)",
 ]
