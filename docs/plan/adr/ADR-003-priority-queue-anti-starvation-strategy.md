@@ -7,7 +7,9 @@
 
 ## Context
 
-Phase C introduced priority-based message processing (HIGH, NORMAL, LOW) to enable time-sensitive agent operations. However, strict priority ordering creates a classic starvation problem: under sustained HIGH priority load, NORMAL and LOW priority messages never get processed.
+Phase C introduced priority-based message processing (HIGH, NORMAL, LOW) to enable time-sensitive agent operations.
+However, strict priority ordering creates a classic starvation problem: under sustained HIGH priority load, NORMAL and
+LOW priority messages never get processed.
 
 ### The Starvation Problem
 
@@ -22,6 +24,7 @@ std::optional<KeystoneMessage> getMessage() {
 ```
 
 **Issue**: If HIGH priority messages arrive continuously:
+
 - NORMAL messages delayed indefinitely
 - LOW messages never processed
 - Agent responsiveness degraded
@@ -69,18 +72,21 @@ std::optional<KeystoneMessage> getMessage() {
 ```
 
 **Time-Based Rationale**:
+
 - **Real-Time Guarantee**: Maximum 100ms latency for any message (verifiable)
 - **Load-Independent**: Works regardless of message arrival rate
 - **Predictable**: Consistent behavior across varying workloads
 - **Simple**: Single configurable parameter (interval)
 
 **Why Not Count-Based?**
+
 ```cpp
 // Count-based approach (REJECTED)
 if (high_priority_count % 10 == 0) {
   check_lower_priorities();
 }
 ```
+
 - **Unpredictable Latency**: 10 HIGH messages could arrive in 1ms or 1 hour
 - **Load-Dependent**: Starvation time varies with arrival rate
 - **Hard to Reason About**: No clear latency guarantee
@@ -95,16 +101,19 @@ static constexpr std::chrono::milliseconds AGENT_LOW_PRIORITY_CHECK_INTERVAL{100
 **Rationale**:
 
 **Upper Bound (Why Not Longer?)**:
+
 - 100ms = Maximum tolerable latency for interactive agent responses
 - Aligns with human perception threshold (~100ms feels instant)
 - Prevents visible degradation in agent responsiveness
 
 **Lower Bound (Why Not Shorter?)**:
+
 - 10ms: Too frequent → overhead from timestamp checks
 - 50ms: Still frequent, negligible benefit over 100ms
 - 100ms: Sweet spot for balance between fairness and performance
 
 **Benchmarked Tradeoffs**:
+
 - 100ms interval: <1% overhead, 100ms max latency
 - 50ms interval: ~2% overhead, 50ms max latency (diminishing returns)
 - 10ms interval: ~10% overhead, 10ms max latency (not worth cost)
@@ -120,6 +129,7 @@ if (low_priority_inbox_.try_dequeue(msg)) return msg;
 ```
 
 **Rationale**:
+
 - **Hierarchy Preservation**: NORMAL still prioritized over LOW
 - **Fairness**: Both get guaranteed check every 100ms
 - **Predictable**: NORMAL max latency = 100ms, LOW max latency = 100ms + NORMAL processing time
@@ -134,12 +144,14 @@ last_low_priority_check_ns_.store(now_ns, std::memory_order_relaxed);
 ```
 
 **Rationale**:
+
 - **Concurrent getMessage()**: Multiple worker threads may call simultaneously
 - **Relaxed Ordering**: Exact synchronization not needed (fairness tolerance)
 - **No Mutex**: Lock-free for performance
 - **Race Acceptable**: If two threads both check, harmless (just extra fairness)
 
 **Memory Order Justification**:
+
 - `memory_order_relaxed`: No cross-thread ordering dependencies
 - Timestamp approximate → occasional skew acceptable
 - Avoids fence overhead of `acquire`/`release`
@@ -184,9 +196,11 @@ last_low_priority_check_ns_.store(now_ns, std::memory_order_relaxed);
 ### Migration Path
 
 **Breaking Changes**:
+
 - None (enhancement to existing priority system)
 
 **Integration Steps**:
+
 1. ✅ Add atomic timestamp to AgentBase
 2. ✅ Initialize timestamp in constructor
 3. ✅ Add time-based check to getMessage()
@@ -206,6 +220,7 @@ if (++high_priority_count % 10 == 0) {
 ```
 
 **Rejected**:
+
 - **Unpredictable Latency**: Depends on message arrival rate
 - **No Real-Time Guarantee**: Cannot verify bounded delay
 - **Testing Difficulty**: Hard to prove fairness properties
@@ -220,6 +235,7 @@ for (int i = 0; i < 1; i++) process_low();
 ```
 
 **Rejected**:
+
 - **Complex**: State machine to track position in schedule
 - **Inflexible**: Fixed ratios don't adapt to dynamic load
 - **Overhead**: More bookkeeping per getMessage()
@@ -235,6 +251,7 @@ auto msg = getEarliestDeadline(high_inbox, normal_inbox, low_inbox);
 ```
 
 **Rejected**:
+
 - **Orthogonal Feature**: Deadlines address different problem (SLA enforcement)
 - **Complexity**: Requires deadline propagation through hierarchy
 - **Overhead**: Heap-based priority queue for deadline ordering
@@ -250,6 +267,7 @@ std::thread low_thread([&]() { while (true) process_low(); });
 ```
 
 **Rejected**:
+
 - **Resource Waste**: 3x threads per agent (300 threads for 100 agents)
 - **Context Switch Overhead**: OS scheduler thrashing
 - **Complexity**: Thread lifecycle management per agent
@@ -277,6 +295,7 @@ static constexpr std::chrono::milliseconds AGENT_LOW_PRIORITY_CHECK_INTERVAL{100
 ```
 
 **Per-Agent Configuration** (Issue #23):
+
 ```cpp
 // Each agent can override the default interval
 agent->setLowPriorityCheckInterval(std::chrono::milliseconds{50});  // Low-latency
@@ -284,12 +303,14 @@ agent->setLowPriorityCheckInterval(std::chrono::milliseconds{500}); // High-thro
 ```
 
 **Benefits of Per-Agent Configuration**:
+
 - **Latency-Sensitive Agents**: Use shorter intervals (10-50ms) for interactive/real-time operations
 - **Throughput-Optimized Agents**: Use longer intervals (200-500ms) for batch processing
 - **Runtime Tunable**: No recompilation required to adjust fairness characteristics
 - **Heterogeneous Workloads**: Different agents in same system can have different latency requirements
 
 **Tuning Guide**:
+
 - **Ultra-Low-Latency** (10ms): Interactive UI updates, real-time control systems
 - **Low-Latency** (50ms): Standard interactive agents, request-response services
 - **Default** (100ms): Balanced - good for most use cases

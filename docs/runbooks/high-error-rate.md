@@ -35,7 +35,8 @@ kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
 curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])'
 
 # Check per-agent breakdown
-curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])' | jq '.data.result[] | {agent: .metric.agent_id, rate: .value[1]}'
+curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])' \
+  | jq '.data.result[] | {agent: .metric.agent_id, rate: .value[1]}'
 ```
 
 ### 2. Check System Health
@@ -71,17 +72,20 @@ kubectl logs -n projectkeystone -l app=hmas --tail=500 | grep "Deadline miss"
 ### Severity Determination
 
 **SEV-0** (Error rate >50/sec):
+
 - Massive deadline misses
 - System overloaded
 - Potential data loss
 - Page incident commander
 
 **SEV-1** (Error rate 10-50/sec):
+
 - Significant degradation
 - SLA at risk
 - Immediate action needed
 
 **SEV-2** (Error rate <10/sec):
+
 - Minor degradation
 - Monitor closely
 - Investigate during business hours
@@ -100,10 +104,12 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_messages_received_total
 ```
 
 **If Load Spike** (>200 msg/sec):
+
 - This is a capacity issue
 - Scale up immediately (see Step 2)
 
 **If Normal Load** (<100 msg/sec):
+
 - This is a performance issue
 - Investigate resource contention (see Step 3)
 
@@ -146,14 +152,17 @@ kubectl exec -n projectkeystone <pod-name> -- iostat -x 1 5
 **Symptom**: Sudden increase in message rate
 
 **Diagnosis**:
+
 ```bash
 # Check message rate trend (last hour)
 curl 'http://localhost:9090/api/v1/query_range?query=rate(hmas_messages_received_total[5m])&start=-1h&step=60s' | jq
 ```
 
 **Resolution**:
+
 - Scale horizontally: `kubectl scale deployment/hmas --replicas=10`
 - Enable HPA (Horizontal Pod Autoscaler):
+
   ```yaml
   apiVersion: autoscaling/v2
   kind: HorizontalPodAutoscaler
@@ -180,6 +189,7 @@ curl 'http://localhost:9090/api/v1/query_range?query=rate(hmas_messages_received
 **Symptom**: High CPU/memory usage
 
 **Diagnosis**:
+
 ```bash
 kubectl top pods -n projectkeystone
 
@@ -188,7 +198,9 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Limits\|Request
 ```
 
 **Resolution**:
+
 - Increase resource limits:
+
   ```bash
   kubectl patch deployment hmas -n projectkeystone -p '
   {
@@ -213,6 +225,7 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Limits\|Request
 **Symptom**: High latency, normal CPU/memory
 
 **Diagnosis**:
+
 ```bash
 # Check message latency
 curl 'http://localhost:9090/api/v1/query?query=hmas_message_latency_microseconds'
@@ -222,6 +235,7 @@ kubectl logs -n projectkeystone -l app=hmas --tail=100 | grep -i "slow\|timeout"
 ```
 
 **Resolution**:
+
 - Identify slow dependency (database, API, etc.)
 - Add timeout or circuit breaker
 - Scale downstream service
@@ -231,6 +245,7 @@ kubectl logs -n projectkeystone -l app=hmas --tail=100 | grep -i "slow\|timeout"
 **Symptom**: High queue depth, normal error rate
 
 **Diagnosis**:
+
 ```bash
 # Check queue depth per priority
 curl 'http://localhost:9090/api/v1/query?query=hmas_queue_depth_max'
@@ -240,8 +255,10 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_low_priority_processed_
 ```
 
 **Resolution**:
+
 - Drain queue by scaling up
 - Adjust priority fairness interval:
+
   ```cpp
   agent->setLowPriorityCheckInterval(std::chrono::milliseconds{50});  // More frequent low-priority checks
   ```
@@ -251,12 +268,15 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_low_priority_processed_
 **Symptom**: Worker utilization >95%
 
 **Diagnosis**:
+
 ```bash
 curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
 ```
 
 **Resolution**:
+
 - Increase worker count via ConfigMap:
+
   ```bash
   kubectl edit configmap hmas-config -n projectkeystone
   # Change WORKER_COUNT from 4 to 8
@@ -280,6 +300,7 @@ watch 'curl -s "http://localhost:9090/api/v1/query?query=rate(hmas_deadline_miss
 ### Step 2: Identify Bottleneck
 
 Use diagnosis steps to determine if bottleneck is:
+
 - CPU (top shows high CPU%)
 - Memory (OOM events, high memory%)
 - I/O (slow disk operations)
@@ -376,6 +397,7 @@ if (downstream_error_rate > 0.5) {
 ### 4. Graceful Degradation
 
 When overloaded:
+
 - Drop low-priority messages
 - Return cached responses
 - Shed non-critical features
@@ -384,14 +406,14 @@ When overloaded:
 
 ## Escalation
 
-### Escalate If:
+### Escalate If
 
 - Error rate not improving after 15 minutes
 - Multiple mitigation attempts failed
 - Root cause unclear
 - Requires code changes
 
-### Contact:
+### Contact
 
 - **On-Call Engineer**: Check PagerDuty rotation
 - **Performance Team**: `@perf-team` in Slack

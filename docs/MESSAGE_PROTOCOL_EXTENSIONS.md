@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document describes extensions to the core Keystone Interchange Message (KIM) protocol implemented in ProjectKeystone HMAS. These extensions add new capabilities while maintaining backward compatibility with the base protocol.
+This document describes extensions to the core Keystone Interchange Message (KIM) protocol implemented in
+ProjectKeystone HMAS. These extensions add new capabilities while maintaining backward compatibility with the base
+protocol.
 
 **Base Protocol**: Keystone Interchange Message (KIM)
 **Document Version**: 1.0
@@ -26,7 +28,8 @@ This document describes extensions to the core Keystone Interchange Message (KIM
 
 ### Overview
 
-The Task Cancellation Protocol enables parent agents to request cancellation of tasks running in child agents. This is a **cooperative cancellation** mechanism where agents must explicitly check for cancellation requests.
+The Task Cancellation Protocol enables parent agents to request cancellation of tasks running in child agents. This is a
+**cooperative cancellation** mechanism where agents must explicitly check for cancellation requests.
 
 ### Protocol Specification
 
@@ -75,6 +78,7 @@ static KeystoneMessage createCancellation(
 ```
 
 **Behavior**:
+
 - Sets `action_type` to `CANCEL_TASK`
 - Sets `priority` to `HIGH` automatically
 - Includes the `task_id` to identify which task to cancel
@@ -116,6 +120,7 @@ protected:
 ```
 
 **Implementation**:
+
 1. Extracts `task_id` from message
 2. Calls `requestCancellation(task_id)`
 3. Returns success response with acknowledgement
@@ -210,6 +215,7 @@ concurrency::Task<core::Response> TaskAgent::longRunningTask(
 
 **Choice**: Cooperative cancellation (agent must check)
 **Rationale**:
+
 - Safer than preemptive termination
 - Allows proper cleanup (RAII, resource release)
 - Predictable behavior
@@ -221,6 +227,7 @@ concurrency::Task<core::Response> TaskAgent::longRunningTask(
 
 **Choice**: Cancellation messages have HIGH priority
 **Rationale**:
+
 - Ensures timely processing under load
 - Prevents delays in cancellation response
 - User expects cancellation to be fast
@@ -229,6 +236,7 @@ concurrency::Task<core::Response> TaskAgent::longRunningTask(
 
 **Choice**: `task_id` is optional in KeystoneMessage
 **Rationale**:
+
 - Backward compatible with existing messages
 - Only required for cancellation
 - Doesn't add overhead to other message types
@@ -278,6 +286,7 @@ No error - cancellation is idempotent. Cancelling a non-existent or already-comp
 ### Backward Compatibility
 
 ✅ **Fully backward compatible**:
+
 - Existing messages work without `task_id`
 - `task_id` field is optional
 - New `CANCEL_TASK` action type is additive
@@ -286,6 +295,7 @@ No error - cancellation is idempotent. Cancelling a non-existent or already-comp
 ### Performance Considerations
 
 **Overhead**:
+
 - Cancellation check: O(1) hash lookup with mutex lock (~100ns)
 - Memory: Minimal (only stores task IDs of cancelled tasks)
 
@@ -302,6 +312,7 @@ No error - cancellation is idempotent. Cancelling a non-existent or already-comp
 ### Implementation Files
 
 **Modified**:
+
 - `include/core/message.hpp` (+29 lines)
 - `src/core/message.cpp` (+19 lines)
 - `include/agents/agent_core.hpp` (+42 lines)
@@ -314,6 +325,7 @@ No error - cancellation is idempotent. Cancelling a non-existent or already-comp
 - `src/agents/chief_architect_agent.cpp` (+13 lines)
 
 **Created**:
+
 - `tests/unit/test_task_cancellation.cpp` (206 lines)
 - `tests/e2e/task_cancellation_test.cpp` (280 lines)
 

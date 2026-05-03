@@ -2,7 +2,8 @@
 
 ## Current Status: 7/15 Core Components Complete (47%)
 
-This document summarizes the implementation progress for Phase 8, which adds distributed multi-node capability to ProjectKeystone HMAS.
+This document summarizes the implementation progress for Phase 8, which adds distributed multi-node capability to
+ProjectKeystone HMAS.
 
 ---
 
@@ -11,9 +12,11 @@ This document summarizes the implementation progress for Phase 8, which adds dis
 ### 1. Build System Integration ✅
 
 **Files Modified/Created**:
+
 - `CMakeLists.txt` - Updated with gRPC, protobuf, yaml-cpp
 
 **Key Changes**:
+
 ```cmake
 # Added dependencies
 find_package(Protobuf REQUIRED)
@@ -43,13 +46,15 @@ target_link_libraries(keystone_network
 ### 2. Protocol Definitions ✅
 
 **Files Created**:
+
 - `proto/common.proto` - Common types and enums
 - `proto/service_registry.proto` - Agent registration service
 - `proto/hmas_coordinator.proto` - Task coordination service
 
 **Services Defined**:
 
-#### ServiceRegistry (6 RPCs):
+#### ServiceRegistry (6 RPCs)
+
 - `RegisterAgent()` - Register agent with registry
 - `Heartbeat()` - Keep-alive ping
 - `UnregisterAgent()` - Remove agent from registry
@@ -57,7 +62,8 @@ target_link_libraries(keystone_network
 - `GetAgent()` - Get specific agent info
 - `ListAllAgents()` - List all registered agents
 
-#### HMASCoordinator (6 RPCs):
+#### HMASCoordinator (6 RPCs)
+
 - `SubmitTask()` - Submit YAML task for execution
 - `StreamTaskStatus()` - Stream real-time status updates
 - `GetTaskResult()` - Fetch final result
@@ -72,9 +78,11 @@ target_link_libraries(keystone_network
 ### 3. YAML Task Specification Schema ✅
 
 **File Created**:
+
 - `schemas/hierarchical_task.yaml` - Complete JSON Schema
 
 **Schema Structure**:
+
 ```yaml
 apiVersion: keystone.hmas.io/v1alpha1
 kind: HierarchicalTask
@@ -100,6 +108,7 @@ status:
 ```
 
 **Features**:
+
 - Kubernetes-inspired structure
 - DAG task dependencies (`depends: "task-a && task-b"`)
 - Retry policies with exponential backoff
@@ -111,15 +120,18 @@ status:
 ### 4. ServiceRegistry Implementation ✅
 
 **Files Created**:
+
 - `include/network/service_registry.hpp` - Header (221 lines)
 - `src/network/service_registry.cpp` - Implementation (383 lines)
 
 **Classes**:
+
 - `AgentRegistrationInfo` - Agent metadata storage
 - `ServiceRegistry` - Thread-safe agent registry
 - `ServiceRegistryServiceImpl` - gRPC service implementation
 
 **Key Methods**:
+
 ```cpp
 // Registration
 bool registerAgent(agent_id, type, level, ip_port, capabilities);
@@ -149,10 +161,12 @@ static AgentRegistrationInfo fromProtoRegistration(reg);
 ### 5. YAML Parser/Generator ✅
 
 **Files Created**:
+
 - `include/network/yaml_parser.hpp` - Header (147 lines)
 - `src/network/yaml_parser.cpp` - Implementation (612 lines)
 
 **Data Structures**:
+
 ```cpp
 struct HierarchicalTaskSpec {
   string api_version, kind;
@@ -168,6 +182,7 @@ struct HierarchicalTaskSpec {
 ```
 
 **Key Methods**:
+
 ```cpp
 // Parsing
 static std::optional<HierarchicalTaskSpec> parseTaskSpec(yaml_str);
@@ -184,19 +199,22 @@ static std::string formatDuration(900000);  // → "15m"
 
 **Supported Duration Units**: `ms`, `s`, `m`, `h`
 
-**Validation**: Checks required fields (apiVersion, kind, metadata.{name,taskId,createdAt}, spec.{routing,hierarchy,action,payload})
+**Validation**: Checks required fields (apiVersion, kind, metadata.{name,taskId,createdAt},
+spec.{routing,hierarchy,action,payload})
 
 ---
 
 ### 6. gRPC Server Wrapper ✅
 
 **Files Created**:
+
 - `include/network/grpc_server.hpp` - Header (68 lines)
 - `src/network/grpc_server.cpp` - Implementation (76 lines)
 
 **Class**: `GrpcServer`
 
 **Configuration**:
+
 ```cpp
 struct GrpcServerConfig {
   std::string server_address{"0.0.0.0:50051"};
@@ -208,6 +226,7 @@ struct GrpcServerConfig {
 ```
 
 **API**:
+
 ```cpp
 GrpcServer server(config);
 server.registerService(&service_registry_impl);
@@ -218,6 +237,7 @@ server.stop(grace_period_ms);
 ```
 
 **Features**:
+
 - Multi-service support (can host ServiceRegistry + HMASCoordinator)
 - Configurable message size limits
 - Graceful shutdown with timeout
@@ -228,14 +248,17 @@ server.stop(grace_period_ms);
 ### 7. gRPC Client Wrappers ✅
 
 **Files Created**:
+
 - `include/network/grpc_client.hpp` - Header (168 lines)
 - `src/network/grpc_client.cpp` - Implementation (284 lines)
 
 **Classes**:
+
 - `HMASCoordinatorClient` - For task submission
 - `ServiceRegistryClient` - For agent registration/discovery
 
 **HMASCoordinatorClient API**:
+
 ```cpp
 HMASCoordinatorClient client(config);
 
@@ -256,6 +279,7 @@ CancelResponse cancel = client.cancelTask(task_id, reason);
 ```
 
 **ServiceRegistryClient API**:
+
 ```cpp
 ServiceRegistryClient client(config);
 
@@ -275,6 +299,7 @@ UnregisterResponse unreg = client.unregisterAgent(agent_id, reason);
 ```
 
 **Configuration**:
+
 ```cpp
 struct GrpcClientConfig {
   std::string server_address;
@@ -297,12 +322,14 @@ struct GrpcClientConfig {
 ### 8. Task Router ⏳ (IN PROGRESS)
 
 **Files To Create**:
+
 - `include/network/task_router.hpp`
 - `src/network/task_router.cpp`
 
 **Purpose**: Route tasks to appropriate agents based on YAML `spec.routing`
 
 **Required Functionality**:
+
 ```cpp
 class TaskRouter {
 public:
@@ -331,12 +358,14 @@ public:
 ### 9. HMASCoordinator Service Implementation ⏳
 
 **Files To Create**:
+
 - `include/network/hmas_coordinator_service.hpp`
 - `src/network/hmas_coordinator_service.cpp`
 
 **Purpose**: Implement gRPC service for task coordination
 
 **Required Functionality**:
+
 ```cpp
 class HMASCoordinatorServiceImpl : public hmas::HMASCoordinator::Service {
 public:
@@ -364,6 +393,7 @@ private:
 ### 10. Agent Extensions for gRPC ⏳
 
 **Files To Modify**:
+
 - `include/agents/chief_architect_agent.hpp`
 - `src/agents/chief_architect_agent.cpp`
 - (Similar for ComponentLeadAgent, ModuleLeadAgent, TaskAgent)
@@ -371,6 +401,7 @@ private:
 **Required Changes**:
 
 **ChiefArchitectAgent**:
+
 ```cpp
 class ChiefArchitectAgent {
 private:
@@ -387,6 +418,7 @@ public:
 ```
 
 **ComponentLeadAgent**:
+
 ```cpp
 class ComponentLeadAgent {
 public:
@@ -407,12 +439,14 @@ public:
 ### 11. Result Aggregation ⏳
 
 **Files To Create**:
+
 - `include/network/result_aggregator.hpp`
 - `src/network/result_aggregator.cpp`
 
 **Purpose**: Aggregate subtask results according to strategy
 
 **Required Functionality**:
+
 ```cpp
 class ResultAggregator {
 public:
@@ -441,11 +475,13 @@ public:
 **Note**: Phase 5 already implements `RetryPolicy` class. Need to integrate with gRPC client.
 
 **Integration Points**:
+
 - `GrpcClient`: Apply retry with exponential backoff on RPC failures
 - `HMASCoordinatorService`: Retry task submission to failed agents
 - `Agent`: Retry subtask delegation on transient errors
 
 **Required Changes**:
+
 ```cpp
 // In grpc_client.cpp
 template<typename RpcFunc>
@@ -473,12 +509,14 @@ auto retryWithBackoff(RpcFunc rpc_func, const RetryPolicy& policy) {
 **Note**: Phase 5 already implements `CircuitBreaker` class. Need to integrate with gRPC client.
 
 **Integration Points**:
+
 - Per-agent circuit breakers in `ServiceRegistry`
 - Fail fast when circuit is open (don't attempt RPC)
 - Transition to HALF_OPEN after timeout
 - Close circuit on successful requests
 
 **Required Changes**:
+
 ```cpp
 class ServiceRegistry {
 private:
@@ -496,9 +534,11 @@ public:
 ### 14. Docker Compose Multi-Node Setup ⏳
 
 **File To Create**:
+
 - `docker-compose-distributed.yaml`
 
 **Required Services**:
+
 ```yaml
 version: '3.8'
 services:
@@ -550,6 +590,7 @@ networks:
 ```
 
 **Node Executables** (to create):
+
 - `apps/chief_node_main.cpp` - Runs ChiefArchitect + ServiceRegistry
 - `apps/component_node_main.cpp` - Runs ComponentLead
 - `apps/module_node_main.cpp` - Runs ModuleLead
@@ -560,9 +601,11 @@ networks:
 ### 15. E2E Test ⏳
 
 **File To Create**:
+
 - `tests/e2e/distributed_grpc_test.cpp`
 
 **Test Scenarios**:
+
 ```cpp
 TEST(DistributedHierarchy, BasicDelegationAcrossNodes) {
   // 1. Start all nodes via Docker Compose
@@ -603,6 +646,7 @@ TEST(DistributedHierarchy, HeartbeatMonitoring) {
 **Files To Create**:
 
 **`docs/DISTRIBUTED_DEPLOYMENT.md`**:
+
 - System requirements (gRPC, protobuf versions)
 - Build instructions with gRPC support
 - Docker Compose deployment guide
@@ -610,6 +654,7 @@ TEST(DistributedHierarchy, HeartbeatMonitoring) {
 - Troubleshooting common issues
 
 **`docs/YAML_SPECIFICATION.md`**:
+
 - Complete YAML format reference
 - Field descriptions with examples
 - DAG dependency syntax (`depends: "a && b"`)
@@ -618,6 +663,7 @@ TEST(DistributedHierarchy, HeartbeatMonitoring) {
 - Example workflows for each hierarchy level
 
 **`docs/NETWORK_PROTOCOL.md`**:
+
 - gRPC service definitions
 - RPC descriptions and usage examples
 - Error codes and handling
@@ -630,6 +676,7 @@ TEST(DistributedHierarchy, HeartbeatMonitoring) {
 ## Code Statistics
 
 **Lines of Code Implemented**:
+
 - Protocol definitions (`.proto`): ~450 lines
 - Headers (`.hpp`): ~750 lines
 - Implementation (`.cpp`): ~1,355 lines
@@ -647,6 +694,7 @@ TEST(DistributedHierarchy, HeartbeatMonitoring) {
 ### Prerequisites
 
 **System Packages** (must be installed):
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install -y \
@@ -739,9 +787,11 @@ ninja
 
 ## Key Design Decisions
 
-1. **gRPC over ZeroMQ**: gRPC provides better tooling, strong typing, and industry adoption despite ~100x higher latency (acceptable for HMAS coordination)
+1. **gRPC over ZeroMQ**: gRPC provides better tooling, strong typing, and industry adoption despite ~100x higher latency
+(acceptable for HMAS coordination)
 
-2. **YAML for specs, Protobuf for transport**: Hybrid approach - human-readable YAML wrapped in efficient binary protobuf
+2. **YAML for specs, Protobuf for transport**: Hybrid approach - human-readable YAML wrapped in efficient binary
+protobuf
 
 3. **Centralized ServiceRegistry**: Simpler coordination, matches existing MessageBus design, easier debugging
 

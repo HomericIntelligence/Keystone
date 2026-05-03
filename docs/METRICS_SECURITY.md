@@ -4,7 +4,8 @@
 
 ## Overview
 
-This guide covers security best practices for metrics endpoints in ProjectKeystone HMAS, including authentication, authorization, encryption, and access control.
+This guide covers security best practices for metrics endpoints in ProjectKeystone HMAS, including authentication,
+authorization, encryption, and access control.
 
 **Phase 6.8 M4**: Comprehensive metrics security implementation
 
@@ -41,6 +42,7 @@ spec:
 ```
 
 **Benefits**:
+
 - Zero-trust networking: explicit allow-list
 - Prevents unauthorized scraping from other namespaces
 - Defense-in-depth: additional layer beyond authentication
@@ -86,6 +88,7 @@ scrape_configs:
 ```
 
 **Security Considerations**:
+
 - Use strong passwords (20+ characters, random)
 - Rotate passwords quarterly
 - Store passwords in Kubernetes secrets (not ConfigMaps)
@@ -150,6 +153,7 @@ ssl_session_timeout 10m;
 ```
 
 **Security Considerations**:
+
 - Use TLS 1.2 or higher (disable TLS 1.0/1.1)
 - Disable weak cipher suites (MD5, RC4, DES)
 - Enable HSTS header
@@ -200,6 +204,7 @@ kubectl auth can-i delete pods \
 ```
 
 **Security Considerations**:
+
 - Never grant `*` permissions
 - Namespace-scope when possible (use Role, not ClusterRole)
 - Audit RBAC periodically
@@ -214,6 +219,7 @@ kubectl auth can-i delete pods \
 **Best Practices**:
 
 1. **Never commit secrets to Git**:
+
    ```bash
    # Add to .gitignore
    echo "*.key" >> .gitignore
@@ -222,6 +228,7 @@ kubectl auth can-i delete pods \
    ```
 
 2. **Use External Secrets Operator** (Production):
+
    ```yaml
    apiVersion: external-secrets.io/v1beta1
    kind: ExternalSecret
@@ -240,12 +247,14 @@ kubectl auth can-i delete pods \
    ```
 
 3. **Enable encryption at rest**:
+
    ```yaml
    # kube-apiserver configuration
    --encryption-provider-config=/etc/kubernetes/encryption-config.yaml
    ```
 
 4. **Rotate secrets regularly**:
+
    ```bash
    # Quarterly password rotation
    htpasswd -nB prometheus > auth.new
@@ -258,6 +267,7 @@ kubectl auth can-i delete pods \
    ```
 
 **Security Considerations**:
+
 - Use Vault, AWS Secrets Manager, or GCP Secret Manager
 - Enable Kubernetes encryption at rest
 - Audit secret access logs
@@ -272,6 +282,7 @@ kubectl auth can-i delete pods \
 **Use Case**: Metrics accessed only within Kubernetes cluster
 
 **Configuration**:
+
 - NetworkPolicy: Restrict to Prometheus namespace
 - Authentication: None (rely on NetworkPolicy)
 - Encryption: None
@@ -294,6 +305,7 @@ scrape_configs:
 **Use Case**: Metrics accessed by multiple Prometheus instances
 
 **Configuration**:
+
 - NetworkPolicy: Allow from Prometheus namespaces
 - Authentication: Basic Auth
 - Encryption: None (internal network)
@@ -319,6 +331,7 @@ scrape_configs:
 **Use Case**: Production deployment with external Prometheus or Grafana Cloud
 
 **Configuration**:
+
 - NetworkPolicy: Strict allow-list
 - Authentication: Basic Auth with bcrypt
 - Encryption: TLS 1.2+ with strong ciphers
@@ -391,6 +404,7 @@ spec:
 ```
 
 **Benefits**:
+
 - No application code changes required
 - Centralized security configuration
 - Easy to update/rotate credentials
@@ -542,6 +556,7 @@ openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc
 **Problem**: Prometheus cannot scrape metrics
 
 **Solutions**:
+
 1. Verify credentials: `kubectl get secret prometheus-scrape-credentials -o yaml`
 2. Check password hash: `htpasswd -v auth prometheus`
 3. Ensure Prometheus has secret mounted
@@ -552,6 +567,7 @@ openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc
 **Problem**: TLS handshake failures
 
 **Solutions**:
+
 1. Verify certificate: `openssl x509 -in tls.crt -text -noout`
 2. Check expiration: `openssl x509 -in tls.crt -noout -dates`
 3. Verify CN matches: `openssl x509 -in tls.crt -noout -subject`
@@ -562,6 +578,7 @@ openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc
 **Problem**: Prometheus cannot reach HMAS metrics
 
 **Solutions**:
+
 1. Check NetworkPolicy: `kubectl describe networkpolicy hmas-metrics-access`
 2. Verify pod labels: `kubectl get pods -n projectkeystone --show-labels`
 3. Test connectivity: `kubectl exec -it prometheus-xxx -- wget -O- http://hmas:9090/metrics`

@@ -1,6 +1,8 @@
 # ProjectKeystone HMAS Workflow Examples
 
-This directory contains comprehensive examples demonstrating the Hierarchical Multi-Agent System (HMAS) across three different deployment models. Each example showcases how agents communicate and coordinate tasks across 2, 3, and 4 layers of hierarchy.
+This directory contains comprehensive examples demonstrating the Hierarchical Multi-Agent System (HMAS) across three
+different deployment models. Each example showcases how agents communicate and coordinate tasks across 2, 3, and 4
+layers of hierarchy.
 
 ## Table of Contents
 
@@ -14,7 +16,8 @@ This directory contains comprehensive examples demonstrating the Hierarchical Mu
 
 ## Overview
 
-ProjectKeystone implements a **4-layer hierarchical agent system** where agents coordinate to accomplish complex tasks through message passing and delegation:
+ProjectKeystone implements a **4-layer hierarchical agent system** where agents coordinate to accomplish complex tasks
+through message passing and delegation:
 
 ```
 Level 0: ChiefArchitectAgent    ← Strategic orchestration
@@ -68,6 +71,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 - **Best For**: Single-process applications, tight latency requirements
 
 **Architecture**:
+
 ```
 ┌─────────────────────────────────────────────┐
 │         Single Process                       │
@@ -87,6 +91,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 ```
 
 **Examples**:
+
 - **2-Layer**: Chief → TaskAgent (direct delegation)
 - **3-Layer**: Chief → ModuleLead → TaskAgents (coordination)
 - **4-Layer**: Chief → ComponentLead → ModuleLead → TaskAgents (full hierarchy)
@@ -103,6 +108,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 - **Best For**: Process isolation, fault tolerance, resource limits
 
 **Architecture**:
+
 ```
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │  Process 1   │  │  Process 2   │  │  Process 3   │
@@ -127,12 +133,14 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 ```
 
 **Key Differences from Thread-Based**:
+
 - Each agent runs in a separate OS process
 - MessageBus lives in shared memory segment
 - Queues use Boost.Interprocess named_mutex for synchronization
 - Process crash doesn't affect other agents
 
 **Examples**:
+
 - **2-Layer**: Chief process → Task process
 - **3-Layer**: Chief → ModuleLead → Task processes
 - **4-Layer**: Chief → ComponentLead → ModuleLead → Task processes
@@ -149,6 +157,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 - **Best For**: Distributed systems, scalability, geographic distribution
 
 **Architecture**:
+
 ```
 ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
 │   Machine A          │  │   Machine B          │  │   Machine C          │
@@ -188,6 +197,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 ```
 
 **Key Features**:
+
 - **Service Discovery**: Agents register with ServiceRegistry on startup
 - **YAML Task Specs**: Kubernetes-style task definitions
 - **Load Balancing**: ROUND_ROBIN, LEAST_LOADED, RANDOM strategies
@@ -195,6 +205,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 - **Heartbeat Monitoring**: 1s interval, 3s timeout for liveness
 
 **Examples**:
+
 - **2-Layer**: Chief (Machine A) → TaskAgent (Machine B)
 - **3-Layer**: Chief → ModuleLead → TaskAgents (3 machines)
 - **4-Layer**: Chief → ComponentLead → ModuleLead → TaskAgents (4+ machines)
@@ -332,12 +343,14 @@ Each example is a standalone executable:
 ### 1. Message Flow Patterns
 
 #### Request-Response (2-Layer)
+
 ```
 Chief --[Goal]--> TaskAgent
       <--[Result]--
 ```
 
 #### Decomposition-Synthesis (3-Layer)
+
 ```
 Chief --[Goal]--> ModuleLead
                       |
@@ -349,6 +362,7 @@ Chief --[Goal]--> ModuleLead
 ```
 
 #### Full Hierarchy (4-Layer)
+
 ```
 Chief --[Goal]--> ComponentLead
                       |
@@ -366,6 +380,7 @@ Chief --[Goal]--> ComponentLead
 ### 2. State Machine Patterns
 
 #### ModuleLead State Machine
+
 ```
 IDLE --> PLANNING --> WAITING_FOR_TASKS --> SYNTHESIZING --> IDLE
   ↑                                                            │
@@ -373,6 +388,7 @@ IDLE --> PLANNING --> WAITING_FOR_TASKS --> SYNTHESIZING --> IDLE
 ```
 
 #### ComponentLead State Machine
+
 ```
 IDLE --> PLANNING --> WAITING_FOR_MODULES --> AGGREGATING --> IDLE
   ↑                                                             │
@@ -382,16 +398,19 @@ IDLE --> PLANNING --> WAITING_FOR_MODULES --> AGGREGATING --> IDLE
 ### 3. Concurrency Patterns
 
 #### Thread-Based: Shared Memory
+
 - Lock-free concurrent queues
 - Mutex-protected agent registry
 - Async coroutine execution
 
 #### IPC-Based: Process Isolation
+
 - Named shared memory segments
 - Named mutexes for synchronization
 - Process-safe message passing
 
 #### Network-Based: Distributed
+
 - gRPC bidirectional streaming
 - Service discovery and registration
 - Heartbeat-based health monitoring
@@ -403,11 +422,13 @@ IDLE --> PLANNING --> WAITING_FOR_MODULES --> AGGREGATING --> IDLE
 ### Thread-Based Examples
 
 **Use Case**: Real-time data processing pipeline
+
 - Low latency requirements (< 1ms)
 - All agents in same process
 - Shared memory for efficiency
 
 **Example**: Image processing pipeline
+
 ```
 Chief: "Process batch of 1000 images"
   ↓
@@ -423,11 +444,13 @@ Chief: Return aggregated metrics
 ### IPC-Based Examples
 
 **Use Case**: Fault-tolerant service architecture
+
 - Process isolation for stability
 - Independent restart capability
 - Resource limits per agent
 
 **Example**: Distributed build system
+
 ```
 Chief Process: "Build project with 100 source files"
   ↓
@@ -443,11 +466,13 @@ Chief: Link final executable
 ### Network-Based Examples
 
 **Use Case**: Cloud-native microservices
+
 - Geographic distribution
 - Dynamic scaling
 - Service discovery
 
 **Example**: Distributed ML training
+
 ```
 Chief (Machine A): "Train model on 1TB dataset"
   ↓
@@ -483,6 +508,7 @@ Chief: Return trained model
 3. **Scale to Network-Based**: Implement distributed coordination
 
 For detailed implementation guides, see the README in each subdirectory:
+
 - [Thread-Based Examples](01-thread-based/README.md)
 - [IPC-Based Examples](02-ipc-based/README.md)
 - [Network-Based Examples](03-network-based/README.md)

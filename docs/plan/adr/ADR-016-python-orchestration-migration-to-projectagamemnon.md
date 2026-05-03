@@ -18,7 +18,8 @@ ProjectKeystone originally contained Python orchestration modules alongside its 
 - `daemon.py` — orchestration daemon entry point
 - `config.py`, `logging.py`, `validation.py` — supporting utilities
 
-These modules were part of the Python subscriber that consumed task events from the `homeric-tasks` NATS stream and advanced the DAG through AI Maestro.
+These modules were part of the Python subscriber that consumed task events from the `homeric-tasks` NATS stream and
+advanced the DAG through AI Maestro.
 
 ### Problems with Co-location
 

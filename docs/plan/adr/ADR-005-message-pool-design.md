@@ -7,11 +7,14 @@
 
 ## Context
 
-ProjectKeystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load. Each message allocation/deallocation incurs overhead from the system allocator (malloc/free), causing performance degradation and memory fragmentation at scale.
+ProjectKeystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load. Each
+message allocation/deallocation incurs overhead from the system allocator (malloc/free), causing performance degradation
+and memory fragmentation at scale.
 
 ### Performance Problem
 
 **Benchmark Results (Before Message Pool)**:
+
 - 100,000 messages/sec → ~15% CPU time in malloc/free
 - Memory fragmentation → 20-30% unused heap space after 1 hour
 - Allocation latency → p99: 500ns (vs 50ns for pooled)
@@ -48,16 +51,19 @@ private:
 ```
 
 **Rationale**:
+
 - **Zero Synchronization**: Each thread has its own pool (no mutex/atomics)
 - **Cache Locality**: Thread's messages stay in local cache
 - **Scalability**: No contention between worker threads
 - **Simple**: Standard `thread_local` storage
 
 **Alternative (Rejected): Global Pool with Mutex**:
+
 ```cpp
 std::mutex pool_mutex_;
 std::vector<KeystoneMessage> global_pool_;  // Shared across threads
 ```
+
 - **Contention**: All threads compete for single lock
 - **Bottleneck**: Serializes all acquire/release operations
 - **Cache Thrashing**: Messages ping-pong between thread caches
@@ -87,21 +93,25 @@ void release(KeystoneMessage&& msg) {
 ```
 
 **Rationale**:
+
 - **Bounded Memory**: Each worker limited to 1000 messages (~1-10MB depending on payload)
-- **Total Memory**: 256 workers * 1000 msgs * ~10KB = ~2.5GB max (acceptable)
+- **Total Memory**: 256 workers *1000 msgs* ~10KB = ~2.5GB max (acceptable)
 - **Prevents Leaks**: No unbounded growth from forgotten releases
 - **Graceful Degradation**: Falls back to normal allocation when full
 
 **Why 1000?**:
+
 - **Sufficient for Bursts**: Typical agent processes 10-100 msgs/sec
 - **Reasonable Memory**: ~10MB per thread worst case
 - **Rare Overflow**: Only under extreme sustained load (>1000 msgs/sec)
 
 **Alternative (Rejected): Unbounded Pool**:
+
 - **Memory Leak Risk**: Pool grows indefinitely if releases exceed acquires
 - **Production Risk**: Cannot predict max memory usage
 
 **Alternative (Rejected): Smaller Limit (100)**:
+
 - **Frequent Fallback**: Pool exhausted under moderate load
 - **Reduced Benefit**: 50-70% reuse vs 80-90% with 1000
 
@@ -136,6 +146,7 @@ MessagePool::release(std::move(msg));
 ```
 
 **Opt-In Pattern**:
+
 ```cpp
 // Using pool (opt-in)
 auto msg = MessagePool::acquire();
@@ -150,6 +161,7 @@ auto msg = KeystoneMessage::create("agent1", "agent2", "cmd");
 ```
 
 **Rationale**:
+
 - **Backward Compatible**: Existing code unchanged
 - **Explicit Control**: Developer chooses when to use pool
 - **RAII Safety**: If release() forgotten, message still destroyed safely
@@ -174,6 +186,7 @@ void release(KeystoneMessage&& msg) {
 ```
 
 **Rationale**:
+
 - **No Data Leakage**: Previous message content cleared
 - **Predictable State**: Next acquire() gets clean message
 - **Security**: Prevent sensitive data from leaking between messages
@@ -194,11 +207,13 @@ PoolStats getStats();  // Thread-local stats
 ```
 
 **Rationale**:
+
 - **Observability**: Verify pool effectiveness in production
 - **Debugging**: Detect pool exhaustion or imbalance
 - **Tuning**: Adjust MAX_POOL_SIZE based on metrics
 
 **Example Metrics**:
+
 - Hit rate: 85% → Pool working well
 - Hit rate: 30% → Pool too small or high churn
 - Max size: 950 → Approaching limit, consider increasing
@@ -245,6 +260,7 @@ PoolStats getStats();  // Thread-local stats
 **No Breaking Changes**: Opt-in feature, existing code unaffected.
 
 **Adoption Strategy**:
+
 1. ✅ Implement MessagePool as opt-in feature
 2. ✅ Add benchmarks showing benefit
 3. Phase D.2: Convert high-throughput paths to use pool
@@ -268,6 +284,7 @@ class MessagePool {
 ```
 
 **Rejected**:
+
 - **Contention**: Serializes all acquire/release operations
 - **Bottleneck**: 256 workers competing for single mutex
 - **Slow**: 20x slower than thread-local in benchmarks
@@ -279,6 +296,7 @@ moodycamel::ConcurrentQueue<KeystoneMessage> pool_;
 ```
 
 **Rejected**:
+
 - **Cache Thrashing**: Messages bounce between thread caches
 - **Overhead**: ConcurrentQueue has per-operation cost (~50ns)
 - **Complexity**: More complex than thread-local for marginal gain
@@ -297,6 +315,7 @@ using PooledMessage = std::basic_string<char, std::char_traits<char>, PoolAlloca
 ```
 
 **Rejected**:
+
 - **Invasive**: Requires changing KeystoneMessage definition
 - **Complexity**: Custom allocator is error-prone
 - **Inflexible**: Hard to reset message state
@@ -313,6 +332,7 @@ class PooledMessage {
 ```
 
 **Deferred to Future**:
+
 - **Good Idea**: RAII automatic release
 - **Not Urgent**: Manual release acceptable for Phase D
 - **Future**: Phase E could add RAII wrapper
@@ -326,6 +346,7 @@ class AgentBase {
 ```
 
 **Rejected**:
+
 - **Fragmentation**: Each agent has separate pool
 - **Imbalance**: Busy agents exhaust pool, idle agents waste memory
 - **Complexity**: Need pool per agent instance
@@ -359,6 +380,7 @@ MAX_POOL_SIZE = 1000;  // Per thread
 ```
 
 **Tuning**:
+
 - High-throughput deployment: 2000
 - Memory-constrained: 500
 - Low-load: 100

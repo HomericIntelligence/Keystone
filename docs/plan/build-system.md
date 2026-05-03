@@ -2,7 +2,9 @@
 
 ## Overview
 
-ProjectKeystone uses **CMake 3.20+** with **Conan 2** for dependency management and **CMakePresets.json** (v8) for preset-based builds. Traditional C++ headers are used (not C++20 modules). This document outlines the build configuration, toolchain requirements, and development workflows.
+ProjectKeystone uses **CMake 3.20+** with **Conan 2** for dependency management and **CMakePresets.json** (v8) for
+preset-based builds. Traditional C++ headers are used (not C++20 modules). This document outlines the build
+configuration, toolchain requirements, and development workflows.
 
 See also: `/CLAUDE.md` for project scope and architecture.
 

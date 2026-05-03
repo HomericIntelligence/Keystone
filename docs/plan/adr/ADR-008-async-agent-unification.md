@@ -12,7 +12,9 @@
 > unification decision; the `BaseAgent` class hierarchy it documents now lives in
 > ProjectAgamemnon, not in ProjectKeystone.
 
-The codebase had a dual hierarchy with both synchronous (`BaseAgent`) and asynchronous (`AsyncBaseAgent`) agent classes. This created:
+The codebase had a dual hierarchy with both synchronous (`BaseAgent`) and asynchronous (`AsyncBaseAgent`) agent classes.
+This created:
+
 - Code duplication (two versions of every agent type)
 - Type system complexity (couldn't have uniform collections)
 - Maintenance burden (changes needed in two places)
@@ -77,6 +79,7 @@ class AsyncChiefArchitectAgent : public AsyncBaseAgent { ... };
 ```
 
 **Problems**:
+
 ```cpp
 // Cannot use uniform collections
 std::vector<BaseAgent*> sync_agents;  // Only sync agents
@@ -111,6 +114,7 @@ class ChiefArchitectAgent : public BaseAgent {
 ```
 
 **Benefits**:
+
 ```cpp
 // Uniform collections
 std::vector<std::shared_ptr<BaseAgent>> all_agents;  // All agents!
@@ -126,6 +130,7 @@ for (auto& agent : all_agents) {
 ### Migration Pattern for Agents
 
 **Step 1**: Update header signature
+
 ```cpp
 // Before
 class MyAgent : public BaseAgent {
@@ -139,6 +144,7 @@ class MyAgent : public BaseAgent {
 ```
 
 **Step 2**: Update implementation to use coroutine
+
 ```cpp
 // Before
 Response MyAgent::processMessage(const KeystoneMessage& msg) {
@@ -156,12 +162,14 @@ Task<Response> MyAgent::processMessage(const KeystoneMessage& msg) {
 ### Migration Pattern for Tests
 
 **Before**:
+
 ```cpp
 auto response = agent->processMessage(msg);  // Immediate Response
 EXPECT_EQ(response.status, Response::Status::Success);
 ```
 
 **After**:
+
 ```cpp
 auto task = agent->processMessage(msg);  // Returns Task<Response>
 auto response = task.get();  // Get result from Task
@@ -171,10 +179,12 @@ EXPECT_EQ(response.status, Response::Status::Success);
 ## Files Modified
 
 ### Core Architecture
+
 - ✅ `include/agents/base_agent.hpp` - Made async
 - ✅ `src/agents/base_agent.cpp` - No changes needed
 
 ### Agents Migrated
+
 - ✅ `include/agents/task_agent.hpp` - Made async
 - ✅ `src/agents/task_agent.cpp` - Made async
 - ✅ `include/agents/chief_architect_agent.hpp` - Made async
@@ -185,6 +195,7 @@ EXPECT_EQ(response.status, Response::Status::Success);
 - ✅ `src/agents/component_lead_agent.cpp` - Made async
 
 ### Files Deleted (10 files - Async Hierarchy Removed)
+
 - ❌ `include/agents/async_base_agent.hpp` - **DELETED**
 - ❌ `src/agents/async_base_agent.cpp` - **DELETED**
 - ❌ `include/agents/async_task_agent.hpp` - **DELETED**
@@ -197,12 +208,14 @@ EXPECT_EQ(response.status, Response::Status::Success);
 - ❌ `src/agents/async_component_lead_agent.cpp` - **DELETED**
 
 ### Tests Updated (373 tests)
+
 - ✅ All E2E tests (`tests/e2e/*.cpp`) - 59 tests
 - ✅ All unit tests (`tests/unit/*.cpp`) - 314 tests
 
 ## Validation
 
 ### Verification Steps
+
 1. ✅ **Compile Check**: All agents compile with async signatures
 2. ✅ **Unit Tests**: All 270 unit tests pass
 3. ✅ **E2E Tests**: All 59 E2E tests pass
@@ -210,6 +223,7 @@ EXPECT_EQ(response.status, Response::Status::Success);
 5. ✅ **Code Reduction**: Removed 10 duplicate files
 
 ### Test Results
+
 ```
 Total Tests: 373/373 passing (100%)
 Code Reduction: -10 files (async_* hierarchy removed)
@@ -234,6 +248,7 @@ Task<Response> TaskAgent::processMessage(const KeystoneMessage& msg) {
 ```
 
 **Why `co_return`?**
+
 - Makes the function a coroutine (returns `Task<Response>`)
 - Allows use of `co_await` inside the function
 - Enables non-blocking async message processing
@@ -260,6 +275,7 @@ private:
 ```
 
 **Usage**:
+
 ```cpp
 // Non-blocking (async)
 auto response = co_await agent->processMessage(msg);
@@ -322,6 +338,7 @@ auto task = agent->processMessage(msg);  // Always returns Task<Response>
 ### Breaking Changes
 
 This is a **breaking API change**:
+
 - All agents must return `Task<Response>`
 - All agent calls must use `co_await` or `.get()`
 - Cannot mix with pre-C++20 codebases

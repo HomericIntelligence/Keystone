@@ -7,7 +7,8 @@
 
 ## Context and Problem Statement
 
-ProjectKeystone extensively uses C++20 coroutines for asynchronous operations. Coroutines introduce unique safety challenges compared to traditional synchronous code:
+ProjectKeystone extensively uses C++20 coroutines for asynchronous operations. Coroutines introduce unique safety
+challenges compared to traditional synchronous code:
 
 - **Lifetime Management**: Coroutine handles must be carefully managed to avoid use-after-free
 - **Suspension Points**: Calling co_await can suspend execution unexpectedly
@@ -16,6 +17,7 @@ ProjectKeystone extensively uses C++20 coroutines for asynchronous operations. C
 - **Stack Safety**: Local variables become invalid after suspension if not properly captured
 
 Without clear patterns and guidelines, developers risk:
+
 - Memory leaks and dangling pointers
 - Data races in concurrent coroutine execution
 - Difficult-to-debug crashes from improper coroutine scheduling
@@ -66,11 +68,13 @@ Task<void> consumer() {
 ```
 
 **Key Points**:
+
 - Always return `Task<T>` from coroutine functions, never raw handles
 - Task uses RAII: destructor calls `handle_.destroy()`
 - Move-only semantics prevent accidental handle duplication
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 99-123): Task destructor and RAII management
 - `include/agents/async_agent.hpp` (line 42): All agent coroutines return `Task<Response>`
 
@@ -109,11 +113,13 @@ void print_result() {
 ```
 
 **Key Points**:
+
 - `co_await` can only be used inside coroutine functions
 - Non-coroutine functions must use `task.get()` (blocking)
 - Calling `co_await` stores the awaiting coroutine as continuation
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 192-213): `await_suspend()` stores continuation
 - `src/agents/task_agent.cpp` (lines 78, 95): Using `co_return` in coroutine functions
 
@@ -174,6 +180,7 @@ Task<void> exception_handling() {
 ```
 
 **Promise Exception Handling**:
+
 ```cpp
 struct promise_type {
     std::exception_ptr exception;  // Stores exception
@@ -192,12 +199,14 @@ void get() {
 ```
 
 **Key Points**:
+
 - Use try/catch inside coroutine bodies for error handling
 - Promise automatically captures uncaught exceptions
 - Accessing result via `co_await` or `get()` re-throws exceptions
 - Always check for exceptions before using results
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 92-95): `unhandled_exception()` captures exceptions
 - `include/concurrency/task.hpp` (lines 159-160): `get()` re-throws exceptions
 - `src/agents/task_agent.cpp` (lines 80-96): Try/catch with error handling in coroutine
@@ -248,6 +257,7 @@ Task<void> protected_access() {
 ```
 
 **Scheduler Integration**:
+
 ```cpp
 // In Task::await_suspend()
 std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) {
@@ -266,12 +276,14 @@ std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) {
 ```
 
 **Key Points**:
+
 - Task automatically integrates with WorkStealingScheduler if available
 - Coroutines may resume on different threads
 - Cannot hold locks across co_await points
 - Use atomic operations or scheduler-local state for shared data
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 192-214): Scheduler-aware `await_suspend()`
 - `include/concurrency/work_stealing_scheduler.hpp` (lines 86-91): Scheduler submit interface
 - `include/concurrency/pull_or_steal.hpp`: Work-stealing without explicit locking
@@ -316,6 +328,7 @@ Task<void> debugging() {
 ```
 
 **Why get_handle() Is Dangerous**:
+
 1. Task owns the handle and destroys it in destructor
 2. Returned handle is non-owning (just a pointer)
 3. Task destruction makes handle dangling
@@ -323,12 +336,14 @@ Task<void> debugging() {
 5. No thread-safety: concurrent operations cause data races
 
 **Key Points**:
+
 - **Avoid** manually extracting handles
 - Let Task manage all handle operations
 - Use `co_await` for automatic scheduler integration
 - If you think you need `get_handle()`, you probably don't
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 224-262): `get_handle()` with extensive safety warnings
 - `include/concurrency/task.hpp` (lines 222-243): Documented use-after-free risks
 
@@ -378,11 +393,13 @@ Task<int> level_0() {
 ```
 
 **Key Points**:
+
 - Symmetric transfer avoids stack growth with chained coroutines
 - Implement by returning handle from `await_suspend()` instead of calling `resume()`
 - More efficient for deep coroutine hierarchies
 
 **Codebase Examples**:
+
 - `include/concurrency/task.hpp` (lines 65-85): `final_suspend()` using symmetric transfer
 - `include/concurrency/task.hpp` (lines 71-78): Continuation handling in `final_awaiter`
 
@@ -580,6 +597,7 @@ GoodTask<int> will_compile() {
 ### Decision 1: Task<T> as the Only Coroutine Return Type
 
 **Rationale**:
+
 - Unified API for all coroutine functions
 - Automatic handle lifetime management
 - Clear ownership semantics
@@ -590,6 +608,7 @@ GoodTask<int> will_compile() {
 ### Decision 2: Scheduler Integration in await_suspend()
 
 **Rationale**:
+
 - Automatic load balancing
 - Work-stealing without explicit coordination
 - Transparent to coroutine authors
@@ -599,6 +618,7 @@ GoodTask<int> will_compile() {
 ### Decision 3: Symmetric Transfer in final_suspend()
 
 **Rationale**:
+
 - Avoids stack growth with chained coroutines
 - More efficient continuation handling
 - Standard C++20 pattern
@@ -639,6 +659,7 @@ TEST(CoroutineSafetyTest, CoroutineChainsWorkWithoutStackOverflow) {
 ### Sanitizer Verification
 
 Run with ThreadSanitizer to detect data races:
+
 ```bash
 make test.debug.tsan  # Run all tests with ThreadSanitizer
 ```
@@ -660,14 +681,17 @@ For any new coroutine in the codebase:
 ## References
 
 ### C++20 Coroutine Standard
+
 - [cppreference: Coroutines (C++20)](https://en.cppreference.com/w/cpp/language/coroutines)
 - [C++20 Coroutine Semantics](https://isocpp.org/files/papers/P0914r1.pdf)
 
 ### Related ADRs
+
 - [ADR-008: Async Agent Hierarchy Unification](ADR-008-async-agent-unification.md)
 - [ADR-001: Message Bus Architecture](ADR-001-message-bus-architecture.md)
 
 ### Code Examples in Codebase
+
 - Task implementation: `include/concurrency/task.hpp`
 - AsyncAgent usage: `include/agents/async_agent.hpp`
 - Agent implementations: `src/agents/*.cpp`

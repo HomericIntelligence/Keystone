@@ -114,7 +114,8 @@ kubectl create secret tls hmas-tls \
 
 ## Outstanding Issues (Require Code Changes)
 
-The following issues cannot be fixed with configuration changes alone and require C++ implementation or infrastructure work. **GitHub issues have been filed** for tracking:
+The following issues cannot be fixed with configuration changes alone and require C++ implementation or infrastructure
+work. **GitHub issues have been filed** for tracking:
 
 ### C4: Missing Health Check Endpoints
 
@@ -191,14 +192,14 @@ kubectl create secret tls hmas-tls \
   -n projectkeystone
 ```
 
-2. **Configure Storage Class** (optional):
+1. **Configure Storage Class** (optional):
 
 ```bash
 # Edit k8s/prometheus.yaml line 204
 # Uncomment and set storageClassName: <your-storage-class>
 ```
 
-3. **Deploy**:
+1. **Deploy**:
 
 ```bash
 kubectl apply -f k8s/namespace.yaml

@@ -2,7 +2,8 @@
 
 ## Overview
 
-Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing agents to run on separate physical/virtual machines and communicate via gRPC with YAML-based task specifications.
+Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing agents to run on separate
+physical/virtual machines and communicate via gRPC with YAML-based task specifications.
 
 ## Completed Components
 
@@ -17,6 +18,7 @@ Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing
 - Linked network library with appropriate dependencies
 
 **Dependencies Added**:
+
 - gRPC and protobuf (system packages required)
 - yaml-cpp (fetched automatically)
 
@@ -25,17 +27,20 @@ Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing
 **Files**: `proto/*.proto`
 
 **proto/common.proto**:
+
 - Common types shared across services
 - Enumerations: `TaskPhase`, `TaskActionType`, `TaskPriority`, `AggregationStrategy`, `BackoffStrategy`
 - `AgentInfo` message for service registry
 
 **proto/service_registry.proto**:
+
 - `ServiceRegistry` gRPC service definition
 - RPCs: `RegisterAgent`, `Heartbeat`, `UnregisterAgent`, `QueryAgents`, `GetAgent`, `ListAllAgents`
 - Request/response messages for agent registration and discovery
 - Support for heartbeat monitoring and capability-based queries
 
 **proto/hmas_coordinator.proto**:
+
 - `HMASCoordinator` gRPC service definition
 - RPCs: `SubmitTask`, `StreamTaskStatus`, `GetTaskResult`, `SubmitResult`, `CancelTask`, `GetTaskProgress`
 - Support for task submission with YAML specs
@@ -49,6 +54,7 @@ Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing
 Complete JSON Schema for YAML task specifications based on Argo Workflows DAG format:
 
 **Key Sections**:
+
 - `metadata`: Task identification, session tracking, deadlines
 - `spec.routing`: Origin node, target level, agent type/ID
 - `spec.hierarchy`: Context from all hierarchy levels (L0 goal → L3 task)
@@ -59,6 +65,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 - `status`: Execution phase, start/completion times, result, error, subtask status
 
 **Features**:
+
 - Kubernetes-style structure (`apiVersion`, `kind`, `metadata`, `spec`, `status`)
 - DAG task dependencies with AND logic
 - Exponential backoff retry policies
@@ -70,11 +77,13 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/service_registry.hpp`
 
 **Classes**:
+
 - `ServiceRegistry`: Thread-safe agent registration and discovery
 - `AgentRegistrationInfo`: Agent metadata storage
 - `ServiceRegistryServiceImpl`: gRPC service implementation
 
 **Key Features**:
+
 - `registerAgent()`: Register new agents with capabilities
 - `updateHeartbeat()`: Track agent liveness
 - `queryAgents()`: Find agents by type, level, capabilities
@@ -90,6 +99,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `src/network/service_registry.cpp`
 
 **TODO**:
+
 - Implement `ServiceRegistry` constructor/destructor
 - Implement registration, heartbeat, query methods
 - Implement `ServiceRegistryServiceImpl` gRPC handlers
@@ -102,6 +112,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/grpc_server.hpp`, `src/network/grpc_server.cpp`
 
 **TODO**:
+
 - Create `GrpcServer` class to manage gRPC server lifecycle
 - Support multiple services (HMASCoordinator + ServiceRegistry)
 - Configure server address/port
@@ -114,6 +125,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/grpc_client.hpp`, `src/network/grpc_client.cpp`
 
 **TODO**:
+
 - Create `GrpcClient` class for making gRPC calls
 - Support both HMASCoordinator and ServiceRegistry stubs
 - Implement connection pooling
@@ -127,6 +139,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/yaml_parser.hpp`, `src/network/yaml_parser.cpp`
 
 **TODO**:
+
 - Create `YamlParser` class using yaml-cpp
 - Implement `parseTaskSpec()` to convert YAML → C++ struct
 - Implement `generateTaskSpec()` to convert C++ struct → YAML
@@ -149,6 +162,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/task_router.hpp`, `src/network/task_router.cpp`
 
 **TODO**:
+
 - Create `TaskRouter` class for routing tasks based on YAML specs
 - Implement `routeTask()` to determine target agent based on `spec.routing`
 - Query `ServiceRegistry` for available agents
@@ -161,6 +175,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/hmas_coordinator_service.hpp`, `src/network/hmas_coordinator_service.cpp`
 
 **TODO**:
+
 - Implement `HMASCoordinatorServiceImpl` gRPC service
 - Implement `SubmitTask()` RPC handler
   - Parse YAML spec
@@ -180,6 +195,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **Files**: Update existing agent classes
 
 **TODO**:
+
 - Add gRPC client to each agent class
 - Modify `ChiefArchitectAgent`:
   - Generate YAML task specs instead of direct delegation
@@ -206,6 +222,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/result_aggregator.hpp`, `src/network/result_aggregator.cpp`
 
 **TODO**:
+
 - Create `ResultAggregator` class
 - Implement `WAIT_ALL` strategy (wait for all subtasks)
 - Implement `FIRST_SUCCESS` strategy (return on first success)
@@ -219,6 +236,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/retry_policy.hpp`, `src/network/retry_policy.cpp`
 
 **TODO**:
+
 - Create `RetryPolicy` class (may already exist in Phase 5)
 - Support exponential backoff (1s, 2s, 4s, 8s, ...)
 - Support linear backoff (1s, 2s, 3s, ...)
@@ -231,6 +249,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `include/network/circuit_breaker.hpp`, `src/network/circuit_breaker.cpp`
 
 **TODO**:
+
 - Create `CircuitBreaker` class (may already exist in Phase 5)
 - States: CLOSED → OPEN → HALF_OPEN → CLOSED
 - Open circuit after N consecutive failures
@@ -244,6 +263,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `docker-compose-distributed.yaml`
 
 **TODO**:
+
 - Define multi-container setup:
   - `chief-node`: Main node with ChiefArchitect + ServiceRegistry
   - `component-node-1`: ComponentLead agent
@@ -260,6 +280,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **File**: `tests/e2e/distributed_grpc_test.cpp`
 
 **TODO**:
+
 - Write E2E test for full 4-layer distributed hierarchy
 - Test flow: User → Chief → ComponentLead → ModuleLead → Task → results back
 - Use Docker Compose to spin up multi-node environment
@@ -281,6 +302,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 **TODO**:
 
 **DISTRIBUTED_DEPLOYMENT.md**:
+
 - How to build with gRPC support
 - System requirements (gRPC, protobuf versions)
 - How to run multi-node setup with Docker Compose
@@ -288,6 +310,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 - Troubleshooting guide
 
 **YAML_SPECIFICATION.md**:
+
 - Complete YAML format reference
 - Field descriptions and examples
 - DAG dependency syntax
@@ -296,6 +319,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 - Example workflows for each hierarchy level
 
 **NETWORK_PROTOCOL.md**:
+
 - gRPC service definitions
 - RPC descriptions and usage
 - Authentication/authorization (future)
@@ -308,6 +332,7 @@ Complete JSON Schema for YAML task specifications based on Argo Workflows DAG fo
 ### Prerequisites
 
 **System packages** (must be installed on host or in Docker):
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install -y \

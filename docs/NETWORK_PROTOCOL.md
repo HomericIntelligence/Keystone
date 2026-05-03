@@ -2,7 +2,8 @@
 
 ## Overview
 
-ProjectKeystone uses **gRPC** (gRPC Remote Procedure Call) with **Protocol Buffers** for distributed agent communication. This document describes the network protocol, RPC methods, error handling, and best practices.
+ProjectKeystone uses **gRPC** (gRPC Remote Procedure Call) with **Protocol Buffers** for distributed agent
+communication. This document describes the network protocol, RPC methods, error handling, and best practices.
 
 **Protocol Version**: v1alpha1
 **gRPC Version**: 1.50+
@@ -55,11 +56,13 @@ ProjectKeystone defines two gRPC services:
 Register an agent with the central registry.
 
 **RPC Signature**:
+
 ```protobuf
 rpc RegisterAgent(AgentRegistration) returns (RegistrationResponse);
 ```
 
 **Request**:
+
 ```protobuf
 message AgentRegistration {
   string agent_id = 1;              // Unique agent identifier
@@ -72,6 +75,7 @@ message AgentRegistration {
 ```
 
 **Response**:
+
 ```protobuf
 message RegistrationResponse {
   bool success = 1;                 // true if registered
@@ -81,6 +85,7 @@ message RegistrationResponse {
 ```
 
 **Example (C++)**:
+
 ```cpp
 #include "network/grpc_client.hpp"
 
@@ -109,10 +114,12 @@ if (response.success()) {
 ```
 
 **Error Cases**:
+
 - `ALREADY_EXISTS`: Agent ID already registered
 - `INVALID_ARGUMENT`: Invalid level or missing required fields
 
 **Best Practices**:
+
 - Register immediately on agent startup
 - Use descriptive agent IDs (e.g., `component-lead-core-1`)
 - Include all capabilities the agent possesses
@@ -124,11 +131,13 @@ if (response.success()) {
 Send keep-alive ping to indicate agent is still alive.
 
 **RPC Signature**:
+
 ```protobuf
 rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 ```
 
 **Request**:
+
 ```protobuf
 message HeartbeatRequest {
   string agent_id = 1;              // Agent identifier
@@ -140,6 +149,7 @@ message HeartbeatRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message HeartbeatResponse {
   bool acknowledged = 1;            // true if heartbeat received
@@ -148,6 +158,7 @@ message HeartbeatResponse {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Send heartbeat every 1 second
 while (running) {
@@ -168,6 +179,7 @@ while (running) {
 **Timeout**: Registry marks agents dead after **3 seconds** of no heartbeat.
 
 **Best Practices**:
+
 - Send heartbeat every 1 second
 - Include metrics (CPU, memory, active tasks) for load balancing
 - Re-register if heartbeat fails multiple times
@@ -179,11 +191,13 @@ while (running) {
 Remove agent from registry (e.g., on graceful shutdown).
 
 **RPC Signature**:
+
 ```protobuf
 rpc UnregisterAgent(UnregisterRequest) returns (UnregisterResponse);
 ```
 
 **Request**:
+
 ```protobuf
 message UnregisterRequest {
   string agent_id = 1;              // Agent to unregister
@@ -192,6 +206,7 @@ message UnregisterRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message UnregisterResponse {
   bool success = 1;                 // true if unregistered
@@ -200,12 +215,14 @@ message UnregisterResponse {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // On agent shutdown
 auto response = client.unregisterAgent("component-lead-core-1", "Graceful shutdown");
 ```
 
 **Best Practices**:
+
 - Always unregister on graceful shutdown
 - Provide reason for debugging/logging
 
@@ -216,11 +233,13 @@ auto response = client.unregisterAgent("component-lead-core-1", "Graceful shutdo
 Find agents matching criteria (type, level, capabilities).
 
 **RPC Signature**:
+
 ```protobuf
 rpc QueryAgents(AgentQuery) returns (AgentList);
 ```
 
 **Request**:
+
 ```protobuf
 message AgentQuery {
   string agent_type = 1;            // Filter by type (empty = all)
@@ -232,6 +251,7 @@ message AgentQuery {
 ```
 
 **Response**:
+
 ```protobuf
 message AgentList {
   repeated AgentInfo agents = 1;    // List of matching agents
@@ -251,6 +271,7 @@ message AgentInfo {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Find all ModuleLeadAgents at level 2 with cpp20 capability
 hmas::AgentQuery query;
@@ -268,10 +289,12 @@ for (const auto& agent : agent_list.agents()) {
 ```
 
 **Capability Matching**:
+
 - Agent must have **ALL** capabilities listed in `required_capabilities`
 - If query has `["cpp20", "cmake"]`, agent must have both
 
 **Best Practices**:
+
 - Use `only_alive=true` to exclude dead agents
 - Query with specific capabilities to ensure compatibility
 - Use `max_results` to limit query cost
@@ -283,11 +306,13 @@ for (const auto& agent : agent_list.agents()) {
 Get information about a specific agent by ID.
 
 **RPC Signature**:
+
 ```protobuf
 rpc GetAgent(GetAgentRequest) returns (AgentInfo);
 ```
 
 **Request**:
+
 ```protobuf
 message GetAgentRequest {
   string agent_id = 1;              // Agent ID to lookup
@@ -297,6 +322,7 @@ message GetAgentRequest {
 **Response**: Same as `AgentInfo` above
 
 **Error Cases**:
+
 - `NOT_FOUND`: Agent ID not in registry
 
 ---
@@ -306,11 +332,13 @@ message GetAgentRequest {
 List all registered agents (optionally only alive ones).
 
 **RPC Signature**:
+
 ```protobuf
 rpc ListAllAgents(ListAllAgentsRequest) returns (AgentList);
 ```
 
 **Request**:
+
 ```protobuf
 message ListAllAgentsRequest {
   bool only_alive = 1;              // Filter to only alive agents
@@ -320,6 +348,7 @@ message ListAllAgentsRequest {
 **Response**: Same as `AgentList` above
 
 **Use Cases**:
+
 - Monitoring dashboards
 - Debugging cluster state
 - Health checks
@@ -333,11 +362,13 @@ message ListAllAgentsRequest {
 Submit a task for execution.
 
 **RPC Signature**:
+
 ```protobuf
 rpc SubmitTask(TaskRequest) returns (TaskResponse);
 ```
 
 **Request**:
+
 ```protobuf
 message TaskRequest {
   string yaml_spec = 1;             // Full YAML task specification
@@ -349,6 +380,7 @@ message TaskRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message TaskResponse {
   string task_id = 1;               // Unique task ID
@@ -361,6 +393,7 @@ message TaskResponse {
 ```
 
 **Example (C++)**:
+
 ```cpp
 #include "network/grpc_client.hpp"
 #include "network/yaml_parser.hpp"
@@ -390,11 +423,13 @@ if (response.accepted()) {
 ```
 
 **Error Cases**:
+
 - `INVALID_ARGUMENT`: Invalid YAML specification
 - `RESOURCE_EXHAUSTED`: No available agents matching criteria
 - `DEADLINE_EXCEEDED`: Deadline already passed
 
 **Best Practices**:
+
 - Validate YAML before submission
 - Set realistic deadlines (task duration + buffer)
 - Use appropriate priority levels
@@ -406,12 +441,14 @@ if (response.accepted()) {
 Stream real-time status updates for a task (server-side streaming).
 
 **RPC Signature**:
+
 ```protobuf
 rpc StreamTaskStatus(TaskStatusRequest)
     returns (stream TaskStatusUpdate);
 ```
 
 **Request**:
+
 ```protobuf
 message TaskStatusRequest {
   string task_id = 1;               // Task to monitor
@@ -420,6 +457,7 @@ message TaskStatusRequest {
 ```
 
 **Response Stream**:
+
 ```protobuf
 message TaskStatusUpdate {
   string task_id = 1;
@@ -432,6 +470,7 @@ message TaskStatusUpdate {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Stream status updates until task completes
 hmas::TaskStatusRequest request;
@@ -457,6 +496,7 @@ while (reader->Read(&update)) {
 **Streaming Interval**: Server sends updates every **500ms**
 
 **Best Practices**:
+
 - Use streaming for long-running tasks (>10s)
 - Handle stream disconnections gracefully
 - Set client-side deadline to prevent hanging
@@ -468,11 +508,13 @@ while (reader->Read(&update)) {
 Fetch final task result (blocking or non-blocking).
 
 **RPC Signature**:
+
 ```protobuf
 rpc GetTaskResult(TaskResultRequest) returns (TaskResult);
 ```
 
 **Request**:
+
 ```protobuf
 message TaskResultRequest {
   string task_id = 1;               // Task ID
@@ -481,6 +523,7 @@ message TaskResultRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message TaskResult {
   string task_id = 1;
@@ -494,6 +537,7 @@ message TaskResult {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Non-blocking fetch
 auto result = client.getTaskResult("task-12345", 0);
@@ -508,6 +552,7 @@ auto result = client.getTaskResult("task-12345", 30000);
 **Polling Interval**: If timeout > 0, client polls every **100ms**
 
 **Error Cases**:
+
 - `NOT_FOUND`: Task result not available
 - `DEADLINE_EXCEEDED`: Timeout waiting for result
 
@@ -518,6 +563,7 @@ auto result = client.getTaskResult("task-12345", 30000);
 Submit task result back to parent (used by agents).
 
 **RPC Signature**:
+
 ```protobuf
 rpc SubmitResult(TaskResult) returns (ResultAcknowledgement);
 ```
@@ -525,6 +571,7 @@ rpc SubmitResult(TaskResult) returns (ResultAcknowledgement);
 **Request**: Same as `TaskResult` above
 
 **Response**:
+
 ```protobuf
 message ResultAcknowledgement {
   bool acknowledged = 1;            // true if received
@@ -533,6 +580,7 @@ message ResultAcknowledgement {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Agent submits result after task completion
 hmas::TaskResult result;
@@ -546,6 +594,7 @@ auto ack = client.submitResult(result);
 ```
 
 **Best Practices**:
+
 - Submit results immediately after task completion
 - Include `parent_task_id` for proper routing
 - Set `origin_node` to agent's IP:port
@@ -557,11 +606,13 @@ auto ack = client.submitResult(result);
 Cancel a running task.
 
 **RPC Signature**:
+
 ```protobuf
 rpc CancelTask(CancelRequest) returns (CancelResponse);
 ```
 
 **Request**:
+
 ```protobuf
 message CancelRequest {
   string task_id = 1;               // Task to cancel
@@ -570,6 +621,7 @@ message CancelRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message CancelResponse {
   bool cancelled = 1;               // true if cancelled
@@ -579,6 +631,7 @@ message CancelResponse {
 ```
 
 **Example (C++)**:
+
 ```cpp
 auto response = client.cancelTask("task-12345", "User requested");
 if (response.cancelled()) {
@@ -587,6 +640,7 @@ if (response.cancelled()) {
 ```
 
 **Limitations**:
+
 - Cannot cancel tasks in terminal states (COMPLETED, FAILED, CANCELLED)
 - Cancellation is best-effort (agent may not stop immediately)
 
@@ -597,11 +651,13 @@ if (response.cancelled()) {
 Get task progress synchronously (polling alternative to streaming).
 
 **RPC Signature**:
+
 ```protobuf
 rpc GetTaskProgress(TaskProgressRequest) returns (TaskProgress);
 ```
 
 **Request**:
+
 ```protobuf
 message TaskProgressRequest {
   string task_id = 1;
@@ -610,6 +666,7 @@ message TaskProgressRequest {
 ```
 
 **Response**:
+
 ```protobuf
 message TaskProgress {
   string task_id = 1;
@@ -623,6 +680,7 @@ message TaskProgress {
 ```
 
 **Example (C++)**:
+
 ```cpp
 // Poll progress every 2 seconds
 while (true) {
@@ -638,6 +696,7 @@ while (true) {
 ```
 
 **Best Practices**:
+
 - Use `StreamTaskStatus` for continuous monitoring
 - Use `GetTaskProgress` for occasional polling
 
@@ -727,6 +786,7 @@ while (true) {
 ### Error Handling Best Practices
 
 **1. Retry Transient Errors**:
+
 ```cpp
 bool isRetriable(grpc::StatusCode code) {
   return code == grpc::UNAVAILABLE ||
@@ -753,6 +813,7 @@ while (attempt < 3) {
 ```
 
 **2. Log Error Details**:
+
 ```cpp
 try {
   auto response = client.submitTask(...);
@@ -763,6 +824,7 @@ try {
 ```
 
 **3. Handle Deadline Exceeded**:
+
 ```cpp
 // Set per-RPC deadline
 grpc::ClientContext context;
@@ -784,6 +846,7 @@ if (!status.ok() && status.error_code() == grpc::DEADLINE_EXCEEDED) {
 **Default**: 100 MB
 
 **Configuration**:
+
 ```cpp
 GrpcServerConfig server_config;
 server_config.max_message_size = 100 * 1024 * 1024;  // 100MB
@@ -793,6 +856,7 @@ client_config.max_message_size = 100 * 1024 * 1024;
 ```
 
 **Recommendations**:
+
 - Tasks with large YAML specs: increase to 200 MB
 - Low-memory environments: decrease to 10 MB
 
@@ -801,12 +865,14 @@ client_config.max_message_size = 100 * 1024 * 1024;
 **Default RPC Timeout**: 30 seconds
 
 **Configuration**:
+
 ```cpp
 GrpcClientConfig config;
 config.timeout_ms = 60000;  // 60 seconds
 ```
 
 **Recommendations**:
+
 - Short tasks (<10s): 10s timeout
 - Long tasks (>1min): 120s timeout
 - Streaming RPCs: No timeout (handled by keep-alive)
@@ -816,6 +882,7 @@ config.timeout_ms = 60000;  // 60 seconds
 gRPC reuses connections automatically via HTTP/2 multiplexing.
 
 **Keep-Alive Configuration**:
+
 ```cpp
 grpc::ChannelArguments args;
 args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);           // 10s
@@ -831,6 +898,7 @@ auto channel = grpc::CreateCustomChannel(
 ### Compression
 
 **Enable gzip compression** for large payloads:
+
 ```cpp
 grpc::ClientContext context;
 context.set_compression_algorithm(GRPC_COMPRESS_GZIP);
@@ -903,11 +971,13 @@ auto registry = std::make_unique<ServiceRegistryClient>(server_address, config);
 #### Implementation Details
 
 **Files Modified**:
+
 - `src/network/grpc_server.cpp`: TLS credential building
 - `src/network/grpc_client.cpp`: TLS channel creation
 - `tests/unit/test_grpc_tls.cpp`: 14 comprehensive unit tests
 
 **Key Features**:
+
 - ✅ Backward compatible (TLS disabled by default)
 - ✅ Environment variable overrides for easy deployment
 - ✅ Clear error messages on misconfiguration
@@ -915,6 +985,7 @@ auto registry = std::make_unique<ServiceRegistryClient>(server_address, config);
 - ✅ Thread-safe implementation
 
 **Testing**:
+
 ```bash
 # Build with gRPC support
 cmake -S . -B build/grpc -G Ninja -DENABLE_GRPC=ON
@@ -947,6 +1018,7 @@ export KEYSTONE_TLS_CA_PATH=$(pwd)/ca.crt
 #### Future Enhancements
 
 **Phase 9 Plan**: Mutual TLS (mTLS) with client certificates
+
 - Client certificate authentication
 - Certificate-based agent identification
 - Certificate rotation support
@@ -956,6 +1028,7 @@ export KEYSTONE_TLS_CA_PATH=$(pwd)/ca.crt
 **Phase 9 Plan**: JWT token-based authentication
 
 **Interceptor** (example):
+
 ```cpp
 class AuthInterceptor : public grpc::experimental::Interceptor {
  public:
@@ -979,12 +1052,14 @@ class AuthInterceptor : public grpc::experimental::Interceptor {
 ### Metrics (Future - Phase 9)
 
 **Prometheus Integration**:
+
 - RPC count by method
 - RPC latency histogram
 - Active connections
 - Error rate by status code
 
 **Example Metrics**:
+
 ```
 grpc_server_handled_total{grpc_method="SubmitTask",grpc_code="OK"} 1234
 grpc_server_handling_seconds{grpc_method="SubmitTask",quantile="0.99"} 0.5
@@ -994,6 +1069,7 @@ grpc_client_started_total{grpc_method="RegisterAgent"} 567
 ### Tracing (Future)
 
 **OpenTelemetry Integration**:
+
 - Distributed tracing across nodes
 - Request ID propagation
 - Span creation per RPC

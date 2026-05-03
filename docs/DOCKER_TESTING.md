@@ -162,4 +162,5 @@ For CI/CD pipelines (GitHub Actions, GitLab CI, etc.):
 
 ---
 
-**Note**: These tests assume Docker is available in the environment. The current development environment may not have Docker installed.
+**Note**: These tests assume Docker is available in the environment. The current development environment may not have
+Docker installed.

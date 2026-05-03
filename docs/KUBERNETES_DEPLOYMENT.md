@@ -4,7 +4,8 @@
 
 ## Overview
 
-This guide covers deploying ProjectKeystone HMAS to Kubernetes with production-ready configurations, health checks, and monitoring readiness.
+This guide covers deploying ProjectKeystone HMAS to Kubernetes with production-ready configurations, health checks, and
+monitoring readiness.
 
 ---
 
@@ -531,13 +532,15 @@ kubectl port-forward -n projectkeystone svc/alertmanager 9093:9093
 **Alert Configuration**:
 
 Alertmanager is configured with routing for:
+
 - **Critical alerts** - Grouped and sent every 1 hour
 - **Warning alerts** - Grouped and sent every 6 hours
 - **SLO violations** - Dedicated channel for SLA tracking
 - **Infrastructure alerts** - Pod/node issues
 - **Monitoring alerts** - Stack health
 
-To configure notification channels (Slack, PagerDuty), edit `k8s/alertmanager.yaml` and update the receiver configurations.
+To configure notification channels (Slack, PagerDuty), edit `k8s/alertmanager.yaml` and update the receiver
+configurations.
 
 **Available Alert Rules**:
 
@@ -559,7 +562,8 @@ See `k8s/prometheus-alerts.yaml` for complete list.
 
 ### Metrics Security
 
-ProjectKeystone implements comprehensive security for metrics endpoints including authentication, encryption, and access control.
+ProjectKeystone implements comprehensive security for metrics endpoints including authentication, encryption, and access
+control.
 
 **Security Layers**:
 

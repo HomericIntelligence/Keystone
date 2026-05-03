@@ -266,7 +266,7 @@ TEST(NatsListenerTest, TransientErrorIsRetried) {
 - [cppreference: std::domain_error](https://en.cppreference.com/w/cpp/error/domain_error)
 - [cppreference: std::system_error](https://en.cppreference.com/w/cpp/error/system_error)
 - [cppreference: std::runtime_error](https://en.cppreference.com/w/cpp/error/runtime_error)
-- NATS C Client Documentation: https://github.com/nats-io/nats.c
+- NATS C Client Documentation: <https://github.com/nats-io/nats.c>
 - ProjectKeystone CLAUDE.md: NATS Subject Schema and Rate Limiting sections
 
 ## Revision History

@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document outlines the load testing strategy for ProjectKeystone's Hierarchical Multi-Agent System (HMAS) to ensure production readiness at Phase 6.7 milestone M1 (P1).
+This document outlines the load testing strategy for ProjectKeystone's Hierarchical Multi-Agent System (HMAS) to ensure
+production readiness at Phase 6.7 milestone M1 (P1).
 
 ## Objectives
 
@@ -20,6 +21,7 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 **Goal**: Determine maximum sustainable throughput
 
 **Configuration**:
+
 - Duration: 10 minutes
 - Agent topology: 1 Chief → 2 ComponentLeads → 4 ModuleLeads → 16 TaskAgents (23 agents total)
 - Message rate: Start at 100 msg/s, increase by 50 msg/s every 60s
@@ -27,6 +29,7 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 - Task complexity: Simple echo commands (latency: 1-5ms)
 
 **Success Criteria**:
+
 - Average message latency < 100ms at max sustainable rate
 - No message drops
 - Queue depth < 1000 messages per agent
@@ -34,6 +37,7 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 - Memory stable (no leaks)
 
 **Metrics to Collect**:
+
 - Messages per second (total and per priority)
 - End-to-end latency (Chief → TaskAgent → Chief)
 - Queue depth per agent
@@ -45,6 +49,7 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 **Goal**: Validate handling of traffic spikes
 
 **Configuration**:
+
 - Duration: 5 minutes
 - Agent topology: Same as Scenario 1
 - Message pattern: Alternating bursts
@@ -53,6 +58,7 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 - 5 burst cycles total
 
 **Success Criteria**:
+
 - Average latency < 200ms during bursts
 - Recovery time < 10s after burst
 - No crashes or deadlocks
@@ -64,12 +70,14 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 **Goal**: Test scalability with maximum agent count
 
 **Configuration**:
+
 - Duration: 5 minutes
 - Agent topology: 1 Chief → 4 ComponentLeads → 12 ModuleLeads → 48 TaskAgents (65 agents total)
 - Message rate: Constant 200 msg/s
 - Message priority: 100% NORMAL
 
 **Success Criteria**:
+
 - System remains stable with 65 agents
 - Average latency < 500ms (accounts for longer delegation chains)
 - Memory usage < 2GB total
@@ -80,12 +88,14 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 **Goal**: Verify priority-based scheduling works under load
 
 **Configuration**:
+
 - Duration: 3 minutes
 - Agent topology: Same as Scenario 1
 - Message rate: Constant 300 msg/s
 - Message priority distribution: 50% HIGH, 40% NORMAL, 10% LOW
 
 **Success Criteria**:
+
 - HIGH priority latency < 50ms (p99)
 - NORMAL priority latency < 150ms (p99)
 - LOW priority latency < 500ms (p99)
@@ -97,12 +107,14 @@ This document outlines the load testing strategy for ProjectKeystone's Hierarchi
 **Goal**: Validate graceful degradation under failures
 
 **Configuration**:
+
 - Duration: 5 minutes
 - Agent topology: Same as Scenario 1
 - Message rate: Constant 200 msg/s
 - Failure injection: Kill 1 TaskAgent every 30s, respawn after 10s
 
 **Success Criteria**:
+
 - Circuit breakers activate for failed agents
 - Messages rerouted to healthy agents
 - Overall throughput degradation < 30% during failures
@@ -142,6 +154,7 @@ Based on load test results, document:
 Location: `tests/load/hmas_load_test.cpp`
 
 Key components:
+
 1. `LoadTestHarness` class - manages agent lifecycle
 2. `MessageGenerator` - produces messages at specified rate
 3. `MetricsCollector` - samples metrics during test
@@ -150,6 +163,7 @@ Key components:
 ### Metrics Collection
 
 **Real-time metrics** (via Prometheus):
+
 - `hmas_messages_sent_total{priority}`
 - `hmas_messages_processed_total`
 - `hmas_message_latency_seconds{quantile}`
@@ -158,6 +172,7 @@ Key components:
 - `hmas_deadline_misses_total`
 
 **Post-test analysis**:
+
 - Latency percentiles (p50, p90, p95, p99)
 - Throughput over time
 - Memory usage trend
@@ -226,6 +241,7 @@ Load testing is considered complete when:
 ## Integration with CI/CD
 
 **Nightly regression testing**:
+
 ```yaml
 # .github/workflows/nightly-load-test.yml
 name: Nightly Load Test

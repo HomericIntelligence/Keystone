@@ -2,7 +2,8 @@
 
 ## Executive Summary
 
-**Migration Goal**: Transform ProjectKeystone from synchronous MessageBus to high-performance Work-Stealing concurrent architecture while maintaining the 4-layer hierarchy and all existing test coverage.
+**Migration Goal**: Transform ProjectKeystone from synchronous MessageBus to high-performance Work-Stealing concurrent
+architecture while maintaining the 4-layer hierarchy and all existing test coverage.
 
 **Key Architectural Decisions** (Confirmed):
 
@@ -2059,9 +2060,11 @@ FetchContent_MakeAvailable(spdlog)
 
 ## 8. Open Questions
 
-1. **Process Execution Async I/O**: Should we use `io_uring` for truly async process execution, or keep `popen` for simplicity?
+1. **Process Execution Async I/O**: Should we use `io_uring` for truly async process execution, or keep `popen` for
+simplicity?
 
-2. **External Interface**: How does the ChiefArchitect receive the initial user command and return the final result? (API, CLI, message queue?)
+2. **External Interface**: How does the ChiefArchitect receive the initial user command and return the final result?
+(API, CLI, message queue?)
 
 3. **Monitoring**: What metrics format? (Prometheus, statsd, custom?)
 
@@ -2125,7 +2128,8 @@ FetchContent_MakeAvailable(spdlog)
 
 ## Conclusion
 
-This migration plan transforms ProjectKeystone from a synchronous MessageBus architecture to a high-performance Work-Stealing concurrent system using:
+This migration plan transforms ProjectKeystone from a synchronous MessageBus architecture to a high-performance
+Work-Stealing concurrent system using:
 
 - **concurrentqueue** for lock-free queues
 - **Custom Task<T>** for C++20 coroutines
@@ -2135,7 +2139,8 @@ This migration plan transforms ProjectKeystone from a synchronous MessageBus arc
 - **C++20 Modules** for code organization
 - **Process execution + filesystem** for model communication
 
-The phased approach ensures we maintain test coverage, minimize risk, and deliver a production-ready system with comprehensive observability and fault tolerance.
+The phased approach ensures we maintain test coverage, minimize risk, and deliver a production-ready system with
+comprehensive observability and fault tolerance.
 
 **Estimated Timeline**: 13-15 weeks (13 weeks core features, +2 weeks for C++20 modules)
 **Test Coverage Target**: 100% (all existing tests + new tests)

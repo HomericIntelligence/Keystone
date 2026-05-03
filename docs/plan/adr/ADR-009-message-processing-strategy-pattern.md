@@ -13,12 +13,14 @@
 > layer.
 
 Agents currently mix domain logic with infrastructure concerns:
+
 - `processMessage()` implementations contain business logic (bash execution, delegation, synthesis)
 - Infrastructure concerns (inbox management, routing, metrics, deadlines) are coupled with domain logic
 - Hard to test domain logic in isolation without full agent infrastructure
 - Violates Single Responsibility Principle
 
 **Example Problem** (TaskAgent):
+
 ```cpp
 Task<Response> TaskAgent::processMessage(const KeystoneMessage& msg) {
   // Infrastructure: Metrics recording
@@ -38,6 +40,7 @@ Task<Response> TaskAgent::processMessage(const KeystoneMessage& msg) {
 ```
 
 Domain logic (`executeBash`) is buried in infrastructure code, making it hard to:
+
 - Test bash execution logic independently
 - Reuse execution logic in different contexts
 - Understand what the agent actually *does* vs. how it manages messages
@@ -101,6 +104,7 @@ class MessageProcessingStrategy {
 ```
 
 **Key Characteristics**:
+
 - No dependencies on agent infrastructure (inbox, routing, metrics)
 - Focused solely on business logic
 - Easily testable in isolation
@@ -109,17 +113,20 @@ class MessageProcessingStrategy {
 ### Reference Implementation: TaskExecutionStrategy
 
 **Files**:
+
 - `include/agents/message_processing_strategy.hpp` - Base interface
 - `include/agents/task_execution_strategy.hpp` - Concrete strategy for TaskAgent
 - `src/agents/task_execution_strategy.cpp` - Implementation
 
 **Extracted Domain Logic**:
+
 1. Command validation against security whitelist
 2. Bash command execution with RAII PipeHandle
 3. Error sanitization
 4. Result formatting
 
 **What Stays in TaskAgent** (infrastructure):
+
 - Metrics recording
 - Deadline checking
 - Message sending via MessageBus
@@ -150,12 +157,14 @@ class MessageProcessingStrategy {
 ## Implementation Status
 
 **Complete**:
+
 - ✅ Strategy interface design (`MessageProcessingStrategy`)
 - ✅ Reference implementation (`TaskExecutionStrategy`)
 - ✅ Extracted TaskAgent domain logic
 - ✅ Documentation (this ADR)
 
 **Pending** (Future Work):
+
 - ⏳ Refactor TaskAgent to use TaskExecutionStrategy
 - ⏳ Create tests for TaskExecutionStrategy in isolation
 - ⏳ Apply pattern to other agents (ModuleLead, ComponentLead)
@@ -164,6 +173,7 @@ class MessageProcessingStrategy {
 ## Migration Example
 
 **Before** (current TaskAgent):
+
 ```cpp
 class TaskAgent : public AsyncAgent {
   Task<Response> processMessage(const KeystoneMessage& msg) override {
@@ -180,6 +190,7 @@ class TaskAgent : public AsyncAgent {
 ```
 
 **After** (with Strategy pattern):
+
 ```cpp
 class TaskAgent : public AsyncAgent {
   std::unique_ptr<MessageProcessingStrategy> strategy_;
@@ -208,6 +219,7 @@ class TaskAgent : public AsyncAgent {
 ## Testing Benefits
 
 **Before**: Testing bash execution requires full TaskAgent + MessageBus + metrics
+
 ```cpp
 TEST(TaskAgentTest, ExecutesBashCommand) {
   auto bus = std::make_shared<MessageBus>();
@@ -221,6 +233,7 @@ TEST(TaskAgentTest, ExecutesBashCommand) {
 ```
 
 **After**: Test domain logic in isolation
+
 ```cpp
 TEST(TaskExecutionStrategyTest, ExecutesBashCommand) {
   TaskExecutionStrategy strategy;

@@ -39,6 +39,7 @@ kubectl get pods -n projectkeystone -l app=hmas
 ```
 
 **Expected Output** (healthy):
+
 ```
 NAME                    READY   STATUS    RESTARTS   AGE
 hmas-5d8f7c9b6-abc12    1/1     Running   0          10m
@@ -72,16 +73,19 @@ kubectl logs <pod-name> -n projectkeystone --previous
 ### Severity Determination
 
 **SEV-0** (All pods down):
+
 - Complete service outage
 - All message processing stopped
 - Page incident commander
 
 **SEV-1** (Partial outage):
+
 - 50%+ pods down
 - Degraded performance
 - Risk of cascade failure
 
 **SEV-2** (Single pod down):
+
 - Reduced capacity
 - Other pods handling load
 - Monitor closely
@@ -93,17 +97,20 @@ kubectl logs <pod-name> -n projectkeystone --previous
 ### If All Pods Down (SEV-0)
 
 1. **Check Cluster Health**:
+
    ```bash
    kubectl get nodes
    kubectl top nodes
    ```
 
 2. **Check Resource Quotas**:
+
    ```bash
    kubectl describe resourcequota -n projectkeystone
    ```
 
 3. **Attempt Pod Recreation**:
+
    ```bash
    # Force recreate pods
    kubectl rollout restart deployment/hmas -n projectkeystone
@@ -113,6 +120,7 @@ kubectl logs <pod-name> -n projectkeystone --previous
    ```
 
 4. **Scale Down if Resources Exhausted**:
+
    ```bash
    # Temporarily reduce replicas
    kubectl scale deployment/hmas --replicas=1 -n projectkeystone
@@ -121,11 +129,13 @@ kubectl logs <pod-name> -n projectkeystone --previous
 ### If Single Pod Down (SEV-2)
 
 1. **Delete Failed Pod** (Kubernetes will recreate):
+
    ```bash
    kubectl delete pod <pod-name> -n projectkeystone
    ```
 
 2. **Monitor Recreation**:
+
    ```bash
    kubectl get pods -n projectkeystone -l app=hmas -w
    ```
@@ -141,11 +151,13 @@ kubectl logs <pod-name> -n projectkeystone --previous
 **Symptom**: `ImagePullBackOff` or `ErrImagePull`
 
 **Diagnosis**:
+
 ```bash
 kubectl describe pod <pod-name> -n projectkeystone | grep -A 5 "Failed"
 ```
 
 **Resolution**:
+
 - Verify image exists: `docker pull projectkeystone:latest`
 - Check image pull secrets: `kubectl get secrets -n projectkeystone`
 - Fix image tag in deployment
@@ -155,12 +167,14 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 5 "Failed"
 **Symptom**: `Pending` status with "Insufficient cpu" or "Insufficient memory" events
 
 **Diagnosis**:
+
 ```bash
 kubectl top nodes
 kubectl describe nodes | grep -A 5 "Allocated resources"
 ```
 
 **Resolution**:
+
 - Scale down other workloads
 - Add more nodes to cluster
 - Reduce HMAS resource requests
@@ -170,11 +184,13 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 **Symptom**: `CrashLoopBackOff` with restart count > 0
 
 **Diagnosis**:
+
 ```bash
 kubectl logs <pod-name> -n projectkeystone --previous
 ```
 
 **Resolution**:
+
 - Check for segmentation faults, exceptions, or panics
 - Verify configuration: `kubectl get configmap hmas-config -o yaml`
 - Check secrets: `kubectl get secrets -n projectkeystone`
@@ -185,15 +201,19 @@ kubectl logs <pod-name> -n projectkeystone --previous
 **Symptom**: Pod running but marked as not ready
 
 **Diagnosis**:
+
 ```bash
 kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Liveness\|Readiness"
 ```
 
 **Resolution**:
+
 - Manually test health endpoint:
+
   ```bash
   kubectl exec <pod-name> -n projectkeystone -- curl -v localhost:8080/healthz
   ```
+
 - Increase `initialDelaySeconds` if slow startup
 - Check health check server implementation
 
@@ -202,11 +222,13 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Liveness\|Readi
 **Symptom**: Pod restart with `OOMKilled` reason
 
 **Diagnosis**:
+
 ```bash
 kubectl describe pod <pod-name> -n projectkeystone | grep -i oom
 ```
 
 **Resolution**:
+
 - Increase memory limits in deployment
 - Investigate memory leak: `kubectl top pod <pod-name>`
 - Check for memory-intensive operations
@@ -333,14 +355,14 @@ livenessProbe:
 
 ## Escalation
 
-### Escalate Immediately If:
+### Escalate Immediately If
 
 - All pods down for >5 minutes
 - Repeated crashes after rollback
 - Cluster-wide resource exhaustion
 - Unknown root cause after 15 minutes
 
-### Contact:
+### Contact
 
 - **On-Call Engineer**: Check PagerDuty rotation
 - **Senior Engineer**: `@sre-team` in Slack

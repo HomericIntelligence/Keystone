@@ -2,7 +2,8 @@
 
 ## Overview
 
-This document outlines the **Test-Driven Development (TDD) roadmap** for building the 4-layer Hierarchical Multi-Agent System, starting with a minimal 2-agent prototype and incrementally adding layers until the full hierarchy is complete.
+This document outlines the **Test-Driven Development (TDD) roadmap** for building the 4-layer Hierarchical Multi-Agent
+System, starting with a minimal 2-agent prototype and incrementally adding layers until the full hierarchy is complete.
 
 ## Incremental Build Strategy
 
@@ -603,11 +604,11 @@ TEST(E2E_Phase5, SystemRecoversFro mRandomFailures) {
 
 ### Afternoon (1 PM - 5 PM)
 
-4. Run E2E test
-5. If failing: debug and iterate
-6. If passing: refactor and optimize
-7. Write next E2E test for tomorrow
-8. Commit: "GREEN: E2E test XYZ now passing"
+1. Run E2E test
+2. If failing: debug and iterate
+3. If passing: refactor and optimize
+4. Write next E2E test for tomorrow
+5. Commit: "GREEN: E2E test XYZ now passing"
 
 ### Weekly Checkpoint (Friday)
 

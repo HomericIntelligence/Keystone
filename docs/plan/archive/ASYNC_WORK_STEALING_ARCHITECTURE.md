@@ -4,7 +4,9 @@
 
 ## Overview
 
-ProjectKeystone now supports asynchronous message routing through a work-stealing scheduler, enabling parallel agent execution across multiple worker threads. This architecture maintains 100% backward compatibility with synchronous mode while providing a high-performance async execution model.
+ProjectKeystone now supports asynchronous message routing through a work-stealing scheduler, enabling parallel agent
+execution across multiple worker threads. This architecture maintains 100% backward compatibility with synchronous mode
+while providing a high-performance async execution model.
 
 ## Architecture Components
 
@@ -12,7 +14,8 @@ ProjectKeystone now supports asynchronous message routing through a work-stealin
 
 **Location**: `include/concurrency/work_stealing_scheduler.hpp`
 
-The scheduler manages a pool of worker threads, each with its own lock-free work queue. Workers execute a cooperative loop:
+The scheduler manages a pool of worker threads, each with its own lock-free work queue. Workers execute a cooperative
+loop:
 
 1. Try to pop work from own queue (LIFO - cache-friendly)
 2. If empty, steal from other workers' queues (FIFO - load balancing)
