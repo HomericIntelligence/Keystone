@@ -1,6 +1,7 @@
 # Thread-Based Multi-Agent Workflow Examples
 
-This directory demonstrates the ProjectKeystone HMAS using **shared memory within a single process** with multiple threads communicating via lock-free concurrent queues.
+This directory demonstrates the ProjectKeystone HMAS using **shared memory within a single process** with multiple
+threads communicating via lock-free concurrent queues.
 
 ## Overview
 
@@ -110,6 +111,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 **Scenario**: ChiefArchitect delegates a simple command directly to TaskAgent.
 
 **Workflow**:
+
 ```
 1. Chief creates goal: "echo 'Hello HMAS!'"
 2. Chief sends message to TaskAgent via MessageBus
@@ -120,6 +122,7 @@ Task<Response> processMessage(const KeystoneMessage& msg) {
 ```
 
 **Code Highlights**:
+
 ```cpp
 // Setup
 auto bus = std::make_shared<MessageBus>();
@@ -146,6 +149,7 @@ std::cout << "Result: " << chief_resp.result << std::endl;
 ```
 
 **Expected Output**:
+
 ```
 [Chief] Sending goal to TaskAgent: echo 'Hello HMAS!'
 [MessageBus] Routing message msg_001 from chief to task1
@@ -165,9 +169,11 @@ Final Result: Hello HMAS!
 
 **File**: `3layer_example.cpp`
 
-**Scenario**: ChiefArchitect delegates a module goal to ModuleLead, which decomposes it into 3 tasks and coordinates TaskAgents.
+**Scenario**: ChiefArchitect delegates a module goal to ModuleLead, which decomposes it into 3 tasks and coordinates
+TaskAgents.
 
 **Workflow**:
+
 ```
 1. Chief creates goal: "Calculate: 10+20+30"
 2. Chief sends to ModuleLead
@@ -183,6 +189,7 @@ Final Result: Hello HMAS!
 ```
 
 **State Transitions**:
+
 ```
 ModuleLead State Machine:
 IDLE → PLANNING → WAITING_FOR_TASKS → SYNTHESIZING → IDLE
@@ -191,6 +198,7 @@ IDLE → PLANNING → WAITING_FOR_TASKS → SYNTHESIZING → IDLE
 ```
 
 **Code Highlights**:
+
 ```cpp
 // Setup agents
 auto chief = std::make_shared<ChiefArchitectAgent>("chief", bus);
@@ -237,6 +245,7 @@ std::cout << "Final Result: " << final_resp.result << std::endl;
 ```
 
 **Expected Output**:
+
 ```
 [Chief] Sending goal to ModuleLead: Calculate: 10+20+30
 [ModuleLead] State: IDLE → PLANNING
@@ -270,6 +279,7 @@ Final Result: Module completed with sum=60
 **Scenario**: Complete 4-layer hierarchy demonstrating full coordination.
 
 **Workflow**:
+
 ```
 1. Chief: "Implement system: Core(10+20+30) + Utils(40+50+60)"
 2. Chief → ComponentLead
@@ -288,6 +298,7 @@ Final Result: Module completed with sum=60
 ```
 
 **Full Message Flow**:
+
 ```
 Level 0: ChiefArchitect
     │
@@ -311,6 +322,7 @@ Level 0: ChiefArchitect
 ```
 
 **Code Highlights**:
+
 ```cpp
 // Create full hierarchy
 auto chief = std::make_shared<ChiefArchitectAgent>("chief", bus);
@@ -346,6 +358,7 @@ std::cout << "Final Result: " << final_result << std::endl;
 ```
 
 **Expected Output**:
+
 ```
 [Chief] Sending system goal to ComponentLead
 [ComponentLead] State: IDLE → PLANNING
@@ -476,6 +489,7 @@ Chief → ComponentLead → [ModuleLead1, ModuleLead2] → TaskAgents → Aggreg
 ### Enable Verbose Logging
 
 Set environment variable:
+
 ```bash
 export HMAS_LOG_LEVEL=DEBUG
 ./examples/thread_4layer
@@ -484,6 +498,7 @@ export HMAS_LOG_LEVEL=DEBUG
 ### Inspect Message Flow
 
 Each agent logs:
+
 - Message received (sender, receiver, command)
 - State transitions
 - Processing duration

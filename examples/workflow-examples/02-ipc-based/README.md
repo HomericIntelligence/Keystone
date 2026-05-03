@@ -1,6 +1,7 @@
 # IPC-Based Multi-Agent Workflow Examples
 
-This directory demonstrates the ProjectKeystone HMAS using **inter-process communication (IPC)** with shared memory for message passing between separate OS processes.
+This directory demonstrates the ProjectKeystone HMAS using **inter-process communication (IPC)** with shared memory for
+message passing between separate OS processes.
 
 ## Overview
 
@@ -150,6 +151,7 @@ Each agent process:
 **Scenario**: Two separate processes communicate via shared memory.
 
 **Setup**:
+
 ```bash
 # Terminal 1: Start TaskAgent process
 ./ipc_2layer_task
@@ -159,6 +161,7 @@ Each agent process:
 ```
 
 **Shared Memory Layout**:
+
 ```
 HMASSharedMemory (64KB)
 ├── MessageBus Registry
@@ -174,6 +177,7 @@ HMASSharedMemory (64KB)
 ```
 
 **Workflow**:
+
 ```
 Process 1 (Chief):
 1. Create shared memory segment
@@ -193,6 +197,7 @@ Process 2 (Task):
 ```
 
 **Code Highlights**:
+
 ```cpp
 // Process 1: Chief
 managed_shared_memory segment(create_only, "HMASSharedMemory", 65536);
@@ -229,6 +234,7 @@ send_ipc_message(segment, result);
 **Scenario**: 5 separate processes (Chief + ModuleLead + 3 TaskAgents).
 
 **Setup**:
+
 ```bash
 # Terminal 1-3: Start TaskAgent processes
 ./ipc_3layer_task 1  # TaskAgent1
@@ -243,6 +249,7 @@ send_ipc_message(segment, result);
 ```
 
 **Process Architecture**:
+
 ```
 ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
 │ Chief    │  │ Module   │  │ Task1    │  │ Task2    │  │ Task3    │
@@ -261,6 +268,7 @@ send_ipc_message(segment, result);
 ```
 
 **Workflow**:
+
 1. TaskAgent processes (PID 1002-1004) start first, create queues
 2. ModuleLead process (PID 1001) starts, creates queue
 3. Chief process (PID 1000) starts, sends goal to ModuleLead
@@ -270,6 +278,7 @@ send_ipc_message(segment, result);
 7. Chief receives final result
 
 **State Tracking**:
+
 - Each process maintains its own state machine
 - State transitions logged to shared memory trace buffer
 - Process crashes are detected via PID checking
@@ -283,12 +292,14 @@ send_ipc_message(segment, result);
 **Scenario**: 10 separate processes for full 4-layer hierarchy.
 
 **Setup**:
+
 ```bash
 # Start all 10 processes
 ./scripts/start_ipc_4layer.sh
 ```
 
 **Process Layout**:
+
 ```
 Process Distribution:
 ├── 1 Chief process
@@ -302,6 +313,7 @@ Process Distribution:
 **Shared Memory Size**: 256KB (larger for 10 agents)
 
 **Message Flow**:
+
 ```
 Process Flow (by PID):
 
@@ -324,6 +336,7 @@ All communication via shared memory queues
 ```
 
 **Fault Tolerance**:
+
 ```cpp
 // Process monitoring
 void monitor_processes() {
@@ -485,6 +498,7 @@ ninja ipc-examples
 ### Run Examples
 
 **2-Layer**:
+
 ```bash
 # Terminal 1
 ./examples/ipc_2layer_task
@@ -494,12 +508,14 @@ ninja ipc-examples
 ```
 
 **3-Layer**:
+
 ```bash
 # Use helper script
 ./examples/scripts/run_ipc_3layer.sh
 ```
 
 **4-Layer**:
+
 ```bash
 # Use helper script
 ./examples/scripts/run_ipc_4layer.sh

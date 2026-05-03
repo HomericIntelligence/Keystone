@@ -6,23 +6,29 @@
 
 ## Summary
 
-This document records key build system decisions made to enable CPack packaging and cross-platform distribution of ProjectKeystone HMAS libraries. These decisions address critical packaging issues (C1, C2) and document architectural trade-offs.
+This document records key build system decisions made to enable CPack packaging and cross-platform distribution of
+ProjectKeystone HMAS libraries. These decisions address critical packaging issues (C1, C2) and document architectural
+trade-offs.
 
 ## Background
 
-ProjectKeystone requires distributable packages for external consumers. The CPack packaging review identified two critical issues preventing proper package functionality:
+ProjectKeystone requires distributable packages for external consumers. The CPack packaging review identified two
+critical issues preventing proper package functionality:
 
 1. **C1**: Missing include directories prevented consumers from finding agent headers after installation
 2. **C2**: Hardcoded `.so` library extensions in CMake config prevented Windows portability
 
-Additionally, the build system has a documented circular dependency between core libraries that required explicit handling.
+Additionally, the build system has a documented circular dependency between core libraries that required explicit
+handling.
 
 ## Decisions
 
 ### Decision 1: Circular Dependency Between keystone_core and keystone_concurrency
 
 **Context**:
-- `keystone_core` components (`metrics.cpp`, `retry_policy.cpp`, `circuit_breaker.cpp`, `heartbeat_monitor.cpp`) use `Logger` from `concurrency/logger.hpp`
+
+- `keystone_core` components (`metrics.cpp`, `retry_policy.cpp`, `circuit_breaker.cpp`, `heartbeat_monitor.cpp`) use
+`Logger` from `concurrency/logger.hpp`
 - `keystone_concurrency` depends on `keystone_core` for message types and core utilities
 - This creates a circular dependency: `keystone_core` ↔ `keystone_concurrency`
 
@@ -45,12 +51,14 @@ target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 ```
 
 **Rationale**:
+
 - Static libraries support circular dependencies (linker resolves symbols across multiple passes)
 - Shared libraries would NOT support this pattern (linker error)
 - Alternative of extracting Logger into separate library deemed unnecessarily complex for current scope
 - Comment documentation makes the circular dependency explicit and intentional
 
 **Trade-offs**:
+
 - ✅ **Pro**: Simple solution, no additional libraries needed
 - ✅ **Pro**: Works correctly with CPack static library packaging
 - ⚠️ **Con**: Prevents future migration to shared libraries without refactoring
@@ -58,6 +66,7 @@ target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
 **Future Considerations**:
 If shared library distribution is needed:
+
 1. Extract `Logger` into separate `keystone_logging` library
 2. Both `keystone_core` and `keystone_concurrency` depend on `keystone_logging`
 3. Eliminates circular dependency
@@ -67,6 +76,7 @@ If shared library distribution is needed:
 ### Decision 2: Global CMAKE_POSITION_INDEPENDENT_CODE for spdlog
 
 **Context**:
+
 - spdlog is fetched via FetchContent and compiled as a static library
 - Static libraries linked into shared libraries require Position Independent Code (`-fPIC`)
 - Without `-fPIC`, linking fails on position-independent systems (most modern Linux)
@@ -86,6 +96,7 @@ FetchContent_Declare(
 ```
 
 **Rationale**:
+
 - Applied before `FetchContent_Declare` ensures spdlog inherits the setting
 - Global setting is acceptable because:
   - All ProjectKeystone libraries are compiled with `-fPIC` anyway (shared library compatibility)
@@ -93,17 +104,20 @@ FetchContent_Declare(
   - Simplifies build configuration
 
 **Trade-offs**:
+
 - ✅ **Pro**: spdlog correctly compiled with `-fPIC`
 - ✅ **Pro**: No linker errors when creating static libraries
 - ✅ **Pro**: Future-proofs for shared library migration
 - ⚠️ **Con**: All targets inherit PIC setting (minimal overhead, ~2-5% on x86_64)
 
 **Alternative Considered**:
+
 ```cmake
 # Target-specific approach (rejected - too verbose)
 FetchContent_MakeAvailable(spdlog)
 set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
 ```
+
 Rejected because global setting is simpler and has no practical downside.
 
 ---
@@ -111,6 +125,7 @@ Rejected because global setting is simpler and has no practical downside.
 ### Decision 3: Platform-Specific Library Extensions in KeystoneConfig.cmake (C2 Fix)
 
 **Context**:
+
 - Original `KeystoneConfig.cmake.in` hardcoded `.so` extensions
 - Windows uses `.lib` for static libraries
 - Hardcoded extensions prevented cross-platform package portability
@@ -141,6 +156,7 @@ endif()
 ```
 
 **Rationale**:
+
 - CMake's `WIN32` variable provides robust platform detection
 - `else` branch covers Linux and macOS (both use `lib*.a` for static libraries)
 - Package now works identically on all platforms
@@ -154,6 +170,7 @@ endif()
 | Windows | `` | `.lib` | `keystone_core.lib` |
 
 **Trade-offs**:
+
 - ✅ **Pro**: Cross-platform package portability
 - ✅ **Pro**: Matches CMake standard conventions
 - ✅ **Pro**: Works with `find_package(Keystone)` on all platforms
@@ -161,6 +178,7 @@ endif()
 
 **Future Shared Library Support**:
 If shared library packaging is needed, additional detection required:
+
 ```cmake
 if(WIN32)
     set(_Keystone_SHAREDLIBSUFFIX ".dll")
@@ -176,9 +194,11 @@ endif()
 ### Decision 4: target_include_directories for keystone_agents (C1 Fix)
 
 **Context**:
+
 - `keystone_agents` library had no `target_include_directories` specified
 - Consumer projects using `find_package(Keystone)` could not find agent headers
-- Other libraries (`keystone_core`, `keystone_concurrency`, `keystone_simulation`) already had proper include directories
+- Other libraries (`keystone_core`, `keystone_concurrency`, `keystone_simulation`) already had proper include
+directories
 
 **Decision**: Add `target_include_directories` with BUILD_INTERFACE and INSTALL_INTERFACE generator expressions
 
@@ -197,12 +217,14 @@ target_include_directories(
 ```
 
 **Rationale**:
+
 - `BUILD_INTERFACE`: Headers available at build time from source tree
 - `INSTALL_INTERFACE`: Headers available after installation in `include/keystone/`
 - `PRIVATE` spdlog: Implementation detail, not exposed to consumers
 - Matches pattern used by all other ProjectKeystone libraries (consistency)
 
 **Trade-offs**:
+
 - ✅ **Pro**: Consumers can `#include <agents/chief_architect_agent.hpp>` after installation
 - ✅ **Pro**: CMake transitively provides include paths via `target_link_libraries`
 - ✅ **Pro**: Consistent with other library configurations
@@ -220,6 +242,7 @@ All decisions validated through:
 4. **Install Validation**: Headers findable in installed packages
 
 **Package Output**:
+
 ```
 2.2M ProjectKeystone-0.1.0-Linux-Development.deb    - Static libraries + headers
 259K ProjectKeystone-0.1.0-Linux-Documentation.deb  - README, LICENSE, docs
@@ -257,10 +280,12 @@ target_link_libraries(my_agent PRIVATE Keystone::keystone_agents)
 ### Alternative 1: Extract Logger into keystone_logging Library
 
 **Pros**:
+
 - Breaks circular dependency
 - Cleaner architecture
 
 **Cons**:
+
 - Additional library to maintain
 - More complex build configuration
 - Not strictly necessary for current static library packaging
@@ -270,10 +295,12 @@ target_link_libraries(my_agent PRIVATE Keystone::keystone_agents)
 ### Alternative 2: Target-Specific CMAKE_POSITION_INDEPENDENT_CODE
 
 **Pros**:
+
 - More granular control
 - Only spdlog gets `-fPIC`
 
 **Cons**:
+
 - More verbose CMake code
 - All ProjectKeystone libraries need `-fPIC` anyway (shared library compatibility)
 - Minimal performance benefit
@@ -286,14 +313,16 @@ target_link_libraries(my_agent PRIVATE Keystone::keystone_agents)
 
 - **PR #50**: CPack packaging fixes implementation
 - **Code Review**: Comprehensive review by code-review-orchestrator
-- **CPack Documentation**: https://cmake.org/cmake/help/latest/module/CPack.html
-- **CMake Generator Expressions**: https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html
+- **CPack Documentation**: <https://cmake.org/cmake/help/latest/module/CPack.html>
+- **CMake Generator Expressions**: <https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html>
 
 ---
 
 ## Conclusion
 
-These build system decisions enable cross-platform CPack packaging while maintaining build simplicity. The circular dependency is an acceptable trade-off for the current static library distribution model. Future shared library support would require extracting Logger into a separate library to break the cycle.
+These build system decisions enable cross-platform CPack packaging while maintaining build simplicity. The circular
+dependency is an acceptable trade-off for the current static library distribution model. Future shared library support
+would require extracting Logger into a separate library to break the cycle.
 
 **Status**: All decisions implemented and validated in PR #50
 
@@ -303,4 +332,5 @@ These build system decisions enable cross-platform CPack packaging while maintai
 
 **Last Updated**: 2025-11-25
 **Author**: ProjectKeystone Development Team
-**Reviewers**: Code Review Orchestrator (Architecture, Implementation, Security, Safety, Test, Dependency, Documentation, Performance specialists)
+**Reviewers**: Code Review Orchestrator (Architecture, Implementation, Security, Safety, Test, Dependency,
+Documentation, Performance specialists)

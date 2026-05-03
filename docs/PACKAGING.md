@@ -9,28 +9,33 @@ ProjectKeystone is distributed as five separate packages to support different us
 ### 1. keystone (Runtime Package)
 
 **Package Names:**
+
 - DEB: `libkeystone0`
 - RPM: `keystone`
 - Archive: `ProjectKeystone-<version>-Linux-keystone.tar.gz`
 
 **Contents:**
+
 - Runtime shared libraries (`.so` files)
 - Core documentation (README.md, LICENSE, CLAUDE.md)
 
 **Target Users:** End users running applications built with ProjectKeystone
 
 **Dependencies:**
+
 - libc6 >= 2.34
 - libstdc++6 >= 12
 
 ### 2. keystone-dev (Development Package)
 
 **Package Names:**
+
 - DEB: `libkeystone-dev`
 - RPM: `keystone-devel`
 - Archive: `ProjectKeystone-<version>-Linux-keystone-dev.tar.gz`
 
 **Contents:**
+
 - All public header files (`.hpp`)
 - Static libraries (`.a` files)
 - CMake package configuration files
@@ -43,6 +48,7 @@ ProjectKeystone is distributed as five separate packages to support different us
 **Target Users:** Developers building applications with ProjectKeystone
 
 **Dependencies:**
+
 - keystone (runtime package)
 - cmake >= 3.20
 
@@ -63,11 +69,13 @@ target_link_libraries(my_app
 ### 3. keystone-doc (Documentation Package)
 
 **Package Names:**
+
 - DEB: `keystone-doc`
 - RPM: `keystone-doc`
 - Archive: `ProjectKeystone-<version>-Linux-keystone-doc.tar.gz`
 
 **Contents:**
+
 - Complete documentation from `docs/` directory
   - Architecture guides (FOUR_LAYER_ARCHITECTURE.md, etc.)
   - Phase plans (PHASE_*.md)
@@ -81,11 +89,13 @@ target_link_libraries(my_app
 ### 4. keystone-test (Test Package)
 
 **Package Names:**
+
 - DEB: `keystone-test`
 - RPM: `keystone-test`
 - Archive: `ProjectKeystone-<version>-Linux-keystone-test.tar.gz`
 
 **Contents:**
+
 - All test executables
   - Unit tests (`unit_tests`, `concurrency_unit_tests`, `simulation_unit_tests`)
   - E2E tests (`basic_delegation_tests`, `module_coordination_tests`, etc.)
@@ -94,9 +104,11 @@ target_link_libraries(my_app
 **Target Users:** QA engineers, CI/CD systems, release validation
 
 **Dependencies:**
+
 - keystone (runtime package)
 
 **Installation Location:**
+
 - `/usr/bin/tests/` (system-wide)
 - `bin/tests/` (local install)
 
@@ -118,11 +130,13 @@ sudo apt install keystone-test
 ### 5. keystone-misc (Tools Package)
 
 **Package Names:**
+
 - DEB: `keystone-tools`
 - RPM: `keystone-tools`
 - Archive: `ProjectKeystone-<version>-Linux-keystone-misc.tar.gz`
 
 **Contents:**
+
 - Benchmark executables
   - `message_pool_benchmarks`
   - `distributed_benchmarks`
@@ -137,9 +151,11 @@ sudo apt install keystone-test
 **Target Users:** Performance engineers, security researchers
 
 **Dependencies:**
+
 - keystone (runtime package)
 
 **Installation Locations:**
+
 - `/usr/bin/benchmarks/` - Benchmark tools
 - `/usr/bin/tools/` - Load testing tools
 - `/usr/bin/fuzz/` - Fuzz testing targets
@@ -171,6 +187,7 @@ cpack
 ```
 
 This generates:
+
 - `ProjectKeystone-0.1.0-Linux-keystone.tar.gz`
 - `ProjectKeystone-0.1.0-Linux-keystone-dev.tar.gz`
 - `ProjectKeystone-0.1.0-Linux-keystone-doc.tar.gz`
@@ -317,21 +334,25 @@ keystone-doc (independent, no dependencies)
 ### Installing Minimal Set
 
 For **end users** (just run applications):
+
 ```bash
 sudo apt install libkeystone0
 ```
 
 For **developers** (build applications):
+
 ```bash
 sudo apt install libkeystone-dev  # Automatically installs libkeystone0
 ```
 
 For **QA engineers** (run tests):
+
 ```bash
 sudo apt install keystone-test  # Automatically installs libkeystone0
 ```
 
 For **complete installation** (all packages):
+
 ```bash
 sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keystone-tools
 ```
@@ -514,6 +535,7 @@ cpack --config CPackSourceConfig.cmake
 ```
 
 This generates:
+
 - `ProjectKeystone-0.1.0-Source.tar.gz`
 - `ProjectKeystone-0.1.0-Source.zip`
 

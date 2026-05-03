@@ -6,7 +6,9 @@
 
 ## Executive Summary
 
-Profiled string allocation overhead in `KeystoneMessage` creation hot path. Benchmarks show **~2.1-2.3M messages/sec** throughput (~450-500ns per message), which is **sufficient for current requirements**. Optimization is **NOT RECOMMENDED** at this time based on measured performance.
+Profiled string allocation overhead in `KeystoneMessage` creation hot path. Benchmarks show **~2.1-2.3M messages/sec**
+throughput (~450-500ns per message), which is **sufficient for current requirements**. Optimization is **NOT
+RECOMMENDED** at this time based on measured performance.
 
 ## Methodology
 
@@ -42,6 +44,7 @@ BM_MessageCreation_Baseline_mean: 459 ns/msg (2.18M msgs/sec)
 ```
 
 **Analysis**:
+
 - Each message creates 4+ heap allocations:
   1. `msg_id` (UUID string, ~36 bytes)
   2. `sender_id` (agent ID string)
@@ -64,6 +67,7 @@ BM_MessageCreation_Baseline_mean: 459 ns/msg (2.18M msgs/sec)
 | 128 bytes | 2.25M                | 444           | +3.3% faster         |
 
 **Analysis**:
+
 - Minimal performance degradation with longer IDs
 - String SSO (Small String Optimization) likely active for short IDs
 - Allocator performance stable across size ranges
@@ -79,6 +83,7 @@ BM_MessageCreation_Baseline_mean: 459 ns/msg (2.18M msgs/sec)
 | 4KB          | 1.90M                | 527           | -12.9% slower        |
 
 **Analysis**:
+
 - Small payloads (≤1KB) have negligible impact (~2-5% variation)
 - Large payloads (4KB) show measurable slowdown (13% slower)
 - Most messages in HMAS use small payloads (<256 bytes)
@@ -92,6 +97,7 @@ BM_MessageCreation_Baseline_mean: 459 ns/msg (2.18M msgs/sec)
 | 10,000 msgs| 2.10M                | 4.77 ms    | 8.4M allocs/sec |
 
 **Analysis**:
+
 - Consistent performance even at 10K message bursts
 - Allocation rate stable: **~8.4-8.8M allocations/sec**
 - No memory pressure or GC spikes observed
@@ -107,6 +113,7 @@ BM_MessageCreation_Baseline_mean: 459 ns/msg (2.18M msgs/sec)
 | 8       | 14.2M                | 80% linear  |
 
 **Analysis**:
+
 - Good multi-threaded scaling (80-94% efficiency)
 - Allocator contention minimal
 - System can handle **14M+ msgs/sec** on 8 cores
@@ -119,6 +126,7 @@ BM_MessageMove_Overhead:  ~480 ns/move  (move semantics, no allocation)
 ```
 
 **Analysis**:
+
 - Move operations **~8% faster** than copies
 - Current codebase uses `std::move` correctly in most paths
 - Copy overhead reasonable due to string copying
@@ -132,6 +140,7 @@ BM_StringInterning_Simulation: ~185 ns/lookup (11x faster than message creation)
 ```
 
 **Estimated savings**:
+
 - Agent IDs typically reused (high hit rate expected)
 - Could save ~2-3 allocations/message (sender_id, receiver_id, command)
 - **Theoretical max speedup**: ~40-50% (2.18M → 3.2M msgs/sec)
@@ -144,6 +153,7 @@ BM_IntegerIDs_Simulation: ~1 ns/op (450x faster than string operations)
 ```
 
 **Estimated savings**:
+
 - Eliminates 2 allocations/message (sender_id, receiver_id)
 - **Theoretical max speedup**: ~30-40% (2.18M → 2.9M msgs/sec)
 - **Complexity**: High (breaks API, serialization changes)
@@ -177,6 +187,7 @@ Optimize **ONLY IF** any of these conditions are met:
 ### ✅ DO NOT OPTIMIZE NOW
 
 **Rationale**:
+
 - Current performance sufficient (210x headroom vs. stated requirement)
 - Optimization would add complexity without clear benefit
 - Premature optimization violates "measure first" principle
@@ -184,6 +195,7 @@ Optimize **ONLY IF** any of these conditions are met:
 ### 📊 MONITOR
 
 Track these metrics in production:
+
 - Message creation rate (msgs/sec)
 - Allocation count (allocs/sec)
 - Memory usage under sustained load
@@ -233,6 +245,7 @@ Compiler: GCC 12.x
 Full benchmark results: `build-native/string_alloc_results.json`
 
 Sample output:
+
 ```json
 {
   "name": "BM_MessageCreation_Baseline_mean",

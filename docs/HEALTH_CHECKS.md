@@ -4,7 +4,8 @@
 
 ## Overview
 
-The `HealthCheckServer` provides HTTP endpoints for Kubernetes liveness and readiness probes, allowing Kubernetes to monitor the health of HMAS pods and manage traffic routing appropriately.
+The `HealthCheckServer` provides HTTP endpoints for Kubernetes liveness and readiness probes, allowing Kubernetes to
+monitor the health of HMAS pods and manage traffic routing appropriately.
 
 ## Endpoints
 
@@ -12,15 +13,19 @@ The `HealthCheckServer` provides HTTP endpoints for Kubernetes liveness and read
 
 **Purpose**: Determine if the process is alive and healthy.
 
-**Kubernetes Use**: Liveness probes detect if a container is stuck or deadlocked. If the liveness probe fails repeatedly, Kubernetes restarts the container.
+**Kubernetes Use**: Liveness probes detect if a container is stuck or deadlocked. If the liveness probe fails
+repeatedly, Kubernetes restarts the container.
 
 **Response**:
+
 - **200 OK**: Process is healthy
+
   ```json
   {"status":"healthy"}
   ```
 
 **Configuration** (from `k8s/deployment.yaml`):
+
 ```yaml
 livenessProbe:
   httpGet:
@@ -36,19 +41,25 @@ livenessProbe:
 
 **Purpose**: Determine if the process is ready to accept traffic.
 
-**Kubernetes Use**: Readiness probes control whether the pod receives traffic from Services. Pods failing readiness probes are removed from Service endpoints.
+**Kubernetes Use**: Readiness probes control whether the pod receives traffic from Services. Pods failing readiness
+probes are removed from Service endpoints.
 
 **Response**:
+
 - **200 OK**: Ready for traffic
+
   ```json
   {"status":"ready"}
   ```
+
 - **503 Service Unavailable**: Not ready
+
   ```json
   {"status":"not_ready"}
   ```
 
 **Configuration** (from `k8s/deployment.yaml`):
+
 ```yaml
 readinessProbe:
   httpGet:
@@ -63,7 +74,9 @@ readinessProbe:
 ### `GET /*` - Unknown Endpoints
 
 **Response**:
+
 - **404 Not Found**
+
   ```json
   {"error":"endpoint not found"}
   ```
@@ -117,21 +130,25 @@ using ReadinessCheck = std::function<bool()>;
 **Common Readiness Checks**:
 
 1. **MessageBus Initialized**
+
    ```cpp
    [&bus]() { return bus != nullptr && bus->isRunning(); }
    ```
 
 2. **Agents Registered**
+
    ```cpp
    [&bus]() { return bus->listAgents().size() >= 4; }
    ```
 
 3. **Scheduler Running**
+
    ```cpp
    [&scheduler]() { return scheduler->isRunning(); }
    ```
 
 4. **Combined Check**
+
    ```cpp
    [&]() {
        return bus != nullptr &&
@@ -196,6 +213,7 @@ cd build
 ```
 
 **Test Coverage**:
+
 - ✅ Server start/stop lifecycle
 - ✅ Liveness endpoint (`/healthz` always returns 200)
 - ✅ Readiness endpoint (default ready)
@@ -211,6 +229,7 @@ cd build
 ### Manual Testing
 
 **Test Liveness**:
+
 ```bash
 # Start HMAS application
 ./build/hmas_app
@@ -221,6 +240,7 @@ curl http://localhost:8080/healthz
 ```
 
 **Test Readiness**:
+
 ```bash
 curl http://localhost:8080/ready
 # Expected: {"status":"ready"} (200 OK) or {"status":"not_ready"} (503)
@@ -229,23 +249,27 @@ curl http://localhost:8080/ready
 ### Kubernetes Testing
 
 **Deploy to Kubernetes**:
+
 ```bash
 kubectl apply -f k8s/
 ```
 
 **Check Pod Status**:
+
 ```bash
 kubectl get pods -n projectkeystone
 # Pods should show Ready: 1/1
 ```
 
 **Check Probe Status**:
+
 ```bash
 kubectl describe pod -n projectkeystone <pod-name>
 # Look for "Liveness" and "Readiness" probe events
 ```
 
 **Verify Health Endpoints**:
+
 ```bash
 # Port-forward to pod
 kubectl port-forward -n projectkeystone <pod-name> 8080:8080
@@ -320,17 +344,20 @@ namespace Config {
 **Symptom**: Pod constantly restarting
 
 **Diagnosis**:
+
 ```bash
 kubectl logs -n projectkeystone <pod-name>
 kubectl describe pod -n projectkeystone <pod-name>
 ```
 
 **Common Causes**:
+
 1. Health check server failed to start (port already in use)
 2. Liveness probe failing (application crashed)
 3. Application exiting immediately
 
 **Solution**:
+
 - Check application logs for errors
 - Verify port 8080 is not used by another service
 - Increase `initialDelaySeconds` if app needs more startup time
@@ -340,6 +367,7 @@ kubectl describe pod -n projectkeystone <pod-name>
 **Symptom**: Pod Running but no traffic from Service
 
 **Diagnosis**:
+
 ```bash
 kubectl describe pod -n projectkeystone <pod-name>
 # Check "Readiness" events
@@ -349,10 +377,12 @@ kubectl get endpoints -n projectkeystone
 ```
 
 **Common Causes**:
+
 1. Readiness probe failing
 2. Custom readiness check returning false
 
 **Solution**:
+
 - Test readiness endpoint manually: `curl http://<pod-ip>:8080/ready`
 - Review readiness check logic
 - Check application initialization (agents registered, scheduler started)
@@ -362,17 +392,20 @@ kubectl get endpoints -n projectkeystone
 **Symptom**: Probes timing out, pod marked unhealthy
 
 **Diagnosis**:
+
 ```bash
 kubectl describe pod -n projectkeystone <pod-name>
 # Look for "Liveness probe failed: Get...: context deadline exceeded"
 ```
 
 **Common Causes**:
+
 1. Server thread blocked or stuck
 2. Timeout too aggressive
 3. Network latency
 
 **Solution**:
+
 - Increase `timeoutSeconds` in probe configuration
 - Check for deadlocks in application
 - Verify network connectivity

@@ -8,7 +8,8 @@
 
 ## Overview
 
-This document describes the simulation architecture for testing NUMA-aware scheduling and distributed work-stealing without requiring actual multi-node hardware.
+This document describes the simulation architecture for testing NUMA-aware scheduling and distributed work-stealing
+without requiring actual multi-node hardware.
 
 ## Goals
 
@@ -477,13 +478,13 @@ BENCHMARK(BM_NetworkOverhead)->Arg(100)->Arg(500)->Arg(1000);
 
 ### Week 2 (Days 4-5): Work Stealing
 
-4. **Day 4**: Local-First Policy
+1. **Day 4**: Local-First Policy
    - Modify WorkStealingScheduler::pullOrSteal()
    - Add remote steal threshold
    - Statistics tracking
    - Unit tests
 
-5. **Day 5**: Benchmarks
+2. **Day 5**: Benchmarks
    - Local vs remote overhead
    - Load balancing effectiveness
    - Network latency sensitivity

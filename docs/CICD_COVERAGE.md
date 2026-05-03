@@ -87,9 +87,11 @@ This document maps README.md instructions to CI/CD workflow validation.
 ## CI Workflows Overview
 
 ### quality.yml - Quality Gates (Primary)
+
 **Purpose**: Enforce 5 quality gates on all PRs and pushes
 
 **Jobs**:
+
 1. **coverage** - Code coverage ≥85% (target: ≥95%)
 2. **static-analysis** - clang-tidy + cppcheck (0 critical errors)
 3. **fuzz-testing** - 1 hour fuzzing (no crashes)
@@ -99,9 +101,11 @@ This document maps README.md instructions to CI/CD workflow validation.
 **README Coverage**: ✅ Covers build-coverage, coverage, benchmark, lint commands
 
 ### sanitizers.yml - Sanitizer Testing
+
 **Purpose**: Detect memory errors, undefined behavior, and threading issues
 
 **Jobs**:
+
 1. **asan-ubsan** - AddressSanitizer + UBSan
 2. **tsan** - ThreadSanitizer
 3. **msan** - MemorySanitizer (manual trigger only)
@@ -109,9 +113,11 @@ This document maps README.md instructions to CI/CD workflow validation.
 **README Coverage**: ✅ Covers `make compile.debug.asan`, `make test.debug.asan`, `make test.debug.tsan`
 
 ### build-validation.yml - Build Testing
+
 **Purpose**: Validate all Docker targets and native builds
 
 **Jobs**:
+
 1. **build-docker** - Test builder, runtime, development targets
 2. **build-native** - Test native CMake + Ninja build
 3. **build-validation** - Generate build report
@@ -119,9 +125,11 @@ This document maps README.md instructions to CI/CD workflow validation.
 **README Coverage**: ✅ Covers Docker builds and manual CMake builds
 
 ### installation-verification.yml - README Validation
+
 **Purpose**: Verify all README instructions work correctly
 
 **Jobs**:
+
 1. **verify-ubuntu-latest** - Test on latest Ubuntu
 2. **verify-ubuntu-22-04** - Test on Ubuntu 22.04
 3. **verify-readme-commands** - Execute exact README command sequences
@@ -132,9 +140,11 @@ This document maps README.md instructions to CI/CD workflow validation.
 **README Coverage**: ✅ Covers installation steps, Quick Start, Docker Build sections
 
 ### docker-tests.yml - Docker Testing
+
 **Purpose**: Comprehensive Docker build and runtime testing
 
 **Jobs**:
+
 1. **docker-tests** - Test all Docker targets and docker-compose services
 2. **docker-security-scan** - Trivy vulnerability scanning
 3. **docker-multi-platform** - Multi-platform builds (amd64, arm64)
@@ -142,20 +152,24 @@ This document maps README.md instructions to CI/CD workflow validation.
 **README Coverage**: ✅ Covers all Docker commands in README
 
 ### unit-tests.yml - Unit Testing
+
 **Purpose**: Run unit tests and generate coverage reports
 
 **Jobs**:
+
 1. **test-cpp** - Run all C++ unit tests
 2. **coverage-report** - Generate and upload coverage reports
 
 **README Coverage**: ✅ Covers test execution commands
 
 ### pre-commit.yml - Pre-commit Hooks
+
 **Purpose**: Enforce code formatting and linting standards
 
 **README Coverage**: ✅ Covers `make format`, `make format.check`
 
 ### security-scan.yml - Security Scanning
+
 **Purpose**: CodeQL analysis for security vulnerabilities
 
 **README Coverage**: N/A (automated security, not user-facing)
@@ -186,6 +200,7 @@ These commands are **intentionally not covered in CI** as they are for local dev
 ## Verification Process
 
 All CI workflows are triggered on:
+
 - **Pull Requests** to `main` or `develop`
 - **Pushes** to `main`, `develop`, or `claude/**` branches
 - **Manual Dispatch** (workflow_dispatch)
@@ -202,6 +217,7 @@ All CI workflows are triggered on:
 ✅ **All critical README installation, build, and test steps are validated in CI/CD.**
 
 The only uncovered commands are:
+
 - Interactive tools (`docker-shell`)
 - Local development wrappers (`native-*` commands, covered functionally by CI)
 - Long-running load tests (appropriate for local/scheduled execution)

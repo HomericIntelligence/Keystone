@@ -2,7 +2,8 @@
 
 ## Overview
 
-Phase 8 (Distributed Multi-Node Communication) has been made **optional** to allow building and running ProjectKeystone without requiring gRPC and Protobuf dependencies.
+Phase 8 (Distributed Multi-Node Communication) has been made **optional** to allow building and running ProjectKeystone
+without requiring gRPC and Protobuf dependencies.
 
 ## Build Options
 
@@ -11,12 +12,14 @@ Phase 8 (Distributed Multi-Node Communication) has been made **optional** to all
 This is the default build mode. No gRPC or Protobuf dependencies are required.
 
 **Docker Build:**
+
 ```bash
 docker-compose build production
 docker run --rm projectkeystone:production
 ```
 
 **Local Build:**
+
 ```bash
 mkdir -p build && cd build
 cmake -G Ninja ..
@@ -24,6 +27,7 @@ ninja
 ```
 
 **What's Included:**
+
 - ✅ All Phases 1-7 functionality
 - ✅ 4-layer agent hierarchy (ChiefArchitect, ComponentLead, ModuleLead, TaskAgent)
 - ✅ MessageBus-based local communication
@@ -33,6 +37,7 @@ ninja
 - ✅ Performance profiling and metrics
 
 **What's Excluded:**
+
 - ❌ gRPC-based distributed communication
 - ❌ YAML task specifications
 - ❌ ServiceRegistry for multi-node discovery
@@ -43,6 +48,7 @@ ninja
 Enables all Phase 8 distributed communication features.
 
 **Prerequisites:**
+
 ```bash
 # Install gRPC and Protobuf
 # Ubuntu/Debian:
@@ -61,6 +67,7 @@ brew install grpc protobuf
 ```
 
 **Local Build:**
+
 ```bash
 mkdir -p build && cd build
 cmake -G Ninja -DENABLE_GRPC=ON ..
@@ -71,12 +78,14 @@ ninja
 ```
 
 **Docker Build with gRPC:**
+
 ```bash
 # Currently requires manual Dockerfile modification to install gRPC
 # See "Docker Support for Phase 8" section below
 ```
 
 **What's Included (in addition to base system):**
+
 - ✅ gRPC-based distributed communication
 - ✅ Protocol Buffers message serialization
 - ✅ YAML task specification parsing and generation
@@ -100,21 +109,25 @@ ninja
 ### Example Configurations
 
 **Basic build:**
+
 ```bash
 cmake -G Ninja ..
 ```
 
 **With gRPC:**
+
 ```bash
 cmake -G Ninja -DENABLE_GRPC=ON ..
 ```
 
 **With gRPC and coverage:**
+
 ```bash
 cmake -G Ninja -DENABLE_GRPC=ON -DENABLE_COVERAGE=ON ..
 ```
 
 **With sanitizers:**
+
 ```bash
 cmake -G Ninja -DENABLE_GRPC=ON \
   -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined" ..
@@ -149,18 +162,21 @@ public:
 ### Files Affected
 
 **Headers:**
+
 - `include/agents/task_agent.hpp`
 - `include/agents/module_lead_agent.hpp`
 - `include/agents/component_lead_agent.hpp`
 - `include/agents/chief_architect_agent.hpp`
 
 **Source Files:**
+
 - `src/agents/task_agent.cpp`
 - `src/agents/module_lead_agent.cpp`
 - `src/agents/component_lead_agent.cpp`
 - `src/agents/chief_architect_agent.cpp`
 
 **Network Components (only built with ENABLE_GRPC):**
+
 - `include/network/grpc_server.hpp`
 - `include/network/grpc_client.hpp`
 - `include/network/service_registry.hpp`
@@ -222,13 +238,15 @@ RUN apt-get update && apt-get install -y \
 ```
 
 Then build with:
+
 ```bash
 docker build -t projectkeystone:grpc --build-arg ENABLE_GRPC=ON .
 ```
 
 **Option B: Use docker-compose-distributed.yaml**
 
-The distributed deployment configuration (Phase 8) requires gRPC support. A dedicated Dockerfile will be added in the future.
+The distributed deployment configuration (Phase 8) requires gRPC support. A dedicated Dockerfile will be added in the
+future.
 
 ### Future Work
 
@@ -241,6 +259,7 @@ The distributed deployment configuration (Phase 8) requires gRPC support. A dedi
 ### Existing Code Without Phase 8
 
 If you have existing code that only uses Phases 1-7:
+
 - ✅ **No changes required** - your code will compile and run as before
 - ✅ All existing tests pass
 - ✅ All existing functionality preserved
@@ -265,23 +284,28 @@ task_agent.processYamlTask(yaml_spec);
 ### Build Errors
 
 **Error:** `fatal error: 'grpcpp/grpcpp.h' file not found`
+
 - **Solution:** Either install gRPC/Protobuf OR disable Phase 8 by removing `-DENABLE_GRPC=ON`
 
 **Error:** `undefined reference to 'grpc::...'`
+
 - **Solution:** Ensure you're linking against gRPC libraries (this should be automatic with CMake)
 
 **Error:** `Could NOT find Protobuf`
+
 - **Solution:** Install protobuf development packages or disable Phase 8
 
 ### Runtime Errors
 
 **Error:** Agent method not available
+
 - **Cause:** Calling Phase 8 methods when built without `ENABLE_GRPC`
 - **Solution:** Wrap calls in `#ifdef ENABLE_GRPC` or rebuild with `-DENABLE_GRPC=ON`
 
 ### Docker Issues
 
 **Error:** `groupadd: GID '1000' already exists`
+
 - **Solution:** This has been fixed in the latest Dockerfile (uses GID 1001)
 
 ## Performance Considerations
@@ -306,8 +330,8 @@ task_agent.processYamlTask(yaml_spec);
 - **Network Protocol:** [docs/NETWORK_PROTOCOL.md](NETWORK_PROTOCOL.md)
 - **YAML Specification:** [docs/YAML_SPECIFICATION.md](YAML_SPECIFICATION.md)
 - **E2E Tests:** [docs/PHASE_8_E2E_TESTS.md](PHASE_8_E2E_TESTS.md)
-- **gRPC Documentation:** https://grpc.io/docs/languages/cpp/
-- **Protocol Buffers:** https://developers.google.com/protocol-buffers/
+- **gRPC Documentation:** <https://grpc.io/docs/languages/cpp/>
+- **Protocol Buffers:** <https://developers.google.com/protocol-buffers/>
 
 ---
 

@@ -41,61 +41,76 @@ ninja distributed_grpc_tests
 ## Test Categories
 
 ### 1. YAML Tests (Fast)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*Yaml*
 ```
+
 - YamlTaskSpecParsing
 - YamlTaskSpecWithSubtasks
 - YamlDurationParsing
 
 ### 2. ServiceRegistry Tests (Fast)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*ServiceRegistry*
 ```
+
 - ServiceRegistryBasicRegistration
 - ServiceRegistryCapabilityQuery
 - ServiceRegistryLevelFiltering
 
 ### 3. Heartbeat Tests (Slow - uses sleep)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*Heartbeat*
 ```
+
 - HeartbeatMonitoring (takes ~3.5s)
 - HeartbeatWithMetrics
 
 ### 4. Load Balancing Tests (Fast)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*LoadBalancing*
 ```
+
 - LoadBalancingLeastLoaded
 - LoadBalancingRoundRobin
 - LoadBalancingNoAvailableAgents
 
 ### 5. Result Aggregation Tests (Moderate)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*ResultAggregation*
 ```
+
 - ResultAggregationWaitAll
 - ResultAggregationFirstSuccess
 - ResultAggregationMajority
 - ResultAggregationTimeout (takes ~150ms)
 
 ### 6. Task Routing Tests (Fast)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*TaskRouting*
 ```
+
 - TaskRoutingFromYamlSpec
 - TaskRoutingMissingCapability
 
 ### 7. Integration Tests (Fast)
+
 ```bash
 ./distributed_grpc_tests --gtest_filter=*Integration*
 ```
+
 - IntegrationFullTaskFlowSimulated
 
 ## Test Output Examples
 
 ### Successful Run
+
 ```
 [==========] Running 26 tests from 1 test suite.
 [----------] Global test environment set-up.
@@ -111,6 +126,7 @@ ninja distributed_grpc_tests
 ```
 
 ### Failed Test Example
+
 ```
 [ RUN      ] DistributedGrpcTest.ServiceRegistryCapabilityQuery
 tests/e2e/distributed_grpc_test.cpp:234: Failure
@@ -124,28 +140,36 @@ Expected equality of these values:
 ## Troubleshooting
 
 ### Test Hangs
+
 If a test hangs, it's likely waiting for a timeout. Check:
+
 - HeartbeatMonitoring (waits 3.5s)
 - ResultAggregationTimeout (waits 150ms)
 
 ### Test Fails Intermittently
+
 - Check for timing assumptions
 - Ensure no shared state between tests
 - Verify TearDown() cleans up properly
 
 ### Build Fails
+
 Ensure gRPC is enabled:
+
 ```bash
 cmake -DENABLE_GRPC=ON ..
 ```
 
 Check dependencies:
+
 - gRPC library installed
 - Protobuf compiler available
 - yaml-cpp library available
 
 ### Link Errors
+
 Verify CMakeLists.txt includes:
+
 ```cmake
 target_link_libraries(
   distributed_grpc_tests
@@ -157,7 +181,9 @@ target_link_libraries(
 ## Test Structure
 
 ### Fixture: DistributedGrpcTest
+
 All tests use this fixture which provides:
+
 - `registry_` - ServiceRegistry instance
 - `router_` - TaskRouter instance
 - `coordinator_` - HMASCoordinatorServiceImpl instance
@@ -165,7 +191,9 @@ All tests use this fixture which provides:
 Setup/TearDown handles creation and cleanup.
 
 ### Helper: YamlSpecBuilder
+
 Fluent API for building task specs:
+
 ```cpp
 auto spec = YamlSpecBuilder()
     .setGoal("Build project")
@@ -176,7 +204,9 @@ auto spec = YamlSpecBuilder()
 ```
 
 ### Helper: waitFor
+
 Timeout-based waiting:
+
 ```cpp
 bool complete = waitFor([&]() {
     return aggregator.isComplete();
@@ -186,11 +216,13 @@ bool complete = waitFor([&]() {
 ## Continuous Integration
 
 These tests run automatically on:
+
 - Every commit
 - Pull requests
 - Merge to main
 
 CI configuration in `.github/workflows/test.yml`:
+
 ```yaml
 - name: Run distributed gRPC tests
   run: |
@@ -201,6 +233,7 @@ CI configuration in `.github/workflows/test.yml`:
 ## Code Coverage
 
 Generate coverage report:
+
 ```bash
 # Build with coverage
 cmake -DENABLE_GRPC=ON -DENABLE_COVERAGE=ON ..
@@ -215,6 +248,7 @@ genhtml coverage.info --output-directory coverage_html
 ```
 
 View coverage:
+
 ```bash
 open coverage_html/index.html
 ```
@@ -222,6 +256,7 @@ open coverage_html/index.html
 ## Performance Benchmarks
 
 Expected execution times:
+
 - **Fast tests** (YAML, Registry, Routing): < 10ms each
 - **Moderate tests** (Aggregation): 10-200ms each
 - **Slow tests** (Heartbeat): 3-4 seconds each

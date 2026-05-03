@@ -6,7 +6,8 @@
 
 ## Overview
 
-This document describes the comprehensive End-to-End (E2E) test suite for Phase 8's distributed multi-node HMAS system using gRPC.
+This document describes the comprehensive End-to-End (E2E) test suite for Phase 8's distributed multi-node HMAS system
+using gRPC.
 
 ### Test Coverage
 
@@ -68,6 +69,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate YAML task specification serialization/deserialization
 
 #### Test 1: `YamlTaskSpecParsing`
+
 - **What**: Round-trip YAML parsing preserves all fields
 - **Validates**:
   - HierarchicalTaskSpec → YAML string → HierarchicalTaskSpec
@@ -78,6 +80,7 @@ This approach follows the Test Engineer guidelines:
   - Aggregation (strategy, timeout)
 
 #### Test 2: `YamlTaskSpecWithSubtasks`
+
 - **What**: YAML preserves subtask DAG structure
 - **Validates**:
   - Subtask array serialization
@@ -85,6 +88,7 @@ This approach follows the Test Engineer guidelines:
   - Multiple subtasks (3 in test)
 
 #### Test 3: `YamlDurationParsing`
+
 - **What**: Duration string parsing (e.g., "10s", "5m", "2h")
 - **Validates**:
   - parseDuration() converts to milliseconds
@@ -96,6 +100,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate agent registration and discovery
 
 #### Test 4: `ServiceRegistryBasicRegistration`
+
 - **What**: Basic agent registration and retrieval
 - **Validates**:
   - registerAgent() success
@@ -103,6 +108,7 @@ This approach follows the Test Engineer guidelines:
   - Agent count tracking
 
 #### Test 5: `ServiceRegistryCapabilityQuery`
+
 - **What**: Query agents by required capabilities
 - **Scenario**:
   - 3 agents with different capabilities
@@ -112,6 +118,7 @@ This approach follows the Test Engineer guidelines:
   - Excludes agents missing any capability
 
 #### Test 6: `ServiceRegistryLevelFiltering`
+
 - **What**: Query agents by hierarchy level
 - **Scenario**: 5 agents across all 4 levels (0-3)
 - **Validates**:
@@ -123,6 +130,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate agent liveness tracking
 
 #### Test 7: `HeartbeatMonitoring`
+
 - **What**: Agents marked dead after heartbeat timeout
 - **Scenario**:
   - 2 agents send initial heartbeat
@@ -134,6 +142,7 @@ This approach follows the Test Engineer guidelines:
   - cleanupDeadAgents() removes expired agents
 
 #### Test 8: `HeartbeatWithMetrics`
+
 - **What**: Heartbeat includes resource metrics
 - **Validates**:
   - CPU usage tracking
@@ -145,6 +154,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate agent selection strategies
 
 #### Test 9: `LoadBalancingLeastLoaded`
+
 - **What**: LEAST_LOADED strategy selects agent with fewest active tasks
 - **Scenario**:
   - 3 TaskAgents: 5, 2, 7 active tasks
@@ -152,11 +162,13 @@ This approach follows the Test Engineer guidelines:
 - **Validates**: Task routed to agent with 2 active tasks
 
 #### Test 10: `LoadBalancingRoundRobin`
+
 - **What**: ROUND_ROBIN cycles through agents
 - **Scenario**: 3 TaskAgents, route 3 tasks
 - **Validates**: All 3 agents used (distributed evenly)
 
 #### Test 11: `LoadBalancingNoAvailableAgents`
+
 - **What**: Routing fails gracefully when no agents available
 - **Validates**: Error message returned
 
@@ -165,6 +177,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate subtask result aggregation strategies
 
 #### Test 12: `ResultAggregationWaitAll`
+
 - **What**: WAIT_ALL waits for all expected results
 - **Scenario**: 3 expected results
   - Add result 1 → not complete (1/3)
@@ -175,6 +188,7 @@ This approach follows the Test Engineer guidelines:
   - getSuccessCount() accurate
 
 #### Test 13: `ResultAggregationFirstSuccess`
+
 - **What**: FIRST_SUCCESS completes on first successful result
 - **Scenario**:
   - Add FAILED result → not complete
@@ -182,6 +196,7 @@ This approach follows the Test Engineer guidelines:
 - **Validates**: Completes immediately on first success
 
 #### Test 14: `ResultAggregationMajority`
+
 - **What**: MAJORITY completes when majority received
 - **Scenario**: 5 expected results, need 3 for majority
   - Add 2 results → not complete
@@ -189,6 +204,7 @@ This approach follows the Test Engineer guidelines:
 - **Validates**: Majority threshold calculation (⌈N/2⌉)
 
 #### Test 15: `ResultAggregationTimeout`
+
 - **What**: Timeout detection
 - **Scenario**: Wait 150ms with 100ms timeout
 - **Validates**: hasTimedOut() returns true
@@ -198,6 +214,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate task routing from YAML specs
 
 #### Test 16: `TaskRoutingFromYamlSpec`
+
 - **What**: Route task based on YAML routing section
 - **Validates**:
   - Target level selection
@@ -205,6 +222,7 @@ This approach follows the Test Engineer guidelines:
   - Required capability filtering
 
 #### Test 17: `TaskRoutingMissingCapability`
+
 - **What**: Routing fails when no agent has required capability
 - **Validates**: Error handling for missing capabilities
 
@@ -213,6 +231,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate HMASCoordinator task tracking
 
 #### Test 18: `TaskStateTracking`
+
 - **What**: Task phase transitions tracked correctly
 - **Scenario**:
   - PENDING → EXECUTING (50% progress)
@@ -223,6 +242,7 @@ This approach follows the Test Engineer guidelines:
   - Subtask tracking
 
 #### Test 19: `MultipleTaskStateTracking`
+
 - **What**: Multiple concurrent task states
 - **Validates**: Independent state tracking for 3 tasks
 
@@ -231,6 +251,7 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Validate enum ↔ string conversions
 
 #### Test 20: `AggregationStrategyConversion`
+
 - **Validates**:
   - stringToStrategy("WAIT_ALL") → AggregationStrategy::WAIT_ALL
   - strategyToString(AggregationStrategy::WAIT_ALL) → "WAIT_ALL"
@@ -240,8 +261,10 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: End-to-end hierarchical task flow
 
 #### Test 21: `IntegrationFullTaskFlowSimulated`
+
 - **What**: Simulates complete 4-layer hierarchy task flow
 - **Architecture**:
+
   ```
   Chief (node1)
     ↓
@@ -251,6 +274,7 @@ This approach follows the Test Engineer guidelines:
     ↓ ↓
   TaskAgent (node4, node5)
   ```
+
 - **Flow**:
   1. Chief creates high-level goal
   2. Routes to ComponentLead
@@ -272,18 +296,23 @@ This approach follows the Test Engineer guidelines:
 **Purpose**: Error handling and robustness
 
 #### Test 22: `InvalidYamlParsing`
+
 - **Validates**: Graceful handling of malformed YAML
 
 #### Test 23: `DuplicateAgentRegistration`
+
 - **Validates**: Second registration fails
 
 #### Test 24: `UnregisterNonexistentAgent`
+
 - **Validates**: Unregister returns false
 
 #### Test 25: `AggregatorResetFunctionality`
+
 - **Validates**: ResultAggregator.reset() clears state
 
 #### Test 26: `TaskCleanupOldTasks`
+
 - **Validates**: Old completed tasks can be cleaned up
 
 ## Test Helpers
@@ -309,11 +338,12 @@ auto spec = YamlSpecBuilder()
 ```
 
 **Benefits**:
+
 - Readable test code
 - Default values for common fields
 - Type-safe construction
 
-### waitFor<Predicate>
+### waitFor\<Predicate\>
 
 Timeout-based condition waiting:
 
@@ -324,6 +354,7 @@ bool success = waitFor([&]() {
 ```
 
 **Benefits**:
+
 - Avoids flaky timing-based tests
 - Clear timeout semantics
 - Reusable across tests
@@ -367,7 +398,9 @@ make distributed_grpc_tests
 ## Test Execution Strategy
 
 ### Phase 1: Unit-Style Tests (Fast)
+
 Run these frequently during development:
+
 - YAML parsing/generation
 - ServiceRegistry queries
 - Result aggregation logic
@@ -376,7 +409,9 @@ Run these frequently during development:
 **Execution Time**: < 100ms total
 
 ### Phase 2: Integration Tests (Moderate)
+
 Run before committing:
+
 - Task routing with real registry
 - Heartbeat monitoring (requires sleep)
 - Full integration flow
@@ -384,12 +419,15 @@ Run before committing:
 **Execution Time**: ~5 seconds (due to heartbeat timeout test)
 
 ### Phase 3: Real gRPC Tests (Future)
+
 Not in current suite, but could be added:
+
 - Real gRPC client/server communication
 - Multi-process testing
 - Docker Compose 7-node setup
 
 **Would Require**:
+
 - gRPC server startup/teardown fixtures
 - Port management
 - Process cleanup
@@ -397,6 +435,7 @@ Not in current suite, but could be added:
 ## Success Criteria
 
 ### All Tests Pass
+
 ```
 [==========] Running 26 tests from 1 test suite.
 [----------] Global test environment set-up.
@@ -411,7 +450,9 @@ Not in current suite, but could be added:
 ```
 
 ### Code Coverage
+
 Expected coverage for Phase 8 components:
+
 - **YAML Parser**: >90% (complex parsing logic)
 - **ServiceRegistry**: >95% (well-tested queries)
 - **TaskRouter**: >90% (load balancing strategies)
@@ -419,12 +460,15 @@ Expected coverage for Phase 8 components:
 - **HMASCoordinatorService**: >80% (state management)
 
 ### CI/CD Integration
+
 Tests run automatically on:
+
 - Every commit (via GitHub Actions)
 - Pull requests
 - Merge to main
 
 **CI Requirements**:
+
 - gRPC dependencies installed
 - YAML-cpp library available
 - Google Test framework
@@ -436,6 +480,7 @@ Tests run automatically on:
 1. **Identify component**: Determine which Phase 8 component needs testing
 2. **Choose test category**: YAML, Registry, Routing, Aggregation, etc.
 3. **Write test case**:
+
    ```cpp
    TEST_F(DistributedGrpcTest, MyNewTest) {
        // Setup
@@ -448,12 +493,14 @@ Tests run automatically on:
        EXPECT_TRUE(result.success);
    }
    ```
+
 4. **Run locally**: `./distributed_grpc_tests --gtest_filter=*MyNewTest`
 5. **Verify CI passes**
 
 ### Updating Tests
 
 When modifying Phase 8 components:
+
 1. **Update affected tests** to reflect API changes
 2. **Add new test cases** for new functionality
 3. **Ensure backward compatibility** or update all related tests
@@ -461,12 +508,14 @@ When modifying Phase 8 components:
 ### Test Stability
 
 **Avoid flaky tests**:
+
 - ✅ Use `waitFor()` instead of `sleep()` where possible
 - ✅ Don't depend on exact timing
 - ✅ Use deterministic test data
 - ✅ Clean up state in TearDown()
 
 **Handle timing-sensitive tests**:
+
 - Heartbeat monitoring uses 3.5s wait (timeout + buffer)
 - Aggregation timeout uses clear margin (150ms wait, 100ms timeout)
 
@@ -509,6 +558,7 @@ When modifying Phase 8 components:
 ## Summary
 
 ### Test Suite Statistics
+
 - **Total Test Cases**: 26
 - **Test Categories**: 10
 - **Helper Classes**: 2 (YamlSpecBuilder, waitFor)
@@ -516,6 +566,7 @@ When modifying Phase 8 components:
 - **Execution Time**: ~5 seconds (including sleep-based tests)
 
 ### Coverage Summary
+
 ✅ YAML parsing/generation
 ✅ ServiceRegistry registration & queries
 ✅ Heartbeat monitoring & liveness
@@ -527,6 +578,7 @@ When modifying Phase 8 components:
 ✅ Edge cases & error handling
 
 ### Next Steps
+
 1. ✅ Tests written and documented
 2. ⏳ Run tests in CI/CD (requires Docker build)
 3. ⏳ Validate 100% pass rate

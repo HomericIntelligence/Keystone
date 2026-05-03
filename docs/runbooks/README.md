@@ -188,6 +188,7 @@ curl -X POST http://localhost:9093/api/v2/silences \
 - Document actions
 
 **Escalate if**:
+
 - Issue not resolved in 30 minutes
 - Impact is wider than expected
 - Root cause unclear
@@ -200,6 +201,7 @@ curl -X POST http://localhost:9093/api/v2/silences \
 - Make architectural decisions
 
 **Escalate if**:
+
 - System-wide outage
 - Data loss risk
 - Requires code changes
@@ -345,4 +347,4 @@ To add a new runbook:
 
 **Last Updated**: 2025-11-21
 **Maintained By**: SRE Team
-**Contact**: sre@projectkeystone.io
+**Contact**: <sre@projectkeystone.io>

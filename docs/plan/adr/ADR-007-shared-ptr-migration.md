@@ -6,7 +6,9 @@
 
 ## Context and Problem Statement
 
-The MessageBus was using raw pointers to track registered agents, creating a critical use-after-free vulnerability in async message routing scenarios. When agents were unregistered or destroyed, lambdas submitted to the scheduler could capture dangling pointers, leading to segmentation faults.
+The MessageBus was using raw pointers to track registered agents, creating a critical use-after-free vulnerability in
+async message routing scenarios. When agents were unregistered or destroyed, lambdas submitted to the scheduler could
+capture dangling pointers, leading to segmentation faults.
 
 ## Decision Drivers
 
@@ -58,6 +60,7 @@ sched->submit([agent, msg]() {  // agent might be deleted!
 ```
 
 **Race Condition**:
+
 ```cpp
 Thread A: captures raw agent* in lambda
 Thread B: unregisterAgent() → agent deleted
@@ -82,6 +85,7 @@ sched->submit([agent, msg]() {  // agent kept alive by shared_ptr
 ```
 
 **Safe Lifetime Management**:
+
 ```cpp
 Thread A: captures shared_ptr<agent> in lambda → ref count++
 Thread B: unregisterAgent() → agent NOT deleted (ref count > 0)
@@ -92,6 +96,7 @@ Thread A: lambda completes → ref count-- → agent deleted if last ref
 ### Migration Pattern
 
 **Test Update**:
+
 ```cpp
 // Before
 auto agent = std::make_unique<TaskAgent>("agent1");
@@ -103,6 +108,7 @@ bus.registerAgent("agent1", agent);  // shared_ptr
 ```
 
 **Code Update**:
+
 - Changed `registerAgent()` signature in `include/core/message_bus.hpp`
 - Changed agent registry type in `src/core/message_bus.cpp`
 - Updated all 59 E2E tests and 270 unit tests to use `make_shared`
@@ -110,16 +116,19 @@ bus.registerAgent("agent1", agent);  // shared_ptr
 ## Files Modified
 
 ### Core Architecture
+
 - ✅ `include/core/message_bus.hpp` - API signature change
 - ✅ `src/core/message_bus.cpp` - Storage and routing implementation
 
 ### All Tests (373 tests)
+
 - ✅ Updated all E2E tests (`tests/e2e/*.cpp`)
 - ✅ Updated all unit tests (`tests/unit/*.cpp`)
 
 ## Validation
 
 ### Verification Steps
+
 1. ✅ **Compile Check**: All code compiles with new signatures
 2. ✅ **Unit Tests**: All 270 unit tests pass
 3. ✅ **E2E Tests**: All 59 E2E tests pass
@@ -127,6 +136,7 @@ bus.registerAgent("agent1", agent);  // shared_ptr
 5. ✅ **Performance**: No measurable regression in message throughput
 
 ### Test Results
+
 ```
 Total Tests: 373/373 passing (100%)
 ThreadSanitizer: Clean (no use-after-free detected)
@@ -153,12 +163,14 @@ private:
 ```
 
 This prevents circular references:
+
 - MessageBus owns agents via `shared_ptr<AgentBase>`
 - Agents reference MessageBus via raw pointer (MessageBus lifetime exceeds agent lifetimes)
 
 ### Performance Overhead
 
 `shared_ptr` reference counting uses atomic operations:
+
 - ~10-20 CPU cycles per increment/decrement
 - Negligible compared to message processing overhead
 - Measured performance: <1% impact on message throughput

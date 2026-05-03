@@ -6,7 +6,9 @@
 
 ## Overview
 
-Phase 5 focuses on **robustness and fault tolerance** by subjecting the HMAS to chaos engineering scenarios. The goal is to ensure the system gracefully handles failures, recovers from errors, and maintains correctness under adverse conditions.
+Phase 5 focuses on **robustness and fault tolerance** by subjecting the HMAS to chaos engineering scenarios. The goal is
+to ensure the system gracefully handles failures, recovers from errors, and maintains correctness under adverse
+conditions.
 
 ### Current Status (Post-Phase 4)
 

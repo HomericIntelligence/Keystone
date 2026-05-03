@@ -4,7 +4,8 @@
 
 **Phase 8 Implementation: 71% Complete (10/14 core components)**
 
-ProjectKeystone HMAS now has a production-ready foundation for distributed multi-node operation. The system can coordinate agents across multiple Docker containers using gRPC and YAML-based task specifications.
+ProjectKeystone HMAS now has a production-ready foundation for distributed multi-node operation. The system can
+coordinate agents across multiple Docker containers using gRPC and YAML-based task specifications.
 
 ---
 
@@ -15,11 +16,13 @@ ProjectKeystone HMAS now has a production-ready foundation for distributed multi
 **Files**: `CMakeLists.txt`
 
 **Added Dependencies**:
+
 - gRPC and Protocol Buffers (system packages)
 - yaml-cpp (FetchContent)
 - Created `keystone_network` library
 
 **Build Configuration**:
+
 ```cmake
 find_package(Protobuf REQUIRED)
 find_package(gRPC REQUIRED)
@@ -41,6 +44,7 @@ target_link_libraries(keystone_network
 ### 2. Protocol Definitions ✅
 
 **Files**:
+
 - `proto/common.proto` (73 lines)
 - `proto/service_registry.proto` (101 lines)
 - `proto/hmas_coordinator.proto` (121 lines)
@@ -48,6 +52,7 @@ target_link_libraries(keystone_network
 **Services Defined**: 2 services, 12 RPCs, 25+ message types
 
 **ServiceRegistry RPCs**:
+
 - `RegisterAgent` - Register agent with capabilities
 - `Heartbeat` - Keep-alive ping with metrics
 - `UnregisterAgent` - Remove agent
@@ -56,6 +61,7 @@ target_link_libraries(keystone_network
 - `ListAllAgents` - List all registered agents
 
 **HMASCoordinator RPCs**:
+
 - `SubmitTask` - Submit YAML task for execution
 - `StreamTaskStatus` - Server-side streaming of status updates
 - `GetTaskResult` - Fetch final result (blocking/non-blocking)
@@ -86,6 +92,7 @@ status: {phase, startTime, completionTime, result, error, subtasks[]}
 ```
 
 **Key Features**:
+
 - DAG task dependencies (`depends: "task-a && task-b"`)
 - Retry policies (exponential/linear/constant backoff)
 - Aggregation strategies (WAIT_ALL/FIRST_SUCCESS/MAJORITY)
@@ -96,15 +103,18 @@ status: {phase, startTime, completionTime, result, error, subtasks[]}
 ### 4. ServiceRegistry Implementation ✅
 
 **Files**:
+
 - `include/network/service_registry.hpp` (221 lines)
 - `src/network/service_registry.cpp` (383 lines)
 
 **Classes**:
+
 - `AgentRegistrationInfo` - Agent metadata
 - `ServiceRegistry` - Thread-safe registry core
 - `ServiceRegistryServiceImpl` - gRPC service
 
 **Core API**:
+
 ```cpp
 // Registration
 bool registerAgent(id, type, level, ip_port, capabilities);
@@ -128,10 +138,12 @@ int cleanupDeadAgents();
 ### 5. YAML Parser/Generator ✅
 
 **Files**:
+
 - `include/network/yaml_parser.hpp` (147 lines)
 - `src/network/yaml_parser.cpp` (612 lines)
 
 **Data Structures**:
+
 ```cpp
 struct HierarchicalTaskSpec {
   string api_version, kind;
@@ -147,6 +159,7 @@ struct HierarchicalTaskSpec {
 ```
 
 **Core API**:
+
 ```cpp
 // Parsing
 optional<HierarchicalTaskSpec> parseTaskSpec(yaml_str);
@@ -168,10 +181,12 @@ string formatDuration(900000);           // → "15m"
 ### 6. gRPC Server Wrapper ✅
 
 **Files**:
+
 - `include/network/grpc_server.hpp` (68 lines)
 - `src/network/grpc_server.cpp` (76 lines)
 
 **API**:
+
 ```cpp
 GrpcServerConfig config;
 config.server_address = "0.0.0.0:50051";
@@ -186,6 +201,7 @@ server.stop(grace_period_ms);
 ```
 
 **Features**:
+
 - Multi-service support
 - Configurable message size limits
 - Graceful shutdown
@@ -196,14 +212,17 @@ server.stop(grace_period_ms);
 ### 7. gRPC Client Wrappers ✅
 
 **Files**:
+
 - `include/network/grpc_client.hpp` (168 lines)
 - `src/network/grpc_client.cpp` (284 lines)
 
 **Classes**:
+
 - `HMASCoordinatorClient` - Task submission
 - `ServiceRegistryClient` - Agent registration/discovery
 
 **HMASCoordinatorClient API**:
+
 ```cpp
 HMASCoordinatorClient client(config);
 
@@ -215,6 +234,7 @@ CancelResponse cancel = client.cancelTask(task_id, reason);
 ```
 
 **ServiceRegistryClient API**:
+
 ```cpp
 ServiceRegistryClient client(config);
 
@@ -232,15 +252,18 @@ AgentInfo agent = client.getAgent(id);
 ### 8. Task Router ✅
 
 **Files**:
+
 - `include/network/task_router.hpp` (84 lines)
 - `src/network/task_router.cpp` (116 lines)
 
 **Load Balancing Strategies**:
+
 - `ROUND_ROBIN` - Cycle through available agents
 - `LEAST_LOADED` - Select agent with fewest active tasks
 - `RANDOM` - Random selection
 
 **API**:
+
 ```cpp
 TaskRouter router(registry, LoadBalancingStrategy::LEAST_LOADED);
 
@@ -256,6 +279,7 @@ optional<AgentInfo> agent = router.selectAgent(level, type, caps);
 ```
 
 **Routing Logic**:
+
 1. If `preferred_agent_id` specified, try that first
 2. Query registry for matching agents (type, level, capabilities)
 3. Apply load balancing strategy
@@ -266,10 +290,12 @@ optional<AgentInfo> agent = router.selectAgent(level, type, caps);
 ### 9. HMASCoordinator Service ✅
 
 **Files**:
+
 - `include/network/hmas_coordinator_service.hpp` (119 lines)
 - `src/network/hmas_coordinator_service.cpp` (404 lines)
 
 **Task State Tracking**:
+
 ```cpp
 struct TaskState {
   string task_id, parent_task_id;
@@ -283,6 +309,7 @@ struct TaskState {
 ```
 
 **RPC Implementations**:
+
 - `SubmitTask` - Parse YAML, route to agent, create task state
 - `StreamTaskStatus` - Server-side streaming with 500ms poll interval
 - `GetTaskResult` - Blocking/non-blocking result fetch with timeout
@@ -291,6 +318,7 @@ struct TaskState {
 - `GetTaskProgress` - Synchronous progress polling
 
 **Task Management**:
+
 ```cpp
 void updateTaskStatus(task_id, phase, progress, subtask);
 optional<TaskState> getTaskState(task_id);
@@ -308,6 +336,7 @@ int cleanupOldTasks(age_threshold_ms);  // Default: 1 hour
 **File**: `docker-compose-distributed.yaml` (278 lines)
 
 **Network Topology**:
+
 ```
 192.168.100.10  - Chief Node (ServiceRegistry + HMASCoordinator)
 192.168.100.20  - Component Node 1 (Level 1)
@@ -319,6 +348,7 @@ int cleanupOldTasks(age_threshold_ms);  // Default: 1 hour
 ```
 
 **Services**:
+
 - `chief-node` - Main coordinator (port 50051)
 - `component-node-1` - ComponentLeadAgent (port 50052)
 - `module-node-1` - ModuleLeadAgent for Messaging (port 50053)
@@ -326,6 +356,7 @@ int cleanupOldTasks(age_threshold_ms);  // Default: 1 hour
 - `task-node-1/2/3` - TaskAgent pool (ports 50060-50062)
 
 **Features**:
+
 - Health checks with `grpc_health_probe`
 - Volume mounts for logs and workspaces
 - Environment-based configuration
@@ -333,6 +364,7 @@ int cleanupOldTasks(age_threshold_ms);  // Default: 1 hour
 - Service dependencies (agents wait for registry)
 
 **Usage**:
+
 ```bash
 # Start all nodes
 docker-compose -f docker-compose-distributed.yaml up
@@ -353,6 +385,7 @@ docker-compose -f docker-compose-distributed.yaml logs -f chief-node
 **Estimated Effort**: 3-4 days
 
 **Files to Modify**:
+
 - `include/agents/chief_architect_agent.hpp`
 - `src/agents/chief_architect_agent.cpp`
 - (Similar for ComponentLead, ModuleLead, TaskAgent)
@@ -360,6 +393,7 @@ docker-compose -f docker-compose-distributed.yaml logs -f chief-node
 **Required Changes**:
 
 **ChiefArchitectAgent**:
+
 ```cpp
 class ChiefArchitectAgent {
 private:
@@ -379,6 +413,7 @@ public:
 ```
 
 **ComponentLeadAgent**:
+
 ```cpp
 class ComponentLeadAgent {
 public:
@@ -398,6 +433,7 @@ public:
 ```
 
 **Integration Points**:
+
 - Replace `MessageBus` calls with `HMASCoordinatorClient` calls
 - Parse YAML specs on task receipt
 - Generate YAML specs before delegation
@@ -410,10 +446,12 @@ public:
 **Estimated Effort**: 1-2 days
 
 **Files to Create**:
+
 - `include/network/result_aggregator.hpp`
 - `src/network/result_aggregator.cpp`
 
 **Required Functionality**:
+
 ```cpp
 class ResultAggregator {
 public:
@@ -442,6 +480,7 @@ private:
 ```
 
 **Strategies**:
+
 - **WAIT_ALL**: Wait for all N subtasks to complete
 - **FIRST_SUCCESS**: Return immediately on first COMPLETED result
 - **MAJORITY**: Wait for ⌈N/2⌉ + 1 results
@@ -455,6 +494,7 @@ private:
 **Estimated Effort**: 2-3 days
 
 **File to Create**:
+
 - `tests/e2e/distributed_grpc_test.cpp`
 
 **Test Scenarios**:
@@ -496,6 +536,7 @@ TEST(DistributedHierarchy, TaskCancellation) {
 ```
 
 **Test Infrastructure**:
+
 - Docker Compose fixture to spin up/down containers
 - gRPC client connections to all nodes
 - YAML spec generation helpers
@@ -512,6 +553,7 @@ TEST(DistributedHierarchy, TaskCancellation) {
 #### `docs/DISTRIBUTED_DEPLOYMENT.md`
 
 **Contents**:
+
 - System requirements (gRPC 1.50+, protobuf 3.20+, Docker)
 - Build instructions with gRPC support
 - Docker Compose deployment guide
@@ -526,6 +568,7 @@ TEST(DistributedHierarchy, TaskCancellation) {
 #### `docs/YAML_SPECIFICATION.md`
 
 **Contents**:
+
 - Complete YAML format reference
 - Field-by-field descriptions with examples
 - DAG dependency syntax:
@@ -546,6 +589,7 @@ TEST(DistributedHierarchy, TaskCancellation) {
 #### `docs/NETWORK_PROTOCOL.md`
 
 **Contents**:
+
 - gRPC service definitions with examples
 - RPC method descriptions:
   - Request/response payloads
@@ -666,6 +710,7 @@ TEST(DistributedHierarchy, TaskCancellation) {
 ### Prerequisites
 
 **System Packages**:
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install -y \
@@ -722,7 +767,7 @@ docker-compose -f docker-compose-distributed.yaml down
 
 ## Success Criteria
 
-### Phase 8 Complete When:
+### Phase 8 Complete When
 
 - ✅ Build system configured with gRPC/protobuf/yaml-cpp
 - ✅ Protocol definitions complete (12 RPCs, 25+ messages)
@@ -744,7 +789,7 @@ docker-compose -f docker-compose-distributed.yaml down
 
 ## Next Steps (Priority Order)
 
-### Immediate (Week 1):
+### Immediate (Week 1)
 
 1. **Result Aggregator** (1-2 days)
    - Implement WAIT_ALL, FIRST_SUCCESS, MAJORITY
@@ -758,36 +803,36 @@ docker-compose -f docker-compose-distributed.yaml down
    - Generate result YAML with status
    - Submit result via gRPC
 
-### Near-term (Week 2):
+### Near-term (Week 2)
 
-3. **Agent Extensions - ModuleLeadAgent** (1-2 days)
+1. **Agent Extensions - ModuleLeadAgent** (1-2 days)
    - Parse incoming YAML
    - Generate child task YAMLs
    - Use ResultAggregator for synthesis
    - Submit module result
 
-4. **Agent Extensions - ComponentLeadAgent** (1 day)
+2. **Agent Extensions - ComponentLeadAgent** (1 day)
    - Parse incoming YAML
    - Generate module YAMLs
    - Aggregate module results
    - Submit component result
 
-5. **Agent Extensions - ChiefArchitectAgent** (1 day)
+3. **Agent Extensions - ChiefArchitectAgent** (1 day)
    - Generate initial YAML from user goal
    - Submit to ComponentLead via gRPC
    - Await final result
    - Report to user
 
-### Final (Week 3):
+### Final (Week 3)
 
-6. **E2E Tests** (2-3 days)
+1. **E2E Tests** (2-3 days)
    - Docker Compose test fixture
    - Basic delegation test
    - Parallel subtasks test
    - Heartbeat monitoring test
    - Fault injection tests
 
-7. **Documentation** (2 days)
+2. **Documentation** (2 days)
    - DISTRIBUTED_DEPLOYMENT.md
    - YAML_SPECIFICATION.md
    - NETWORK_PROTOCOL.md
@@ -796,7 +841,7 @@ docker-compose -f docker-compose-distributed.yaml down
 
 ## Known Limitations & Future Work
 
-### Current Limitations:
+### Current Limitations
 
 1. **No TLS/SSL**: Using insecure gRPC credentials
    - TODO: Implement certificate loading
@@ -815,7 +860,7 @@ docker-compose -f docker-compose-distributed.yaml down
    - TODO: Add OpenTelemetry tracing
    - TODO: Grafana dashboards
 
-### Future Enhancements (Phase 9+):
+### Future Enhancements (Phase 9+)
 
 - **Authentication**: mTLS client certificates, JWT tokens
 - **Authorization**: Role-based access control (RBAC)

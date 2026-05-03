@@ -69,11 +69,11 @@ ProjectKeystone follows **Test-Driven Development (TDD)**:
 
 ## Building the Project
 
-3. **Refactor** while keeping tests green (REFACTOR phase)
+1. **Refactor** while keeping tests green (REFACTOR phase)
    - Improve code quality, readability, and structure
    - All tests must continue passing
 
-4. **Commit** when tests pass
+2. **Commit** when tests pass
    - Use conventional commit format (see below)
    - Push to feature branch
 
@@ -197,7 +197,7 @@ Default to **no comments**. Add one only when the *why* is non-obvious: a hidden
 constraint, a subtle invariant, or a workaround for a specific upstream bug. If
 removing a comment wouldn't confuse a future reader, don't write it.
 
-## Python Conventions
+## Python Field Naming Conventions
 
 **TaskEvent Field Naming (camelCase):** The `TaskEvent` model in `src/keystone/models.py`
 uses camelCase field names (`newStatus`, `taskId`, `teamId`) to match the JSON payload

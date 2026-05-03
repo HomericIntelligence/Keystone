@@ -447,7 +447,7 @@ All Phase 5 components are **thread-safe**:
 ### Phase 5.1 Commits
 
 - `c3128dd` - feat: Phase 5.1 - Agent failure modes and graceful degradation
-- `c38b82c` - fix: Add missing <atomic> include to failure_injector.hpp
+- `c38b82c` - fix: Add missing `<atomic>` include to failure_injector.hpp
 
 ### Phase 5.2 Commits
 

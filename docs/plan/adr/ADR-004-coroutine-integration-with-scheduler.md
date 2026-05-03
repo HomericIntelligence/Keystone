@@ -7,7 +7,9 @@
 
 ## Context
 
-ProjectKeystone agents require asynchronous message processing to avoid blocking worker threads while waiting for responses. C++20 coroutines provide `co_await` syntax for async operations, but integrating them with a custom work-stealing scheduler requires careful design decisions around suspension, resumption, and lifecycle management.
+ProjectKeystone agents require asynchronous message processing to avoid blocking worker threads while waiting for
+responses. C++20 coroutines provide `co_await` syntax for async operations, but integrating them with a custom
+work-stealing scheduler requires careful design decisions around suspension, resumption, and lifecycle management.
 
 ### Requirements
 
@@ -26,7 +28,8 @@ ProjectKeystone agents require asynchronous message processing to avoid blocking
 
 ## Decision
 
-Implement `Task<T>` as a C++20 awaitable type with **symmetric transfer** for efficient coroutine chaining and **lazy evaluation** for explicit control flow.
+Implement `Task<T>` as a C++20 awaitable type with **symmetric transfer** for efficient coroutine chaining and **lazy
+evaluation** for explicit control flow.
 
 ### Design Choices
 
@@ -63,12 +66,14 @@ class Task {
 ```
 
 **Symmetric Transfer Rationale**:
+
 - **No Stack Growth**: Compiler converts tail-recursive resumption to jump (O(1) stack)
 - **No Queue Submission**: Direct transfer without scheduler round-trip
 - **Efficient**: Single assembly jump, not function call + queue + context switch
 - **Standard Pattern**: Matches cppcoro and other C++20 coroutine libraries
 
 **Alternative (Rejected): Explicit Scheduler Submission**:
+
 ```cpp
 // Explicit submission (REJECTED)
 void final_suspend() {
@@ -77,6 +82,7 @@ void final_suspend() {
   }
 }
 ```
+
 - **Stack Safe**: Yes (no recursion)
 - **Inefficient**: Extra queue operation + context switch
 - **Latency**: ~1-10μs scheduler latency vs instant symmetric transfer
@@ -96,6 +102,7 @@ std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) noexcept
 ```
 
 **Flow**:
+
 1. `co_await task` suspends awaiting coroutine
 2. `await_suspend` stores awaiting as continuation
 3. Runtime resumes `task` (via symmetric transfer)
@@ -112,15 +119,18 @@ std::suspend_always initial_suspend() noexcept { return {}; }
 ```
 
 **Rationale**:
+
 - **Explicit Control**: Task starts only when `co_await`ed or `.resume()` called
 - **Scheduler Integration**: Can submit to specific worker before start
 - **Testability**: Can set up test harness before coroutine executes
 - **Predictable**: No surprising eager execution on construction
 
 **Alternative (Rejected): Eager Evaluation**:
+
 ```cpp
 std::suspend_never initial_suspend() noexcept { return {}; }
 ```
+
 - **Unpredictable**: Coroutine starts immediately in constructor
 - **Hard to Control**: Cannot choose which worker executes it
 - **Testing Issues**: Starts before test assertions set up
@@ -148,6 +158,7 @@ T await_resume() {
 ```
 
 **Rationale**:
+
 - **Transparent**: Exceptions cross suspension points naturally
 - **Safe**: No exception lost during async execution
 - **Standard Pattern**: Matches `std::future` and other async types
@@ -169,6 +180,7 @@ Task(Task&& other) noexcept
 ```
 
 **Rationale**:
+
 - **Unique Ownership**: Only one Task owns the coroutine frame
 - **RAII**: Automatic cleanup prevents leaks
 - **Move-Efficient**: Transfer ownership without deep copy
@@ -182,6 +194,7 @@ Task(Task&& other) noexcept
    - No scheduler overhead for chained `co_await`
    - Compile-time tail call optimization
 2. **Clean Agent Code**:
+
    ```cpp
    Task<std::string> AgentBase::processAsync(KeystoneMessage msg) {
      auto response = co_await sendAndWait(msg);
@@ -189,6 +202,7 @@ Task(Task&& other) noexcept
      co_return result;
    }
    ```
+
 3. **Scheduler Integration**:
    - Initial Task submitted to scheduler
    - Continuations resume via symmetric transfer (no resubmission)
@@ -217,9 +231,11 @@ Task(Task&& other) noexcept
 ### Migration Path
 
 **Breaking Changes**:
+
 - None (new feature, agents opt-in to async methods)
 
 **Gradual Adoption**:
+
 1. ✅ Implement Task<T> with symmetric transfer
 2. ✅ Add async methods alongside synchronous ones
 3. ✅ Convert agents one-by-one to async
@@ -239,6 +255,7 @@ void final_suspend() {
 ```
 
 **Rejected**:
+
 - **Overhead**: Every continuation pays scheduler queue cost
 - **Latency**: ~1-10μs vs instant symmetric transfer
 - **Complexity**: Need to pass scheduler pointer through coroutines
@@ -252,6 +269,7 @@ std::suspend_never initial_suspend() noexcept { return {}; }
 ```
 
 **Rejected**:
+
 - **Loss of Control**: Cannot choose execution worker
 - **Surprising Behavior**: Task starts in constructor
 - **Testing Difficulty**: Cannot intercept before execution
@@ -265,6 +283,7 @@ void processAsync(KeystoneMessage msg, std::function<void(Response)> callback) {
 ```
 
 **Rejected**:
+
 - **Callback Hell**: Deeply nested lambdas
 - **Error Handling**: Manual propagation through callbacks
 - **Readability**: Lost linear control flow
@@ -283,6 +302,7 @@ std::future<Response> processAsync(KeystoneMessage msg) {
 ```
 
 **Rejected**:
+
 - **Blocking**: `future.get()` blocks thread (not async)
 - **Overhead**: Shared state allocation
 - **Not Composable**: Cannot `co_await std::future`
@@ -292,6 +312,7 @@ std::future<Response> processAsync(KeystoneMessage msg) {
 ### Alternative 5: Third-Party Coroutine Library (cppcoro)
 
 **Rejected**:
+
 - **External Dependency**: Large library (not just Task<T>)
 - **Integration Complexity**: May not fit work-stealing scheduler
 - **Learning Curve**: Team must learn library API
@@ -311,6 +332,7 @@ struct promise_type {
 ```
 
 **Rationale**:
+
 - `std::optional<T>`: Handles void vs non-void uniformly
 - `std::exception_ptr`: Type-erased exception storage
 - `continuation`: Single awaiter (not multi-cast)
@@ -333,6 +355,7 @@ int result = co_await task;  // Resumes directly, not via scheduler
 ```
 
 **Pattern**:
+
 1. Top-level Task submitted to scheduler explicitly
 2. All `co_await` chains use symmetric transfer (automatic)
 3. Scheduler only involved at entry point
@@ -343,7 +366,7 @@ int result = co_await task;  // Resumes directly, not via scheduler
 
 - ✅ Basic Task creation and resumption
 - ✅ Task<T> with return values
-- ✅ Task<void> for side effects
+- ✅ Task\<void\> for side effects
 - ✅ Exception propagation across co_await
 - ✅ Symmetric transfer (no stack overflow in long chains)
 - ✅ Move semantics and RAII

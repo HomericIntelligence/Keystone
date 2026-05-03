@@ -2,7 +2,8 @@
 
 ## Overview
 
-`NatsConnection` is a C++20 wrapper around `nats.c` v3.12.0 that manages NATS server connections with built-in support for TLS, reconnection policies, and lifecycle callbacks.
+`NatsConnection` is a C++20 wrapper around `nats.c` v3.12.0 that manages NATS server connections with built-in support
+for TLS, reconnection policies, and lifecycle callbacks.
 
 ## Construction
 
@@ -33,6 +34,7 @@ NatsConnection conn(cfg);
 ```
 
 Environment variables override config paths:
+
 - `KEYSTONE_NATS_TLS_CA_PATH`
 - `KEYSTONE_NATS_TLS_CERT_PATH`
 - `KEYSTONE_NATS_TLS_KEY_PATH`

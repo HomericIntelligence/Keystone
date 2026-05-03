@@ -396,7 +396,8 @@ TEST(StressTest, LongDurationStability) {
 
 **Purpose**: Ensure profiling code doesn't regress without slowing regular development
 
-**Overhead**: Profiling adds significant overhead (~1000µs per operation), making these tests too slow for per-commit CI runs. Instead, they run weekly to validate the profiling infrastructure remains functional.
+**Overhead**: Profiling adds significant overhead (~1000µs per operation), making these tests too slow for per-commit CI
+runs. Instead, they run weekly to validate the profiling infrastructure remains functional.
 
 #### Running Locally
 
@@ -413,6 +414,7 @@ cmake --build build/profiling
 #### CI Execution
 
 Profiling tests run automatically:
+
 - **Weekly**: Every Sunday at 2 AM UTC via scheduled workflow
 - **Manual**: Can be triggered via GitHub Actions workflow_dispatch
 

@@ -48,6 +48,7 @@ private:
 ```
 
 **Rationale**:
+
 - **No Contention**: Each worker has dedicated queue (lock-free)
 - **Cache Locality**: Worker's own tasks stay in local cache
 - **Scalability**: Contention-free scaling to 256+ workers
@@ -63,11 +64,13 @@ public:
 ```
 
 **LIFO Owner Rationale**:
+
 - **Cache Locality**: Most recently pushed items likely still in L1/L2 cache
 - **Temporal Locality**: Related tasks submitted close in time
 - **Stack-like Behavior**: Natural for recursive/decomposed agent tasks
 
 **FIFO Steal Rationale**:
+
 - **Load Balancing**: Steal oldest work (least likely to be in owner's cache)
 - **Fairness**: Prevents starvation of old tasks during stealing
 - **Minimal Cache Pollution**: Owner's hot cache not disturbed
@@ -87,6 +90,7 @@ void WorkStealingScheduler::setCPUAffinity(size_t worker_index) {
 ```
 
 **Rationale**:
+
 - **Cache Affinity**: Worker stays on same CPU core → hot cache
 - **Reduced Migration**: OS scheduler cannot move thread across cores
 - **NUMA Awareness**: Worker accesses local memory on NUMA systems
@@ -105,6 +109,7 @@ std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
 ```
 
 **Rationale**:
+
 - **Low Initial Latency**: 1μs → fast response to new work
 - **Reduced CPU Waste**: Backs off to 1ms under sustained idle
 - **Automatic Adaptation**: No manual tuning per deployment
@@ -120,6 +125,7 @@ size_t WorkStealingScheduler::getNextWorkerIndex() {
 ```
 
 **Rationale**:
+
 - **Initial Load Balance**: Distributes work evenly across workers
 - **Simple**: No complex heuristics needed
 - **Stealing Handles Imbalance**: Work-stealing corrects any imbalance dynamically
@@ -161,9 +167,11 @@ size_t WorkStealingScheduler::getNextWorkerIndex() {
 ### Migration Path
 
 **Breaking Changes**:
+
 - None (new component, no existing scheduler)
 
 **Integration Steps**:
+
 1. ✅ Implement WorkStealingQueue (lock-free, LIFO/FIFO)
 2. ✅ Implement WorkStealingScheduler (per-worker queues)
 3. ✅ Add adaptive backoff to worker loop
@@ -183,6 +191,7 @@ class ThreadPool {
 ```
 
 **Rejected**:
+
 - **Contention**: All workers compete for single lock
 - **Poor Scalability**: Lock contention increases with worker count
 - **Cache Thrashing**: Random worker picks up task → no locality
@@ -192,6 +201,7 @@ class ThreadPool {
 ### Alternative 2: Priority-Based Global Queue
 
 **Rejected**:
+
 - Still has global contention bottleneck
 - Priority handled separately at agent inbox level (Phase C)
 - Work-stealing orthogonal to message priority
@@ -199,6 +209,7 @@ class ThreadPool {
 ### Alternative 3: Intel TBB task_arena
 
 **Rejected**:
+
 - Large external dependency (entire TBB library)
 - Less control over scheduling behavior
 - Integration complexity with custom coroutines
@@ -212,6 +223,7 @@ worker_id = hash(agent_id) % num_workers;
 ```
 
 **Rejected**:
+
 - **No Load Balancing**: Some workers overloaded, others idle
 - **Poor Locality**: Agent tasks scattered if hash collision
 - **Inflexible**: Cannot adapt to dynamic load changes

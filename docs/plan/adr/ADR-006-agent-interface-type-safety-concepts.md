@@ -135,6 +135,7 @@ public:
 ```
 
 **Rationale**:
+
 - Type-safe registration with compile-time interface verification
 - Backward compatible with existing code
 - Automatic agent ID extraction
@@ -145,6 +146,7 @@ public:
 ### Positive
 
 1. **Compile-Time Errors**: Missing or incorrect methods caught at compile time
+
    ```cpp
    // Example: Missing processMessage() causes clear compile error
    class BrokenAgent {
@@ -159,6 +161,7 @@ public:
    ```
 
 2. **Better Error Messages**: Concepts provide clear, readable error messages
+
    ```
    error: 'registerAgent' requires 'agents::Agent<BrokenAgent>'
    note: concept not satisfied because 'handler.processMessage(msg)'
@@ -166,6 +169,7 @@ public:
    ```
 
 3. **Self-Documenting Code**: Concepts explicitly document interface requirements
+
    ```cpp
    // Clear documentation of what an Agent must provide
    template<typename T>
@@ -177,6 +181,7 @@ public:
    ```
 
 4. **Generic Algorithms**: Enable writing generic code over agent types
+
    ```cpp
    template<Agent A>
    void registerAgentGeneric(MessageBus& bus, std::shared_ptr<A> agent) {
@@ -214,6 +219,7 @@ typename std::enable_if<
 ```
 
 **Rejected**:
+
 - Cryptic error messages
 - Difficult to read and maintain
 - Doesn't check actual interface, only inheritance
@@ -231,6 +237,7 @@ void registerAgent(std::shared_ptr<AgentBase> agent) {
 ```
 
 **Rejected**:
+
 - Errors caught at runtime, not compile time
 - Performance overhead
 - Requires reflection or RTTI
@@ -247,6 +254,7 @@ void registerAgent(std::shared_ptr<T> agent) {
 ```
 
 **Rejected**:
+
 - Doesn't verify actual interface
 - Less expressive than concepts
 - Multiple static_asserts needed for complete verification
@@ -267,6 +275,7 @@ tests/unit/test_agent_concepts.cpp  # Concept verification tests
 **Location**: `include/agents/concepts.hpp`
 
 **Contents**:
+
 - `Identifiable` - Basic entity identification
 - `MessageSender` - Message sending capability
 - `MessageReceiver` - Message receiving capability
@@ -324,12 +333,14 @@ TEST(AgentConcepts, TaskAgentSatisfiesAgentConcept) {
 **Scenario**: Missing `processMessage` method
 
 **Old Error** (without concepts):
+
 ```
 undefined reference to `vtable for BrokenAgent'
 note: virtual function 'processMessage' not defined
 ```
 
 **New Error** (with concepts):
+
 ```
 error: no matching function for call to 'MessageBus::registerAgent(std::shared_ptr<BrokenAgent>)'
 note: candidate template ignored: constraints not satisfied [with A = BrokenAgent]
@@ -359,6 +370,7 @@ note: because 'handler.processMessage(msg)' does not satisfy return type require
 ### Compile-Time Tests
 
 Negative tests (intentionally commented out to show compile errors):
+
 - Type missing `getAgentId()` → Clear compile error
 - Type with wrong `processMessage` return type → Clear compile error
 - Type missing `sendMessage()` → Clear compile error
@@ -374,6 +386,7 @@ Negative tests (intentionally commented out to show compile errors):
 ### Potential Extensions
 
 1. **Specialized Agent Concepts**
+
    ```cpp
    template<typename T>
    concept HierarchicalAgent = Agent<T> && requires(T agent) {
@@ -382,6 +395,7 @@ Negative tests (intentionally commented out to show compile errors):
    ```
 
 2. **Message Type Concepts**
+
    ```cpp
    template<typename T>
    concept Message = requires(const T& msg) {
@@ -392,6 +406,7 @@ Negative tests (intentionally commented out to show compile errors):
    ```
 
 3. **Generic Agent Algorithms**
+
    ```cpp
    template<Agent A, std::ranges::range R>
    void registerAllAgents(MessageBus& bus, R&& agents) {
@@ -402,6 +417,7 @@ Negative tests (intentionally commented out to show compile errors):
    ```
 
 4. **Concept-Based Factory**
+
    ```cpp
    template<Agent A, typename... Args>
    std::shared_ptr<A> createAndRegisterAgent(MessageBus& bus, Args&&... args) {
@@ -413,7 +429,7 @@ Negative tests (intentionally commented out to show compile errors):
 
 ## References
 
-- C++20 Concepts: https://en.cppreference.com/w/cpp/language/constraints
+- C++20 Concepts: <https://en.cppreference.com/w/cpp/language/constraints>
 - [FOUR_LAYER_ARCHITECTURE.md](../FOUR_LAYER_ARCHITECTURE.md)
 - [base_agent.hpp](../../include/agents/base_agent.hpp)
 - [message_bus.hpp](../../include/core/message_bus.hpp)

@@ -2,7 +2,9 @@
 
 ## Overview
 
-ProjectKeystone uses a **4-layer hierarchical architecture** that mirrors the agent development structure used to build it. This creates a self-similar, fractal-like organization where the system's structure reflects its development process.
+ProjectKeystone uses a **4-layer hierarchical architecture** that mirrors the agent development structure used to build
+it. This creates a self-similar, fractal-like organization where the system's structure reflects its development
+process.
 
 ## Four-Layer Hierarchy
 
@@ -488,7 +490,8 @@ private:
 
 ### 1. Self-Similarity
 
-The system structure mirrors the development process, making it intuitive for developers familiar with the agent orchestration system.
+The system structure mirrors the development process, making it intuitive for developers familiar with the agent
+orchestration system.
 
 ### 2. Clear Separation of Concerns
 

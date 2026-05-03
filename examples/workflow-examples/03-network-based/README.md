@@ -1,10 +1,12 @@
 # Network-Based Multi-Agent Workflow Examples
 
-This directory demonstrates the ProjectKeystone HMAS using **distributed network communication** with gRPC for multi-machine deployment.
+This directory demonstrates the ProjectKeystone HMAS using **distributed network communication** with gRPC for
+multi-machine deployment.
 
 ## Overview
 
-Network-based deployment enables **distributed execution** across multiple machines with service discovery and coordination:
+Network-based deployment enables **distributed execution** across multiple machines with service discovery and
+coordination:
 
 - **Each agent runs on a separate machine** (or multiple agents per machine)
 - **gRPC with Protocol Buffers** for network communication
@@ -108,6 +110,7 @@ message AgentInfo {
 ```
 
 **Usage**:
+
 ```cpp
 // Register agent on startup
 auto stub = ServiceRegistry::NewStub(channel);
@@ -122,6 +125,7 @@ stub->RegisterAgent(&context, info, &resp);
 ```
 
 **Heartbeat Monitoring**:
+
 - Interval: 1 second
 - Timeout: 3 seconds
 - Agents send periodic heartbeats to stay alive
@@ -161,11 +165,13 @@ enum ResultAggregation {
 ```
 
 **Load Balancing Strategies**:
+
 - **ROUND_ROBIN**: Distribute tasks evenly across agents
 - **LEAST_LOADED**: Send to agent with fewest active tasks
 - **RANDOM**: Random selection for load distribution
 
 **Result Aggregation**:
+
 - **WAIT_ALL**: Wait for all subtasks to complete
 - **FIRST_SUCCESS**: Return as soon as one succeeds
 - **MAJORITY**: Return when majority agrees
@@ -237,6 +243,7 @@ message Message {
 **File**: `2layer_example.cpp`
 
 **Deployment**:
+
 ```
 Machine A (192.168.1.10): Chief
 Machine B (192.168.1.11): TaskAgent
@@ -244,6 +251,7 @@ Machine C (192.168.1.20): ServiceRegistry + HMASCoordinator
 ```
 
 **Setup**:
+
 ```bash
 # Machine C: Start coordination services
 ./service_registry --port=50051 &
@@ -260,6 +268,7 @@ Machine C (192.168.1.20): ServiceRegistry + HMASCoordinator
 ```
 
 **Workflow**:
+
 1. TaskAgent starts, registers with ServiceRegistry at 192.168.1.20:50051
 2. TaskAgent starts gRPC server on 192.168.1.11:50100
 3. TaskAgent sends heartbeat every 1 second
@@ -270,6 +279,7 @@ Machine C (192.168.1.20): ServiceRegistry + HMASCoordinator
 8. Chief receives result
 
 **Code Highlights**:
+
 ```cpp
 // TaskAgent: Register with ServiceRegistry
 auto channel = grpc::CreateChannel("192.168.1.20:50051",
@@ -317,6 +327,7 @@ task_stub->ProcessMessage(&context, msg, &response);
 **File**: `3layer_example.cpp`
 
 **Deployment**:
+
 ```
 Machine A (192.168.1.10): Chief
 Machine B (192.168.1.11): ModuleLead
@@ -327,6 +338,7 @@ Machine F (192.168.1.20): ServiceRegistry + Coordinator
 ```
 
 **Workflow**:
+
 1. All 3 TaskAgents register with ServiceRegistry
 2. ModuleLead registers with ServiceRegistry
 3. Chief registers with ServiceRegistry
@@ -339,6 +351,7 @@ Machine F (192.168.1.20): ServiceRegistry + Coordinator
 10. ModuleLead sends synthesis to Chief
 
 **Load Balancing**:
+
 - ROUND_ROBIN: task1 → Agent1, task2 → Agent2, task3 → Agent3
 - LEAST_LOADED: Check current load, send to least busy
 - RANDOM: Random selection with uniform distribution
@@ -350,6 +363,7 @@ Machine F (192.168.1.20): ServiceRegistry + Coordinator
 **File**: `4layer_example.cpp`
 
 **Deployment**:
+
 ```
 Machine Layout:
 ├── Machine A (Chief)
@@ -365,6 +379,7 @@ Total: 8 machines, 10 agent processes
 ```
 
 **Docker Compose Deployment**:
+
 ```yaml
 version: '3.8'
 services:
@@ -444,6 +459,7 @@ networks:
 ```
 
 **Launch**:
+
 ```bash
 docker-compose -f docker-compose-network-4layer.yaml up
 ```
@@ -505,6 +521,7 @@ ninja network-examples
 ### Run Examples
 
 **2-Layer (Local)**:
+
 ```bash
 # Terminal 1: ServiceRegistry
 ./service_registry --port=50051
@@ -517,6 +534,7 @@ ninja network-examples
 ```
 
 **3-Layer (Multi-machine)**:
+
 ```bash
 # On coordination machine:
 ./service_registry --port=50051 &
@@ -533,6 +551,7 @@ ninja network-examples
 ```
 
 **4-Layer (Docker)**:
+
 ```bash
 docker-compose -f docker-compose-network-4layer.yaml up
 ```

@@ -1,6 +1,7 @@
 # Multi-Process Cline Agent Execution System
 
-Demonstration of 4 separate processes executing Cline agents using one-shot non-interactive mode, coordinating through lock-free queues to perform hierarchical code review.
+Demonstration of 4 separate processes executing Cline agents using one-shot non-interactive mode, coordinating through
+lock-free queues to perform hierarchical code review.
 
 ## Architecture
 
@@ -36,6 +37,7 @@ cd ..
 ## Agent Selection Logic
 
 ModuleLead selects agents based on file patterns:
+
 - **All files**: `code-review-specialist`
 - **Auth/crypto files**: `security-specialist`
 - **Test files**: `test-engineer`
@@ -96,6 +98,7 @@ EOF
 ## Logs
 
 Each process logs to `logs/<process>.log`:
+
 - `logs/component_lead.log`
 - `logs/module_lead.log`
 - `logs/task_agent.log`

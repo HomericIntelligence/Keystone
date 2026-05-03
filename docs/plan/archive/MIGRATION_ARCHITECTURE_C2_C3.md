@@ -1,14 +1,18 @@
 # C2/C3 Architecture Migration Guide
 
 ## Overview
+
 This migration fixes two critical P0 architecture issues by:
+
 1. **C2**: Changing MessageBus to use `shared_ptr<BaseAgent>` (prevents use-after-free)
 2. **C3**: Making BaseAgent async by default (eliminates dual hierarchy)
 
 ## What Changed
 
 ### 1. BaseAgent is Now Async By Default
+
 **Before (dual hierarchy)**:
+
 ```cpp
 class BaseAgent : public AgentBase {
     virtual Response processMessage(const KeystoneMessage& msg) = 0;  // Sync
@@ -20,6 +24,7 @@ class AsyncBaseAgent : public AgentBase {
 ```
 
 **After (unified hierarchy)**:
+
 ```cpp
 class BaseAgent : public AgentBase {
     // FIX C3: Single async base class for all agents
@@ -29,7 +34,9 @@ class BaseAgent : public AgentBase {
 ```
 
 ### 2. MessageBus Uses shared_ptr for Lifetime Safety
+
 **Before (use-after-free risk)**:
+
 ```cpp
 class MessageBus {
     void registerAgent(const std::string& id, AgentBase* agent);  // Raw pointer
@@ -45,6 +52,7 @@ sched->submit([agent, msg]() {  // agent might be deleted!
 ```
 
 **After (safe with shared_ptr)**:
+
 ```cpp
 class MessageBus {
     // FIX C2: shared_ptr for safe lifetime management
@@ -65,6 +73,7 @@ sched->submit([agent, msg]() {  // agent kept alive by shared_ptr
 ### Pattern: Converting Sync Agent to Async
 
 **Step 1**: Update header file signature
+
 ```cpp
 // Before
 class MyAgent : public BaseAgent {
@@ -78,6 +87,7 @@ class MyAgent : public BaseAgent {
 ```
 
 **Step 2**: Update implementation to use coroutine
+
 ```cpp
 // Before
 Response MyAgent::processMessage(const KeystoneMessage& msg) {
@@ -95,6 +105,7 @@ Task<Response> MyAgent::processMessage(const KeystoneMessage& msg) {
 ### Example: TaskAgent Migration
 
 **Before** (`src/agents/task_agent.cpp`):
+
 ```cpp
 Response TaskAgent::processMessage(const KeystoneMessage& msg) {
     try {
@@ -107,6 +118,7 @@ Response TaskAgent::processMessage(const KeystoneMessage& msg) {
 ```
 
 **After** (`src/agents/task_agent.cpp`):
+
 ```cpp
 Task<Response> TaskAgent::processMessage(const KeystoneMessage& msg) {
     try {
@@ -123,6 +135,7 @@ Task<Response> TaskAgent::processMessage(const KeystoneMessage& msg) {
 ### Pattern: Using shared_ptr for Agent Creation
 
 **Step 1**: Change agent creation to use `make_shared`
+
 ```cpp
 // Before
 auto agent = std::make_unique<TaskAgent>("agent1");
@@ -134,6 +147,7 @@ bus.registerAgent("agent1", agent);  // shared_ptr
 ```
 
 **Step 2**: Update test expectations for async behavior
+
 ```cpp
 // Before (sync)
 auto response = agent->processMessage(msg);  // Immediate Response
@@ -148,6 +162,7 @@ EXPECT_EQ(response.status, Response::Status::Success);
 ### Example: E2E Test Migration
 
 **Before** (`tests/e2e/phase1_basic_delegation.cpp`) - C1 (unique_ptr + raw pointers):
+
 ```cpp
 TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
     MessageBus bus;
@@ -171,6 +186,7 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 ```
 
 **After** (`tests/e2e/phase1_basic_delegation.cpp`) - C2/C3 (shared_ptr + async):
+
 ```cpp
 TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
     MessageBus bus;
@@ -197,12 +213,14 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 ## Files Requiring Update
 
 ### Core Architecture (✅ DONE)
+
 - ✅ `include/agents/base_agent.hpp` - Made async
 - ✅ `src/agents/base_agent.cpp` - No changes needed
 - ✅ `include/core/message_bus.hpp` - Use shared_ptr
 - ✅ `src/core/message_bus.cpp` - Use shared_ptr
 
 ### Agents to Migrate (⏳ IN PROGRESS)
+
 - ✅ `include/agents/task_agent.hpp` - Made async
 - ✅ `src/agents/task_agent.cpp` - Made async
 - ⏳ `include/agents/chief_architect_agent.hpp` - TODO
@@ -213,6 +231,7 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 - ⏳ `src/agents/component_lead_agent.cpp` - TODO
 
 ### Files to DELETE (⏳ PENDING)
+
 - ❌ `include/agents/async_base_agent.hpp` - DELETE (replaced by async BaseAgent)
 - ❌ `src/agents/async_base_agent.cpp` - DELETE
 - ❌ `include/agents/async_task_agent.hpp` - DELETE (merged into TaskAgent)
@@ -225,6 +244,7 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 - ❌ `src/agents/async_component_lead_agent.cpp` - DELETE
 
 ### Tests Requiring Update (⏳ PENDING - ALL)
+
 - ⏳ `tests/e2e/phase1_basic_delegation.cpp` - shared_ptr + async
 - ⏳ `tests/e2e/phase2_module_coordination.cpp` - shared_ptr + async
 - ⏳ `tests/e2e/phase3_component_coordination.cpp` - shared_ptr + async
@@ -239,6 +259,7 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
 ## Benefits of This Migration
 
 ### C2 Fix: Eliminates Use-After-Free
+
 ```cpp
 // BEFORE: Race condition leading to crash
 Thread A: captures raw agent* in lambda
@@ -253,6 +274,7 @@ Thread A: lambda completes → ref count-- → agent deleted if last ref
 ```
 
 ### C3 Fix: Enables Polymorphism
+
 ```cpp
 // BEFORE: Cannot use uniform collections
 std::vector<BaseAgent*> sync_agents;  // Only sync agents
@@ -267,11 +289,14 @@ std::vector<std::shared_ptr<BaseAgent>> all_agents;  // All agents!
 ## Testing Strategy
 
 ### Expected Test Failures
+
 **ALL tests will initially fail** due to:
+
 1. API change: `registerAgent()` expects `shared_ptr` (not raw pointer)
 2. Return type change: `processMessage()` returns `Task<Response>` (not `Response`)
 
 ### Verification Steps
+
 1. **Compile Check**: Ensure all agents compile with new signatures
 2. **Unit Tests**: Update and verify each agent type individually
 3. **E2E Tests**: Update and verify full message flow
@@ -290,12 +315,15 @@ std::vector<std::shared_ptr<BaseAgent>> all_agents;  // All agents!
 | **Total** | **44 files** | **8-11 hours** |
 
 ## Rollback Plan
+
 If issues arise:
+
 1. Revert commit with C2/C3 changes
 2. Return to dual hierarchy (BaseAgent/AsyncBaseAgent)
 3. Use raw pointers in MessageBus (document lifetime requirements)
 
 ## Next Steps
+
 1. ✅ Complete TaskAgent migration (done)
 2. ⏳ Migrate remaining concrete agents (ChiefArchitect, ModuleLead, ComponentLead)
 3. ⏳ Delete async_* files

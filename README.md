@@ -2,7 +2,8 @@
 
 **C++20-based hierarchical agent system implementing TDD principles**
 
-> ✅ **All installation, build, and test steps are validated in CI/CD.** See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
+> ✅ **All installation, build, and test steps are validated in CI/CD.** See [CI/CD Coverage
+Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
 [![Quality Gates](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml/badge.svg)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
 [![Code Coverage](https://img.shields.io/badge/coverage-86.2%25-yellow)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
@@ -57,6 +58,7 @@ All libraries are **automatically downloaded** via CMake FetchContent - no manua
 ### Optional Dependencies (Phase 8)
 
 For distributed features (`-DENABLE_GRPC=ON`):
+
 - **yaml-cpp** 0.7.0 - YAML task specification
 - **gRPC** - Distributed communication
 - **Protobuf** - Message serialization
@@ -175,6 +177,7 @@ build/
 | `ENABLE_CLANG_TIDY` | Run clang-tidy during build | OFF |
 
 Example:
+
 ```bash
 cmake -S . -B build/fuzz -G Ninja \
     -DENABLE_FUZZING=ON \
