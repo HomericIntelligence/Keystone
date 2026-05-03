@@ -2,8 +2,8 @@
 
 **C++20-based hierarchical agent system implementing TDD principles**
 
-> ✅ **All installation, build, and test steps are validated in CI/CD.** See [CI/CD Coverage
-Matrix](docs/CICD_COVERAGE.md) for complete documentation.
+> ✅ **All installation, build, and test steps are validated in CI/CD.**
+> See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
 [![Quality Gates](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml/badge.svg)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
 [![Code Coverage](https://img.shields.io/badge/coverage-86.2%25-yellow)](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml)
@@ -35,7 +35,7 @@ communication, work-stealing task scheduling, and comprehensive resilience featu
 ### System Dependencies
 
 | Requirement | Minimum | Recommended | Notes |
-|-------------|---------|-------------|-------|
+| :--- | :--- | :--- | :--- |
 | **C++20 Compiler** | GCC 13 / Clang 15 | GCC 14 / Clang 18 | C++20 coroutines required |
 | **CMake** | 3.20 | 3.28+ | FetchContent support |
 | **Ninja** | 1.10 | 1.11+ | Fast parallel builds |
@@ -48,7 +48,7 @@ communication, work-stealing task scheduling, and comprehensive resilience featu
 All libraries are **automatically downloaded** via CMake FetchContent - no manual installation required:
 
 | Library | Version | Purpose |
-|---------|---------|---------|
+| :--- | :--- | :--- |
 | [Google Test](https://github.com/google/googletest) | 1.12.1 | Unit testing framework |
 | [Google Benchmark](https://github.com/google/benchmark) | 1.8.3 | Performance benchmarking |
 | [spdlog](https://github.com/gabime/spdlog) | 1.12.0 | Fast logging library |
@@ -170,7 +170,7 @@ build/
 #### CMake Feature Flags
 
 | Flag | Description | Default |
-|------|-------------|---------|
+| :--- | :--- | :--- |
 | `ENABLE_FUZZING` | Build fuzz test targets (requires Clang) | OFF |
 | `ENABLE_GRPC` | Enable Phase 8 distributed features | OFF |
 | `ENABLE_COVERAGE` | Enable code coverage instrumentation | OFF |
@@ -397,7 +397,7 @@ See [Architecture Docs](docs/plan/FOUR_LAYER_ARCHITECTURE.md) for details.
 ## Performance Targets
 
 | Component | Metric | Target | Current |
-|-----------|--------|--------|---------|
+| :--- | :--- | :--- | :--- |
 | MessageBus | Routing Latency | <500ns | TBD |
 | MessageBus | Throughput | >2M msg/sec | TBD |
 | Message Pool | Allocations | >10M/sec | TBD |
