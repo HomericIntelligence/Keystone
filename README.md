@@ -387,6 +387,7 @@ See [Architecture Docs](docs/plan/FOUR_LAYER_ARCHITECTURE.md) for details.
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - Project overview for Claude Code
+- [Glossary](docs/GLOSSARY.md) - Terminology and definitions
 - [Four-Layer Architecture](docs/plan/FOUR_LAYER_ARCHITECTURE.md)
 - [TDD Roadmap](docs/plan/TDD_FOUR_LAYER_ROADMAP.md)
 - [Testing Strategy](docs/plan/testing-strategy.md)
