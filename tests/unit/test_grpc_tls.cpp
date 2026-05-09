@@ -11,14 +11,14 @@
 
 #ifdef ENABLE_GRPC
 
-#  include "network/grpc_client.hpp"
-#  include "network/grpc_server.hpp"
+#include <gtest/gtest.h>
 
-#  include <cstdlib>
-#  include <filesystem>
-#  include <fstream>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
-#  include <gtest/gtest.h>
+#include "network/grpc_client.hpp"
+#include "network/grpc_server.hpp"
 
 using namespace keystone::network;
 namespace fs = std::filesystem;
@@ -30,16 +30,20 @@ class GrpcTlsTest : public ::testing::Test {
     test_cert_dir_ = fs::temp_directory_path() / "keystone_tls_test";
     fs::create_directories(test_cert_dir_);
 
-    // Create dummy certificate files (not real certs, just for file I/O testing)
+    // Create dummy certificate files (not real certs, just for file I/O
+    // testing)
     cert_file_ = test_cert_dir_ / "server.crt";
     key_file_ = test_cert_dir_ / "server.key";
     ca_file_ = test_cert_dir_ / "ca.crt";
 
     std::ofstream(cert_file_)
-        << "-----BEGIN CERTIFICATE-----\nDUMMY_CERT\n-----END CERTIFICATE-----\n";
+        << "-----BEGIN CERTIFICATE-----\nDUMMY_CERT\n-----END "
+           "CERTIFICATE-----\n";
     std::ofstream(key_file_)
-        << "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE KEY-----\n";
-    std::ofstream(ca_file_) << "-----BEGIN CERTIFICATE-----\nDUMMY_CA\n-----END CERTIFICATE-----\n";
+        << "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE "
+           "KEY-----\n";
+    std::ofstream(ca_file_)
+        << "-----BEGIN CERTIFICATE-----\nDUMMY_CA\n-----END CERTIFICATE-----\n";
 
     // Save original environment variables
     saved_cert_path_ = getenv("KEYSTONE_TLS_CERT_PATH");
@@ -60,19 +64,19 @@ class GrpcTlsTest : public ::testing::Test {
   }
 
   void setEnvVar(const char* name, const std::string& value) {
-#  ifdef _WIN32
+#ifdef _WIN32
     _putenv_s(name, value.c_str());
-#  else
+#else
     setenv(name, value.c_str(), 1);
-#  endif
+#endif
   }
 
   void unsetEnvVar(const char* name) {
-#  ifdef _WIN32
+#ifdef _WIN32
     _putenv_s(name, "");
-#  else
+#else
     unsetenv(name);
-#  endif
+#endif
   }
 
   void restoreEnvVar(const char* name, const char* value) {

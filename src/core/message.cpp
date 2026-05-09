@@ -27,10 +27,9 @@ std::string generate_uuid() {
 }
 }  // namespace
 
-KeystoneMessage KeystoneMessage::create(const std::string& sender,
-                                        const std::string& receiver,
-                                        const std::string& cmd,
-                                        const std::optional<std::string>& data) {
+KeystoneMessage KeystoneMessage::create(
+    const std::string& sender, const std::string& receiver,
+    const std::string& cmd, const std::optional<std::string>& data) {
   KeystoneMessage msg;
   msg.msg_id = generate_uuid();
   msg.sender_id = sender;
@@ -77,7 +76,8 @@ KeystoneMessage KeystoneMessage::create(const std::string& sender,
   return msg;
 }
 
-void KeystoneMessage::setDeadlineFromNow(std::chrono::milliseconds duration_ms) {
+void KeystoneMessage::setDeadlineFromNow(
+    std::chrono::milliseconds duration_ms) {
   deadline = std::chrono::system_clock::now() + duration_ms;
 }
 
@@ -88,7 +88,8 @@ bool KeystoneMessage::hasDeadlinePassed() const {
   return std::chrono::system_clock::now() > *deadline;
 }
 
-std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline() const {
+std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline()
+    const {
   if (!deadline.has_value()) {
     return std::nullopt;
   }
@@ -101,10 +102,9 @@ std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline()
   return std::chrono::duration_cast<std::chrono::milliseconds>(*deadline - now);
 }
 
-KeystoneMessage KeystoneMessage::createCancellation(const std::string& sender,
-                                                    const std::string& receiver,
-                                                    const std::string& task_id,
-                                                    const std::string& session) {
+KeystoneMessage KeystoneMessage::createCancellation(
+    const std::string& sender, const std::string& receiver,
+    const std::string& task_id, const std::string& session) {
   KeystoneMessage msg;
   msg.msg_id = generate_uuid();
   msg.sender_id = sender;

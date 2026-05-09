@@ -3,8 +3,11 @@
  * @brief Tests demonstrating Interface Segregation Principle (Issue #46)
  *
  * These tests show how to use specific MessageBus interfaces instead of
- * the monolithic MessageBus class, following the Interface Segregation Principle.
+ * the monolithic MessageBus class, following the Interface Segregation
+ * Principle.
  */
+
+#include <gtest/gtest.h>
 
 #include "agents/task_agent.hpp"
 #include "core/i_agent_registry.hpp"
@@ -12,8 +15,6 @@
 #include "core/i_scheduler_integration.hpp"
 #include "core/message_bus.hpp"
 #include "test_utilities.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::core;

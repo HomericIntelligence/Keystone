@@ -1,13 +1,13 @@
-#include "simulation/simulated_cluster.hpp"
-#include "simulation/simulated_network.hpp"
-#include "simulation/simulated_numa_node.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
 #include <limits>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "simulation/simulated_cluster.hpp"
+#include "simulation/simulated_network.hpp"
+#include "simulation/simulated_numa_node.hpp"
 
 using namespace keystone::simulation;
 using namespace std::chrono_literals;
@@ -28,7 +28,8 @@ class SimulationCornerCaseTest : public ::testing::Test {
 // ============================================================================
 
 TEST_F(SimulationCornerCaseTest, SingleNodeCluster) {
-  SimulatedCluster::Config config{.num_nodes = 1, .workers_per_node = 1, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 1, .workers_per_node = 1, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -46,7 +47,8 @@ TEST_F(SimulationCornerCaseTest, SingleNodeCluster) {
 }
 
 TEST_F(SimulationCornerCaseTest, SingleWorkerPerNode) {
-  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 1, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 2, .workers_per_node = 1, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -62,7 +64,8 @@ TEST_F(SimulationCornerCaseTest, SingleWorkerPerNode) {
 }
 
 TEST_F(SimulationCornerCaseTest, ManyNodes) {
-  SimulatedCluster::Config config{.num_nodes = 8, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 8, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -189,7 +192,8 @@ TEST_F(SimulationCornerCaseTest, UnregisterNonexistentAgent) {
 // ============================================================================
 
 TEST_F(SimulationCornerCaseTest, MessageFlood) {
-  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 4, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 2, .workers_per_node = 4, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -235,7 +239,8 @@ TEST_F(SimulationCornerCaseTest, NetworkMessageFlood) {
 }
 
 TEST_F(SimulationCornerCaseTest, HighQueueDepth) {
-  SimulatedCluster::Config config{.num_nodes = 1, .workers_per_node = 1, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 1, .workers_per_node = 1, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -264,7 +269,8 @@ TEST_F(SimulationCornerCaseTest, HighQueueDepth) {
 // ============================================================================
 
 TEST_F(SimulationCornerCaseTest, ParallelSubmitFromMultipleThreads) {
-  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 4, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 2, .workers_per_node = 4, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -293,7 +299,8 @@ TEST_F(SimulationCornerCaseTest, ParallelSubmitFromMultipleThreads) {
 }
 
 TEST_F(SimulationCornerCaseTest, ShutdownDuringActiveWork) {
-  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -330,7 +337,8 @@ TEST_F(SimulationCornerCaseTest, ConcurrentAgentRegistration) {
   for (int32_t t = 0; t < THREADS; ++t) {
     threads.emplace_back([&, t]() {
       for (int32_t i = 0; i < AGENTS_PER_THREAD; ++i) {
-        std::string agent_name = "agent_" + std::to_string(t) + "_" + std::to_string(i);
+        std::string agent_name =
+            "agent_" + std::to_string(t) + "_" + std::to_string(i);
         cluster.registerAgent(agent_name, i % 4);
       }
     });
@@ -344,7 +352,8 @@ TEST_F(SimulationCornerCaseTest, ConcurrentAgentRegistration) {
   int32_t registered_count = 0;
   for (int32_t t = 0; t < THREADS; ++t) {
     for (int32_t i = 0; i < AGENTS_PER_THREAD; ++i) {
-      std::string agent_name = "agent_" + std::to_string(t) + "_" + std::to_string(i);
+      std::string agent_name =
+          "agent_" + std::to_string(t) + "_" + std::to_string(i);
       if (cluster.getAgentNode(agent_name).has_value()) {
         registered_count++;
       }
@@ -446,7 +455,8 @@ TEST_F(SimulationCornerCaseTest, StatisticsWithNoActivity) {
 }
 
 TEST_F(SimulationCornerCaseTest, ResetStatsDuringOperation) {
-  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -481,7 +491,8 @@ TEST_F(SimulationCornerCaseTest, NetworkStatisticsOverflow) {
 }
 
 TEST_F(SimulationCornerCaseTest, LoadImbalanceCalculationExtremes) {
-  SimulatedCluster::Config config{.num_nodes = 4, .workers_per_node = 1, .network_config = {}};
+  SimulatedCluster::Config config{
+      .num_nodes = 4, .workers_per_node = 1, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 

@@ -8,15 +8,15 @@
 // - Heartbeat monitoring performance
 // - Failure detection speed
 
-#include "core/circuit_breaker.hpp"
-#include "core/heartbeat_monitor.hpp"
-#include "core/retry_policy.hpp"
+#include <benchmark/benchmark.h>
 
 #include <chrono>
 #include <cstdint>
 #include <thread>
 
-#include <benchmark/benchmark.h>
+#include "core/circuit_breaker.hpp"
+#include "core/heartbeat_monitor.hpp"
+#include "core/retry_policy.hpp"
 
 using namespace keystone;
 using namespace keystone::core;
@@ -28,7 +28,8 @@ using namespace keystone::core;
 // Benchmark: Retry policy creation
 static void BM_RetryPolicy_Creation(benchmark::State& state) {
   for (auto _ : state) {
-    auto policy = RetryPolicy(5, std::chrono::milliseconds(100), 2.0, std::chrono::seconds(30));
+    auto policy = RetryPolicy(5, std::chrono::milliseconds(100), 2.0,
+                              std::chrono::seconds(30));
     benchmark::DoNotOptimize(policy);
   }
 }
@@ -36,7 +37,8 @@ BENCHMARK(BM_RetryPolicy_Creation);
 
 // Benchmark: shouldRetry check
 static void BM_RetryPolicy_ShouldRetry(benchmark::State& state) {
-  auto policy = RetryPolicy(100, std::chrono::milliseconds(100), 2.0, std::chrono::seconds(30));
+  auto policy = RetryPolicy(100, std::chrono::milliseconds(100), 2.0,
+                            std::chrono::seconds(30));
 
   uint32_t attempt = 0;
   for (auto _ : state) {
@@ -51,7 +53,8 @@ BENCHMARK(BM_RetryPolicy_ShouldRetry);
 
 // Benchmark: Backoff delay calculation
 static void BM_RetryPolicy_BackoffCalculation(benchmark::State& state) {
-  auto policy = RetryPolicy(100, std::chrono::milliseconds(100), 2.0, std::chrono::seconds(30));
+  auto policy = RetryPolicy(100, std::chrono::milliseconds(100), 2.0,
+                            std::chrono::seconds(30));
 
   uint32_t attempt = 0;
   for (auto _ : state) {
@@ -69,12 +72,11 @@ static void BM_RetryPolicy_FullSequence(benchmark::State& state) {
   int32_t max_retries = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
-    auto policy =
-        RetryPolicy(max_retries, std::chrono::milliseconds(10), 2.0, std::chrono::seconds(10));
+    auto policy = RetryPolicy(max_retries, std::chrono::milliseconds(10), 2.0,
+                              std::chrono::seconds(10));
 
     for (int32_t attempt = 0; attempt < max_retries; ++attempt) {
-      if (!policy.shouldRetry(attempt))
-        break;
+      if (!policy.shouldRetry(attempt)) break;
       auto delay = policy.getBackoffDelay(attempt);
       benchmark::DoNotOptimize(delay);
     }
@@ -88,8 +90,8 @@ BENCHMARK(BM_RetryPolicy_FullSequence)->Range(1, 64);
 static void BM_RetryPolicy_VaryingMultiplier(benchmark::State& state) {
   double multiplier = state.range(0) / 10.0;  // 1.0 to 5.0
 
-  auto policy =
-      RetryPolicy(20, std::chrono::milliseconds(100), multiplier, std::chrono::seconds(30));
+  auto policy = RetryPolicy(20, std::chrono::milliseconds(100), multiplier,
+                            std::chrono::seconds(30));
 
   for (auto _ : state) {
     for (int32_t attempt = 0; attempt < 10; ++attempt) {
@@ -109,7 +111,8 @@ BENCHMARK(BM_RetryPolicy_VaryingMultiplier)->DenseRange(10, 50, 10);
 // Benchmark: Circuit breaker creation
 static void BM_CircuitBreaker_Creation(benchmark::State& state) {
   for (auto _ : state) {
-    auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10), std::chrono::seconds(5));
+    auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10),
+                             std::chrono::seconds(5));
     benchmark::DoNotOptimize(cb);
   }
 }
@@ -117,7 +120,8 @@ BENCHMARK(BM_CircuitBreaker_Creation);
 
 // Benchmark: allowRequest check (closed state)
 static void BM_CircuitBreaker_AllowRequest_Closed(benchmark::State& state) {
-  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10), std::chrono::seconds(5));
+  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10),
+                           std::chrono::seconds(5));
 
   for (auto _ : state) {
     bool allowed = cb.allowRequest();
@@ -130,7 +134,8 @@ BENCHMARK(BM_CircuitBreaker_AllowRequest_Closed);
 
 // Benchmark: recordSuccess
 static void BM_CircuitBreaker_RecordSuccess(benchmark::State& state) {
-  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10), std::chrono::seconds(5));
+  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10),
+                           std::chrono::seconds(5));
 
   for (auto _ : state) {
     cb.recordSuccess();
@@ -144,7 +149,8 @@ BENCHMARK(BM_CircuitBreaker_RecordSuccess);
 static void BM_CircuitBreaker_RecordFailure(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
-    auto cb = CircuitBreaker("test", 100, std::chrono::seconds(10), std::chrono::seconds(5));
+    auto cb = CircuitBreaker("test", 100, std::chrono::seconds(10),
+                             std::chrono::seconds(5));
     state.ResumeTiming();
 
     cb.recordFailure();
@@ -159,10 +165,8 @@ static void BM_CircuitBreaker_StateTransition(benchmark::State& state) {
   int32_t failure_threshold = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
-    auto cb = CircuitBreaker("test",
-                             failure_threshold,
-                             std::chrono::seconds(10),
-                             std::chrono::seconds(5));
+    auto cb = CircuitBreaker("test", failure_threshold,
+                             std::chrono::seconds(10), std::chrono::seconds(5));
 
     // Trigger failures to open circuit
     for (int32_t i = 0; i < failure_threshold; ++i) {
@@ -180,7 +184,8 @@ BENCHMARK(BM_CircuitBreaker_StateTransition)->Range(1, 128);
 
 // Benchmark: getState
 static void BM_CircuitBreaker_GetState(benchmark::State& state) {
-  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10), std::chrono::seconds(5));
+  auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10),
+                           std::chrono::seconds(5));
 
   for (auto _ : state) {
     auto state_val = cb.getState();
@@ -193,7 +198,8 @@ BENCHMARK(BM_CircuitBreaker_GetState);
 
 // Benchmark: Concurrent circuit breaker access
 static void BM_CircuitBreaker_Concurrent(benchmark::State& state) {
-  static CircuitBreaker cb("test", 100, std::chrono::seconds(10), std::chrono::seconds(5));
+  static CircuitBreaker cb("test", 100, std::chrono::seconds(10),
+                           std::chrono::seconds(5));
 
   for (auto _ : state) {
     if (cb.allowRequest()) {

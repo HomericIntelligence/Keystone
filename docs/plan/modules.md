@@ -11,8 +11,9 @@ zero-configuration message routing using two complementary transports:
 The two transports are automatically bridged via the **Transparent Bridge** — components publish and subscribe to
 logical NATS subjects without awareness of whether peers are local or remote.
 
-> **Note**: The 4-layer HMAS agent hierarchy (ChiefArchitectAgent → ComponentLeadAgent → ModuleLeadAgent → TaskAgent)
-was extracted and moved to **ProjectAgamemnon** per ADR-006/ADR-015. Keystone retains only transport primitives.
+> **Note**: The 4-layer HMAS agent hierarchy (ChiefArchitectAgent → ComponentLeadAgent → ModuleLeadAgent →
+TaskAgent) was extracted and moved to **ProjectAgamemnon** per ADR-006/ADR-015. Keystone retains only transport
+primitives.
 
 ---
 
@@ -112,8 +113,8 @@ Test harness for deterministic testing:
 
 ### 7. Agents Module (`src/agents/`)
 
-Minimal agent implementations for testing and examples. **Note**: Real agent implementations (ChiefArchitectAgent, etc.)
-are in **ProjectAgamemnon**.
+Minimal agent implementations for testing and examples. **Note**: Real agent implementations (ChiefArchitectAgent,
+etc.) are in **ProjectAgamemnon**.
 
 ---
 

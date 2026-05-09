@@ -14,7 +14,8 @@ ResultAggregator::ResultAggregator(AggregationStrategy strategy,
   deadline_ = now + timeout;
 }
 
-bool ResultAggregator::addResult(const std::string& subtask_name, const hmas::TaskResult& result) {
+bool ResultAggregator::addResult(const std::string& subtask_name,
+                                 const hmas::TaskResult& result) {
   // Store the result
   results_[subtask_name] = result;
 
@@ -55,7 +56,8 @@ std::optional<std::string> ResultAggregator::getAggregatedResult() const {
   switch (strategy_) {
     case AggregationStrategy::WAIT_ALL: {
       // Combine all results
-      oss << "Aggregated results (" << results_.size() << "/" << expected_count_ << " subtasks):\n";
+      oss << "Aggregated results (" << results_.size() << "/" << expected_count_
+          << " subtasks):\n";
 
       for (const auto& [name, result] : results_) {
         oss << "\n[" << name << "]: ";
@@ -93,7 +95,8 @@ std::optional<std::string> ResultAggregator::getAggregatedResult() const {
       size_t success_count = getSuccessCount();
       size_t fail_count = getFailedCount();
 
-      oss << "Majority results (" << results_.size() << "/" << expected_count_ << " subtasks):\n";
+      oss << "Majority results (" << results_.size() << "/" << expected_count_
+          << " subtasks):\n";
       oss << "Successful: " << success_count << "\n";
       oss << "Failed: " << fail_count << "\n";
 
@@ -138,7 +141,9 @@ std::string ResultAggregator::getAggregatedResultYaml() const {
   for (const auto& [name, result] : results_) {
     oss << "    - name: " << name << "\n";
     oss << "      status: "
-        << (result.status() == hmas::TASK_PHASE_COMPLETED ? "COMPLETED" : "FAILED") << "\n";
+        << (result.status() == hmas::TASK_PHASE_COMPLETED ? "COMPLETED"
+                                                          : "FAILED")
+        << "\n";
 
     if (!result.result_yaml().empty()) {
       // Indent YAML result
@@ -159,18 +164,19 @@ std::string ResultAggregator::getAggregatedResultYaml() const {
 }
 
 size_t ResultAggregator::getSuccessCount() const {
-  return std::count_if(results_.begin(), results_.end(), [this](const auto& pair) {
-    return isSuccessful(pair.second);
-  });
+  return std::count_if(
+      results_.begin(), results_.end(),
+      [this](const auto& pair) { return isSuccessful(pair.second); });
 }
 
 size_t ResultAggregator::getFailedCount() const {
-  return std::count_if(results_.begin(), results_.end(), [this](const auto& pair) {
-    return !isSuccessful(pair.second);
-  });
+  return std::count_if(
+      results_.begin(), results_.end(),
+      [this](const auto& pair) { return !isSuccessful(pair.second); });
 }
 
-std::optional<hmas::TaskResult> ResultAggregator::getResult(const std::string& subtask_name) const {
+std::optional<hmas::TaskResult> ResultAggregator::getResult(
+    const std::string& subtask_name) const {
   auto it = results_.find(subtask_name);
   if (it != results_.end()) {
     return it->second;
@@ -180,7 +186,8 @@ std::optional<hmas::TaskResult> ResultAggregator::getResult(const std::string& s
 
 std::chrono::milliseconds ResultAggregator::getElapsedTime() const {
   auto now = std::chrono::system_clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_);
+  return std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                               start_time_);
 }
 
 std::chrono::milliseconds ResultAggregator::getRemainingTime() const {

@@ -1,9 +1,9 @@
-#include "simulation/simulated_network.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "simulation/simulated_network.hpp"
 
 using namespace keystone::simulation;
 using namespace std::chrono_literals;
@@ -263,7 +263,8 @@ TEST_F(SimulatedNetworkTest, QueueOrdering) {
 
   // Send messages with identifiable work
   for (int32_t i = 0; i < 5; ++i) {
-    network.send(0, 1, [&execution_order, i]() { execution_order.push_back(i); });
+    network.send(0, 1,
+                 [&execution_order, i]() { execution_order.push_back(i); });
   }
 
   std::this_thread::sleep_for(50us);

@@ -7,9 +7,9 @@
 
 ## Overview
 
-Phase A establishes the foundation for scalable asynchronous agent processing in ProjectKeystone through a work-stealing
-scheduler integrated with the existing MessageBus architecture. This phase maintains 100% backward compatibility while
-enabling high-performance parallel execution.
+Phase A establishes the foundation for scalable asynchronous agent processing in ProjectKeystone through a
+work-stealing scheduler integrated with the existing MessageBus architecture. This phase maintains 100% backward
+compatibility while enabling high-performance parallel execution.
 
 ## Objectives Achieved
 

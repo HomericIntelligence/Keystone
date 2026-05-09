@@ -1,16 +1,16 @@
-#include "agents/chief_architect_agent.hpp"
-#include "agents/component_lead_agent.hpp"
-#include "agents/module_lead_agent.hpp"
-#include "agents/task_agent.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <memory>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/chief_architect_agent.hpp"
+#include "agents/component_lead_agent.hpp"
+#include "agents/module_lead_agent.hpp"
+#include "agents/task_agent.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone;
 using namespace keystone::agents;
@@ -83,23 +83,29 @@ TEST(E2E_PhaseB, FullAsync4LayerHierarchy) {
   // Test: Chief sends component goal to ComponentLead
   // Goal format: "Messaging(10+20+30) and Concurrency(40+50+60)"
   // This should decompose to:
-  //   - Module 1: "Calculate Messaging: 10+20+30" → tasks: echo 10, echo 20, echo 30 → sum = 60
-  //   - Module 2: "Calculate Concurrency: 40+50+60" → tasks: echo 40, echo 50, echo 60 → sum = 150
-  //   - Component aggregates: "Module result: Sum = 60, Module result: Sum = 150"
+  //   - Module 1: "Calculate Messaging: 10+20+30" → tasks: echo 10, echo 20,
+  //   echo 30 → sum = 60
+  //   - Module 2: "Calculate Concurrency: 40+50+60" → tasks: echo 40, echo 50,
+  //   echo 60 → sum = 150
+  //   - Component aggregates: "Module result: Sum = 60, Module result: Sum =
+  //   150"
 
-  chief->sendCommand("Component: Messaging(10+20+30) and Concurrency(40+50+60)", "comp_lead");
+  chief->sendCommand("Component: Messaging(10+20+30) and Concurrency(40+50+60)",
+                     "comp_lead");
 
   // Wait for async processing through all 4 layers
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   // Verify state transitions for Component Lead
   const auto& comp_trace = comp_lead->getExecutionTrace();
-  EXPECT_GE(comp_trace.size(), 4);  // At least: IDLE → PLANNING → WAITING → AGGREGATING → IDLE
+  EXPECT_GE(comp_trace.size(),
+            4);  // At least: IDLE → PLANNING → WAITING → AGGREGATING → IDLE
 
   // Verify state transitions for Module Leads
   const auto& mod1_trace = module1->getExecutionTrace();
   const auto& mod2_trace = module2->getExecutionTrace();
-  EXPECT_GE(mod1_trace.size(), 4);  // IDLE → PLANNING → WAITING → SYNTHESIZING → IDLE
+  EXPECT_GE(mod1_trace.size(),
+            4);  // IDLE → PLANNING → WAITING → SYNTHESIZING → IDLE
   EXPECT_GE(mod2_trace.size(), 4);
 
   // Verify all task agents executed their commands
@@ -232,7 +238,8 @@ TEST(E2E_PhaseB, Async4LayerMessageCorrelation) {
   module1->setAvailableTaskAgents({"task1"});
 
   // Send command and track original msg_id
-  auto original_msg = KeystoneMessage::create("chief", "comp_lead", "Component: Test(42)");
+  auto original_msg =
+      KeystoneMessage::create("chief", "comp_lead", "Component: Test(42)");
   std::string original_msg_id = original_msg.msg_id;
 
   bus.routeMessage(original_msg);
@@ -243,8 +250,9 @@ TEST(E2E_PhaseB, Async4LayerMessageCorrelation) {
   auto chief_response = chief->getMessage();
   ASSERT_TRUE(chief_response.has_value());
 
-  // Note: Message ID correlation works for responses sent back through the hierarchy
-  // The component lead preserves the original msg_id when sending the final response
+  // Note: Message ID correlation works for responses sent back through the
+  // hierarchy The component lead preserves the original msg_id when sending the
+  // final response
 
   scheduler.shutdown();
 }

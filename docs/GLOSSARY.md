@@ -37,8 +37,8 @@ agents without direct agent-to-agent dependencies. The MessageBus:
 - Maintains thread-safe agent registry with mutex protection
 - Supports both synchronous (Phase 1) and asynchronous (Phase 2+) delivery
 
-See [docs/plan/adr/ADR-001-message-bus-architecture.md](./plan/adr/ADR-001-message-bus-architecture.md) for architecture
-decisions.
+See [docs/plan/adr/ADR-001-message-bus-architecture.md](./plan/adr/ADR-001-message-bus-architecture.md) for
+architecture decisions.
 
 ---
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <grpcpp/grpcpp.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <grpcpp/grpcpp.h>
 
 namespace keystone {
 namespace network {

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "network/service_registry.hpp"
-#include "network/yaml_parser.hpp"
-
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "network/service_registry.hpp"
+#include "network/yaml_parser.hpp"
 
 namespace keystone {
 namespace network {
@@ -32,8 +32,9 @@ class TaskRouter {
   /// Constructor
   /// @param registry Service registry for agent discovery
   /// @param strategy Load balancing strategy (default: LEAST_LOADED)
-  explicit TaskRouter(std::shared_ptr<ServiceRegistry> registry,
-                      LoadBalancingStrategy strategy = LoadBalancingStrategy::LEAST_LOADED);
+  explicit TaskRouter(
+      std::shared_ptr<ServiceRegistry> registry,
+      LoadBalancingStrategy strategy = LoadBalancingStrategy::LEAST_LOADED);
 
   /// Route task to appropriate agent
   /// @param spec Task specification with routing info
@@ -46,10 +47,10 @@ class TaskRouter {
   /// @param required_capabilities Required agent capabilities
   /// @param preferred_agent_id Preferred agent ID (optional)
   /// @return Routing result with target agent info
-  TaskRoutingResult routeTask(int target_level,
-                              const std::string& target_agent_type,
-                              const std::vector<std::string>& required_capabilities = {},
-                              const std::string& preferred_agent_id = "");
+  TaskRoutingResult routeTask(
+      int target_level, const std::string& target_agent_type,
+      const std::vector<std::string>& required_capabilities = {},
+      const std::string& preferred_agent_id = "");
 
   /// Select best agent for task based on criteria
   /// @param target_level Target hierarchy level
@@ -57,8 +58,7 @@ class TaskRouter {
   /// @param required_capabilities Required capabilities
   /// @return Selected agent info, or nullopt if none available
   std::optional<AgentRegistrationInfo> selectAgent(
-      int target_level,
-      const std::string& agent_type,
+      int target_level, const std::string& agent_type,
       const std::vector<std::string>& required_capabilities = {});
 
   /// Get load balancing strategy

@@ -14,19 +14,19 @@
  * the required features are implemented in TaskAgent and other components.
  */
 
-#include "agents/task_agent.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
-#include "core/failure_injector.hpp"
-#include "core/message_bus.hpp"
-#include "core/retry_policy.hpp"
-#include "simulation/simulated_network.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <memory>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/task_agent.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
+#include "core/failure_injector.hpp"
+#include "core/message_bus.hpp"
+#include "core/retry_policy.hpp"
+#include "simulation/simulated_network.hpp"
 
 using namespace keystone;
 using namespace keystone::agents;
@@ -90,7 +90,8 @@ TEST_F(Phase5AgentFailureTest, FailedAgentRejectsMessages) {
   // Wait a bit for async processing
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-  // Agent should have rejected the message (we'd check error response in full impl)
+  // Agent should have rejected the message (we'd check error response in full
+  // impl)
   EXPECT_TRUE(task->isFailed());  // Still failed
 }
 
@@ -118,7 +119,8 @@ TEST_F(Phase5AgentFailureTest, FailedAgentCanRecover) {
   EXPECT_TRUE(task->getFailureReason().empty());
 
   // Now it should process messages normally
-  auto msg = KeystoneMessage::create("sender", task->getAgentId(), "echo recovered");
+  auto msg =
+      KeystoneMessage::create("sender", task->getAgentId(), "echo recovered");
   task->receiveMessage(msg);
 
   // Wait a bit for async processing
@@ -194,9 +196,12 @@ TEST_F(Phase5AgentFailureTest, SystemContinuesWithHealthyAgents) {
   EXPECT_FALSE(task3->isFailed());
 
   // Send messages to all tasks
-  auto msg1 = KeystoneMessage::create("test", task1->getAgentId(), "echo task1");
-  auto msg2 = KeystoneMessage::create("test", task2->getAgentId(), "echo task2");
-  auto msg3 = KeystoneMessage::create("test", task3->getAgentId(), "echo task3");
+  auto msg1 =
+      KeystoneMessage::create("test", task1->getAgentId(), "echo task1");
+  auto msg2 =
+      KeystoneMessage::create("test", task2->getAgentId(), "echo task2");
+  auto msg3 =
+      KeystoneMessage::create("test", task3->getAgentId(), "echo task3");
 
   task1->receiveMessage(msg1);
   task2->receiveMessage(msg2);  // Should be rejected
@@ -542,7 +547,8 @@ TEST_F(Phase5NetworkPartitionTest, PartitionStatisticsTracking) {
     network.send(0, 2, []() {});
   }
 
-  EXPECT_EQ(network.getPartitionDroppedMessages(), 10);  // Still 10 (no new drops)
+  EXPECT_EQ(network.getPartitionDroppedMessages(),
+            10);  // Still 10 (no new drops)
   EXPECT_EQ(network.getTotalMessages(), 18);
 
   // Reset stats
@@ -589,7 +595,8 @@ TEST_F(Phase5NetworkPartitionTest, SplitBrainWorkDistribution) {
     network.send(1, 3, [&node3_work]() { node3_work++; });
   }
 
-  EXPECT_EQ(network.getPartitionDroppedMessages(), 20);  // All cross-partition dropped
+  EXPECT_EQ(network.getPartitionDroppedMessages(),
+            20);  // All cross-partition dropped
 
   // Process work
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -814,10 +821,11 @@ TEST_F(Phase5MessageLossTest, MessageLossWithManualRetries) {
   };
   SimulatedNetwork network(net_config);
 
-  RetryPolicy::Config retry_config{.max_attempts = 5,
-                                   .initial_delay_ms = std::chrono::milliseconds(10),
-                                   .max_delay_ms = std::chrono::milliseconds(100),
-                                   .backoff_multiplier = 2.0};
+  RetryPolicy::Config retry_config{
+      .max_attempts = 5,
+      .initial_delay_ms = std::chrono::milliseconds(10),
+      .max_delay_ms = std::chrono::milliseconds(100),
+      .backoff_multiplier = 2.0};
   RetryPolicy policy(retry_config);
 
   // Try sending 10 messages with retry logic
@@ -834,7 +842,8 @@ TEST_F(Phase5MessageLossTest, MessageLossWithManualRetries) {
       total_attempts++;
 
       // Simulate sending (network may drop it)
-      bool dropped = (network.getDroppedMessages() < static_cast<size_t>(total_attempts.load()));
+      bool dropped = (network.getDroppedMessages() <
+                      static_cast<size_t>(total_attempts.load()));
 
       if (!dropped) {
         // Message delivered
@@ -873,7 +882,8 @@ TEST_F(Phase5MessageLossTest, MessageLossWithManualRetries) {
  */
 TEST_F(Phase5MessageLossTest, CombinedPartitionAndLoss) {
   SimulatedNetwork::Config config{
-      .min_latency = std::chrono::microseconds(1000),  // Increased for reliable timing
+      .min_latency =
+          std::chrono::microseconds(1000),  // Increased for reliable timing
       .max_latency = std::chrono::microseconds(2000),
       .bandwidth_mbps = 1000,
       .packet_loss_rate = 0.2  // 20% loss for more reliable detection

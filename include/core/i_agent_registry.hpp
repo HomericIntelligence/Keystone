@@ -19,9 +19,9 @@ namespace core {
 /**
  * @brief Interface for agent registry management
  *
- * Separates agent lifecycle operations (registration, unregistration, discovery)
- * from message routing and scheduler integration, following the Interface
- * Segregation Principle.
+ * Separates agent lifecycle operations (registration, unregistration,
+ * discovery) from message routing and scheduler integration, following the
+ * Interface Segregation Principle.
  *
  * Responsibilities:
  * - Register agents with the system
@@ -61,7 +61,8 @@ class IAgentRegistry {
   template <agents::Agent A>
   void registerAgent(std::shared_ptr<A> agent) {
     if (!agent) {
-      throw std::runtime_error("IAgentRegistry::registerAgent: null agent pointer");
+      throw std::runtime_error(
+          "IAgentRegistry::registerAgent: null agent pointer");
     }
 
     std::string agent_id = agent->getAgentId();

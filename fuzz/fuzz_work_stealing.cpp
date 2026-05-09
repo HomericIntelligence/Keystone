@@ -12,14 +12,14 @@
 // Build with: cmake -DENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++ ..
 // Run with: ./fuzz_work_stealing -max_len=2048 -runs=1000000
 
-#include "concurrency/task.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
-
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <thread>
+
+#include "concurrency/task.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
 
 using namespace keystone;
 using namespace keystone::concurrency;
@@ -44,8 +44,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     // Submit fuzzed tasks
     for (uint8_t i = 0; i < task_count && offset < size; ++i) {
-      if (offset >= size)
-        break;
+      if (offset >= size) break;
 
       // Get task type from data
       uint8_t task_type = data[offset] % 4;
@@ -64,8 +63,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         case 1: {
           // Priority task (if we have priority data)
-          if (offset >= size)
-            break;
+          if (offset >= size) break;
           uint8_t priority = data[offset];
           offset++;
 
@@ -78,8 +76,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         case 2: {
           // Task with fuzzed deadline
-          if (offset + 4 > size)
-            break;
+          if (offset + 4 > size) break;
 
           // Extract deadline offset in microseconds
           uint32_t deadline_us = 0;
@@ -92,7 +89,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
           deadline_us = std::min(deadline_us, uint32_t(1000000));
           deadline_us = std::max(deadline_us, uint32_t(1000));
 
-          auto deadline = std::chrono::steady_clock::now() + std::chrono::microseconds(deadline_us);
+          auto deadline = std::chrono::steady_clock::now() +
+                          std::chrono::microseconds(deadline_us);
 
           scheduler->submit([deadline]() {
             // Check if we met the deadline
@@ -104,8 +102,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         case 3: {
           // Potentially throwing task
-          if (offset >= size)
-            break;
+          if (offset >= size) break;
           bool should_throw = (data[offset] % 10 == 0);
           offset++;
 

@@ -1,6 +1,7 @@
 /**
  * @file test_utilities.hpp
- * @brief Test utilities demonstrating Interface Segregation Principle (Issue #46)
+ * @brief Test utilities demonstrating Interface Segregation Principle (Issue
+ * #46)
  *
  * This file provides helper functions that use specific MessageBus interfaces
  * instead of the monolithic MessageBus class, demonstrating best practices
@@ -9,15 +10,15 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "agents/agent_core.hpp"
 #include "core/i_agent_registry.hpp"
 #include "core/i_message_router.hpp"
 #include "core/i_scheduler_integration.hpp"
 #include "core/message_bus.hpp"
-
-#include <memory>
-#include <string>
-#include <vector>
 
 namespace keystone {
 namespace test {
@@ -27,11 +28,13 @@ namespace test {
  *
  * Demonstrates using only the registry interface when registration is needed.
  *
- * @param registry Registry interface (can be MessageBus or custom implementation)
+ * @param registry Registry interface (can be MessageBus or custom
+ * implementation)
  * @param agent Agent to register
  */
 template <typename AgentType>
-inline void registerAgent(core::IAgentRegistry& registry, std::shared_ptr<AgentType> agent) {
+inline void registerAgent(core::IAgentRegistry& registry,
+                          std::shared_ptr<AgentType> agent) {
   registry.registerAgent(agent->getAgentId(), agent);
 }
 
@@ -43,7 +46,8 @@ inline void registerAgent(core::IAgentRegistry& registry, std::shared_ptr<AgentT
  * @param agent Agent to configure
  * @param router Router interface (can be MessageBus or custom implementation)
  */
-inline void setupAgentRouter(agents::AgentCore& agent, core::IMessageRouter* router) {
+inline void setupAgentRouter(agents::AgentCore& agent,
+                             core::IMessageRouter* router) {
   agent.setMessageBus(router);
 }
 
@@ -67,8 +71,9 @@ inline void setupScheduler(core::ISchedulerIntegration& integration,
  * @param agents Vector of agents to register
  */
 template <typename AgentType>
-inline void registerAgents(core::IAgentRegistry& registry,
-                           const std::vector<std::shared_ptr<AgentType>>& agents) {
+inline void registerAgents(
+    core::IAgentRegistry& registry,
+    const std::vector<std::shared_ptr<AgentType>>& agents) {
   for (const auto& agent : agents) {
     registry.registerAgent(agent->getAgentId(), agent);
   }
@@ -84,8 +89,9 @@ inline void registerAgents(core::IAgentRegistry& registry,
  * @param agents Vector of agents to register and configure
  */
 template <typename AgentType>
-inline void setupTestEnvironment(core::MessageBus& bus,
-                                 const std::vector<std::shared_ptr<AgentType>>& agents) {
+inline void setupTestEnvironment(
+    core::MessageBus& bus,
+    const std::vector<std::shared_ptr<AgentType>>& agents) {
   // Use IAgentRegistry interface for registration
   core::IAgentRegistry& registry = bus;
   registerAgents(registry, agents);

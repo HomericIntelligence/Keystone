@@ -60,7 +60,7 @@ repos:
       - id: cmake-format
         args: [--in-place]
       - id: cmake-lint
-        args: [--disabled-codes=C0103]
+        args: [--suppress=C0301, C0103]
 
   # ============================================================================
   # Markdown Linting

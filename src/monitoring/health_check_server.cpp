@@ -1,17 +1,17 @@
 #include "monitoring/health_check_server.hpp"
 
-#include "concurrency/logger.hpp"
-#include "core/config.hpp"
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include <array>
 #include <cstring>
 #include <sstream>
 #include <utility>  // For std::exchange
 
-#include <netinet/in.h>
-#include <poll.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "concurrency/logger.hpp"
+#include "core/config.hpp"
 
 namespace keystone {
 namespace monitoring {
@@ -35,7 +35,8 @@ class SocketHandle {
   SocketHandle(const SocketHandle&) = delete;
   SocketHandle& operator=(const SocketHandle&) = delete;
 
-  SocketHandle(SocketHandle&& other) noexcept : fd_(std::exchange(other.fd_, -1)) {}
+  SocketHandle(SocketHandle&& other) noexcept
+      : fd_(std::exchange(other.fd_, -1)) {}
 
   SocketHandle& operator=(SocketHandle&& other) noexcept {
     if (this != &other) {
@@ -64,9 +65,7 @@ HealthCheckServer::HealthCheckServer(uint16_t port,
       nats_connection_check_(std::move(nats_connection_check)),
       nats_status_(nats_status) {}
 
-HealthCheckServer::~HealthCheckServer() {
-  stop();
-}
+HealthCheckServer::~HealthCheckServer() { stop(); }
 
 bool HealthCheckServer::start() {
   if (running_.load()) {
@@ -85,8 +84,10 @@ bool HealthCheckServer::start() {
 
   // Set socket options (reuse address)
   int opt = 1;
-  if (setsockopt(server_fd_.load(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-    concurrency::Logger::error("HealthCheckServer: Failed to set socket options");
+  if (setsockopt(server_fd_.load(), SOL_SOCKET, SO_REUSEADDR, &opt,
+                 sizeof(opt)) < 0) {
+    concurrency::Logger::error(
+        "HealthCheckServer: Failed to set socket options");
     close(server_fd_.load());
     server_fd_ = -1;
     return false;
@@ -99,8 +100,10 @@ bool HealthCheckServer::start() {
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port_.load());
 
-  if (::bind(server_fd_.load(), (struct sockaddr*)&address, sizeof(address)) < 0) {
-    concurrency::Logger::error("HealthCheckServer: Failed to bind to port {}", port_.load());
+  if (::bind(server_fd_.load(), (struct sockaddr*)&address, sizeof(address)) <
+      0) {
+    concurrency::Logger::error("HealthCheckServer: Failed to bind to port {}",
+                               port_.load());
     close(server_fd_.load());
     server_fd_ = -1;
     return false;
@@ -110,10 +113,12 @@ bool HealthCheckServer::start() {
   if (port_ == 0) {
     struct sockaddr_in actual_address;
     socklen_t len = sizeof(actual_address);
-    if (getsockname(server_fd_.load(), (struct sockaddr*)&actual_address, &len) == 0) {
+    if (getsockname(server_fd_.load(), (struct sockaddr*)&actual_address,
+                    &len) == 0) {
       port_ = ntohs(actual_address.sin_port);
     } else {
-      concurrency::Logger::error("HealthCheckServer: Failed to get assigned port");
+      concurrency::Logger::error(
+          "HealthCheckServer: Failed to get assigned port");
       close(server_fd_.load());
       server_fd_ = -1;
       return false;
@@ -121,8 +126,10 @@ bool HealthCheckServer::start() {
   }
 
   // Listen for connections
-  if (listen(server_fd_.load(), core::Config::HTTP_MAX_PENDING_CONNECTIONS) < 0) {
-    concurrency::Logger::error("HealthCheckServer: Failed to listen on port {}", port_.load());
+  if (listen(server_fd_.load(), core::Config::HTTP_MAX_PENDING_CONNECTIONS) <
+      0) {
+    concurrency::Logger::error("HealthCheckServer: Failed to listen on port {}",
+                               port_.load());
     close(server_fd_.load());
     server_fd_ = -1;
     return false;
@@ -130,9 +137,11 @@ bool HealthCheckServer::start() {
 
   // Start server thread
   running_.store(true);
-  server_thread_ = std::make_unique<std::thread>(&HealthCheckServer::serverLoop, this);
+  server_thread_ =
+      std::make_unique<std::thread>(&HealthCheckServer::serverLoop, this);
 
-  concurrency::Logger::info("Health check server started on port {}", port_.load());
+  concurrency::Logger::info("Health check server started on port {}",
+                            port_.load());
   return true;
 }
 
@@ -157,13 +166,9 @@ void HealthCheckServer::stop() {
   concurrency::Logger::info("Health check server stopped");
 }
 
-bool HealthCheckServer::isRunning() const {
-  return running_.load();
-}
+bool HealthCheckServer::isRunning() const { return running_.load(); }
 
-uint16_t HealthCheckServer::getPort() const {
-  return port_;
-}
+uint16_t HealthCheckServer::getPort() const { return port_; }
 
 void HealthCheckServer::setReadinessCheck(ReadinessCheck check) {
   std::lock_guard<std::mutex> lock(readiness_mutex_);
@@ -178,7 +183,8 @@ void HealthCheckServer::setNatsConnectionCheck(NatsConnectionCheck check) {
 void HealthCheckServer::serverLoop() {
   while (running_.load()) {
     // Use poll() with timeout to check for incoming connections
-    // This allows periodic checking of running_ flag without blocking indefinitely
+    // This allows periodic checking of running_ flag without blocking
+    // indefinitely
     struct pollfd pfd;
     pfd.fd = server_fd_.load();
     pfd.events = POLLIN;
@@ -204,7 +210,8 @@ void HealthCheckServer::serverLoop() {
     struct sockaddr_in client_address;
     socklen_t client_len = sizeof(client_address);
 
-    int client_fd = accept(server_fd_.load(), (struct sockaddr*)&client_address, &client_len);
+    int client_fd = accept(server_fd_.load(), (struct sockaddr*)&client_address,
+                           &client_len);
     if (client_fd < 0) {
       if (running_.load()) {
         concurrency::Logger::error("HealthCheckServer: Accept failed");
@@ -217,12 +224,15 @@ void HealthCheckServer::serverLoop() {
 
     // Set socket read timeout to prevent slowloris attacks
     struct timeval timeout;
-    timeout.tv_sec =
-        std::chrono::duration_cast<std::chrono::seconds>(core::Config::HTTP_READ_TIMEOUT).count();
+    timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(
+                         core::Config::HTTP_READ_TIMEOUT)
+                         .count();
     timeout.tv_usec = 0;
 
-    if (setsockopt(client_socket.get(), SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-      concurrency::Logger::error("HealthCheckServer: Failed to set socket read timeout");
+    if (setsockopt(client_socket.get(), SOL_SOCKET, SO_RCVTIMEO, &timeout,
+                   sizeof(timeout)) < 0) {
+      concurrency::Logger::error(
+          "HealthCheckServer: Failed to set socket read timeout");
       continue;  // Still try to handle request without timeout
     }
 
@@ -251,8 +261,10 @@ void HealthCheckServer::handleRequest(int client_fd) {
 
   // Validate minimum request size (at least "GET /")
   if (bytes_read < 5) {
-    std::string bad_request = "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-    [[maybe_unused]] auto result = write(client_fd, bad_request.c_str(), bad_request.size());
+    std::string bad_request =
+        "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
+    [[maybe_unused]] auto result =
+        write(client_fd, bad_request.c_str(), bad_request.size());
     return;
   }
 
@@ -270,9 +282,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
         "HTTP/1.1 405 Method Not Allowed\r\n"
         "Allow: GET\r\n"
         "Content-Length: 0\r\n\r\n";
-    [[maybe_unused]] auto result = write(client_fd,
-                                         method_not_allowed.c_str(),
-                                         method_not_allowed.size());
+    [[maybe_unused]] auto result =
+        write(client_fd, method_not_allowed.c_str(), method_not_allowed.size());
     return;
   }
 
@@ -283,9 +294,11 @@ void HealthCheckServer::handleRequest(int client_fd) {
 
   if (is_v1_health) {
     std::string body = generateV1HealthResponse(nats_status_);
-    NatsConnectionState nats_state = nats_status_ ? nats_status_->state()
-                                                  : NatsConnectionState::kDisconnected;
-    bool healthy = (nats_status_ == nullptr) || (nats_state == NatsConnectionState::kConnected);
+    NatsConnectionState nats_state = nats_status_
+                                         ? nats_status_->state()
+                                         : NatsConnectionState::kDisconnected;
+    bool healthy = (nats_status_ == nullptr) ||
+                   (nats_state == NatsConnectionState::kConnected);
     std::string status_line = healthy ? "HTTP/1.1 200 OK\r\n"
                                       : "HTTP/1.1 503 Service Unavailable\r\n";
 
@@ -297,7 +310,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result = write(client_fd, response_str.c_str(), response_str.size());
+    [[maybe_unused]] auto result =
+        write(client_fd, response_str.c_str(), response_str.size());
 
   } else if (is_liveness) {
     // Liveness probe - always return 200 OK if process is alive
@@ -311,7 +325,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result = write(client_fd, response_str.c_str(), response_str.size());
+    [[maybe_unused]] auto result =
+        write(client_fd, response_str.c_str(), response_str.size());
 
   } else if (is_readiness) {
     // Readiness probe - check if system is ready
@@ -328,8 +343,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
     }
 
     std::string body = generateReadinessResponse(ready);
-    std::string status_line = ready ? "HTTP/1.1 200 OK\r\n"
-                                    : "HTTP/1.1 503 Service Unavailable\r\n";
+    std::string status_line =
+        ready ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 503 Service Unavailable\r\n";
 
     std::ostringstream response;
     response << status_line;
@@ -339,7 +354,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result = write(client_fd, response_str.c_str(), response_str.size());
+    [[maybe_unused]] auto result =
+        write(client_fd, response_str.c_str(), response_str.size());
 
   } else {
     // Send 404 for other paths
@@ -349,7 +365,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
         "Content-Length: 27\r\n"
         "\r\n"
         "{\"error\":\"endpoint not found\"}";
-    [[maybe_unused]] auto result = write(client_fd, not_found.c_str(), not_found.size());
+    [[maybe_unused]] auto result =
+        write(client_fd, not_found.c_str(), not_found.size());
   }
 }
 
@@ -365,7 +382,8 @@ std::string HealthCheckServer::generateReadinessResponse(bool ready) {
   }
 }
 
-std::string HealthCheckServer::generateV1HealthResponse(const NatsStatusTracker* nats_status) {
+std::string HealthCheckServer::generateV1HealthResponse(
+    const NatsStatusTracker* nats_status) {
   std::ostringstream body;
 
   if (nats_status == nullptr) {
@@ -387,8 +405,8 @@ std::string HealthCheckServer::generateV1HealthResponse(const NatsStatusTracker*
   bool healthy = (st == NatsConnectionState::kConnected);
   const char* overall = healthy ? "healthy" : "degraded";
 
-  body << "{\"status\":\"" << overall << "\",\"nats\":{\"state\":\"" << state_str
-       << "\",\"last_success_epoch_ms\":" << last_ms << "}}";
+  body << "{\"status\":\"" << overall << "\",\"nats\":{\"state\":\""
+       << state_str << "\",\"last_success_epoch_ms\":" << last_ms << "}}";
   return body.str();
 }
 

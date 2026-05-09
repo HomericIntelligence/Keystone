@@ -7,14 +7,14 @@
  * - TaskAgent (Level 3) executes commands and returns results
  */
 
-#include "agents/chief_architect_agent.hpp"
-#include "agents/task_agent.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <random>
 #include <sstream>
 
-#include <gtest/gtest.h>
+#include "agents/chief_architect_agent.hpp"
+#include "agents/task_agent.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone::agents;
 using namespace keystone::core;
@@ -53,7 +53,8 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
   int32_t num2 = dis(gen);
   int32_t expected_result = num1 + num2;
 
-  std::cout << "\nTest: Adding " << num1 << " + " << num2 << " = " << expected_result << std::endl;
+  std::cout << "\nTest: Adding " << num1 << " + " << num2 << " = "
+            << expected_result << std::endl;
 
   // Create bash command to add the numbers
   std::stringstream cmd;
@@ -61,7 +62,8 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
   std::string bash_command = cmd.str();
 
   // ACT: Send message via MessageBus
-  auto msg = KeystoneMessage::create(chief->getAgentId(), task_agent->getAgentId(), bash_command);
+  auto msg = KeystoneMessage::create(chief->getAgentId(),
+                                     task_agent->getAgentId(), bash_command);
 
   // Chief sends message (MessageBus routes it)
   chief->sendMessage(msg);
@@ -75,23 +77,29 @@ TEST(E2E_Phase1, ChiefArchitectDelegatesToTaskAgent) {
   // Response is automatically routed back via MessageBus
   // ChiefArchitect receives it
   auto chief_response_msg = chief->getMessage();
-  ASSERT_TRUE(chief_response_msg.has_value()) << "ChiefArchitect should receive response";
+  ASSERT_TRUE(chief_response_msg.has_value())
+      << "ChiefArchitect should receive response";
 
   auto final_response = chief->processMessage(*chief_response_msg).get();
 
   // ASSERT: Verify the result
-  EXPECT_EQ(final_response.status, Response::Status::Success) << "Command should succeed";
+  EXPECT_EQ(final_response.status, Response::Status::Success)
+      << "Command should succeed";
   EXPECT_EQ(std::stoi(final_response.result), expected_result)
-      << "Result should be " << expected_result << ", got " << final_response.result;
+      << "Result should be " << expected_result << ", got "
+      << final_response.result;
 
-  std::cout << "✓ TaskAgent correctly computed: " << num1 << " + " << num2 << " = "
-            << final_response.result << std::endl;
+  std::cout << "✓ TaskAgent correctly computed: " << num1 << " + " << num2
+            << " = " << final_response.result << std::endl;
 
   // Verify command was logged
   auto history = task_agent->getCommandHistory();
-  ASSERT_EQ(history.size(), 1) << "TaskAgent should have executed exactly one command";
-  EXPECT_EQ(history[0].first, bash_command) << "Command in history should match";
-  EXPECT_EQ(std::stoi(history[0].second), expected_result) << "Result in history should match";
+  ASSERT_EQ(history.size(), 1)
+      << "TaskAgent should have executed exactly one command";
+  EXPECT_EQ(history[0].first, bash_command)
+      << "Command in history should match";
+  EXPECT_EQ(std::stoi(history[0].second), expected_result)
+      << "Result in history should match";
 }
 
 /**
@@ -112,9 +120,8 @@ TEST(E2E_Phase1, ChiefArchitectSendsMultipleCommands) {
   task_agent->setMessageBus(bus.get());
 
   // Test cases: (num1, num2, expected_result)
-  std::vector<std::tuple<int32_t, int32_t, int32_t>> test_cases = {{5, 3, 8},
-                                                                   {15, 27, 42},
-                                                                   {100, 200, 300}};
+  std::vector<std::tuple<int32_t, int32_t, int32_t>> test_cases = {
+      {5, 3, 8}, {15, 27, 42}, {100, 200, 300}};
 
   // ACT & ASSERT: Send each command
   for (const auto& [num1, num2, expected] : test_cases) {
@@ -123,7 +130,8 @@ TEST(E2E_Phase1, ChiefArchitectSendsMultipleCommands) {
     std::string bash_command = cmd.str();
 
     // Send message via MessageBus
-    auto msg = KeystoneMessage::create(chief->getAgentId(), task_agent->getAgentId(), bash_command);
+    auto msg = KeystoneMessage::create(chief->getAgentId(),
+                                       task_agent->getAgentId(), bash_command);
 
     chief->sendMessage(msg);
 
@@ -142,7 +150,8 @@ TEST(E2E_Phase1, ChiefArchitectSendsMultipleCommands) {
     EXPECT_EQ(std::stoi(final_response.result), expected)
         << "Expected " << expected << ", got " << final_response.result;
 
-    std::cout << "✓ " << num1 << " + " << num2 << " = " << final_response.result << std::endl;
+    std::cout << "✓ " << num1 << " + " << num2 << " = " << final_response.result
+              << std::endl;
   }
 
   // Verify all commands in history
@@ -172,8 +181,7 @@ TEST(E2E_Phase1, TaskAgentHandlesCommandErrors) {
 
   // ACT: Send invalid command via MessageBus
   auto msg = KeystoneMessage::create(chief->getAgentId(),
-                                     task_agent->getAgentId(),
-                                     invalid_command);
+                                     task_agent->getAgentId(), invalid_command);
 
   chief->sendMessage(msg);
 
@@ -184,10 +192,11 @@ TEST(E2E_Phase1, TaskAgentHandlesCommandErrors) {
   // ASSERT: Should get error response
   EXPECT_EQ(response.status, Response::Status::Error)
       << "Invalid command should return error status";
-  EXPECT_FALSE(response.result.empty()) << "Error response should contain error message";
+  EXPECT_FALSE(response.result.empty())
+      << "Error response should contain error message";
 
-  std::cout << "✓ TaskAgent correctly handled invalid command with error: " << response.result
-            << std::endl;
+  std::cout << "✓ TaskAgent correctly handled invalid command with error: "
+            << response.result << std::endl;
 }
 
 int main(int argc, char** argv) {

@@ -787,8 +787,8 @@ ninja
 
 ## Key Design Decisions
 
-1. **gRPC over ZeroMQ**: gRPC provides better tooling, strong typing, and industry adoption despite ~100x higher latency
-(acceptable for HMAS coordination)
+1. **gRPC over ZeroMQ**: gRPC provides better tooling, strong typing, and industry adoption despite ~100x higher
+latency (acceptable for HMAS coordination)
 
 2. **YAML for specs, Protobuf for transport**: Hybrid approach - human-readable YAML wrapped in efficient binary
 protobuf

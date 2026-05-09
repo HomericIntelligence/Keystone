@@ -7,9 +7,9 @@
 
 ## Context
 
-ProjectKeystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load. Each
-message allocation/deallocation incurs overhead from the system allocator (malloc/free), causing performance degradation
-and memory fragmentation at scale.
+ProjectKeystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load.
+Each message allocation/deallocation incurs overhead from the system allocator (malloc/free), causing performance
+degradation and memory fragmentation at scale.
 
 ### Performance Problem
 
@@ -446,7 +446,8 @@ MessagePool::release_to_thread(std::move(msg), target_thread_id);
 ## References
 
 - [Object Pool Pattern](https://en.wikipedia.org/wiki/Object_pool_pattern) - Design pattern
-- [Memory Allocators](https://www.gingerbill.org/article/2019/02/01/memory-allocation-strategies-001/) - Allocation strategies
+- [Memory Allocators](https://www.gingerbill.org/article/2019/02/01/memory-allocation-strategies-001/) - Allocation
+strategies
 - [Thread-Local Storage](https://en.cppreference.com/w/cpp/keyword/thread_local) - C++ reference
 - [ADR-002: Work-Stealing Scheduler](./ADR-002-work-stealing-scheduler-architecture.md) - Thread architecture
 - [benchmarks/message_pool_performance.cpp](../../../benchmarks/message_pool_performance.cpp) - Performance tests

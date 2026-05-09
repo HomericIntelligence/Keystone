@@ -1,9 +1,9 @@
-#include "core/message.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/message.hpp"
 
 using namespace keystone::core;
 using namespace std::chrono_literals;
@@ -147,8 +147,8 @@ TEST(DeadlineSchedulingTest, MultipleMessagesWithDeadlines) {
  * @brief Test deadline with enhanced message creation
  */
 TEST(DeadlineSchedulingTest, DeadlineWithEnhancedMessage) {
-  auto msg = KeystoneMessage::create(
-      "sender", "receiver", ActionType::EXECUTE, "session123", "payload data");
+  auto msg = KeystoneMessage::create("sender", "receiver", ActionType::EXECUTE,
+                                     "session123", "payload data");
 
   msg.setDeadlineFromNow(100ms);
 

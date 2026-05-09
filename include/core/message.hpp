@@ -119,26 +119,29 @@ struct KeystoneMessage {
   std::string receiver_id;  ///< ID of the receiving agent
 
   // Phase A: Enhanced fields
-  ActionType action_type;                       ///< Type of action requested/performed
-  ContentType content_type;                     ///< Format of the payload
-  std::string session_id;                       ///< Session/context identifier
+  ActionType action_type;    ///< Type of action requested/performed
+  ContentType content_type;  ///< Format of the payload
+  std::string session_id;    ///< Session/context identifier
   std::map<std::string, std::string> metadata;  ///< Extensible metadata
 
   // Phase C: Priority field
   Priority priority;  ///< Message priority (HIGH/NORMAL/LOW)
 
   // Phase C: Deadline scheduling
-  std::optional<std::chrono::system_clock::time_point> deadline;  ///< Optional processing deadline
+  std::optional<std::chrono::system_clock::time_point>
+      deadline;  ///< Optional processing deadline
 
   // Phase 1.2 (Issue #52): Task cancellation
-  std::optional<std::string> task_id;  ///< Optional task ID for tracking/cancellation
+  std::optional<std::string>
+      task_id;  ///< Optional task ID for tracking/cancellation
 
   // Issue #285: Cross-host tracing
-  std::optional<std::string> correlation_id;  ///< Optional correlation ID for distributed tracing
+  std::optional<std::string>
+      correlation_id;  ///< Optional correlation ID for distributed tracing
 
   // Payload and timing
-  std::string command;                 ///< Command string to execute (legacy/convenience)
-  std::optional<std::string> payload;  ///< Optional payload data
+  std::string command;  ///< Command string to execute (legacy/convenience)
+  std::optional<std::string> payload;               ///< Optional payload data
   std::chrono::system_clock::time_point timestamp;  ///< Message timestamp
 
   /**
@@ -153,10 +156,10 @@ struct KeystoneMessage {
    * @param data Optional payload data
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(const std::string& sender,
-                                const std::string& receiver,
-                                const std::string& cmd,
-                                const std::optional<std::string>& data = std::nullopt);
+  static KeystoneMessage create(
+      const std::string& sender, const std::string& receiver,
+      const std::string& cmd,
+      const std::optional<std::string>& data = std::nullopt);
 
   /**
    * @brief Create a new enhanced message with all fields
@@ -169,12 +172,11 @@ struct KeystoneMessage {
    * @param content Content type (default: TEXT_PLAIN)
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(const std::string& sender,
-                                const std::string& receiver,
-                                ActionType action,
-                                const std::string& session,
-                                const std::optional<std::string>& data = std::nullopt,
-                                ContentType content = ContentType::TEXT_PLAIN);
+  static KeystoneMessage create(
+      const std::string& sender, const std::string& receiver, ActionType action,
+      const std::string& session,
+      const std::optional<std::string>& data = std::nullopt,
+      ContentType content = ContentType::TEXT_PLAIN);
 
   /**
    * @brief Set deadline relative to current time
@@ -201,7 +203,8 @@ struct KeystoneMessage {
    * @brief Create a task cancellation message
    *
    * Phase 1.2 (Issue #52): Factory method for creating CANCEL_TASK messages.
-   * Cancellation is cooperative - agents check for cancellation and respond gracefully.
+   * Cancellation is cooperative - agents check for cancellation and respond
+   * gracefully.
    *
    * @param sender Sender agent ID (parent requesting cancellation)
    * @param receiver Receiver agent ID (child executing the task)
@@ -209,10 +212,9 @@ struct KeystoneMessage {
    * @param session Session identifier (default: "default")
    * @return KeystoneMessage Cancellation message with CANCEL_TASK action
    */
-  static KeystoneMessage createCancellation(const std::string& sender,
-                                            const std::string& receiver,
-                                            const std::string& task_id,
-                                            const std::string& session = "default");
+  static KeystoneMessage createCancellation(
+      const std::string& sender, const std::string& receiver,
+      const std::string& task_id, const std::string& session = "default");
 };
 
 /**

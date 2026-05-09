@@ -1,9 +1,9 @@
-#include "core/message_pool.hpp"
+#include <gtest/gtest.h>
 
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "core/message_pool.hpp"
 
 using namespace keystone::core;
 
@@ -214,7 +214,8 @@ TEST_F(MessagePoolTest, MessageResetOnRelease) {
   msg.command = "test_command";
   msg.payload = "{\"key\": \"value\"}";
   msg.priority = Priority::HIGH;
-  msg.deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+  msg.deadline =
+      std::chrono::system_clock::now() + std::chrono::milliseconds(100);
 
   // Release back to pool
   MessagePool::release(std::move(msg));

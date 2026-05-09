@@ -396,8 +396,8 @@ TEST(StressTest, LongDurationStability) {
 
 **Purpose**: Ensure profiling code doesn't regress without slowing regular development
 
-**Overhead**: Profiling adds significant overhead (~1000µs per operation), making these tests too slow for per-commit CI
-runs. Instead, they run weekly to validate the profiling infrastructure remains functional.
+**Overhead**: Profiling adds significant overhead (~1000µs per operation), making these tests too slow for per-commit
+CI runs. Instead, they run weekly to validate the profiling infrastructure remains functional.
 
 #### Running Locally
 
@@ -628,13 +628,18 @@ race:^std::__atomic_base
 │ Build (All)  │  Linux, Windows, macOS
 └──────┬───────┘
        │
-       ├─────────────────────┬──────────────────┐
+
+├─────────────────────┬─────────────────
+─┐
        ▼                     ▼                  ▼
-┌──────────────┐    ┌──────────────┐   ┌──────────────┐
+┌──────────────┐    ┌──────────────┐  
+┌──────────────┐
 │  Unit Tests  │    │ Integration  │   │ Performance  │
-└──────┬───────┘    └──────┬───────┘   └──────┬───────┘
+└──────┬───────┘    └──────┬───────┘  
+└──────┬───────┘
        │                   │                  │
-       └─────────┬─────────┴──────────────────┘
+
+└─────────┬─────────┴──────────────────┘
                  ▼
          ┌──────────────┐
          │   Coverage   │

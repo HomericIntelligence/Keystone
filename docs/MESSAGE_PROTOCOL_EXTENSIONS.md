@@ -28,8 +28,8 @@ protocol.
 
 ### Overview
 
-The Task Cancellation Protocol enables parent agents to request cancellation of tasks running in child agents. This is a
-**cooperative cancellation** mechanism where agents must explicitly check for cancellation requests.
+The Task Cancellation Protocol enables parent agents to request cancellation of tasks running in child agents. This is
+a **cooperative cancellation** mechanism where agents must explicitly check for cancellation requests.
 
 ### Protocol Specification
 
@@ -129,10 +129,12 @@ protected:
 ### Message Flow
 
 ```
-┌─────────────────┐                          ┌─────────────────┐
+┌─────────────────┐  
+┌─────────────────┐
 │  Parent Agent   │                          │  Child Agent    │
 │ (ChiefArchitect)│                          │   (TaskAgent)   │
-└────────┬────────┘                          └────────┬────────┘
+└────────┬────────┘  
+└────────┬────────┘
          │                                            │
          │  1. Create cancellation message            │
          │  msg = createCancellation(...)             │

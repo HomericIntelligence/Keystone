@@ -15,11 +15,14 @@ MD013:
 
 # MD033: Inline HTML
 MD033:
-  allowed_elements: [T, img, br, details, summary]  # Allow common HTML elements
+  allowed_elements: [T, img, br, details, summary, predicate, void, atomic]  # Allow common HTML elements
 
 # MD024: Multiple headings with the same content
 MD024:
   siblings_only: true  # Allow duplicate headings if they are not siblings (e.g. repeated "Tasks" under different sections)
+
+# MD029: Ordered list prefix (common in planning docs with numbered phases)
+MD029: false  # Allow flexible ordered list numbering
 
 # MD036: Emphasis used instead of heading
 MD036: false  # Allow bold text for emphasis (common in planning docs)

@@ -9,9 +9,7 @@
 // - Concurrent message throughput
 // - Agent discovery performance
 
-#include "agents/task_agent.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
+#include <benchmark/benchmark.h>
 
 #include <atomic>
 #include <cstdint>
@@ -19,7 +17,9 @@
 #include <thread>
 #include <vector>
 
-#include <benchmark/benchmark.h>
+#include "agents/task_agent.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone;
 using namespace keystone::core;
@@ -40,8 +40,8 @@ static void BM_MessageRouting_SingleAgent(benchmark::State& state) {
   }
 
   state.SetItemsProcessed(state.iterations());
-  state.counters["messages/sec"] = benchmark::Counter(state.iterations(),
-                                                      benchmark::Counter::kIsRate);
+  state.counters["messages/sec"] =
+      benchmark::Counter(state.iterations(), benchmark::Counter::kIsRate);
 }
 BENCHMARK(BM_MessageRouting_SingleAgent);
 
@@ -79,7 +79,8 @@ static void BM_AgentRegistration(benchmark::State& state) {
 
   size_t count = 0;
   for (auto _ : state) {
-    auto agent = std::make_shared<TaskAgent>("agent-" + std::to_string(count++));
+    auto agent =
+        std::make_shared<TaskAgent>("agent-" + std::to_string(count++));
     bus.registerAgent(agent->getAgentId(), agent);
     agents.push_back(agent);
   }
@@ -242,7 +243,8 @@ static void BM_MessageBroadcast(benchmark::State& state) {
   for (auto _ : state) {
     // Broadcast: send message to all agents
     for (int32_t i = 0; i < num_agents; ++i) {
-      auto msg = KeystoneMessage::create("broadcaster", "agent-" + std::to_string(i), "broadcast");
+      auto msg = KeystoneMessage::create(
+          "broadcaster", "agent-" + std::to_string(i), "broadcast");
       bus.routeMessage(msg);
     }
   }

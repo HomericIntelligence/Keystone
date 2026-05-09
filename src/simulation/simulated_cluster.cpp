@@ -1,10 +1,10 @@
 #include "simulation/simulated_cluster.hpp"
 
-#include "concurrency/logger.hpp"
-
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
+
+#include "concurrency/logger.hpp"
 
 namespace keystone {
 namespace simulation {
@@ -12,7 +12,8 @@ namespace simulation {
 using namespace concurrency;
 
 SimulatedCluster::SimulatedCluster(Config config)
-    : config_(config), network_(std::make_unique<SimulatedNetwork>(config.network_config)) {
+    : config_(config),
+      network_(std::make_unique<SimulatedNetwork>(config.network_config)) {
   if (config_.num_nodes == 0) {
     throw std::invalid_argument("SimulatedCluster: num_nodes must be > 0");
   }
@@ -20,12 +21,12 @@ SimulatedCluster::SimulatedCluster(Config config)
   // Create all nodes
   nodes_.reserve(config_.num_nodes);
   for (size_t i = 0; i < config_.num_nodes; ++i) {
-    nodes_.push_back(std::make_unique<SimulatedNUMANode>(i, config_.workers_per_node));
+    nodes_.push_back(
+        std::make_unique<SimulatedNUMANode>(i, config_.workers_per_node));
   }
 
   Logger::info("SimulatedCluster: Created with {} nodes, {} workers/node",
-               config_.num_nodes,
-               config_.workers_per_node);
+               config_.num_nodes, config_.workers_per_node);
 }
 
 SimulatedCluster::~SimulatedCluster() {
@@ -64,7 +65,8 @@ void SimulatedCluster::shutdown() {
   Logger::info("SimulatedCluster: Shutdown complete");
 }
 
-void SimulatedCluster::submit(const std::string& agent_id, std::function<void()> work) {
+void SimulatedCluster::submit(const std::string& agent_id,
+                              std::function<void()> work) {
   total_tasks_submitted_++;
 
   // Find agent's home node
@@ -79,10 +81,12 @@ void SimulatedCluster::submit(const std::string& agent_id, std::function<void()>
     }
   }
   nodes_[node_id]->submit(std::move(work));
-  Logger::trace("SimulatedCluster: Submitted work for agent '{}' to node {}", agent_id, node_id);
+  Logger::trace("SimulatedCluster: Submitted work for agent '{}' to node {}",
+                agent_id, node_id);
 }
 
-void SimulatedCluster::submitToNode(size_t node_id, std::function<void()> work) {
+void SimulatedCluster::submitToNode(size_t node_id,
+                                    std::function<void()> work) {
   if (node_id >= nodes_.size()) {
     throw std::out_of_range("SimulatedCluster: Invalid node_id");
   }
@@ -92,7 +96,8 @@ void SimulatedCluster::submitToNode(size_t node_id, std::function<void()> work) 
   Logger::trace("SimulatedCluster: Submitted work to node {}", node_id);
 }
 
-void SimulatedCluster::registerAgent(const std::string& agent_id, size_t preferred_node) {
+void SimulatedCluster::registerAgent(const std::string& agent_id,
+                                     size_t preferred_node) {
   if (preferred_node >= nodes_.size()) {
     throw std::out_of_range("SimulatedCluster: Invalid preferred_node");
   }
@@ -103,7 +108,8 @@ void SimulatedCluster::registerAgent(const std::string& agent_id, size_t preferr
   }
   nodes_[preferred_node]->registerAgent(agent_id);
 
-  Logger::info("SimulatedCluster: Registered agent '{}' on node {}", agent_id, preferred_node);
+  Logger::info("SimulatedCluster: Registered agent '{}' on node {}", agent_id,
+               preferred_node);
 }
 
 void SimulatedCluster::unregisterAgent(const std::string& agent_id) {
@@ -120,10 +126,12 @@ void SimulatedCluster::unregisterAgent(const std::string& agent_id) {
   }
   nodes_[node_id]->unregisterAgent(agent_id);
 
-  Logger::info("SimulatedCluster: Unregistered agent '{}' from node {}", agent_id, node_id);
+  Logger::info("SimulatedCluster: Unregistered agent '{}' from node {}",
+               agent_id, node_id);
 }
 
-std::optional<size_t> SimulatedCluster::getAgentNode(const std::string& agent_id) const {
+std::optional<size_t> SimulatedCluster::getAgentNode(
+    const std::string& agent_id) const {
   std::lock_guard<std::mutex> lock(agent_map_mutex_);
   auto it = agent_node_map_.find(agent_id);
   if (it == agent_node_map_.end()) {
@@ -138,23 +146,25 @@ bool SimulatedCluster::stealRemoteWork(size_t from_node, size_t to_node) {
   }
 
   if (from_node == to_node) {
-    Logger::warn("SimulatedCluster: Cannot steal from same node ({})", from_node);
+    Logger::warn("SimulatedCluster: Cannot steal from same node ({})",
+                 from_node);
     return false;
   }
 
   // Attempt to steal work from source node
   auto work = nodes_[from_node]->stealWork();
   if (!work.has_value()) {
-    Logger::trace("SimulatedCluster: Remote steal failed ({}→{}): no work available",
-                  from_node,
-                  to_node);
+    Logger::trace(
+        "SimulatedCluster: Remote steal failed ({}→{}): no work available",
+        from_node, to_node);
     return false;
   }
 
   // Send work over network with latency
   network_->send(from_node, to_node, std::move(*work));
 
-  Logger::debug("SimulatedCluster: Remote steal initiated ({}→{})", from_node, to_node);
+  Logger::debug("SimulatedCluster: Remote steal initiated ({}→{})", from_node,
+                to_node);
   return true;
 }
 
@@ -164,7 +174,8 @@ void SimulatedCluster::processNetworkMessages() {
     while (auto work = network_->receive(node_id)) {
       // Submit received work to destination node
       nodes_[node_id]->submit(std::move(*work));
-      Logger::trace("SimulatedCluster: Delivered network message to node {}", node_id);
+      Logger::trace("SimulatedCluster: Delivered network message to node {}",
+                    node_id);
     }
   }
 }
@@ -215,7 +226,8 @@ SimulatedNUMANode* SimulatedCluster::getNode(size_t node_id) {
   return nodes_[node_id].get();
 }
 
-double SimulatedCluster::calculateStdDev(const std::vector<size_t>& queue_depths) const {
+double SimulatedCluster::calculateStdDev(
+    const std::vector<size_t>& queue_depths) const {
   if (queue_depths.empty()) {
     return 0.0;
   }

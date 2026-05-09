@@ -22,12 +22,12 @@
  * the NatsConnectionTestPeer helper below.
  */
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <string>
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 using namespace keystone::transport;
 
@@ -39,7 +39,9 @@ class NatsConnectionTestPeer : public NatsConnection {
  public:
   using NatsConnection::NatsConnection;
 
-  void fireError() { NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this); }
+  void fireError() {
+    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
+  }
 
   void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
   void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
