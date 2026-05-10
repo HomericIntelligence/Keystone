@@ -145,6 +145,17 @@ struct KeystoneMessage {
   std::optional<std::string> payload;  ///< Optional payload data
   std::chrono::system_clock::time_point timestamp;  ///< Message timestamp
 
+  // Declare special members out-of-line so their definitions (in message.cpp)
+  // can suppress -Wdeprecated-declarations for the internal move/copy of the
+  // deprecated 'command' field.  External code that reads/writes 'command'
+  // directly will still receive the deprecation diagnostic.
+  KeystoneMessage();
+  KeystoneMessage(const KeystoneMessage&);
+  KeystoneMessage(KeystoneMessage&&) noexcept;
+  KeystoneMessage& operator=(const KeystoneMessage&);
+  KeystoneMessage& operator=(KeystoneMessage&&) noexcept;
+  ~KeystoneMessage();
+
   /**
    * @brief Create a new message with generated ID (legacy interface)
    *

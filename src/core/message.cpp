@@ -7,6 +7,27 @@
 namespace keystone {
 namespace core {
 
+// ---------------------------------------------------------------------------
+// Out-of-line special-member definitions for KeystoneMessage.
+//
+// Defined here (rather than defaulted in the header) so that we can suppress
+// -Wdeprecated-declarations for the internal copy/move of the deprecated
+// 'command' field.  Callers that access 'command' directly still get the
+// warning.
+// ---------------------------------------------------------------------------
+_Pragma("GCC diagnostic push")
+_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+
+KeystoneMessage::KeystoneMessage() = default;
+KeystoneMessage::KeystoneMessage(const KeystoneMessage&) = default;
+KeystoneMessage::KeystoneMessage(KeystoneMessage&&) noexcept = default;
+KeystoneMessage& KeystoneMessage::operator=(const KeystoneMessage&) = default;
+KeystoneMessage& KeystoneMessage::operator=(KeystoneMessage&&) noexcept =
+    default;
+KeystoneMessage::~KeystoneMessage() = default;
+
+_Pragma("GCC diagnostic pop")
+
 namespace {
 // Simple UUID generation (not cryptographically secure, but sufficient for
 // Phase 1) Thread-safe: uses thread_local to avoid data races across threads

@@ -28,7 +28,10 @@ SerializableMessage SerializableMessage::fromKeystoneMessage(
         cista::offset::string{value.c_str()};
   }
 
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   smsg.command = cista::offset::string{msg.command.c_str()};
+  _Pragma("GCC diagnostic pop")
 
   if (msg.payload.has_value()) {
     smsg.payload = cista::offset::string{msg.payload.value().c_str()};
@@ -73,7 +76,10 @@ KeystoneMessage SerializableMessage::toKeystoneMessage() const {
         std::string{value.data(), value.size()};
   }
 
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   msg.command = std::string{command.data(), command.size()};
+  _Pragma("GCC diagnostic pop")
 
   if (has_payload) {
     msg.payload = std::string{payload.data(), payload.size()};
