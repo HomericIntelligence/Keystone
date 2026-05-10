@@ -34,7 +34,10 @@ KeystoneMessage KeystoneMessage::create(
   msg.msg_id = generate_uuid();
   msg.sender_id = sender;
   msg.receiver_id = receiver;
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   msg.command = cmd;
+  _Pragma("GCC diagnostic pop")
   msg.payload = data;
   msg.timestamp = std::chrono::system_clock::now();
 
@@ -67,7 +70,10 @@ KeystoneMessage KeystoneMessage::create(const std::string& sender,
   msg.timestamp = std::chrono::system_clock::now();
 
   // Legacy field: set command based on action type
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   msg.command = actionTypeToString(action);
+  _Pragma("GCC diagnostic pop")
 
   // Phase C: Initialize priority and deadline (FIX: was missing!)
   msg.priority = Priority::NORMAL;
@@ -114,7 +120,10 @@ KeystoneMessage KeystoneMessage::createCancellation(
   msg.session_id = session;
   msg.task_id = task_id;          // Set the task to cancel
   msg.priority = Priority::HIGH;  // Cancellations are high priority
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   msg.command = "CANCEL_TASK";
+  _Pragma("GCC diagnostic pop")
   msg.timestamp = std::chrono::system_clock::now();
   return msg;
 }
