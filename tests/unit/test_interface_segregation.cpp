@@ -7,6 +7,11 @@
  * Principle.
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include "agents/task_agent.hpp"
@@ -186,3 +191,5 @@ TEST(InterfaceSegregation, CompileTimeEnforcement) {
   // Now registry->registerAgent() works
   (void)registry;  // Suppress unused warning
 }
+
+#pragma GCC diagnostic pop

@@ -11,6 +11,11 @@
  * Total: 15 tests
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include "agents/chief_architect_agent.hpp"
@@ -279,3 +284,5 @@ TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
   }
   EXPECT_EQ(count, 100);
 }
+
+#pragma GCC diagnostic pop

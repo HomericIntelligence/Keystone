@@ -1,3 +1,8 @@
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ringbuffer_sink.h>
 #include <spdlog/spdlog.h>
@@ -647,3 +652,5 @@ TEST(AgentCoreLogTest, BackpressureRecoveryLogsInfo) {
 
   keystone::concurrency::Logger::shutdown();
 }
+
+#pragma GCC diagnostic pop

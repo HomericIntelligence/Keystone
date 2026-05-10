@@ -140,9 +140,21 @@ struct KeystoneMessage {
       correlation_id;  ///< Optional correlation ID for distributed tracing
 
   // Payload and timing
-  std::string command;  ///< Command string to execute (legacy/convenience)
-  std::optional<std::string> payload;               ///< Optional payload data
+  [[deprecated("command is a legacy/convenience field; use payload with ActionType instead")]]
+  std::string command;                 ///< Command string to execute (legacy/convenience)
+  std::optional<std::string> payload;  ///< Optional payload data
   std::chrono::system_clock::time_point timestamp;  ///< Message timestamp
+
+  // Declare special members out-of-line so their definitions (in message.cpp)
+  // can suppress -Wdeprecated-declarations for the internal move/copy of the
+  // deprecated 'command' field.  External code that reads/writes 'command'
+  // directly will still receive the deprecation diagnostic.
+  KeystoneMessage();
+  KeystoneMessage(const KeystoneMessage&);
+  KeystoneMessage(KeystoneMessage&&) noexcept;
+  KeystoneMessage& operator=(const KeystoneMessage&);
+  KeystoneMessage& operator=(KeystoneMessage&&) noexcept;
+  ~KeystoneMessage();
 
   /**
    * @brief Create a new message with generated ID (legacy interface)

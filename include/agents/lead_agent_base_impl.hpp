@@ -59,7 +59,10 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
   // Step 3: This is a new goal - decompose and delegate
   coordination_.transitionTo(planning_state_, stateToString(planning_state_));
 
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
   coordination_.setCurrentGoal(msg.command);
+  _Pragma("GCC diagnostic pop")
   coordination_.setRequesterId(msg.sender_id);
 
   // Step 4: Decompose goal into subtasks (hook method - subclass implements)

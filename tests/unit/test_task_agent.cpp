@@ -11,6 +11,11 @@
  * Total: 15 tests
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include "agents/task_agent.hpp"
@@ -235,3 +240,5 @@ TEST_F(TaskAgentTest, HandleBusUnavailable) {
   // Sending without bus should throw
   EXPECT_THROW(agent->sendMessage(msg), std::runtime_error);
 }
+
+#pragma GCC diagnostic pop

@@ -12,6 +12,11 @@
  * Total: 16 tests
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include "agents/component_lead_agent.hpp"
@@ -441,3 +446,5 @@ TEST_F(ComponentLeadAgentTest,
   auto state = component->getCurrentState();
   EXPECT_NE(state, agents::ComponentLeadAgent::State::WAITING_FOR_MODULES);
 }
+
+#pragma GCC diagnostic pop

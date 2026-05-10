@@ -1,3 +1,8 @@
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -221,3 +226,5 @@ TEST_F(AsyncTaskAgentTest, FailedAgentRejectsMessages) {
   const auto& history = agent_->getCommandHistory();
   EXPECT_TRUE(history.empty());
 }
+
+#pragma GCC diagnostic pop

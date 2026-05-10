@@ -11,6 +11,11 @@
  * 6. Parent receives acknowledgement
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include <chrono>
@@ -271,3 +276,5 @@ TEST(E2E_TaskCancellation, MissingTaskIdReturnsError) {
   EXPECT_EQ(response.status, Response::Status::Error);
   EXPECT_TRUE(response.result.find("missing task_id") != std::string::npos);
 }
+
+#pragma GCC diagnostic pop
