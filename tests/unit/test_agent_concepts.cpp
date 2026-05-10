@@ -9,6 +9,11 @@
  * - Compile-time errors for incomplete interfaces
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include "agents/chief_architect_agent.hpp"
@@ -316,3 +321,5 @@ TEST(AgentConcepts, UsageDocumentation) {
   EXPECT_TRUE(bus.hasAgent("task"));
   EXPECT_TRUE(bus.hasAgent("chief"));
 }
+
+#pragma GCC diagnostic pop
