@@ -25,6 +25,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
 
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
       - name: Cache FetchContent downloads
         uses: actions/cache@v5
         with:
@@ -39,27 +50,20 @@ jobs:
       - name: Configure sccache
         run: echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
 
-      - name: Install dependencies
+      - name: Install Conan dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            cmake \
-            ninja-build \
-            clang-18 \
-            clang++-18 \
-            libc++-18-dev \
-            libc++abi-18-dev
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100
-          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100
-          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100
+          conan install . \
+            --output-folder=build/conan-deps \
+            --build=missing \
+            -s build_type=Release \
+            -s compiler.cppstd=20
 
       - name: Build with profiling enabled
         run: |
           mkdir -p build/profiling
           cd build/profiling
           cmake -S ../.. -DCMAKE_BUILD_TYPE=Release -DENABLE_PROFILING=ON -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/build/conan-deps/conan_toolchain.cmake \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           ninja profiling_tests
