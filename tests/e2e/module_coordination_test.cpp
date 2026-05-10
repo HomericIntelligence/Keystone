@@ -13,6 +13,11 @@
  * - Multi-agent coordination
  */
 
+// KeystoneMessage::command is [[deprecated]]; test files intentionally access
+// it to verify backward-compat behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -264,3 +269,5 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
+
+#pragma GCC diagnostic pop
