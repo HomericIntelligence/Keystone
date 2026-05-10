@@ -76,6 +76,8 @@ concurrency::Task<core::Response> TaskAgent::processMessage(
 
   try {
     // Execute the bash command
+    _Pragma("GCC diagnostic push")
+    _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
     std::string result = executeBash(msg.command);
 
     // Log the execution (lock guards concurrent processMessage coroutines)
@@ -83,6 +85,7 @@ concurrency::Task<core::Response> TaskAgent::processMessage(
       std::lock_guard<std::mutex> lock(log_mutex_);
       command_log_.emplace_back(msg.command, result);
     }
+    _Pragma("GCC diagnostic pop")
 
     auto response = core::Response::createSuccess(msg, agent_id_, result);
     sendResponseMessage(msg, result);

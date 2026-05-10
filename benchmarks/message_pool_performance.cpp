@@ -5,6 +5,11 @@
  * Phase D.2: Verify message pooling reduces allocation overhead
  */
 
+// KeystoneMessage::command is [[deprecated]]; benchmarks intentionally access
+// it to measure legacy-field allocation behaviour.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <benchmark/benchmark.h>
 
 #include <cstdint>
@@ -256,3 +261,5 @@ static void BM_MessageReset(benchmark::State& state) {
 BENCHMARK(BM_MessageReset);
 
 BENCHMARK_MAIN();
+
+#pragma GCC diagnostic pop

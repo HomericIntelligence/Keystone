@@ -35,7 +35,11 @@ void ComponentLeadAgent::setAvailableModuleLeads(
 
 bool ComponentLeadAgent::isSubordinateResult(const core::KeystoneMessage& msg) {
   // Check if this is a module result
-  return msg.command == "module_result";
+  _Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+  bool result = msg.command == "module_result";
+  _Pragma("GCC diagnostic pop")
+  return result;
 }
 
 std::vector<std::string> ComponentLeadAgent::decomposeGoal(
