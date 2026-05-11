@@ -81,13 +81,21 @@ if [[ "$RUN_CLANG_TIDY" == "true" ]]; then
     > "$CLANG_TIDY_REPORT"  # Clear report file
 
     for file in $SOURCE_FILES; do
-        echo -e "${BLUE}Analyzing: $(basename $file)${NC}"
-        clang-tidy "$file" -p "$BUILD_DIR" >> "$CLANG_TIDY_REPORT" 2>&1 || true
+        echo -e "${BLUE}Analyzing: $(basename "$file")${NC}"
+        # clang-tidy exits non-zero when it finds warnings/errors — that is the
+        # expected case for an aggregator. We want every file analysed and the
+        # results captured; the final exit code is decided from CLANG_TIDY_ERRORS.
+        rc=0
+        clang-tidy "$file" -p "$BUILD_DIR" >> "$CLANG_TIDY_REPORT" 2>&1 || rc=$?
+        if [[ $rc -ne 0 && $rc -ne 1 ]]; then
+            echo "warn: clang-tidy on $file exited rc=$rc (continuing)" >&2
+        fi
     done
 
-    # Count issues (exclude third-party dependency parsing errors)
-    CLANG_TIDY_WARNINGS=$(grep "warning:" "$CLANG_TIDY_REPORT" | grep -v "_deps/" | grep -c "" || echo "0")
-    CLANG_TIDY_ERRORS=$(grep "error:" "$CLANG_TIDY_REPORT" | grep -v "Error parsing.*_deps/" | grep -c "" || echo "0")
+    # Count issues (exclude third-party dependency parsing errors).
+    # awk always exits 0, so the count is reliable even when nothing matches.
+    CLANG_TIDY_WARNINGS=$(awk '/warning:/ && !/_deps\//{n++} END{print n+0}' "$CLANG_TIDY_REPORT")
+    CLANG_TIDY_ERRORS=$(awk '/error:/ && !/Error parsing.*_deps\//{n++} END{print n+0}' "$CLANG_TIDY_REPORT")
 
     echo ""
     echo -e "${GREEN}clang-tidy analysis complete${NC}"

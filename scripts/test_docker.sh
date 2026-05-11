@@ -42,11 +42,11 @@ run_test() {
 
     if "$@"; then
         print_success "$test_name PASSED"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     else
         print_error "$test_name FAILED"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
     fi
 }
@@ -142,7 +142,9 @@ test_clean_build() {
 cleanup() {
     print_header "Cleanup"
     print_info "Stopping containers..."
-    docker-compose down 2>/dev/null || true
+    if ! docker-compose down 2>/dev/null; then
+        echo "warn: docker-compose down encountered errors (idempotent)" >&2
+    fi
     print_success "Cleanup complete"
 }
 
@@ -173,18 +175,22 @@ main() {
     # Trap cleanup on exit
     trap cleanup EXIT
 
-    # Run tests
-    run_test "Test 1: Build Runtime Image" test_build_runtime || true
-    run_test "Test 2: Run Tests in Container" test_run_tests || true
-    run_test "Test 3: Docker Compose Test Service" test_docker_compose_test || true
-    run_test "Test 4: Docker Compose Development Environment" test_docker_compose_dev || true
+    # Run tests. run_test already records pass/fail into TESTS_PASSED/TESTS_FAILED,
+    # so a failing test must NOT abort the run — capture its rc into _rc explicitly
+    # instead of suppressing with `|| true`.
+    local _rc
+    run_test "Test 1: Build Runtime Image" test_build_runtime && _rc=0 || _rc=$?
+    run_test "Test 2: Run Tests in Container" test_run_tests && _rc=0 || _rc=$?
+    run_test "Test 3: Docker Compose Test Service" test_docker_compose_test && _rc=0 || _rc=$?
+    run_test "Test 4: Docker Compose Development Environment" test_docker_compose_dev && _rc=0 || _rc=$?
 
     # Test 5 is optional (takes longest time)
     if [[ "${SKIP_CLEAN_BUILD:-0}" != "1" ]]; then
-        run_test "Test 5: Clean Build (No Cache)" test_clean_build || true
+        run_test "Test 5: Clean Build (No Cache)" test_clean_build && _rc=0 || _rc=$?
     else
         print_info "Skipping Test 5 (Clean Build) - Set SKIP_CLEAN_BUILD=0 to enable"
     fi
+    : "${_rc:=0}"  # silence shellcheck unused-var; _rc is intentionally discarded
 
     # Print summary
     print_header "Test Summary"

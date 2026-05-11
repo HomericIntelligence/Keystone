@@ -40,11 +40,11 @@ run_check() {
 
     if "$@"; then
         print_success "$check_name"
-        ((TESTS_PASSED++))
+        TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     else
         print_error "$check_name FAILED"
-        ((TESTS_FAILED++))
+        TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
     fi
 }
@@ -262,7 +262,11 @@ check_benchmark_scripts() {
 
 # Cleanup function
 cleanup() {
-    cd "$PROJECT_ROOT" || true
+    # PROJECT_ROOT is set by main(); if cleanup runs before that (impossible under
+    # normal flow, but defensive), just no-op rather than aborting with `set -e`.
+    if [[ -n "${PROJECT_ROOT:-}" && -d "$PROJECT_ROOT" ]]; then
+        cd "$PROJECT_ROOT"
+    fi
 }
 
 # Main execution
@@ -276,14 +280,18 @@ main() {
     # Trap cleanup on exit
     trap cleanup EXIT
 
-    # Run checks
-    run_check "Prerequisites Check" check_prerequisites || true
-    run_check "Build Configuration" check_build_configuration || true
-    run_check "Project Build" check_build_project || true
-    run_check "Test Execution" check_run_tests || true
-    run_check "Docker Build (Optional)" check_docker_build || true
-    run_check "Coverage Script (Optional)" check_coverage_script || true
-    run_check "Benchmark Scripts (Optional)" check_benchmark_scripts || true
+    # Run checks. run_check already records pass/fail into TESTS_PASSED/TESTS_FAILED,
+    # so a failing check must NOT abort the run — capture its rc into _rc explicitly
+    # instead of suppressing with `|| true`.
+    local _rc
+    run_check "Prerequisites Check" check_prerequisites && _rc=0 || _rc=$?
+    run_check "Build Configuration" check_build_configuration && _rc=0 || _rc=$?
+    run_check "Project Build" check_build_project && _rc=0 || _rc=$?
+    run_check "Test Execution" check_run_tests && _rc=0 || _rc=$?
+    run_check "Docker Build (Optional)" check_docker_build && _rc=0 || _rc=$?
+    run_check "Coverage Script (Optional)" check_coverage_script && _rc=0 || _rc=$?
+    run_check "Benchmark Scripts (Optional)" check_benchmark_scripts && _rc=0 || _rc=$?
+    : "${_rc:=0}"
 
     # Print summary
     print_header "Verification Summary"

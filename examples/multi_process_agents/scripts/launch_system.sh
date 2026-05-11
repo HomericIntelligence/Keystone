@@ -6,10 +6,15 @@ BUILD_DIR="$SCRIPT_DIR/../build"
 
 # Clean up any previous runs
 rm -f /tmp/keystone_queues.sock
-pkill -f process1_chief || true
-pkill -f process2_component_lead || true
-pkill -f process3_module_lead || true
-pkill -f process4_task_agent || true
+for pattern in process1_chief process2_component_lead process3_module_lead process4_task_agent; do
+    # pkill exits 1 when no processes match — that is the expected case for a clean run.
+    # Treat exit codes >=2 as real errors (permission denied, syntax error, etc.).
+    rc=0
+    pkill -f "$pattern" || rc=$?
+    if [[ $rc -ge 2 ]]; then
+        echo "warn: pkill -f $pattern failed with rc=$rc" >&2
+    fi
+done
 
 sleep 1
 
@@ -51,6 +56,20 @@ echo "  - logs/task_agent.log"
 # Cleanup background processes
 echo ""
 echo "Cleaning up background processes..."
-kill $COMP_PID $MOD_PID $TASK_PID 2>/dev/null || true
-wait $COMP_PID $MOD_PID $TASK_PID 2>/dev/null || true
+for pid in "$COMP_PID" "$MOD_PID" "$TASK_PID"; do
+    if [[ -n "${pid:-}" ]] && kill -0 "$pid" 2>/dev/null; then
+        if ! kill "$pid" 2>/dev/null; then
+            echo "warn: kill failed for $pid" >&2
+        fi
+    fi
+done
+for pid in "$COMP_PID" "$MOD_PID" "$TASK_PID"; do
+    # wait returns 127 if pid is unknown to shell, 128+N if signalled, 0 on clean
+    # exit; we don't care which — only that the process is reaped before we exit.
+    rc=0
+    wait "$pid" 2>/dev/null || rc=$?
+    if [[ $rc -gt 128 ]]; then
+        : # killed by signal as expected
+    fi
+done
 echo "Done"
