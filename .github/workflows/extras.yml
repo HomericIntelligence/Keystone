@@ -66,13 +66,7 @@ jobs:
         run: sccache --show-stats
 
       - name: Run benchmarks
-        run: |
-          set -euo pipefail
-          # Benchmarks can legitimately regress without blocking the workflow —
-          # report-only. Surface the rc as a warning instead of silently masking.
-          if ! make benchmark.native; then
-            echo "::warning::benchmark.native exited non-zero — see step log above"
-          fi
+        run: make benchmark.native
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
