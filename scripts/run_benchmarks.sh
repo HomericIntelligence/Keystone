@@ -110,9 +110,17 @@ if [[ $missing -eq ${#BENCHMARKS[@]} ]]; then
     exit 1
 fi
 
-# Timestamp for results
+# Timestamp for results.
+# Exported so the embedded `python3 << EOF` heredocs below can read them via
+# os.environ.get(). Heredocs run as a subprocess of bash and only inherit
+# *exported* variables; without `export` the python sees None and emits
+# "No result files found matching None/*_None.json".
+export TIMESTAMP
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+export RESULTS_DIR
+export RESULTS_FILE
 RESULTS_FILE="$RESULTS_DIR/results_$TIMESTAMP.json"
+export COMPARE_BASELINE
 
 echo -e "${YELLOW}Running benchmarks...${NC}"
 echo ""
