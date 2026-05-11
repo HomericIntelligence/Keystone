@@ -161,7 +161,10 @@ create_milestone_if_needed() {
     fi
 
     echo -e "${GREEN}Creating milestone: $milestone_title${NC}"
-    gh api repos/:owner/:repo/milestones -f title="$milestone_title" -f due_on="$milestone_due_date" || true
+    if ! gh api repos/:owner/:repo/milestones -f title="$milestone_title" -f due_on="$milestone_due_date"; then
+        echo -e "${RED}warn: failed to create milestone '$milestone_title'${NC}" >&2
+        return 1
+    fi
 }
 
 # Main script

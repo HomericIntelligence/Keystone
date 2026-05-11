@@ -117,8 +117,13 @@ done
 # Cleanup on exit
 cleanup() {
     echo "Shutting down HMAS Server..."
-    kill $HEALTH_SERVER_PID 2>/dev/null || true
-    kill $METRICS_SERVER_PID 2>/dev/null || true
+    for pid in "${HEALTH_SERVER_PID:-}" "${METRICS_SERVER_PID:-}"; do
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            if ! kill "$pid" 2>/dev/null; then
+                echo "warn: kill failed for $pid" >&2
+            fi
+        fi
+    done
     exit 0
 }
 
