@@ -715,19 +715,23 @@ jobs:
       - name: Python dependency audit (pip-audit)
         run: |
           set -euo pipefail
-          pip install -e ".[dev]" --quiet
           # pip-audit --strict exits non-zero on any finding — fail-fast per
           # docs/runbooks/no-silent-failures.md (Bucket F). If a finding is
           # genuinely unfixable, add it to a `--ignore-vuln` allowlist with an
           # inline comment naming the tracking issue and planned fix date.
           #
-          # --skip-editable: the project itself (projectkeystone) is installed
-          # in editable mode above so pip-audit can resolve its [dev] extras.
-          # It is intentionally not published to PyPI, so auditing it as a
-          # PyPI package errors with "Dependency not found on PyPI". We only
-          # care about auditing the *third-party* dependency tree, not the
-          # local project package.
-          pip-audit --strict --skip-editable
+          # Auditing the project path directly resolves pyproject.toml's
+          # production dependency closure without installing the project
+          # itself. This avoids the editable-distribution edge case in
+          # pip-audit 2.10+ where `--strict --skip-editable` errors with
+          # "distribution marked as editable" because projectkeystone is
+          # installed via `pip install -e` but is intentionally absent from
+          # PyPI (Keystone is a C++20 library; pyproject.toml exists only
+          # for dev/test tooling).
+          #
+          # Dev extras (mypy, conan, pytest, ...) are tools, not shipped
+          # code, and are intentionally out of scope here.
+          pip-audit --strict .
 
       - name: Run Trivy filesystem scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0
