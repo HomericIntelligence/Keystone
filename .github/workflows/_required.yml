@@ -720,7 +720,14 @@ jobs:
           # docs/runbooks/no-silent-failures.md (Bucket F). If a finding is
           # genuinely unfixable, add it to a `--ignore-vuln` allowlist with an
           # inline comment naming the tracking issue and planned fix date.
-          pip-audit --strict
+          #
+          # --skip-editable: the project itself (projectkeystone) is installed
+          # in editable mode above so pip-audit can resolve its [dev] extras.
+          # It is intentionally not published to PyPI, so auditing it as a
+          # PyPI package errors with "Dependency not found on PyPI". We only
+          # care about auditing the *third-party* dependency tree, not the
+          # local project package.
+          pip-audit --strict --skip-editable
 
       - name: Run Trivy filesystem scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0

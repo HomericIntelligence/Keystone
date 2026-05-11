@@ -26,7 +26,12 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/release/bin}"
+# BUILD_DIR must match the Makefile output path: $(BUILD_DIR)/$(BUILD_SUBDIR)
+# which defaults to build/x86.release (BUILD_DIR=build, BUILD_SUBDIR=x86,
+# CMAKE_BUILD_TYPE=Release -> suffix .release). Callers may override either
+# BUILD_DIR (full path) or BUILD_SUBDIR (suffix only).
+: "${BUILD_SUBDIR:=x86.release}"
+BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/$BUILD_SUBDIR}"
 BENCHMARK_DIR="${BENCHMARK_OUTPUT_DIR:-$PROJECT_ROOT/build/reports/benchmarks}"
 RESULTS_DIR="$BENCHMARK_DIR/results"
 mkdir -p "$RESULTS_DIR"
