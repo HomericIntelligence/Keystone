@@ -82,6 +82,35 @@ jobs:
           fi
           echo 'OK: no "continue-on-error: true" found'
 
+      - name: "Reject advisory annotation pattern"
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files -- '.github/workflows/*.yml' '.github/workflows/*.yaml')
+          # The advisory-annotation pattern in workflow run blocks is morally
+          # equivalent to continue-on-error: true: it lets a tool fail without
+          # failing the CI step. The runbook (Bucket F) requires every tool
+          # to be fail-fast. The only legitimate annotation is informational
+          # text not tied to a tool's exit code — those should use
+          # echo "WARN:" to stdout instead. See docs/runbooks/no-silent-failures.md.
+          declare -a scan_files=()
+          for f in "${files[@]}"; do
+            # Exempt this workflow file (heredoc would otherwise self-match).
+            case "$f" in
+              .github/workflows/_required.yml) continue ;;
+            esac
+            scan_files+=("$f")
+          done
+          if [ "${#scan_files[@]}" -eq 0 ]; then
+            echo "No files to scan"
+            exit 0
+          fi
+          if grep -nF '::warning::' "${scan_files[@]}"; then
+            echo ""
+            echo '::error::Found advisory annotations above. Make the underlying tool fail-fast or use echo "WARN:" to stdout. See docs/runbooks/no-silent-failures.md Bucket F.'
+            exit 1
+          fi
+          echo 'OK: no advisory annotations found'
+
   # ============================================================
   # 1. lint
   #    clang-format, ruff, pre-commit, CMake cycle check,
@@ -686,13 +715,23 @@ jobs:
       - name: Python dependency audit (pip-audit)
         run: |
           set -euo pipefail
-          pip install -e ".[dev]" --quiet
-          # pip-audit --strict exits non-zero on any finding. We want to surface
-          # the report as a warning (Trivy below is the gating scan) without
-          # silently masking the rc.
-          if ! pip-audit --strict; then
-            echo "::warning::pip-audit found Python dependency advisories — see step log above"
-          fi
+          # pip-audit --strict exits non-zero on any finding — fail-fast per
+          # docs/runbooks/no-silent-failures.md (Bucket F). If a finding is
+          # genuinely unfixable, add it to a `--ignore-vuln` allowlist with an
+          # inline comment naming the tracking issue and planned fix date.
+          #
+          # Auditing the project path directly resolves pyproject.toml's
+          # production dependency closure without installing the project
+          # itself. This avoids the editable-distribution edge case in
+          # pip-audit 2.10+ where `--strict --skip-editable` errors with
+          # "distribution marked as editable" because projectkeystone is
+          # installed via `pip install -e` but is intentionally absent from
+          # PyPI (Keystone is a C++20 library; pyproject.toml exists only
+          # for dev/test tooling).
+          #
+          # Dev extras (mypy, conan, pytest, ...) are tools, not shipped
+          # code, and are intentionally out of scope here.
+          pip-audit --strict .
 
       - name: Run Trivy filesystem scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0

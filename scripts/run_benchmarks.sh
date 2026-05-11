@@ -26,7 +26,16 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/release/bin}"
+# BUILD_DIR is the CMake build directory; binaries land in $BUILD_DIR/bin
+# because CMakeLists.txt sets CMAKE_RUNTIME_OUTPUT_DIRECTORY to
+# "${CMAKE_BINARY_DIR}/bin". The Makefile uses $(BUILD_DIR)/$(BUILD_SUBDIR)
+# as its CMake binary dir, which defaults to build/x86.release
+# (BUILD_DIR=build, BUILD_SUBDIR=x86, CMAKE_BUILD_TYPE=Release -> .release).
+# Callers may override BUILD_DIR (full path to CMake binary dir),
+# BUILD_SUBDIR (suffix only), or BENCH_BIN_DIR (full path to binaries).
+: "${BUILD_SUBDIR:=x86.release}"
+BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/$BUILD_SUBDIR}"
+BENCH_BIN_DIR="${BENCH_BIN_DIR:-$BUILD_DIR/bin}"
 BENCHMARK_DIR="${BENCHMARK_OUTPUT_DIR:-$PROJECT_ROOT/build/reports/benchmarks}"
 RESULTS_DIR="$BENCHMARK_DIR/results"
 mkdir -p "$RESULTS_DIR"
@@ -89,7 +98,7 @@ BENCHMARKS=(
 # Check that benchmarks exist
 missing=0
 for bench in "${BENCHMARKS[@]}"; do
-    if [[ ! -f "$BUILD_DIR/$bench" ]]; then
+    if [[ ! -f "$BENCH_BIN_DIR/$bench" ]]; then
         echo -e "${YELLOW}Warning: $bench not found, skipping${NC}"
         missing=$((missing + 1))
     fi
@@ -101,23 +110,31 @@ if [[ $missing -eq ${#BENCHMARKS[@]} ]]; then
     exit 1
 fi
 
-# Timestamp for results
+# Timestamp for results.
+# Exported so the embedded `python3 << EOF` heredocs below can read them via
+# os.environ.get(). Heredocs run as a subprocess of bash and only inherit
+# *exported* variables; without `export` the python sees None and emits
+# "No result files found matching None/*_None.json".
+export TIMESTAMP
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+export RESULTS_DIR
+export RESULTS_FILE
 RESULTS_FILE="$RESULTS_DIR/results_$TIMESTAMP.json"
+export COMPARE_BASELINE
 
 echo -e "${YELLOW}Running benchmarks...${NC}"
 echo ""
 
 # Run each benchmark suite
 for bench in "${BENCHMARKS[@]}"; do
-    if [[ ! -f "$BUILD_DIR/$bench" ]]; then
+    if [[ ! -f "$BENCH_BIN_DIR/$bench" ]]; then
         continue
     fi
 
     echo -e "${BLUE}Running $bench...${NC}"
 
     # Build benchmark command
-    BENCH_CMD="$BUILD_DIR/$bench"
+    BENCH_CMD="$BENCH_BIN_DIR/$bench"
     BENCH_ARGS="--benchmark_out_format=json --benchmark_out=$RESULTS_DIR/${bench}_$TIMESTAMP.json"
 
     # Add filter if specified
