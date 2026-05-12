@@ -78,6 +78,15 @@ cd ProjectKeystone
 
 # Setup environment variables (required for Docker)
 ./scripts/setup-env.sh
+# Writes ./.env with:
+#   GIT_COMMIT  - short SHA of HEAD (or "latest" outside a git checkout),
+#                 baked into image tags so docker compose can pull/build
+#                 reproducible artifacts.
+#   BUILD_UID   - your host UID, mapped into the dev container so files
+#                 written from inside the container are owned by you.
+#   BUILD_GID   - your host GID, same reason.
+# Re-run this whenever you switch branches/commits or change UID/GID.
+# The script writes only ./.env (gitignored); no other system state changes.
 
 # Build and test
 make docker.build
