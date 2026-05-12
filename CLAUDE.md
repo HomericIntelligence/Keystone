@@ -21,7 +21,19 @@ invisible plumbing beneath every other component.
 
 ### Primary Language: C++20
 
-**This project is EXCLUSIVELY C++20. Do NOT use Python, Mojo, or other languages for implementation.**
+**The transport runtime in this project is EXCLUSIVELY C++20. Do NOT use
+Python, Mojo, or other languages for new transport, message-bus, or
+agent-runtime code.**
+
+**Exception — supporting Python tooling.** A small number of Python modules
+remain in `src/keystone/` as a thin orchestration / test harness layer
+(`config.py`, `daemon.py`, `dag_walker.py`, `models.py`, `nats_listener.py`,
+`task_claimer.py`, `validation.py`, `logging.py`). These predate the ADR-015
+extraction to ProjectAgamemnon and are still imported by the Python tests
+under `tests/`. They are maintained in-place but **must not** grow new
+production responsibilities — any new orchestration logic belongs in
+ProjectAgamemnon, and any new transport logic must be implemented in C++20
+under `src/transport/`, `src/network/`, or `include/`.
 
 ### Required Technologies
 

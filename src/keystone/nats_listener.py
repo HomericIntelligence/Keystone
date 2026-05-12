@@ -46,6 +46,26 @@ class NATSListener:
     def __init__(self, task_claimer: TaskClaimer) -> None:
         self._task_claimer = task_claimer
         self._shutting_down: bool = False
+        self._subscription: Any = None
+
+    async def _dispatch_message(self, msg: Any) -> None:
+        """JetStream subscription callback: parse subject, validate, dispatch.
+
+        Wired into ``js.subscribe(..., cb=self._dispatch_message)`` in
+        :meth:`start` so incoming NATS messages reach :meth:`_on_task_event`
+        instead of being silently dropped (issue #521).
+        """
+        try:
+            team_id, task_id = self._parse_subject(msg.subject)
+        except ValueError as exc:
+            logger.warning(
+                "nats_event_dropped_invalid_subject",
+                extra={"subject": msg.subject, "error": str(exc)},
+            )
+            return
+        await self._on_task_event(
+            msg.subject, team_id, task_id, raw_payload=msg.data
+        )
 
     @property
     def shutting_down(self) -> bool:
@@ -91,7 +111,9 @@ class NATSListener:
 
         for attempt in range(1, max_retries + 1):
             try:
-                await js.subscribe(subject)
+                self._subscription = await js.subscribe(
+                    subject, cb=self._dispatch_message
+                )
                 logger.info(
                     "nats_listener_subscribed",
                     extra={"subject": subject, "stream": stream},
@@ -237,5 +259,37 @@ class NATSListener:
         return parts[2], parts[3]  # team_id, task_id
 
     async def stop(self) -> None:
-        """Drain the NATS connection and release resources."""
+        """Drain in-flight messages and unsubscribe from JetStream (issue #527).
+
+        Must be preceded by :meth:`begin_shutdown` if the caller wants new
+        events that arrive during the drain to be dropped rather than
+        dispatched.
+        """
+        sub = self._subscription
+        self._subscription = None
+        if sub is None:
+            logger.info("nats_listener_stopped", extra={"subscription": "none"})
+            return
+
+        # Drain delivers any in-flight messages to the callback, then
+        # unsubscribes. Fall back to an explicit unsubscribe if drain is
+        # unsupported by the underlying client (older nats-py).
+        try:
+            drain = getattr(sub, "drain", None)
+            if drain is not None:
+                await drain()
+            else:
+                await sub.unsubscribe()
+        except Exception as exc:  # noqa: BLE001 — best-effort shutdown
+            logger.warning(
+                "nats_listener_stop_drain_failed",
+                extra={"error": str(exc)},
+            )
+            try:
+                await sub.unsubscribe()
+            except Exception as inner_exc:  # noqa: BLE001
+                logger.warning(
+                    "nats_listener_stop_unsubscribe_failed",
+                    extra={"error": str(inner_exc)},
+                )
         logger.info("nats_listener_stopped")
