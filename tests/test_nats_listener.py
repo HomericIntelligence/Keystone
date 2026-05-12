@@ -167,7 +167,9 @@ class TestStartSubscribeSuccess:
         listener, _ = _make_listener()
         nc = _make_mock_nc()
         await listener.start(nc, "hi.tasks.team-1.>", stream="homeric-tasks")
-        nc.jetstream().subscribe.assert_awaited_once_with("hi.tasks.team-1.>")
+        nc.jetstream().subscribe.assert_awaited_once_with(
+            "hi.tasks.team-1.>", cb=listener._dispatch_message
+        )
 
 
 class TestStartStreamNotFound:
