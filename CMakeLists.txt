@@ -901,8 +901,10 @@ set(CPACK_PACKAGE_VENDOR "ProjectKeystone Development Team")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "Hierarchical Multi-Agent System (HMAS) in C++20")
 # Version already defined earlier for CMake package config
-set(CPACK_PACKAGE_CONTACT "projectkeystone@example.com")
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/projectkeystone/hmas")
+set(CPACK_PACKAGE_CONTACT
+    "ProjectKeystone Maintainers <noreply@homericintelligence.dev>")
+set(CPACK_PACKAGE_HOMEPAGE_URL
+    "https://github.com/HomericIntelligence/ProjectKeystone")
 
 # Resource files
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
