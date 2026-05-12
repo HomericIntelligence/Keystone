@@ -38,6 +38,14 @@ spec:
           image: projectkeystone:latest
           imagePullPolicy: IfNotPresent
 
+          # Container security hardening (issue #526)
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
           # Resource limits
           resources:
             requests:

@@ -50,8 +50,13 @@ podSecurityContext:
   runAsUser: 1000
   fsGroup: 1000
 
-# Container security context
-securityContext: {}
+# Container security context (production hardening — issue #526)
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # Service configuration
 service:
