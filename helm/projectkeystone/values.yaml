@@ -22,7 +22,11 @@ replicaCount: 2
 image:
   repository: projectkeystone
   pullPolicy: IfNotPresent
-  tag: "latest"
+  # Default to the chart's appVersion (Chart.yaml: appVersion: "1.0.0") so
+  # deployments are reproducible and rollbacks are deterministic. Override at
+  # install time with `--set image.tag=<sha-or-semver>` in CI/CD pipelines.
+  # Avoid `latest` here: it breaks rollbacks and cache invalidation.
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
