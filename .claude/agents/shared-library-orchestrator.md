@@ -189,12 +189,6 @@ gh issue view 1234
 - ❌ Do NOT start work without GitHub issue number
 
 
-## Language Guidelines
-
-When working with Mojo code, follow patterns in
-[mojo-language-review-specialist.md](./mojo-language-review-specialist.md). Key principles: prefer `fn` over `def`, use
-`owned`/`borrowed` for memory safety, leverage SIMD for performance-critical code.
-
 ## Workflow
 
 ### 1. Receive Requirements

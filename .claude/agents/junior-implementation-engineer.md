@@ -198,7 +198,6 @@ gh issue view 1234
 - Use `@parameter` for compile-time constants
 - Avoid unnecessary copies with move semantics (`^`)
 
-See [mojo-language-review-specialist.md](./mojo-language-review-specialist.md) for comprehensive guidelines.
 
 ### Mojo Language Patterns
 

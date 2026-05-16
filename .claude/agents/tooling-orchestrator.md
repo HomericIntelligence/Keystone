@@ -236,13 +236,6 @@ permits.
 See [CLAUDE.md](../../CLAUDE.md#language-preference) for complete language selection
 philosophy.
 
-## Language Guidelines
-
-When working with Mojo code, follow patterns in
-[mojo-language-review-specialist.md](./mojo-language-review-specialist.md).
-Key principles: prefer `fn` over `def`, use `owned`/`borrowed` for memory safety, leverage SIMD for
-performance-critical code.
-
 ## Workflow
 
 ### 1. Receive Tool Requirements

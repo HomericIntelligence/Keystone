@@ -398,7 +398,6 @@ See [CLAUDE.md](../../CLAUDE.md#handling-pr-review-comments) for complete review
 
 ### Language & Performance Specialists
 
-- [Mojo Language Review Specialist](./mojo-language-review-specialist.md) - Mojo-specific patterns
 - [Performance Review Specialist](./performance-review-specialist.md) - Runtime performance
 
 ### Domain Specialists
@@ -752,7 +751,6 @@ For standard delegation patterns, escalation rules, and skip-level guidelines, s
 - [Dependency Review Specialist](./dependency-review-specialist.md) - Dependencies, versions, compatibility
 - [Documentation Review Specialist](./documentation-review-specialist.md) - Documentation quality and completeness
 - [Implementation Review Specialist](./implementation-review-specialist.md) - Code quality, maintainability, patterns
-- [Mojo Language Review Specialist](./mojo-language-review-specialist.md) - Mojo-specific features and idioms
 - [Paper Review Specialist](./paper-review-specialist.md) - Academic paper quality and standards
 - [Performance Review Specialist](./performance-review-specialist.md) - Performance and optimization
 - [Research Review Specialist](./research-review-specialist.md) - Research methodology and rigor
