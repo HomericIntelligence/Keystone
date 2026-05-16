@@ -34,15 +34,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # Callers may override BUILD_DIR (full path to CMake binary dir),
 # BUILD_SUBDIR (suffix only), or BENCH_BIN_DIR (full path to binaries).
 : "${BUILD_SUBDIR:=x86.release}"
-# If both BUILD_DIR and BUILD_SUBDIR are exported by the Makefile (see
-# issue #551), BUILD_DIR is the top-level cmake-build root ("build") and
-# the actual CMake binary dir is BUILD_DIR/BUILD_SUBDIR. If only BUILD_DIR
-# is set we treat it as the full binary dir (back-compat).
-if [[ -n "${BUILD_DIR:-}" && -d "$BUILD_DIR/$BUILD_SUBDIR" ]]; then
-  BUILD_DIR="$BUILD_DIR/$BUILD_SUBDIR"
-else
-  BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/$BUILD_SUBDIR}"
-fi
+BUILD_DIR="${BUILD_DIR:-$PROJECT_ROOT/build/$BUILD_SUBDIR}"
 BENCH_BIN_DIR="${BENCH_BIN_DIR:-$BUILD_DIR/bin}"
 BENCHMARK_DIR="${BENCHMARK_OUTPUT_DIR:-$PROJECT_ROOT/build/reports/benchmarks}"
 RESULTS_DIR="$BENCHMARK_DIR/results"
