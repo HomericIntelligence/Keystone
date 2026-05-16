@@ -164,11 +164,14 @@ test.profiling: compile.profile
 
 .PHONY: benchmark benchmark.message-pool benchmark.distributed benchmark.strings
 
-# Run all benchmarks
+# Run all benchmarks.
+# Export BUILD_DIR / BUILD_SUBDIR so scripts/run_benchmarks.sh inherits the
+# Makefile's single source of truth instead of guessing a default path
+# (see issue #551).
 benchmark: compile.release
 	@echo "Running benchmarks..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) ./scripts/run_benchmarks.sh
+	$(CONTAINER_PREFIX) env BUILD_DIR="$(BUILD_DIR)" BUILD_SUBDIR="$(BUILD_SUBDIR)" ./scripts/run_benchmarks.sh
 
 # Individual benchmark targets
 benchmark.message-pool: compile.release
