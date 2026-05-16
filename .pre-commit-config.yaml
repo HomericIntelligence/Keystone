@@ -168,26 +168,8 @@ repos:
       - id: commitizen
         stages: [commit-msg]
 
-# ============================================================================
-# Configuration Notes
-# ============================================================================
-#
-# Installation:
-#   pip install pre-commit
-#   pre-commit install
-#
-# Usage:
-#   pre-commit run --all-files  # Run on all files
-#   pre-commit run clang-format # Run specific hook
-#
-# Update hooks:
-#   pre-commit autoupdate
-#
-# Skip hooks:
-#   git commit --no-verify  # Skip all hooks (use sparingly)
-#   SKIP=clang-format git commit  # Skip specific hook
-#
-# ============================================================================
+  - repo: local
+    hooks:
       - id: require-signed-commits
         name: "require gpg/ssh-signed commits on push"
         description: >
@@ -217,7 +199,9 @@ repos:
               fi
             else
               # Manual invocation — check unpushed commits on current branch
-              upstream=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true)
+              if ! upstream=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null); then
+                upstream=""
+              fi
               if [ -n "$upstream" ]; then
                 range="$upstream..HEAD"
               else
@@ -257,3 +241,24 @@ repos:
         always_run: true
         pass_filenames: false
         stages: [pre-push]
+
+# ============================================================================
+# Configuration Notes
+# ============================================================================
+#
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Usage:
+#   pre-commit run --all-files  # Run on all files
+#   pre-commit run clang-format # Run specific hook
+#
+# Update hooks:
+#   pre-commit autoupdate
+#
+# Skip hooks:
+#   git commit --no-verify  # Skip all hooks (use sparingly)
+#   SKIP=clang-format git commit  # Skip specific hook
+#
+# ============================================================================
