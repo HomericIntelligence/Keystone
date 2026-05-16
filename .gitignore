@@ -91,6 +91,8 @@ Testing/
 Thumbs.db
 k8s/secrets.yaml
 build_test/
+# Local agent scratch workspace (created by `just setup-notes`).
+# Each developer's notes/ is their own — not version-controlled.
 notes/
 
 # CMake build directories (all modes: debug, release, asan, tsan, grpc, coverage)

@@ -3,6 +3,11 @@ set shell := ["bash", "-c"]
 default:
   @just --list
 
+# Bootstrap the local notes/ scratch workspace (not version-controlled).
+# Required for .claude/agents/* workflows that write to /notes/issues/<N>.
+setup-notes:
+  ./scripts/setup-notes.sh
+
 build:
   make compile
 

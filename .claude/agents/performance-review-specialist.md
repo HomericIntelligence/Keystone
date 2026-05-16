@@ -713,7 +713,6 @@ stats.print_stats(20)
 
 - [Code Review Orchestrator](./code-review-orchestrator.md) - Receives review assignments
 - [Implementation Review Specialist](./implementation-review-specialist.md) - Flags performance-impacting logic
-- [Mojo Language Review Specialist](./mojo-language-review-specialist.md) - Escalates SIMD optimization opportunities
 
 ## Escalates To
 

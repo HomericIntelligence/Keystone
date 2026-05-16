@@ -5,13 +5,8 @@
 > ✅ **All installation, build, and test steps are validated in CI/CD.**
 > See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
-[![Quality
-Gates](https://github.com/mvillmow/ProjectKeystone/actions/workflows/quality.yml/badge.svg)](<https://github.com/mvillmow>
-/ProjectKeystone/actions/workflows/quality.yml)
-[![Code
-Coverage](https://img.shields.io/badge/coverage-86.2%25-yellow)](<https://github.com/mvillmow/ProjectKeystone/actions/wor>
-kflows/quality.yml)
-[![Tests](https://img.shields.io/badge/tests-481%20passing-success)](.github/workflows/ci.yml)
+[![Required Checks](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml)
+[![Extras](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml)
 [![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -29,7 +24,7 @@ communication, work-stealing task scheduling, and comprehensive resilience featu
 - **Resilience Components**: Retry policies, circuit breakers, heartbeat monitoring
 - **Zero-Copy Serialization**: Efficient message passing with Cista
 - **Distributed Simulation**: NUMA-aware distributed work-stealing
-- **Comprehensive Testing**: 481 unit and E2E tests
+- **Comprehensive Testing**: Extensive unit and E2E test coverage
 - **Performance Benchmarks**: 45+ benchmark tests across 5 suites
 - **Fuzz Testing**: 4 libFuzzer targets for robustness
 - **Static Analysis**: clang-tidy and cppcheck integration
@@ -73,7 +68,7 @@ For distributed features (`-DENABLE_GRPC=ON`):
 
 ```bash
 # Clone the repository
-git clone https://github.com/mvillmow/ProjectKeystone.git
+git clone https://github.com/HomericIntelligence/ProjectKeystone.git
 cd ProjectKeystone
 
 # Setup environment variables (required for Docker)

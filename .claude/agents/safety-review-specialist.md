@@ -658,9 +658,6 @@ fn copy_data(dest: Buffer, src: Buffer, count: Int):
 
 - [Code Review Orchestrator](./code-review-orchestrator.md) - Receives review assignments
 - [Implementation Review Specialist](./implementation-review-specialist.md) - Flags general logic issues
-- [Mojo Language Review Specialist](./mojo-language-review-specialist.md) - Coordinates on ownership
-
-  semantics
 
 ## Escalates To
 
