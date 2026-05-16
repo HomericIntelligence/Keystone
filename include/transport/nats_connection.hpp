@@ -105,47 +105,18 @@ struct NatsConfig {
   NatsTlsConfig tls;
 
   /**
-   * @brief Construct NatsConfig with default values and validate TLS config
+   * @brief Construct NatsConfig with default values.
    *
-   * @throws std::invalid_argument if tls.client_cert_path and
-   * tls.client_key_path are not both set or both empty
+   * TLS validation is deliberately deferred until connect() (issue #522).
+   * Construction must not perform I/O — including std::getenv() inside
+   * NatsTlsConfig::validate() — so that callers may construct configs
+   * cheaply, e.g. in unit tests or in code paths where TLS is disabled.
    */
-  NatsConfig() { tls.validate(); }
+  NatsConfig() = default;
 
-  /**
-   * @brief Explicit copy constructor that validates TLS config
-   *
-   * @throws std::invalid_argument if tls.client_cert_path and
-   * tls.client_key_path are not both set or both empty
-   */
-  NatsConfig(const NatsConfig& other)
-      : url(other.url),
-        max_reconnect_attempts(other.max_reconnect_attempts),
-        reconnect_wait(other.reconnect_wait),
-        ping_interval(other.ping_interval),
-        max_pings_out(other.max_pings_out),
-        tls(other.tls) {
-    tls.validate();
-  }
-
-  /**
-   * @brief Explicit copy assignment that validates TLS config
-   *
-   * @throws std::invalid_argument if tls.client_cert_path and
-   * tls.client_key_path are not both set or both empty
-   */
-  NatsConfig& operator=(const NatsConfig& other) {
-    if (this != &other) {
-      url = other.url;
-      max_reconnect_attempts = other.max_reconnect_attempts;
-      reconnect_wait = other.reconnect_wait;
-      ping_interval = other.ping_interval;
-      max_pings_out = other.max_pings_out;
-      tls = other.tls;
-      tls.validate();
-    }
-    return *this;
-  }
+  // Defaulted copy/move/assignment — no validation at construction time.
+  NatsConfig(const NatsConfig&) = default;
+  NatsConfig& operator=(const NatsConfig&) = default;
 
   /**
    * @brief Move constructor that validates TLS config
