@@ -200,6 +200,17 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
 // ---------------------------------------------------------------------------
 
 bool NatsConnection::connect() {
+  // Validate TLS configuration lazily at connect time (issue #522). Pushing
+  // this out of the NatsConfig constructor lets callers construct configs
+  // without reading the environment until a connection is actually
+  // requested.
+  try {
+    config_.tls.validate();
+  } catch (const std::invalid_argument& e) {
+    spdlog::error("NatsConnection::connect: invalid TLS config: {}", e.what());
+    return false;
+  }
+
   natsOptions* opts = nullptr;
 
   if (natsOptions_Create(&opts) != NATS_OK) {

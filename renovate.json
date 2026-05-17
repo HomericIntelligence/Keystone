@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "schedule": ["every week"],
+  "enabledManagers": ["custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "FetchContent_Declare(GIT_REPOSITORY ... GIT_TAG <version>) in CMakeLists.txt — see issue #524",
+      "fileMatch": ["(^|/)CMakeLists\\.txt$"],
+      "matchStrings": [
+        "FetchContent_Declare\\(\\s*[A-Za-z0-9_]+\\s+GIT_REPOSITORY\\s+https://github\\.com/(?<depName>[^\\s]+?)\\.git\\s+GIT_TAG\\s+(?<currentValue>v?\\d+\\.\\d+\\.\\d+|v?\\d+\\.\\d+)"
+      ],
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "loose"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["custom.regex"],
+      "groupName": "C++ FetchContent dependencies",
+      "labels": ["dependencies", "cpp", "fetchcontent"],
+      "schedule": ["every week"]
+    }
+  ]
+}
