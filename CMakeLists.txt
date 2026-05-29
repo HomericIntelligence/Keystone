@@ -320,6 +320,7 @@ endif()
 add_library(
   keystone_agents
   src/agents/agent_core.cpp
+  src/agents/agent_envelope.cpp # Issue #515: orchestration envelope wrapper
   src/agents/async_agent.cpp
   src/agents/task_execution_strategy.cpp # ARCH-007: Strategy pattern
   src/agents/chief_architect_agent.cpp
@@ -469,6 +470,7 @@ add_executable(
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
   tests/unit/test_subject_validator.cpp # Issue #280: NATS wildcard-aware token
                                         # validation
+  tests/unit/test_agent_envelope.cpp # Issue #515: AgentEnvelope and AgentActionType
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)

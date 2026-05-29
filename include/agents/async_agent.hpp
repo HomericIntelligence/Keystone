@@ -1,12 +1,13 @@
 #pragma once
 
-#include <memory>
-#include <string>
-
 #include "agent_core.hpp"
+#include "agents/agent_envelope.hpp"
 #include "concurrency/task.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message.hpp"
+
+#include <memory>
+#include <string>
 
 namespace keystone {
 namespace agents {
@@ -21,8 +22,7 @@ namespace agents {
  * with a single async-by-default base class, enabling polymorphic collections
  * and runtime execution model flexibility.
  */
-class AsyncAgent : public AgentCore,
-                   public std::enable_shared_from_this<AsyncAgent> {
+class AsyncAgent : public AgentCore, public std::enable_shared_from_this<AsyncAgent> {
  public:
   /**
    * @brief Construct a new Async Agent
@@ -43,8 +43,7 @@ class AsyncAgent : public AgentCore,
    * @return concurrency::Task<core::Response> Async task that resolves to
    * response
    */
-  virtual concurrency::Task<core::Response> processMessage(
-      const core::KeystoneMessage& msg) = 0;
+  virtual concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) = 0;
 
   /**
    * @brief Receive a message — auto-processes via scheduler when one is stored
@@ -59,16 +58,17 @@ class AsyncAgent : public AgentCore,
 
  protected:
   /**
-   * @brief Handle a cancellation request message
+   * @brief Handle a cancellation request via an AgentEnvelope
    *
-   * Phase 1.2 (Issue #52): Helper method for processing CANCEL_TASK messages.
-   * Agents should call this in their processMessage() implementation when
-   * receiving CANCEL_TASK action type.
+   * Issue #515: handleCancellation now takes an AgentEnvelope (not a raw
+   * KeystoneMessage) because task_id is an agent-layer concern and has been
+   * removed from the transport struct. Callers must wrap the incoming message
+   * with AgentEnvelope::wrap() before calling this helper.
    *
-   * @param msg The cancellation message
+   * @param envelope Agent envelope containing the CANCEL_TASK agent_action
    * @return core::Response Acknowledgement response
    */
-  core::Response handleCancellation(const core::KeystoneMessage& msg);
+  core::Response handleCancellation(const AgentEnvelope& envelope);
 };
 
 }  // namespace agents

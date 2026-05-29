@@ -1,12 +1,13 @@
 /**
  * @file test_task_cancellation.cpp
- * @brief Unit tests for task cancellation notification (Issue #52)
+ * @brief Unit tests for task cancellation notification (Issue #52, #515)
  *
- * Tests the cancellation protocol:
- * - KeystoneMessage::createCancellation() factory method
+ * Tests the cancellation protocol via AgentEnvelope (Issue #515: CANCEL_TASK
+ * moved from core::ActionType to agents::AgentActionType):
+ * - AgentEnvelope::createCancellation() factory method
  * - AgentCore::requestCancellation() / isCancelled() / clearCancellation()
- * - AsyncAgent::handleCancellation() helper
- * - MessageBus routing of CANCEL_TASK messages
+ * - AsyncAgent::handleCancellation(AgentEnvelope) helper
+ * - MessageBus routing of cancellation messages
  */
 
 // KeystoneMessage::command is [[deprecated]]; test files intentionally access
@@ -14,52 +15,54 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <gtest/gtest.h>
-
+#include "agents/agent_action_type.hpp"
+#include "agents/agent_envelope.hpp"
 #include "agents/async_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
 
+#include <gtest/gtest.h>
+
 using namespace keystone::core;
 using namespace keystone::agents;
 
 /**
- * @brief Test: Create cancellation message with correct fields
+ * @brief Test: Create cancellation envelope with correct fields
  */
-TEST(TaskCancellation, CreateCancellationMessage) {
-  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_123");
+TEST(TaskCancellation, CreateCancellationEnvelope) {
+  auto env = AgentEnvelope::createCancellation("parent", "child", "task_123");
 
-  EXPECT_EQ(msg.sender_id, "parent");
-  EXPECT_EQ(msg.receiver_id, "child");
-  EXPECT_EQ(msg.action_type, ActionType::CANCEL_TASK);
-  EXPECT_EQ(msg.command, "CANCEL_TASK");
-  EXPECT_EQ(msg.priority, Priority::HIGH);  // Cancellations are high priority
-  ASSERT_TRUE(msg.task_id.has_value());
-  EXPECT_EQ(*msg.task_id, "task_123");
-  EXPECT_EQ(msg.session_id, "default");
+  EXPECT_EQ(env.transport_msg.sender_id, "parent");
+  EXPECT_EQ(env.transport_msg.receiver_id, "child");
+  ASSERT_TRUE(env.agent_action.has_value());
+  EXPECT_EQ(*env.agent_action, AgentActionType::CANCEL_TASK);
+  EXPECT_EQ(env.transport_msg.priority, Priority::HIGH);
+  ASSERT_TRUE(env.task_id.has_value());
+  EXPECT_EQ(*env.task_id, "task_123");
+  EXPECT_EQ(env.session_id, "default");
 }
 
 /**
- * @brief Test: Create cancellation message with custom session
+ * @brief Test: Create cancellation envelope with custom session
  */
-TEST(TaskCancellation, CreateCancellationMessageWithSession) {
-  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_456",
-                                                 "session_xyz");
+TEST(TaskCancellation, CreateCancellationEnvelopeWithSession) {
+  auto env = AgentEnvelope::createCancellation("parent", "child", "task_456", "session_xyz");
 
-  EXPECT_EQ(msg.sender_id, "parent");
-  EXPECT_EQ(msg.receiver_id, "child");
-  EXPECT_EQ(msg.action_type, ActionType::CANCEL_TASK);
-  ASSERT_TRUE(msg.task_id.has_value());
-  EXPECT_EQ(*msg.task_id, "task_456");
-  EXPECT_EQ(msg.session_id, "session_xyz");
+  EXPECT_EQ(env.transport_msg.sender_id, "parent");
+  EXPECT_EQ(env.transport_msg.receiver_id, "child");
+  ASSERT_TRUE(env.agent_action.has_value());
+  EXPECT_EQ(*env.agent_action, AgentActionType::CANCEL_TASK);
+  ASSERT_TRUE(env.task_id.has_value());
+  EXPECT_EQ(*env.task_id, "task_456");
+  EXPECT_EQ(env.session_id, "session_xyz");
 }
 
 /**
- * @brief Test: ActionType::CANCEL_TASK converts to string correctly
+ * @brief Test: AgentActionType::CANCEL_TASK converts to string correctly
  */
-TEST(TaskCancellation, ActionTypeToString) {
-  EXPECT_EQ(actionTypeToString(ActionType::CANCEL_TASK), "CANCEL_TASK");
+TEST(TaskCancellation, AgentActionTypeToString) {
+  EXPECT_EQ(agentActionTypeToString(AgentActionType::CANCEL_TASK), "CANCEL_TASK");
 }
 
 /**
@@ -105,7 +108,7 @@ TEST(TaskCancellation, AgentCancellationMultipleTasks) {
 }
 
 /**
- * @brief Test: MessageBus routes CANCEL_TASK messages
+ * @brief Test: MessageBus routes cancellation transport messages
  */
 TEST(TaskCancellation, MessageBusRoutesCancellation) {
   MessageBus bus;
@@ -118,44 +121,41 @@ TEST(TaskCancellation, MessageBusRoutesCancellation) {
   parent->setMessageBus(&bus);
   child->setMessageBus(&bus);
 
-  // Parent sends cancellation to child
-  auto cancel_msg =
-      KeystoneMessage::createCancellation("parent", "child", "task_xyz");
-  EXPECT_TRUE(bus.routeMessage(cancel_msg));
+  // Parent sends cancellation to child via AgentEnvelope
+  auto env = AgentEnvelope::createCancellation("parent", "child", "task_xyz");
+  EXPECT_TRUE(bus.routeMessage(env.transport_msg));
 
-  // Child should receive the cancellation message
+  // Child should receive the transport message; decode via wrap()
   auto received = child->getMessage();
   ASSERT_TRUE(received.has_value());
-  EXPECT_EQ(received->action_type, ActionType::CANCEL_TASK);
   EXPECT_EQ(received->sender_id, "parent");
-  ASSERT_TRUE(received->task_id.has_value());
-  EXPECT_EQ(*received->task_id, "task_xyz");
+
+  // Decode the envelope to verify CANCEL_TASK intent survived the round-trip
+  auto decoded_env = AgentEnvelope::wrap(*received);
+  ASSERT_TRUE(decoded_env.agent_action.has_value());
+  EXPECT_EQ(*decoded_env.agent_action, AgentActionType::CANCEL_TASK);
+  ASSERT_TRUE(decoded_env.task_id.has_value());
+  EXPECT_EQ(*decoded_env.task_id, "task_xyz");
 }
 
 /**
- * @brief Test: Cancellation message has HIGH priority
+ * @brief Test: Cancellation envelope has HIGH priority on transport message
  */
 TEST(TaskCancellation, CancellationHasHighPriority) {
-  auto msg =
-      KeystoneMessage::createCancellation("sender", "receiver", "task_1");
-  EXPECT_EQ(msg.priority, Priority::HIGH);
+  auto env = AgentEnvelope::createCancellation("sender", "receiver", "task_1");
+  EXPECT_EQ(env.transport_msg.priority, Priority::HIGH);
 }
 
 /**
- * @brief Test: AsyncAgent::handleCancellation() marks task as cancelled
+ * @brief Test: AgentCore cancellation state via direct interface
  */
 TEST(TaskCancellation, AsyncAgentHandlesCancellation) {
   auto agent = std::make_shared<TaskAgent>("test_agent");
 
-  // Create cancellation message
-  auto cancel_msg =
-      KeystoneMessage::createCancellation("parent", "test_agent", "task_abc");
-
   // Initially not cancelled
   EXPECT_FALSE(agent->isCancelled("task_abc"));
 
-  // Handle cancellation (protected method, but we can test through
-  // processMessage) For direct testing, we'll use the public interface
+  // Use the public requestCancellation interface
   agent->requestCancellation("task_abc");
 
   // Now it should be cancelled
@@ -163,7 +163,10 @@ TEST(TaskCancellation, AsyncAgentHandlesCancellation) {
 }
 
 /**
- * @brief Test: Missing task_id in cancellation message returns error
+ * @brief Test: Missing task_id in cancellation envelope returns error
+ *
+ * Construct a raw CANCEL_TASK-prefixed message without a task_id and verify
+ * that processMessage returns an error when the envelope has no task_id.
  */
 TEST(TaskCancellation, MissingTaskIdReturnsError) {
   MessageBus bus;
@@ -172,20 +175,21 @@ TEST(TaskCancellation, MissingTaskIdReturnsError) {
   bus.registerAgent(agent->getAgentId(), agent);
   agent->setMessageBus(&bus);
 
-  // Create a CANCEL_TASK message without task_id
+  // Create a transport message whose payload has the CANCEL_TASK prefix
+  // but no task_id following it (empty suffix).
   KeystoneMessage msg;
   msg.msg_id = "msg_1";
   msg.sender_id = "parent";
   msg.receiver_id = "test_agent";
-  msg.action_type = ActionType::CANCEL_TASK;
+  msg.action_type = ActionType::EXECUTE;
   msg.command = "CANCEL_TASK";
   msg.timestamp = std::chrono::system_clock::now();
   msg.priority = Priority::HIGH;
-  msg.session_id = "default";
   msg.content_type = ContentType::TEXT_PLAIN;
-  // task_id is intentionally not set
+  // Payload has the CANCEL_TASK prefix but empty task_id suffix
+  msg.payload = "CANCEL_TASK:";
 
-  // Process the message - should return error
+  // Process the message - should return error because task_id is empty
   auto response = agent->processMessage(msg).get();
   EXPECT_EQ(response.status, Response::Status::Error);
   EXPECT_TRUE(response.result.find("missing task_id") != std::string::npos);

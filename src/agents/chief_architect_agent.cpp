@@ -1,54 +1,58 @@
 #include "agents/chief_architect_agent.hpp"
 
+#include "agents/agent_envelope.hpp"
+#include "concurrency/logger.hpp"
+
 #include <chrono>
 #include <thread>
 
-#include "concurrency/logger.hpp"
-
 #ifdef ENABLE_GRPC
-#include "hmas_coordinator.pb.h"
+#  include "hmas_coordinator.pb.h"
 #endif
 
 namespace keystone {
 namespace agents {
 
-ChiefArchitectAgent::ChiefArchitectAgent(const std::string& agent_id)
-    : AsyncAgent(agent_id) {}
+ChiefArchitectAgent::ChiefArchitectAgent(const std::string& agent_id) : AsyncAgent(agent_id) {}
 
 concurrency::Task<core::Response> ChiefArchitectAgent::processMessage(
     const core::KeystoneMessage& msg) {
   // FIX C3: Changed to async (returns Task<Response>)
 
-  // Phase 1.2 (Issue #52): Handle CANCEL_TASK action type
-  if (msg.action_type == core::ActionType::CANCEL_TASK) {
-    auto response = handleCancellation(msg);
+  // Issue #515: CANCEL_TASK is no longer a core::ActionType; decode via envelope.
+  {
+    auto envelope = AgentEnvelope::wrap(msg);
+    if (envelope.agent_action.has_value() &&
+        *envelope.agent_action == AgentActionType::CANCEL_TASK) {
+      auto response = handleCancellation(envelope);
 
-    // Send acknowledgement back to sender via MessageBus
-    auto response_msg = core::KeystoneMessage::create(
-        agent_id_,
-        msg.sender_id,  // Route back to original sender
-        "response", response.result);
-    response_msg.msg_id = msg.msg_id;  // Keep same msg_id for tracking
+      // Send acknowledgement back to sender via MessageBus
+      auto response_msg =
+          core::KeystoneMessage::create(agent_id_,
+                                        msg.sender_id,  // Route back to original sender
+                                        "response",
+                                        response.result);
+      response_msg.msg_id = msg.msg_id;  // Keep same msg_id for tracking
 
-    sendMessage(response_msg);
+      sendMessage(response_msg);
 
-    co_return response;
+      co_return response;
+    }
   }
 
   // For Phase 1, ChiefArchitect receives responses from TaskAgent
   // Defensive: check payload exists before dereferencing
   if (!msg.payload) {
-    co_return core::Response::createError(msg, agent_id_,
-                                          "Missing payload in message");
+    co_return core::Response::createError(msg, agent_id_, "Missing payload in message");
   }
 
-  core::Response resp =
-      core::Response::createSuccess(msg, agent_id_, *msg.payload);
+  core::Response resp = core::Response::createSuccess(msg, agent_id_, *msg.payload);
   co_return resp;
 }
 
 concurrency::Task<core::Response> ChiefArchitectAgent::sendCommand(
-    const std::string& command, const std::string& task_agent_id) {
+    const std::string& command,
+    const std::string& task_agent_id) {
   // FIX C3: Changed to async (returns Task<Response>)
   // Create message
   auto msg = core::KeystoneMessage::create(agent_id_, task_agent_id, command);
@@ -78,13 +82,11 @@ void ChiefArchitectAgent::initializeGrpc(const std::string& coordinator_address,
   // Create gRPC clients
   network::GrpcClientConfig coordinator_config;
   coordinator_config.server_address = coordinator_address;
-  coordinator_client_ =
-      std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
+  coordinator_client_ = std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
 
   network::GrpcClientConfig registry_config;
   registry_config.server_address = registry_address;
-  registry_client_ =
-      std::make_unique<network::ServiceRegistryClient>(registry_config);
+  registry_client_ = std::make_unique<network::ServiceRegistryClient>(registry_config);
 
   // Register with ServiceRegistry
   hmas::AgentRegistration registration;
@@ -99,12 +101,10 @@ void ChiefArchitectAgent::initializeGrpc(const std::string& coordinator_address,
     if (response.success()) {
       startHeartbeat();
     } else {
-      throw std::runtime_error("Failed to register with ServiceRegistry: " +
-                               response.message());
+      throw std::runtime_error("Failed to register with ServiceRegistry: " + response.message());
     }
   } catch (const std::exception& e) {
-    throw std::runtime_error("gRPC registration failed: " +
-                             std::string(e.what()));
+    throw std::runtime_error("gRPC registration failed: " + std::string(e.what()));
   }
 }
 
@@ -129,8 +129,7 @@ std::string ChiefArchitectAgent::submitUserGoal(const std::string& user_goal,
   auto now = std::chrono::system_clock::now();
   auto time_t_now = std::chrono::system_clock::to_time_t(now);
   char time_buf[100];
-  std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ",
-                std::gmtime(&time_t_now));
+  std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&time_t_now));
   spec.metadata.created_at = std::string(time_buf);
   spec.metadata.deadline = "25m";
 
@@ -161,13 +160,11 @@ std::string ChiefArchitectAgent::submitUserGoal(const std::string& user_goal,
         yaml_spec, session_id, 25 * 60 * 1000, hmas::TASK_PRIORITY_NORMAL, "");
 
     // Wait for result
-    auto result =
-        coordinator_client_->getTaskResult(response.task_id(), 25 * 60 * 1000);
+    auto result = coordinator_client_->getTaskResult(response.task_id(), 25 * 60 * 1000);
 
     if (result.success()) {
       // Parse result YAML
-      auto result_spec_opt =
-          network::YamlParser::parseTaskSpec(result.result_yaml());
+      auto result_spec_opt = network::YamlParser::parseTaskSpec(result.result_yaml());
       if (result_spec_opt && result_spec_opt->status.result) {
         return *result_spec_opt->status.result;
       }
@@ -176,8 +173,7 @@ std::string ChiefArchitectAgent::submitUserGoal(const std::string& user_goal,
       return "ERROR: " + result.error_message();
     }
   } catch (const std::exception& e) {
-    throw std::runtime_error("Failed to submit/receive task: " +
-                             std::string(e.what()));
+    throw std::runtime_error("Failed to submit/receive task: " + std::string(e.what()));
   }
 }
 
@@ -247,8 +243,7 @@ std::string ChiefArchitectAgent::queryComponentLeadAgent() {
       return agent_list.agents(0).agent_id();
     }
   } catch (const std::exception& e) {
-    concurrency::Logger::error("Failed to query ComponentLeadAgent: {}",
-                               e.what());
+    concurrency::Logger::error("Failed to query ComponentLeadAgent: {}", e.what());
   }
 
   return "";

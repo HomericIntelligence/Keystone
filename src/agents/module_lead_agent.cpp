@@ -1,5 +1,9 @@
 #include "agents/module_lead_agent.hpp"
 
+#include "agents/agent_envelope.hpp"
+#include "concurrency/logger.hpp"
+#include "core/config.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -8,19 +12,19 @@
 #include <sstream>
 #include <thread>
 
-#include "concurrency/logger.hpp"
-#include "core/config.hpp"
-
 #ifdef ENABLE_GRPC
-#include "hmas_coordinator.pb.h"
+#  include "hmas_coordinator.pb.h"
 #endif
 
 namespace keystone {
 namespace agents {
 
 ModuleLeadAgent::ModuleLeadAgent(const std::string& agent_id)
-    : LeadAgentBase<State>(agent_id, State::IDLE, State::PLANNING,
-                           State::WAITING_FOR_TASKS, State::SYNTHESIZING,
+    : LeadAgentBase<State>(agent_id,
+                           State::IDLE,
+                           State::PLANNING,
+                           State::WAITING_FOR_TASKS,
+                           State::SYNTHESIZING,
                            State::ERROR) {
   // Base class constructor initializes coordination_ with IDLE state
 }
@@ -28,25 +32,27 @@ ModuleLeadAgent::ModuleLeadAgent(const std::string& agent_id)
 // processMessage() is now implemented in LeadAgentBase (template method
 // pattern)
 
-void ModuleLeadAgent::setAvailableTaskAgents(
-    const std::vector<std::string>& task_agent_ids) {
+void ModuleLeadAgent::setAvailableTaskAgents(const std::vector<std::string>& task_agent_ids) {
   available_task_agents_ = task_agent_ids;
 }
 
 // === Hook Method Implementations (override LeadAgentBase pure virtuals) ===
 
 bool ModuleLeadAgent::isSubordinateResult(const core::KeystoneMessage& msg) {
-  // Exclude TASK_FAILED so processSubordinateFailure() handles it instead
+  // Exclude TASK_FAILED envelopes so processSubordinateFailure() handles them.
+  // Issue #515: TASK_FAILED is no longer a core::ActionType; it is encoded
+  // in the payload prefix and decoded by AgentEnvelope::wrap().
+  auto envelope = AgentEnvelope::wrap(msg);
+  if (envelope.agent_action.has_value() && *envelope.agent_action == AgentActionType::TASK_FAILED) {
+    return false;
+  }
   _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  bool result = msg.command == "response" &&
-                msg.action_type != core::ActionType::TASK_FAILED;
-  _Pragma("GCC diagnostic pop")
-  return result;
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"") bool result = msg.command ==
+                                                                                    "response";
+  _Pragma("GCC diagnostic pop") return result;
 }
 
-std::vector<std::string> ModuleLeadAgent::decomposeGoal(
-    const std::string& goal) {
+std::vector<std::string> ModuleLeadAgent::decomposeGoal(const std::string& goal) {
   std::vector<std::string> tasks;
 
   // Parse module goal like "Calculate sum of: 10 + 20 + 30"
@@ -54,8 +60,7 @@ std::vector<std::string> ModuleLeadAgent::decomposeGoal(
 
   // Extract numbers using regex
   std::regex number_regex(R"(\d+)");
-  auto numbers_begin =
-      std::sregex_iterator(goal.begin(), goal.end(), number_regex);
+  auto numbers_begin = std::sregex_iterator(goal.begin(), goal.end(), number_regex);
   auto numbers_end = std::sregex_iterator();
 
   // Create a task for each number (echo the number)
@@ -68,8 +73,7 @@ std::vector<std::string> ModuleLeadAgent::decomposeGoal(
   return tasks;
 }
 
-void ModuleLeadAgent::delegateSubtasks(
-    const std::vector<std::string>& subtasks) {
+void ModuleLeadAgent::delegateSubtasks(const std::vector<std::string>& subtasks) {
   // Assign tasks to available TaskAgents in round-robin fashion
   for (size_t i = 0; i < subtasks.size(); ++i) {
     if (available_task_agents_.empty()) {
@@ -81,8 +85,7 @@ void ModuleLeadAgent::delegateSubtasks(
     const std::string& task_agent_id = available_task_agents_[agent_index];
 
     // Create and send task message
-    auto task_msg =
-        core::KeystoneMessage::create(agent_id_, task_agent_id, subtasks[i]);
+    auto task_msg = core::KeystoneMessage::create(agent_id_, task_agent_id, subtasks[i]);
 
     // Track pending task
     coordination_.trackPendingSubordinate(task_msg.msg_id, task_agent_id);
@@ -92,8 +95,7 @@ void ModuleLeadAgent::delegateSubtasks(
   }
 }
 
-void ModuleLeadAgent::processSubordinateResult(
-    const core::KeystoneMessage& result_msg) {
+void ModuleLeadAgent::processSubordinateResult(const core::KeystoneMessage& result_msg) {
   if (!result_msg.payload) {
     // No payload, skip
     return;
@@ -107,8 +109,7 @@ void ModuleLeadAgent::processSubordinateResult(
     if (coordination_.hasFailures()) {
       coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
     } else {
-      coordination_.transitionTo(State::SYNTHESIZING,
-                                 stateToString(State::SYNTHESIZING));
+      coordination_.transitionTo(State::SYNTHESIZING, stateToString(State::SYNTHESIZING));
     }
   }
 }
@@ -117,16 +118,14 @@ std::string ModuleLeadAgent::synthesizeResults() {
   State current_state = coordination_.getCurrentState();
   if (current_state == State::ERROR) {
     auto failures = coordination_.getFailureMessages();
-    std::string msg =
-        "ERROR: " + std::to_string(coordination_.getFailureCount()) +
-        " subordinate task(s) failed";
+    std::string msg = "ERROR: " + std::to_string(coordination_.getFailureCount()) +
+                      " subordinate task(s) failed";
     if (!failures.empty()) {
       msg += ": " + failures.front();
     }
     return msg;
   }
-  if (current_state != State::SYNTHESIZING &&
-      current_state != State::WAITING_FOR_TASKS) {
+  if (current_state != State::SYNTHESIZING && current_state != State::WAITING_FOR_TASKS) {
     return "ERROR: Cannot synthesize in current state";
   }
 
@@ -173,10 +172,9 @@ void ModuleLeadAgent::initializeGrpc(const std::string& coordinator_address,
                                      const std::string& agent_type,
                                      uint8_t level) {
   // Delegate gRPC initialization to coordination template
-  std::vector<std::string> capabilities = {"task_coordination",
-                                           "result_synthesis"};
-  coordination_.initializeGrpc(agent_id_, coordinator_address, registry_address,
-                               agent_type, level, capabilities, 5);
+  std::vector<std::string> capabilities = {"task_coordination", "result_synthesis"};
+  coordination_.initializeGrpc(
+      agent_id_, coordinator_address, registry_address, agent_type, level, capabilities, 5);
 }
 
 void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
@@ -211,13 +209,11 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
   auto timeout = network::YamlParser::parseDuration(spec.aggregation.timeout);
   result_aggregator_ = std::make_unique<network::ResultAggregator>(
       network::stringToStrategy(spec.aggregation.strategy),
-      std::chrono::milliseconds(
-          timeout.value_or(core::Config::DEFAULT_TASK_TIMEOUT_MS)),
+      std::chrono::milliseconds(timeout.value_or(core::Config::DEFAULT_TASK_TIMEOUT_MS)),
       tasks.size());
 
   // Generate child task YAMLs and submit to TaskAgents
-  coordination_.transitionTo(State::WAITING_FOR_TASKS,
-                             stateToString(State::WAITING_FOR_TASKS));
+  coordination_.transitionTo(State::WAITING_FOR_TASKS, stateToString(State::WAITING_FOR_TASKS));
   coordination_.initializeCoordination(static_cast<int32_t>(tasks.size()));
 
   for (size_t i = 0; i < tasks.size(); ++i) {
@@ -226,8 +222,7 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
     child_spec.api_version = "v1";
     child_spec.kind = "HierarchicalTask";
     child_spec.metadata.name = "task-" + std::to_string(i);
-    child_spec.metadata.task_id =
-        spec.metadata.task_id + "-subtask-" + std::to_string(i);
+    child_spec.metadata.task_id = spec.metadata.task_id + "-subtask-" + std::to_string(i);
     child_spec.metadata.parent_task_id = spec.metadata.task_id;
     child_spec.metadata.session_id = spec.metadata.session_id;
 
@@ -253,36 +248,33 @@ void ModuleLeadAgent::processYamlModule(const std::string& yaml_spec) {
 
     // Submit task via gRPC
     try {
-      auto deadline_ms = network::YamlParser::parseDuration(
-                             spec.metadata.deadline.value_or("25m"))
+      auto deadline_ms = network::YamlParser::parseDuration(spec.metadata.deadline.value_or("25m"))
                              .value_or(core::Config::DEFAULT_TASK_TIMEOUT_MS);
       auto coordinator_client = coordination_.getCoordinatorClient();
-      auto response = coordinator_client->submitTask(
-          child_yaml, spec.metadata.session_id.value_or(""), deadline_ms,
-          hmas::TASK_PRIORITY_NORMAL, coordination_.getCurrentTaskId());
+      auto response = coordinator_client->submitTask(child_yaml,
+                                                     spec.metadata.session_id.value_or(""),
+                                                     deadline_ms,
+                                                     hmas::TASK_PRIORITY_NORMAL,
+                                                     coordination_.getCurrentTaskId());
 
-      coordination_.trackPendingSubordinate(
-          child_spec.metadata.task_id, available_task_agents_[agent_index]);
+      coordination_.trackPendingSubordinate(child_spec.metadata.task_id,
+                                            available_task_agents_[agent_index]);
 
       // Poll for task result in background (gRPC async result handling for
       // Issue #186) If the task fails, record it to prevent DAG deadlock
-      std::thread([this, coordinator_client, task_id = response.task_id(),
-                   deadline_ms]() {
+      std::thread([this, coordinator_client, task_id = response.task_id(), deadline_ms]() {
         try {
           auto result = coordinator_client->getTaskResult(task_id, deadline_ms);
           if (!result.success()) {
             coordination_.recordFailure(result.error());
             // Transition to ERROR if all results are now in
             State current_state = coordination_.getCurrentState();
-            if (coordination_.isComplete() &&
-                current_state == State::WAITING_FOR_TASKS) {
-              coordination_.transitionTo(State::ERROR,
-                                         stateToString(State::ERROR));
+            if (coordination_.isComplete() && current_state == State::WAITING_FOR_TASKS) {
+              coordination_.transitionTo(State::ERROR, stateToString(State::ERROR));
             }
           }
         } catch (const std::exception& e) {
-          concurrency::Logger::error("Failed to get result for task {}: {}",
-                                     task_id, e.what());
+          concurrency::Logger::error("Failed to get result for task {}: {}", task_id, e.what());
         }
       }).detach();
     } catch (const std::exception& e) {

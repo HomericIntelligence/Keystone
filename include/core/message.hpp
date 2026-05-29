@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 #include <optional>
 #include <string>
 
@@ -37,18 +36,17 @@ inline std::string priorityToString(Priority priority) {
 }
 
 /**
- * @brief Action types for agent communication in HMAS
+ * @brief Transport-level action types for the KIM protocol
  *
- * Defines the different types of actions that can be requested or performed
- * in the hierarchical agent system.
+ * These are the action types the pure transport layer understands.
+ * Orchestration-level actions (CANCEL_TASK, TASK_FAILED, DECOMPOSE) have been
+ * moved to agents::AgentActionType per Issue #515 (SOLID/SRP: KeystoneMessage
+ * is a pure transport struct and must not carry orchestration semantics).
  */
 enum class ActionType {
-  DECOMPOSE,      ///< Decompose a goal into subtasks/subgoals
   EXECUTE,        ///< Execute a concrete task or command
   RETURN_RESULT,  ///< Return the result of a computation
   SHUTDOWN,       ///< Graceful shutdown signal
-  CANCEL_TASK,    ///< Cancel a running task (Issue #52)
-  TASK_FAILED     ///< Report task failure to parent agent (Issue #87)
 };
 
 /**
@@ -66,18 +64,12 @@ enum class ContentType {
  */
 inline std::string actionTypeToString(ActionType type) {
   switch (type) {
-    case ActionType::DECOMPOSE:
-      return "DECOMPOSE";
     case ActionType::EXECUTE:
       return "EXECUTE";
     case ActionType::RETURN_RESULT:
       return "RETURN_RESULT";
     case ActionType::SHUTDOWN:
       return "SHUTDOWN";
-    case ActionType::CANCEL_TASK:
-      return "CANCEL_TASK";
-    case ActionType::TASK_FAILED:
-      return "TASK_FAILED";
     default:
       return "UNKNOWN";
   }
@@ -98,19 +90,17 @@ inline std::string contentTypeToString(ContentType type) {
 }
 
 /**
- * @brief Keystone Interchange Message (KIM) protocol
+ * @brief Keystone Interchange Message (KIM) protocol — pure transport struct
  *
- * Enhanced message structure for work-stealing concurrent agent communication.
- * Messages are passed between agents to delegate tasks and return results.
+ * Carries routing headers and an opaque payload between transport endpoints.
+ * This struct is intentionally free of orchestration concerns:
+ * - No session_id  (moved to agents::AgentEnvelope per Issue #515)
+ * - No task_id     (moved to agents::AgentEnvelope per Issue #515)
+ * - No metadata    (moved to agents::AgentEnvelope per Issue #515)
+ * - No CANCEL_TASK / TASK_FAILED action types (moved to agents::AgentActionType)
  *
- * Phase A additions:
- * - action_type: Semantic action classification
- * - content_type: Payload format specification
- * - session_id: Context isolation for concurrent operations
- * - metadata: Extensible key-value attributes
- *
- * Phase 1.2 (Issue #52) additions:
- * - task_id: Optional task identifier for cancellation tracking
+ * Agents that require orchestration-level semantics wrap an incoming
+ * KeystoneMessage in an agents::AgentEnvelope.
  */
 struct KeystoneMessage {
   // Core identifiers
@@ -118,31 +108,25 @@ struct KeystoneMessage {
   std::string sender_id;    ///< ID of the sending agent
   std::string receiver_id;  ///< ID of the receiving agent
 
-  // Phase A: Enhanced fields
+  // Transport action and encoding
   ActionType action_type;    ///< Type of action requested/performed
   ContentType content_type;  ///< Format of the payload
-  std::string session_id;    ///< Session/context identifier
-  std::map<std::string, std::string> metadata;  ///< Extensible metadata
 
   // Phase C: Priority field
   Priority priority;  ///< Message priority (HIGH/NORMAL/LOW)
 
   // Phase C: Deadline scheduling
-  std::optional<std::chrono::system_clock::time_point>
-      deadline;  ///< Optional processing deadline
-
-  // Phase 1.2 (Issue #52): Task cancellation
-  std::optional<std::string>
-      task_id;  ///< Optional task ID for tracking/cancellation
+  std::optional<std::chrono::system_clock::time_point> deadline;  ///< Optional processing deadline
 
   // Issue #285: Cross-host tracing
-  std::optional<std::string>
-      correlation_id;  ///< Optional correlation ID for distributed tracing
+  std::optional<std::string> correlation_id;  ///< Optional correlation ID for distributed tracing
 
   // Payload and timing
-  [[deprecated("command is a legacy/convenience field; use payload with ActionType instead")]]
-  std::string command;                 ///< Command string to execute (legacy/convenience)
-  std::optional<std::string> payload;  ///< Optional payload data
+  [[deprecated(
+      "command is a legacy/convenience field; use payload with ActionType "
+      "instead")]]
+  std::string command;                              ///< Command string (legacy)
+  std::optional<std::string> payload;               ///< Optional payload data
   std::chrono::system_clock::time_point timestamp;  ///< Message timestamp
 
   // Declare special members out-of-line so their definitions (in message.cpp)
@@ -159,36 +143,35 @@ struct KeystoneMessage {
   /**
    * @brief Create a new message with generated ID (legacy interface)
    *
-   * This maintains backward compatibility with existing code.
-   * Uses ActionType::EXECUTE by default.
+   * Maintains backward compatibility with existing code.
+   * Uses ActionType::EXECUTE and ContentType::TEXT_PLAIN by default.
    *
    * @param sender Sender agent ID
    * @param receiver Receiver agent ID
-   * @param cmd Command string
+   * @param cmd Command string (stored in legacy 'command' field)
    * @param data Optional payload data
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(
-      const std::string& sender, const std::string& receiver,
-      const std::string& cmd,
-      const std::optional<std::string>& data = std::nullopt);
+  static KeystoneMessage create(const std::string& sender,
+                                const std::string& receiver,
+                                const std::string& cmd,
+                                const std::optional<std::string>& data = std::nullopt);
 
   /**
-   * @brief Create a new enhanced message with all fields
+   * @brief Create a new transport message with action type
    *
    * @param sender Sender agent ID
    * @param receiver Receiver agent ID
-   * @param action Action type
-   * @param session Session identifier
+   * @param action Transport action type
    * @param data Optional payload data
    * @param content Content type (default: TEXT_PLAIN)
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(
-      const std::string& sender, const std::string& receiver, ActionType action,
-      const std::string& session,
-      const std::optional<std::string>& data = std::nullopt,
-      ContentType content = ContentType::TEXT_PLAIN);
+  static KeystoneMessage create(const std::string& sender,
+                                const std::string& receiver,
+                                ActionType action,
+                                const std::optional<std::string>& data = std::nullopt,
+                                ContentType content = ContentType::TEXT_PLAIN);
 
   /**
    * @brief Set deadline relative to current time
@@ -210,23 +193,6 @@ struct KeystoneMessage {
    * @return milliseconds until deadline, nullopt if no deadline set
    */
   std::optional<std::chrono::milliseconds> getTimeUntilDeadline() const;
-
-  /**
-   * @brief Create a task cancellation message
-   *
-   * Phase 1.2 (Issue #52): Factory method for creating CANCEL_TASK messages.
-   * Cancellation is cooperative - agents check for cancellation and respond
-   * gracefully.
-   *
-   * @param sender Sender agent ID (parent requesting cancellation)
-   * @param receiver Receiver agent ID (child executing the task)
-   * @param task_id Task identifier to cancel
-   * @param session Session identifier (default: "default")
-   * @return KeystoneMessage Cancellation message with CANCEL_TASK action
-   */
-  static KeystoneMessage createCancellation(
-      const std::string& sender, const std::string& receiver,
-      const std::string& task_id, const std::string& session = "default");
 };
 
 /**

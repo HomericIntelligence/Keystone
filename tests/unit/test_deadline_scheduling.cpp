@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
+#include "core/message.hpp"
 
 #include <chrono>
 #include <thread>
 
-#include "core/message.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::core;
 using namespace std::chrono_literals;
@@ -145,15 +145,16 @@ TEST(DeadlineSchedulingTest, MultipleMessagesWithDeadlines) {
 
 /**
  * @brief Test deadline with enhanced message creation
+ *
+ * Note (Issue #515): session_id was removed from KeystoneMessage (transport
+ * struct). The create() overload no longer takes a session parameter.
  */
 TEST(DeadlineSchedulingTest, DeadlineWithEnhancedMessage) {
-  auto msg = KeystoneMessage::create("sender", "receiver", ActionType::EXECUTE,
-                                     "session123", "payload data");
+  auto msg = KeystoneMessage::create("sender", "receiver", ActionType::EXECUTE, "payload data");
 
   msg.setDeadlineFromNow(100ms);
 
   EXPECT_EQ(msg.action_type, ActionType::EXECUTE);
-  EXPECT_EQ(msg.session_id, "session123");
   EXPECT_TRUE(msg.deadline.has_value());
   EXPECT_FALSE(msg.hasDeadlinePassed());
 }

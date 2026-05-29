@@ -1,11 +1,12 @@
 #include "network/hmas_coordinator_service.hpp"
 
+#include "agents/agent_envelope.hpp"
+#include "core/message.hpp"
+#include "core/subject_validator.hpp"
+
 #include <chrono>
 #include <random>
 #include <sstream>
-
-#include "core/message.hpp"
-#include "core/subject_validator.hpp"
 
 namespace keystone::network {
 
@@ -19,9 +20,9 @@ HMASCoordinatorServiceImpl::HMASCoordinatorServiceImpl(
 
 HMASCoordinatorServiceImpl::~HMASCoordinatorServiceImpl() = default;
 
-grpc::Status HMASCoordinatorServiceImpl::SubmitTask(
-    grpc::ServerContext* context, const hmas::TaskRequest* request,
-    hmas::TaskResponse* response) {
+grpc::Status HMASCoordinatorServiceImpl::SubmitTask(grpc::ServerContext* context,
+                                                    const hmas::TaskRequest* request,
+                                                    hmas::TaskResponse* response) {
   (void)context;  // Unused
 
   std::lock_guard<std::mutex> lock(mutex_);
@@ -30,8 +31,7 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(
   // parent_task_id is optional — only validate when non-empty.
   if (!request->parent_task_id().empty()) {
     try {
-      keystone::core::validateNatsSubjectToken(request->parent_task_id(),
-                                               "parent_task_id");
+      keystone::core::validateNatsSubjectToken(request->parent_task_id(), "parent_task_id");
     } catch (const std::invalid_argument& e) {
       response->set_accepted(false);
       response->set_error(std::string("Invalid parent_task_id: ") + e.what());
@@ -50,8 +50,7 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(
   auto spec = spec_opt.value();
 
   // Generate task ID if not provided
-  std::string task_id =
-      spec.metadata.task_id.empty() ? generateTaskId() : spec.metadata.task_id;
+  std::string task_id = spec.metadata.task_id.empty() ? generateTaskId() : spec.metadata.task_id;
 
   // Validate the task_id token before routing — rejects path traversal and
   // other characters that are unsafe in NATS subject positions.
@@ -68,8 +67,7 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(
 
   if (!routing_result.success) {
     response->set_accepted(false);
-    response->set_error("Failed to route task: " +
-                        routing_result.error_message);
+    response->set_error("Failed to route task: " + routing_result.error_message);
     return grpc::Status::OK;
   }
 
@@ -94,15 +92,15 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitTask(
   response->set_assigned_node(routing_result.target_ip_port);
   response->set_assigned_agent_id(routing_result.target_agent_id);
   response->set_accepted_at_unix_ms(
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          state.created_at.time_since_epoch())
+      std::chrono::duration_cast<std::chrono::milliseconds>(state.created_at.time_since_epoch())
           .count());
 
   return grpc::Status::OK;
 }
 
 grpc::Status HMASCoordinatorServiceImpl::StreamTaskStatus(
-    grpc::ServerContext* context, const hmas::TaskStatusRequest* request,
+    grpc::ServerContext* context,
+    const hmas::TaskStatusRequest* request,
     grpc::ServerWriter<hmas::TaskStatusUpdate>* writer) {
   (void)context;  // Unused
 
@@ -135,8 +133,7 @@ grpc::Status HMASCoordinatorServiceImpl::StreamTaskStatus(
       update.set_progress_percent(state.progress_percent);
       update.set_current_subtask(state.current_subtask);
       update.set_updated_at_unix_ms(
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              state.updated_at.time_since_epoch())
+          std::chrono::duration_cast<std::chrono::milliseconds>(state.updated_at.time_since_epoch())
               .count());
 
       // Check if task is in terminal state
@@ -159,9 +156,9 @@ grpc::Status HMASCoordinatorServiceImpl::StreamTaskStatus(
   return grpc::Status::OK;
 }
 
-grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(
-    grpc::ServerContext* context, const hmas::TaskResultRequest* request,
-    hmas::TaskResult* response) {
+grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(grpc::ServerContext* context,
+                                                       const hmas::TaskResultRequest* request,
+                                                       hmas::TaskResult* response) {
   (void)context;  // Unused
 
   const std::string& task_id = request->task_id();
@@ -175,8 +172,7 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(
 
   int64_t timeout_ms = request->timeout_ms();
 
-  auto deadline =
-      std::chrono::system_clock::now() + std::chrono::milliseconds(timeout_ms);
+  auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(timeout_ms);
 
   // Poll for result with timeout
   while (timeout_ms == 0 || std::chrono::system_clock::now() < deadline) {
@@ -194,8 +190,7 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(
       auto state_it = active_tasks_.find(task_id);
       if (state_it != active_tasks_.end()) {
         const hmas::TaskPhase current_phase = state_it->second.phase;
-        if (isTerminalPhase(current_phase) &&
-            current_phase != hmas::TASK_PHASE_COMPLETED) {
+        if (isTerminalPhase(current_phase) && current_phase != hmas::TASK_PHASE_COMPLETED) {
           // Task reached a non-success terminal state — synthesize an error
           // result. Provide a phase-specific error message so callers can
           // distinguish infrastructure errors (TASK_PHASE_ERROR) from logical
@@ -209,12 +204,10 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(
                   "(TASK_PHASE_ERROR)");
               break;
             case hmas::TASK_PHASE_FAILED:
-              response->set_error(
-                  "Task failed during execution (TASK_PHASE_FAILED)");
+              response->set_error("Task failed during execution (TASK_PHASE_FAILED)");
               break;
             case hmas::TASK_PHASE_TIMEOUT:
-              response->set_error(
-                  "Task exceeded its deadline (TASK_PHASE_TIMEOUT)");
+              response->set_error("Task exceeded its deadline (TASK_PHASE_TIMEOUT)");
               break;
             case hmas::TASK_PHASE_CANCELLED:
               response->set_error(
@@ -240,17 +233,15 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskResult(
 
   // Timeout or not found
   if (timeout_ms > 0) {
-    return grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED,
-                        "Timeout waiting for task result");
+    return grpc::Status(grpc::StatusCode::DEADLINE_EXCEEDED, "Timeout waiting for task result");
   } else {
-    return grpc::Status(grpc::StatusCode::NOT_FOUND,
-                        "Task result not available");
+    return grpc::Status(grpc::StatusCode::NOT_FOUND, "Task result not available");
   }
 }
 
-grpc::Status HMASCoordinatorServiceImpl::SubmitResult(
-    grpc::ServerContext* context, const hmas::TaskResult* request,
-    hmas::ResultAcknowledgement* response) {
+grpc::Status HMASCoordinatorServiceImpl::SubmitResult(grpc::ServerContext* context,
+                                                      const hmas::TaskResult* request,
+                                                      hmas::ResultAcknowledgement* response) {
   (void)context;  // Unused
 
   // Validate task_id at the service boundary.
@@ -286,9 +277,9 @@ grpc::Status HMASCoordinatorServiceImpl::SubmitResult(
   return grpc::Status::OK;
 }
 
-grpc::Status HMASCoordinatorServiceImpl::CancelTask(
-    grpc::ServerContext* context, const hmas::CancelRequest* request,
-    hmas::CancelResponse* response) {
+grpc::Status HMASCoordinatorServiceImpl::CancelTask(grpc::ServerContext* context,
+                                                    const hmas::CancelRequest* request,
+                                                    hmas::CancelResponse* response) {
   (void)context;  // Unused
 
   // Validate task_id at the service boundary.
@@ -348,20 +339,23 @@ grpc::Status HMASCoordinatorServiceImpl::CancelTask(
   // Notify the assigned agent to stop execution cooperatively.
   // This is done after releasing the mutex to avoid lock-order inversion.
   if (message_bus_ && !assigned_agent_id.empty()) {
-    auto cancel_msg = core::KeystoneMessage::createCancellation(
+    // Issue #515: CANCEL_TASK moved from core::ActionType to
+    // agents::AgentActionType; use AgentEnvelope::createCancellation to build
+    // the transport message.
+    auto cancel_env = agents::AgentEnvelope::createCancellation(
         "coordinator",      // sender
         assigned_agent_id,  // receiver — the agent executing the task
         task_id             // task being cancelled
     );
-    message_bus_->routeMessage(cancel_msg);
+    message_bus_->routeMessage(cancel_env.transport_msg);
   }
 
   return grpc::Status::OK;
 }
 
-grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(
-    grpc::ServerContext* context, const hmas::TaskProgressRequest* request,
-    hmas::TaskProgress* response) {
+grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(grpc::ServerContext* context,
+                                                         const hmas::TaskProgressRequest* request,
+                                                         hmas::TaskProgress* response) {
   (void)context;  // Unused
 
   // Validate task_id at the service boundary.
@@ -387,8 +381,7 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(
   response->set_progress_percent(state.progress_percent);
   response->set_current_subtask(state.current_subtask);
   response->set_updated_at_unix_ms(
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          state.updated_at.time_since_epoch())
+      std::chrono::duration_cast<std::chrono::milliseconds>(state.updated_at.time_since_epoch())
           .count());
 
   // Check if complete
@@ -399,9 +392,10 @@ grpc::Status HMASCoordinatorServiceImpl::GetTaskProgress(
 
 // Non-RPC methods
 
-void HMASCoordinatorServiceImpl::updateTaskStatus(
-    const std::string& task_id, hmas::TaskPhase phase, int32_t progress,
-    const std::string& current_subtask) {
+void HMASCoordinatorServiceImpl::updateTaskStatus(const std::string& task_id,
+                                                  hmas::TaskPhase phase,
+                                                  int32_t progress,
+                                                  const std::string& current_subtask) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto it = active_tasks_.find(task_id);
@@ -447,9 +441,8 @@ int32_t HMASCoordinatorServiceImpl::cleanupOldTasks(int64_t age_threshold_ms) {
 
     // Only clean up terminal states
     if (isTerminalPhase(state.phase)) {
-      auto age = std::chrono::duration_cast<std::chrono::milliseconds>(
-                     now - state.updated_at)
-                     .count();
+      auto age =
+          std::chrono::duration_cast<std::chrono::milliseconds>(now - state.updated_at).count();
 
       if (age > age_threshold_ms) {
         // Also clean up result
@@ -470,9 +463,8 @@ int32_t HMASCoordinatorServiceImpl::cleanupOldTasks(int64_t age_threshold_ms) {
 std::string HMASCoordinatorServiceImpl::generateTaskId() const {
   // Simple task ID generation: timestamp + random suffix
   auto now = std::chrono::system_clock::now();
-  auto timestamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          now.time_since_epoch())
-                          .count();
+  auto timestamp_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
   std::random_device rd;
   std::mt19937 gen(rd());

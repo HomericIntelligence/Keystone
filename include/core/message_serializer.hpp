@@ -1,13 +1,12 @@
 #pragma once
 
-#include <cista/containers.h>
-#include <cista/containers/hash_map.h>
-#include <cista/serialization.h>
+#include "core/message.hpp"
 
 #include <cstdint>
 #include <vector>
 
-#include "core/message.hpp"
+#include <cista/containers.h>
+#include <cista/serialization.h>
 
 namespace keystone {
 namespace core {
@@ -17,6 +16,10 @@ namespace core {
  *
  * This struct mirrors KeystoneMessage but uses Cista types for serialization.
  * We use cista::offset types for pointer-independent serialization.
+ *
+ * Fields session_id and metadata were removed per Issue #515: they are
+ * orchestration concerns that belong in agents::AgentEnvelope, not on the
+ * transport wire format.
  */
 struct SerializableMessage {
   cista::offset::string msg_id;
@@ -25,9 +28,6 @@ struct SerializableMessage {
 
   uint32_t action_type;   // Serialized as uint32_t
   uint32_t content_type;  // Serialized as uint32_t
-  cista::offset::string session_id;
-  cista::offset::hash_map<cista::offset::string, cista::offset::string>
-      metadata;
 
   cista::offset::string command;
   cista::offset::string payload;
@@ -100,8 +100,7 @@ class MessageSerializer {
    * @param size Size of the buffer
    * @return const SerializableMessage* Pointer to deserialized message
    */
-  static const SerializableMessage* deserializeInPlace(const uint8_t* buffer,
-                                                       size_t size);
+  static const SerializableMessage* deserializeInPlace(const uint8_t* buffer, size_t size);
 };
 
 }  // namespace core
