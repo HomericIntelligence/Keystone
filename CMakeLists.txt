@@ -557,16 +557,19 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 
 gtest_discover_tests(simulation_unit_tests)
 
-# Transport library — NATS connection with TLS support (issue #122) and
-# NATSListener pull-based fetch loop (issues #178, #205, #307)
+# Transport library — NATS connection with TLS support (issue #122),
+# NATSListener pull-based fetch loop (issues #178, #205, #307), and
+# TransparentBridge automatic off-host forwarding (issue #512).
 add_library(keystone_transport src/transport/nats_connection.cpp
-                               src/network/nats_listener.cpp)
+                               src/network/nats_listener.cpp
+                               src/transport/transparent_bridge.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                             $<INSTALL_INTERFACE:include/keystone>)
 
-target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt)
+target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt
+                                                keystone_core)
 
 # Explicitly add spdlog and fmt include directories for Conan packages
 target_include_directories(
@@ -579,6 +582,14 @@ add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
 target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 
 gtest_discover_tests(transport_unit_tests)
+
+# Unit Tests — TransparentBridge (issue #512)
+add_executable(bridge_unit_tests tests/unit/test_transparent_bridge.cpp)
+
+target_link_libraries(bridge_unit_tests keystone_transport keystone_agents
+                      keystone_core GTest::gtest_main)
+
+gtest_discover_tests(bridge_unit_tests)
 
 # Integration Tests (Phase C3: Registry integration tests)
 add_executable(registry_integration_tests
