@@ -13,6 +13,26 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Added
 
+- Audit 2026-04-28 remediation (#504): re-enabled `test_work_stealing_queue.cpp` in `concurrency_unit_tests`; the
+  disabled comment citing "private constructor access" was stale — the test already uses `WorkItem::makeFunction()`
+  factory methods correctly throughout
+
+### Changed
+
+- Audit 2026-04-28 remediation (#504): corrected license badge and footer in `README.md` from MIT to BSD-3-Clause to
+  match the actual `LICENSE` file (BSD 3-Clause); also corrected `CPACK_RPM_PACKAGE_LICENSE` in `CMakeLists.txt`
+- Audit 2026-04-28 remediation (#504): `Containerfile` Stage 2 (runtime) and Stage 3 (production) now ship
+  transport/concurrency library validation tests instead of agent e2e test binaries (which belong in
+  ProjectAgamemnon per ADR-015); Stage 3 no longer references `hmas-server.sh` or Python3 health checks since
+  Keystone ships as a library, not a standalone service
+- Audit 2026-04-28 remediation (#504): removed `src/keystone/` Python orchestration package (ADR-015/016 completion)
+  and corresponding Python test files; `pyproject.toml` updated to drop `pydantic`/`nats-py` runtime deps and
+  keystone coverage configuration; `conftest.py` and `helpers.py` cleaned of broken imports
+- Audit 2026-04-28 remediation (#504): documented TransparentBridge as planned/not-yet-implemented in `CLAUDE.md`;
+  `setNatsPublisher()` on `MessageBus` is the integration hook for future bridge wiring
+
+### Fixed
+
 - Integration test `SchedulerSigtermTest` verifying SIGTERM mid-flight causes graceful drain: all submitted tasks
 complete before worker threads exit (#303)
 - Migrate dependency management to Conan 2 with CMakePresets ([220326c](../../commit/220326c))

@@ -71,9 +71,12 @@ Keystone provides two complementary transports that are bridged transparently:
   across hosts.
 - All cross-host traffic runs over the **Tailscale WireGuard mesh**
   (`tail8906b5.ts.net`).
-- The **Transparent Bridge** automatically promotes messages destined for off-host
-  agents from the local MessageBus onto the appropriate NATS subject, and vice versa.
-  No component needs awareness of whether its peer is local or remote.
+- The **Transparent Bridge** is planned to automatically promote messages destined
+  for off-host agents from the local MessageBus onto the appropriate NATS subject,
+  and vice versa. **This component is not yet implemented** — `setNatsPublisher()`
+  on `MessageBus` provides the hook point for future bridge wiring.
+  No component will need awareness of whether its peer is local or remote once the
+  bridge is in place.
 
 ### TaskClaimer and DAG Advancement
 
@@ -307,8 +310,9 @@ just clean           # Remove build directories
 1. **Invisible transport**: Components are never aware of Keystone. They only know
    NATS subject names. Keystone handles everything else.
 
-2. **Transparent bridging**: Local MessageBus and NATS JetStream are bridged
-   automatically. A publisher does not choose which transport to use.
+2. **Transparent bridging** (planned): Local MessageBus and NATS JetStream will be
+   bridged automatically via the TransparentBridge component. Not yet implemented;
+   use `setNatsPublisher()` on `MessageBus` as the integration point.
 
 3. **Pull-based, rate-limited**: Myrmidons pull at their own pace. Keystone never
    pushes more work than a consumer can handle.

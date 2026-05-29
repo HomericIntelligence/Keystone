@@ -81,6 +81,9 @@ RUN cmake -S . -B build/release -G Ninja \
     && cmake --build build/release
 
 # Stage 2: Runtime environment (smaller image)
+# Ships transport and concurrency unit tests as a smoke-test image.
+# Agent e2e tests (basic_delegation_tests etc.) are no longer built here;
+# the agent layer now lives in ProjectAgamemnon per ADR-015.
 FROM ubuntu:24.04 AS runtime
 
 # Install only runtime dependencies
@@ -88,25 +91,26 @@ RUN apt-get update && apt-get install -y \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built test executables from builder
-COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
+# Copy built transport and concurrency test executables from builder
+COPY --from=builder /workspace/build/release/bin/transport_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/concurrency_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/simulation_unit_tests /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
 
-# Default command: run all tests
-CMD ["sh", "-c", "basic_delegation_tests && module_coordination_tests && component_coordination_tests"]
+# Default command: run transport/concurrency smoke tests
+CMD ["sh", "-c", "transport_unit_tests && concurrency_unit_tests && simulation_unit_tests"]
 
 # Stage 3: Production environment (Kubernetes deployment)
+# ProjectKeystone is a pure transport library — no standalone service binary exists.
+# This stage ships library validation tests. A future keystone_daemon binary
+# will replace this with a real service entrypoint when implemented.
 FROM ubuntu:24.04 AS production
 
-# Install runtime dependencies + Python3 for health checks
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     libstdc++6 \
-    python3 \
-    python3-minimal \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -115,16 +119,11 @@ RUN groupadd -g 1001 hmas || true && \
     mkdir -p /app && \
     chown -R hmas:hmas /app
 
-# Copy built test executables from builder
-COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/async_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/distributed_hierarchy_tests /usr/local/bin/
-
-# Copy server wrapper script
-COPY scripts/hmas-server.sh /usr/local/bin/hmas-server.sh
-RUN chmod +x /usr/local/bin/hmas-server.sh
+# Copy library validation test executables from builder
+COPY --from=builder /workspace/build/release/bin/unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/transport_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/concurrency_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/simulation_unit_tests /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
@@ -132,15 +131,15 @@ WORKDIR /app
 # Switch to non-root user
 USER hmas
 
-# Expose ports
-EXPOSE 8080 9090 50051
+# Expose ports (reserved for future keystone_daemon HTTP/metrics endpoints)
+EXPOSE 8080 9090
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/v1/health')" || exit 1
+# Health check — validate library integrity via unit tests
+HEALTHCHECK --interval=60s --timeout=30s --start-period=10s --retries=1 \
+    CMD unit_tests --gtest_filter="-*Integration*" || exit 1
 
-# Default command: run HMAS server
-CMD ["/usr/local/bin/hmas-server.sh"]
+# Default command: run library validation tests
+CMD ["sh", "-c", "unit_tests && transport_unit_tests && concurrency_unit_tests"]
 
 # Stage 4: Development environment (for iterative development)
 FROM builder AS development

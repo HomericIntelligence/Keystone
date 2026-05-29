@@ -531,8 +531,7 @@ add_executable(
   concurrency_unit_tests
   tests/unit/test_task.cpp
   tests/unit/test_thread_pool.cpp
-  # DISABLED: Compilation error - private constructor access
-  # tests/unit/test_work_stealing_queue.cpp
+  tests/unit/test_work_stealing_queue.cpp
   tests/unit/test_logger.cpp
   tests/unit/test_pull_or_steal.cpp
   tests/unit/test_work_stealing_scheduler.cpp
@@ -986,7 +985,7 @@ set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_DEPENDS
     "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
 
 # RPM-specific settings
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_LICENSE "BSD-3-Clause")
 set(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")
 set(CPACK_RPM_ENABLE_COMPONENT_DEPENDS ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
