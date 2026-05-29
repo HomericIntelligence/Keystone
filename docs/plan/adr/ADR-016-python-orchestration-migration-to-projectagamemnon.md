@@ -113,6 +113,19 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 - ✅ CI/CD pipelines updated to test each repository independently
 - ✅ CLAUDE.md updated to reflect Python extraction
 
+## Implementation Record
+
+Physical removal completed 2026-05-29 (HomericIntelligence/ProjectKeystone#505):
+
+- Deleted `src/keystone/` (11 files: `__init__.py`, `__main__.py`, `config.py`,
+  `daemon.py`, `dag_walker.py`, `logging.py`, `models.py`, `nats_listener.py`,
+  `py.typed`, `task_claimer.py`, `validation.py`)
+- Deleted Python test files from `tests/` root: `test_daemon.py`, `test_dag_walker.py`,
+  `test_logging.py`, `test_nats_listener.py`, `test_task_claimer.py`,
+  `test_task_event.py`, `test_validation.py`
+- Removed `ruff check src/` and `pytest tests/` CI steps from `_required.yml`
+- ADR-015 also completed simultaneously (C++ agent layer removal)
+
 ## References
 
 - ADR-015: Agent Layer Extraction to ProjectAgamemnon
@@ -125,4 +138,4 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 **Last Updated**: 2026-04-25
 **Version**: 1.0
 **Project**: ProjectKeystone
-**Status**: Accepted (2026-04-25)
+**Status**: Implemented (2026-05-29)

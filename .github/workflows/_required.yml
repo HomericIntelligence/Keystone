@@ -139,8 +139,8 @@ jobs:
       - name: Install Python linters
         run: pip install "ruff>=0.1,<1" "mypy>=1.8.0,<2" "conan>=2.0.0"
 
-      - name: Ruff lint (Python)
-        run: ruff check src/ tests/
+      # Ruff lint removed per ADR-016: src/keystone/ Python modules extracted
+      # to ProjectAgamemnon. No application Python source remains in src/.
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
@@ -450,26 +450,9 @@ jobs:
         if: always()
         run: sccache --show-stats
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dev dependencies
-        run: pip install -e ".[dev]"
-
-      - name: Run Python unit tests
-        run: pytest tests/ --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q
-        timeout-minutes: 10
-
-      - name: Upload Python coverage XML
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: python-coverage
-          path: coverage.xml
-          retention-days: 14
-          if-no-files-found: ignore
+      # Python unit tests removed per ADR-016: src/keystone/ Python modules and
+      # tests/test_*.py Python tests extracted to ProjectAgamemnon. No Python
+      # application tests remain in this repository.
 
       - name: Upload C++ test logs
         if: failure()

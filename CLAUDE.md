@@ -11,9 +11,9 @@ Keystone is **not** an agent system, pipeline stage, or orchestrator. It is the
 invisible plumbing beneath every other component.
 
 > **Note**: The 4-layer HMAS hierarchy (L0 ChiefArchitectAgent → L1 ComponentLeadAgent →
-> L2 ModuleLeadAgent → L3 TaskAgent) was extracted from this repository and merged into
-> **ProjectAgamemnon** per ADR-015 (full decoupling from ai-maestro). Keystone retains
-> only transport primitives.
+> L2 ModuleLeadAgent → L3 TaskAgent) has been fully extracted from this repository and
+> physically removed per ADR-015 and ADR-016 (completed 2026-05-29). The agent code
+> lives in **ProjectAgamemnon**. Keystone retains only transport primitives.
 
 ---
 
@@ -25,15 +25,11 @@ invisible plumbing beneath every other component.
 Python, Mojo, or other languages for new transport, message-bus, or
 agent-runtime code.**
 
-**Exception — supporting Python tooling.** A small number of Python modules
-remain in `src/keystone/` as a thin orchestration / test harness layer
-(`config.py`, `daemon.py`, `dag_walker.py`, `models.py`, `nats_listener.py`,
-`task_claimer.py`, `validation.py`, `logging.py`). These predate the ADR-015
-extraction to ProjectAgamemnon and are still imported by the Python tests
-under `tests/`. They are maintained in-place but **must not** grow new
-production responsibilities — any new orchestration logic belongs in
-ProjectAgamemnon, and any new transport logic must be implemented in C++20
-under `src/transport/`, `src/network/`, or `include/`.
+All Python orchestration modules (`src/keystone/`) and the C++ agent hierarchy
+(`src/agents/`, `include/agents/`) have been physically removed per ADR-015
+and ADR-016 (completed 2026-05-29). They now live in ProjectAgamemnon. All
+new transport logic must be implemented in C++20 under `src/transport/`,
+`src/network/`, or `include/`.
 
 ### Required Technologies
 
@@ -224,17 +220,18 @@ build/
 
 ```
 tests/
-├── unit/           # Unit tests per component
-├── integration/    # Cross-component integration tests
-├── e2e/            # End-to-end and distributed tests
-├── load/           # Load and throughput tests
-├── fixtures/       # Shared test fixtures
-├── mocks/          # Mock implementations
-├── conftest.py     # pytest configuration and fixtures
-├── helpers.py      # Shared test helper utilities
-├── __init__.py     # Python package marker
-└── test_*.py       # Python integration and daemon tests
+├── unit/              # Unit tests per component
+├── integration/       # Cross-component integration tests
+├── e2e/               # End-to-end and distributed tests
+├── load/              # Load and throughput tests
+├── fixtures/          # Shared test fixtures
+├── mocks/             # Mock implementations
+└── test_version_bounds.py  # Standalone: validates pixi.toml version specs
 ```
+
+> **Note**: Python pytest infrastructure (`conftest.py`, `helpers.py`,
+> `__init__.py`, `test_daemon.py`, `test_dag_walker.py`, etc.) has been
+> removed per ADR-016 — Python orchestration tests now live in ProjectAgamemnon.
 
 ---
 

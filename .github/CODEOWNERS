@@ -60,28 +60,11 @@ include/concurrency/ @mvillmow
 src/concurrency/ @mvillmow
 
 # ============================================================================
-# Agent Hierarchy
+# Agent Hierarchy — REMOVED per ADR-015
+# The C++ agent hierarchy (src/agents/, include/agents/) has been physically
+# removed from this repository and extracted to ProjectAgamemnon. These
+# CODEOWNERS entries are no longer applicable.
 # ============================================================================
-
-# Base agent interface - affects all agent implementations
-include/agents/base_agent.hpp @mvillmow
-src/agents/base_agent.cpp @mvillmow
-
-# Level 0: ChiefArchitect (strategic decisions)
-include/agents/chief_architect_agent.hpp @mvillmow
-src/agents/chief_architect_agent.cpp @mvillmow
-
-# Level 1: ComponentLead (component coordination)
-include/agents/component_lead_agent.hpp @mvillmow
-src/agents/component_lead_agent.cpp @mvillmow
-
-# Level 2: ModuleLead (module design)
-include/agents/module_lead_agent.hpp @mvillmow
-src/agents/module_lead_agent.cpp @mvillmow
-
-# Level 3: TaskAgent (concrete execution)
-include/agents/task_agent.hpp @mvillmow
-src/agents/task_agent.cpp @mvillmow
 
 # ============================================================================
 # Testing Infrastructure

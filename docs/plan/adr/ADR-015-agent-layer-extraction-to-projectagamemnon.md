@@ -1,7 +1,8 @@
 # ADR-015: Agent Layer Extraction to ProjectAgamemnon
 
-**Status**: Accepted
+**Status**: Implemented
 **Date**: 2026-03-28
+**Implemented**: 2026-05-29
 **Deciders**: ProjectKeystone Development Team
 **Tags**: architecture, extraction, agent-hierarchy, transport, projectagamemnon, decoupling
 
@@ -100,3 +101,17 @@ architectural decision. The CLAUDE.md reference has been updated from "ADR-006" 
   unchanged. Its content applies to agent code that now lives in ProjectAgamemnon.
 - ADR-014 (INatsConnection exception contract) remains the authoritative record for
   NATS exception handling in the transport layer.
+
+## Implementation Record
+
+Physical removal completed 2026-05-29 (HomericIntelligence/ProjectKeystone#505):
+
+- Deleted `src/agents/` (7 .cpp files)
+- Deleted `include/agents/` (12 .hpp files)
+- Deleted `tests/unit/` agent test files (13 files)
+- Deleted `tests/e2e/` agent e2e test files (8 files)
+- Deleted `tests/mocks/mock_agents.hpp`
+- Removed `keystone_agents` library from `CMakeLists.txt`
+- Removed all targets that linked `keystone_agents`
+- Updated `.github/CODEOWNERS` to remove agent ownership entries
+- ADR-016 also completed simultaneously (Python module removal)

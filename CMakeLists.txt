@@ -316,22 +316,8 @@ if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
     STATUS "keystone_network library configured for distributed communication")
 endif()
 
-# Agents library
-add_library(
-  keystone_agents
-  src/agents/agent_core.cpp
-  src/agents/async_agent.cpp
-  src/agents/task_execution_strategy.cpp # ARCH-007: Strategy pattern
-  src/agents/chief_architect_agent.cpp
-  src/agents/component_lead_agent.cpp
-  src/agents/module_lead_agent.cpp
-  src/agents/task_agent.cpp)
-
-target_include_directories(
-  keystone_agents PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include/keystone>)
-
-target_link_libraries(keystone_agents PUBLIC keystone_core keystone_concurrency)
+# Agents library removed per ADR-015: C++ agent hierarchy extracted to
+# ProjectAgamemnon. keystone_agents is no longer built here.
 
 # Simulation library (Phase D.3)
 add_library(
@@ -346,46 +332,12 @@ target_include_directories(
 target_link_libraries(keystone_simulation PUBLIC keystone_concurrency
                                                  keystone_core)
 
-# E2E Tests - Basic Delegation
-add_executable(basic_delegation_tests tests/e2e/basic_delegation_test.cpp)
-
-target_link_libraries(basic_delegation_tests keystone_agents keystone_core
-                      GTest::gtest_main)
-
-gtest_discover_tests(basic_delegation_tests)
-
-# E2E Tests - Task Cancellation (Issue #52)
-add_executable(task_cancellation_tests tests/e2e/task_cancellation_test.cpp)
-
-target_link_libraries(task_cancellation_tests keystone_agents keystone_core
-                      GTest::gtest_main)
-
-gtest_discover_tests(task_cancellation_tests)
-
-# E2E Tests - Module Coordination
-add_executable(module_coordination_tests tests/e2e/module_coordination_test.cpp)
-
-target_link_libraries(module_coordination_tests keystone_agents keystone_core
-                      GTest::gtest_main)
-
-gtest_discover_tests(module_coordination_tests)
-
-# E2E Tests - Component Coordination
-add_executable(component_coordination_tests
-               tests/e2e/component_coordination_test.cpp)
-
-target_link_libraries(component_coordination_tests keystone_agents
-                      keystone_core GTest::gtest_main)
-
-gtest_discover_tests(component_coordination_tests)
-
-# E2E Tests - Async Delegation (Work-Stealing)
-add_executable(async_delegation_tests tests/e2e/async_delegation_test.cpp)
-
-target_link_libraries(async_delegation_tests keystone_agents keystone_core
-                      keystone_concurrency GTest::gtest_main)
-
-gtest_discover_tests(async_delegation_tests)
+# E2E Tests - Basic Delegation (REMOVED per ADR-015: depends on keystone_agents,
+# which has been extracted to ProjectAgamemnon)
+# E2E Tests - Task Cancellation (REMOVED per ADR-015)
+# E2E Tests - Module Coordination (REMOVED per ADR-015)
+# E2E Tests - Component Coordination (REMOVED per ADR-015)
+# E2E Tests - Async Delegation (REMOVED per ADR-015)
 
 # E2E Tests - Async Agents (Coroutines) DISABLED: Phase 6 async features not yet
 # implemented add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
@@ -434,15 +386,20 @@ endif()
 # gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
 
 # Unit Tests
+# Note: test files that depended on keystone_agents are removed per ADR-015.
+# Removed: test_message_bus.cpp (used TaskAgent/ChiefArchitectAgent for setup)
+# Removed: test_async_task_agent.cpp (tests AsyncAgent, now in ProjectAgamemnon)
+# Removed: test_message_priority.cpp (used AgentCore for setup)
+# Removed: test_agent_core.cpp (tests AgentCore, now in ProjectAgamemnon)
+# Removed: test_agent_concepts.cpp (tests C++20 agent concepts, now in ProjectAgamemnon)
+# Removed: test_coordination_state.cpp (tests CoordinationState, now in ProjectAgamemnon)
+# Removed: test_task_cancellation.cpp (tests task cancellation via agents, now in ProjectAgamemnon)
+# Removed: test_subject_validator.cpp (used TaskAgent for message bus setup)
 add_executable(
   unit_tests
-  tests/unit/test_message_bus.cpp
   tests/unit/test_message_serializer.cpp
   # DISABLED: Async API not yet implemented
   # tests/unit/test_message_bus_async.cpp
-  tests/unit/test_async_task_agent.cpp # Issue #376: isFailed() guard
-  tests/unit/test_message_priority.cpp
-  tests/unit/test_agent_core.cpp # Additional coverage for AgentCore
   tests/unit/test_agent_id_interning.cpp # Phase A2: Agent ID interning tests
   tests/unit/test_metrics.cpp
   tests/unit/test_deadline_scheduling.cpp
@@ -456,19 +413,12 @@ add_executable(
   # heartbeat monitoring
   tests/unit/test_circuit_breaker.cpp # Phase 5.4: Chaos engineering - circuit
   # breaker
-  tests/unit/test_agent_concepts.cpp # Issue #24: Agent concepts type safety
   tests/unit/test_health_check_server.cpp # Phase 6.7: Health check endpoints
                                           # (C4)
-  tests/unit/test_coordination_state.cpp # Stream B Phase B1: CoordinationState
-                                         # template tests (FIX: added mutexes)
-  tests/unit/test_task_cancellation.cpp # Phase 1.2 (Issue #52): Task
-                                        # cancellation notification
   tests/unit/test_security_regression.cpp # PR #1: Security vulnerability
                                           # regression tests
   tests/unit/test_agent_types.cpp # PR #2: AgentLevel enum and type definitions
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
-  tests/unit/test_subject_validator.cpp # Issue #280: NATS wildcard-aware token
-                                        # validation
 )
 
 # Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
@@ -478,7 +428,6 @@ if(ENABLE_GRPC)
   target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
   target_link_libraries(
     unit_tests
-    keystone_agents
     keystone_core
     keystone_concurrency
     keystone_network
@@ -486,7 +435,7 @@ if(ENABLE_GRPC)
     GTest::gtest_main)
 else()
   target_link_libraries(
-    unit_tests keystone_agents keystone_core keystone_concurrency
+    unit_tests keystone_core keystone_concurrency
     keystone_transport GTest::gtest_main)
 endif()
 
@@ -509,22 +458,8 @@ else()
     STATUS "Profiling tests disabled. Use -DENABLE_PROFILING=ON to enable.")
 endif()
 
-# Unit Tests - Agent Classes (Stream C Phase C2: Issue #45) Comprehensive unit
-# tests for all agent classes with mock infrastructure
-add_executable(
-  agent_unit_tests
-  tests/unit/test_task_agent.cpp tests/unit/test_chief_architect_agent.cpp
-  tests/unit/test_module_lead_agent.cpp
-  tests/unit/test_component_lead_agent.cpp)
-
-target_include_directories(
-  agent_unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests # For mocks/ directory
-)
-
-target_link_libraries(agent_unit_tests keystone_agents keystone_core
-                      keystone_concurrency GTest::gtest_main GTest::gmock)
-
-gtest_discover_tests(agent_unit_tests)
+# agent_unit_tests removed per ADR-015: all agent class tests extracted to
+# ProjectAgamemnon along with the keystone_agents library.
 
 # Unit Tests - Concurrency (Phase A)
 add_executable(
@@ -580,23 +515,12 @@ target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 
 gtest_discover_tests(transport_unit_tests)
 
-# Integration Tests (Phase C3: Registry integration tests)
-add_executable(registry_integration_tests
-               tests/integration/test_registry_integration.cpp)
+# registry_integration_tests removed per ADR-015: depends on keystone_agents
+# (ChiefArchitectAgent + TaskAgent for registry setup, now in ProjectAgamemnon).
 
-target_link_libraries(registry_integration_tests keystone_agents keystone_core
-                      GTest::gtest_main)
-
-gtest_discover_tests(registry_integration_tests)
-
-# Integration Tests (NATS: #178, #205, #307)
-add_executable(nats_integration_tests
-               tests/integration/test_nats_integration.cpp)
-
-target_link_libraries(nats_integration_tests keystone_agents keystone_core
-                      keystone_transport GTest::gtest_main)
-
-gtest_discover_tests(nats_integration_tests)
+# nats_integration_tests removed per ADR-015: test_nats_integration.cpp uses
+# TaskAgent as a subscriber fixture (agents/task_agent.hpp). This test belongs
+# in ProjectAgamemnon where the agent layer lives.
 
 # TLS Handshake Integration Tests (Issue #275) Opt-in: requires nats-server and
 # openssl on PATH at test runtime. Disabled by default so CI environments
@@ -633,30 +557,29 @@ target_link_libraries(scheduler_sigterm_tests keystone_concurrency
 gtest_discover_tests(scheduler_sigterm_tests)
 
 # Add test target
+# Note: agent-hierarchy e2e tests removed per ADR-015 (extracted to ProjectAgamemnon)
 add_custom_target(
   run_tests
   COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-  DEPENDS basic_delegation_tests
-          module_coordination_tests
-          component_coordination_tests
-          async_delegation_tests
+  DEPENDS distributed_hierarchy_tests
           # DISABLED: async_agents_tests (Phase 6)
-          distributed_hierarchy_tests
-          # DISABLED: multi_component_tests (Phase 4) DISABLED:
-          # chaos_engineering_tests (Phase 5)
+          # DISABLED: multi_component_tests (Phase 4)
+          # DISABLED: chaos_engineering_tests (Phase 5)
+          # REMOVED: basic_delegation_tests (ADR-015)
+          # REMOVED: module_coordination_tests (ADR-015)
+          # REMOVED: component_coordination_tests (ADR-015)
+          # REMOVED: async_delegation_tests (ADR-015)
+          # REMOVED: task_cancellation_tests (ADR-015)
           unit_tests
           concurrency_unit_tests
           simulation_unit_tests
           transport_unit_tests
-          nats_integration_tests
-          # DISABLED: registry_integration_tests (ADR-006) DISABLED:
+          # REMOVED: nats_integration_tests (ADR-015: uses TaskAgent, extracted to ProjectAgamemnon)
+          # REMOVED: registry_integration_tests (ADR-006)
   COMMENT "Running all ProjectKeystone tests with failure output")
 
-# Benchmarks Phase 3.1: Re-enabled hierarchy benchmarks with unified async API
-add_executable(hierarchy_benchmarks benchmarks/hierarchy_performance.cpp)
-
-target_link_libraries(hierarchy_benchmarks keystone_agents keystone_core
-                      keystone_concurrency benchmark::benchmark)
+# hierarchy_benchmarks removed per ADR-015: depends on keystone_agents (agent
+# hierarchy extracted to ProjectAgamemnon).
 
 # Phase D.2: Message pool performance benchmarks
 add_executable(message_pool_benchmarks benchmarks/message_pool_performance.cpp)
@@ -677,12 +600,7 @@ add_executable(string_allocation_benchmarks
 target_link_libraries(string_allocation_benchmarks keystone_core
                       benchmark::benchmark)
 
-# Phase A2: Registry performance benchmarks (agent ID interning optimization)
-add_executable(registry_performance_benchmarks
-               benchmarks/registry_performance.cpp)
-
-target_link_libraries(registry_performance_benchmarks keystone_agents
-                      keystone_core benchmark::benchmark)
+# registry_performance_benchmarks removed per ADR-015: depends on keystone_agents.
 
 # P2-06: Simple profiling harness for valgrind massif
 add_executable(profile_allocations benchmarks/profile_allocations.cpp)
@@ -696,18 +614,11 @@ add_executable(scheduler_backoff_benchmarks
 target_link_libraries(scheduler_backoff_benchmarks keystone_concurrency
                       keystone_core benchmark::benchmark)
 
-# Phase 3.1: Re-enabled message bus performance benchmarks with unified async
-# API
-add_executable(message_bus_performance_benchmarks
-               benchmarks/message_bus_performance.cpp)
+# message_bus_performance_benchmarks removed per ADR-015: depends on
+# keystone_agents (used TaskAgent as message bus subscriber).
 
-target_link_libraries(message_bus_performance_benchmarks keystone_agents
-                      keystone_core benchmark::benchmark)
-
-# Phase 6.7 M1: Load testing for production readiness
-add_executable(hmas_load_test tests/load/hmas_load_test.cpp)
-target_link_libraries(hmas_load_test keystone_agents keystone_core
-                      keystone_concurrency)
+# hmas_load_test removed per ADR-015: depends on keystone_agents (HMAS hierarchy
+# load test, extracted to ProjectAgamemnon).
 
 # Phase 9.2: Fuzz testing targets (requires -DENABLE_FUZZING=ON
 # -DCMAKE_CXX_COMPILER=clang++)
@@ -718,11 +629,8 @@ if(ENABLE_FUZZING)
   target_link_options(fuzz_message_serialization PRIVATE ${FUZZING_FLAGS})
   target_link_libraries(fuzz_message_serialization keystone_core)
 
-  # Fuzz test: Message bus routing
-  add_executable(fuzz_message_bus_routing fuzz/fuzz_message_bus_routing.cpp)
-  target_compile_options(fuzz_message_bus_routing PRIVATE ${FUZZING_FLAGS})
-  target_link_options(fuzz_message_bus_routing PRIVATE ${FUZZING_FLAGS})
-  target_link_libraries(fuzz_message_bus_routing keystone_core keystone_agents)
+  # fuzz_message_bus_routing removed per ADR-015: fuzz_message_bus_routing.cpp
+  # includes agents/base_agent.hpp; that code now lives in ProjectAgamemnon.
 
   # Fuzz test: Work-stealing scheduler
   add_executable(fuzz_work_stealing fuzz/fuzz_work_stealing.cpp)
@@ -744,7 +652,7 @@ if(ENABLE_FUZZING)
 
   message(STATUS "Fuzz testing targets enabled:")
   message(STATUS "  - fuzz_message_serialization")
-  message(STATUS "  - fuzz_message_bus_routing")
+  # fuzz_message_bus_routing removed per ADR-015
   message(STATUS "  - fuzz_work_stealing")
   message(STATUS "  - fuzz_retry_policy")
   message(STATUS "  - fuzz_subject_validator")
@@ -757,8 +665,9 @@ endif()
 include(GNUInstallDirs)
 
 # Install runtime libraries (keystone package)
+# keystone_agents removed per ADR-015: extracted to ProjectAgamemnon
 install(
-  TARGETS keystone_core keystone_concurrency keystone_agents keystone_simulation
+  TARGETS keystone_core keystone_concurrency keystone_simulation
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone-dev
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
@@ -837,16 +746,15 @@ install(
   PATTERN "issues" EXCLUDE)
 
 # Install test executables (keystone-test package)
+# Removed per ADR-015: basic_delegation_tests, module_coordination_tests,
+# component_coordination_tests, async_delegation_tests (all depend on
+# keystone_agents, now in ProjectAgamemnon)
+# Removed per ADR-006: registry_integration_tests
 install(
-  TARGETS basic_delegation_tests
-          module_coordination_tests
-          component_coordination_tests
-          async_delegation_tests
-          distributed_hierarchy_tests
+  TARGETS distributed_hierarchy_tests
           unit_tests
           concurrency_unit_tests
           simulation_unit_tests
-          registry_integration_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests COMPONENT keystone-test)
 
 # Install gRPC tests if enabled
@@ -857,20 +765,21 @@ if(ENABLE_GRPC)
 endif()
 
 # Install benchmarks (keystone-misc package)
+# Removed per ADR-015: hierarchy_benchmarks, registry_performance_benchmarks,
+# message_bus_performance_benchmarks (all depend on keystone_agents)
 install(
   TARGETS message_pool_benchmarks distributed_benchmarks
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/benchmarks
           COMPONENT keystone-misc
           OPTIONAL)
 
-# Install load test (keystone-misc package)
-install(TARGETS hmas_load_test RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tools
-                                       COMPONENT keystone-misc)
+# hmas_load_test removed per ADR-015 (depends on keystone_agents)
 
 # Install fuzz testing targets if enabled (keystone-misc package)
 if(ENABLE_FUZZING)
+  # fuzz_message_bus_routing removed per ADR-015 (uses agent headers)
   install(
-    TARGETS fuzz_message_serialization fuzz_message_bus_routing
+    TARGETS fuzz_message_serialization
             fuzz_work_stealing fuzz_retry_policy fuzz_subject_validator
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/fuzz COMPONENT keystone-misc)
 endif()
