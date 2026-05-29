@@ -56,15 +56,18 @@ ProjectKeystone is distributed as five separate packages to support different us
 
 ```cmake
 # In your CMakeLists.txt
-find_package(Keystone REQUIRED COMPONENTS core concurrency agents)
+find_package(Keystone REQUIRED COMPONENTS core concurrency)
 
 add_executable(my_app main.cpp)
 target_link_libraries(my_app
     Keystone::keystone_core
     Keystone::keystone_concurrency
-    Keystone::keystone_agents
 )
 ```
+<!-- NOTE: the `agents` component was removed per ADR-015.  The agent
+     hierarchy (ChiefArchitectAgent, ComponentLeadAgent, ModuleLeadAgent,
+     TaskAgent) now lives in ProjectAgamemnon.  AgentCore and AsyncAgent
+     transport primitives are part of keystone_core. -->
 
 ### 3. keystone-doc (Documentation Package)
 
@@ -365,8 +368,8 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 /usr/lib/
 ├── libkeystone_core.so
 ├── libkeystone_concurrency.so
-├── libkeystone_agents.so
 ├── libkeystone_simulation.so
+# libkeystone_agents.so removed per ADR-015 — hierarchy in ProjectAgamemnon
 └── libkeystone_network.so (if ENABLE_GRPC=ON)
 
 /usr/share/doc/ProjectKeystone/
@@ -399,8 +402,8 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 /usr/lib/
 ├── libkeystone_core.a
 ├── libkeystone_concurrency.a
-├── libkeystone_agents.a
 └── libkeystone_simulation.a
+# libkeystone_agents.a removed per ADR-015 — hierarchy in ProjectAgamemnon
 
 /usr/lib/cmake/Keystone/
 ├── KeystoneConfig.cmake

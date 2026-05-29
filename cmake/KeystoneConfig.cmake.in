@@ -47,14 +47,9 @@ if(NOT TARGET Keystone::keystone_concurrency)
     )
 endif()
 
-if(NOT TARGET Keystone::keystone_agents)
-    add_library(Keystone::keystone_agents STATIC IMPORTED)
-    set_target_properties(Keystone::keystone_agents PROPERTIES
-        IMPORTED_LOCATION "${_Keystone_LIBDIR}/${_Keystone_LIBPREFIX}keystone_agents${_Keystone_LIBSUFFIX}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_Keystone_INCLUDEDIR}"
-        INTERFACE_LINK_LIBRARIES "Keystone::keystone_core;Keystone::keystone_concurrency"
-    )
-endif()
+# Keystone::keystone_agents removed per ADR-015: agent hierarchy (ChiefArchitectAgent,
+# ComponentLeadAgent, ModuleLeadAgent, TaskAgent) extracted to ProjectAgamemnon.
+# AgentCore and AsyncAgent transport primitives are now part of keystone_core.
 
 if(NOT TARGET Keystone::keystone_simulation)
     add_library(Keystone::keystone_simulation STATIC IMPORTED)
@@ -76,8 +71,8 @@ if(@ENABLE_GRPC@)
     endif()
 endif()
 
-# Define available components
-set(Keystone_COMPONENTS core concurrency agents simulation)
+# Define available components (agents removed per ADR-015)
+set(Keystone_COMPONENTS core concurrency simulation)
 if(@ENABLE_GRPC@)
     list(APPEND Keystone_COMPONENTS network)
 endif()
@@ -96,11 +91,10 @@ set(Keystone_VERSION_MINOR @CPACK_PACKAGE_VERSION_MINOR@)
 set(Keystone_VERSION_PATCH @CPACK_PACKAGE_VERSION_PATCH@)
 set(Keystone_VERSION @CPACK_PACKAGE_VERSION@)
 
-# Define imported targets
+# Define imported targets (keystone_agents removed per ADR-015)
 set(Keystone_LIBRARIES
     Keystone::keystone_core
     Keystone::keystone_concurrency
-    Keystone::keystone_agents
     Keystone::keystone_simulation
 )
 

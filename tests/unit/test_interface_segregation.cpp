@@ -12,19 +12,26 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <gtest/gtest.h>
-
-#include "agents/task_agent.hpp"
+#include "agents/agent_core.hpp"
 #include "core/i_agent_registry.hpp"
 #include "core/i_message_router.hpp"
 #include "core/i_scheduler_integration.hpp"
 #include "core/message_bus.hpp"
 #include "test_utilities.hpp"
 
+#include <gtest/gtest.h>
+
 using namespace keystone;
 using namespace keystone::core;
 using namespace keystone::agents;
 using namespace keystone::test;
+
+// Minimal AgentCore subclass for testing interface segregation.
+// TaskAgent was extracted to ProjectAgamemnon per ADR-015.
+class StubAgent : public AgentCore {
+ public:
+  explicit StubAgent(const std::string& id) : AgentCore(id) {}
+};
 
 /**
  * @brief Test: Register agents using IAgentRegistry interface
@@ -36,8 +43,8 @@ TEST(InterfaceSegregation, RegistryInterfaceOnly) {
   MessageBus bus;
   IAgentRegistry& registry = bus;  // Use specific interface
 
-  auto agent1 = std::make_shared<TaskAgent>("agent_1");
-  auto agent2 = std::make_shared<TaskAgent>("agent_2");
+  auto agent1 = std::make_shared<StubAgent>("agent_1");
+  auto agent2 = std::make_shared<StubAgent>("agent_2");
 
   // Use IAgentRegistry methods only
   registerAgent(registry, agent1);
@@ -65,7 +72,7 @@ TEST(InterfaceSegregation, RouterInterfaceOnly) {
   IMessageRouter* router = &bus;   // Use specific interface
   IAgentRegistry& registry = bus;  // Separate interface for registration
 
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAgent>("test_agent");
 
   // Use IAgentRegistry for registration
   registerAgent(registry, agent);
@@ -90,9 +97,9 @@ TEST(InterfaceSegregation, RouterInterfaceOnly) {
 TEST(InterfaceSegregation, BatchRegistrationUtility) {
   MessageBus bus;
 
-  std::vector<std::shared_ptr<TaskAgent>> agents;
+  std::vector<std::shared_ptr<StubAgent>> agents;
   for (int32_t i = 0; i < 5; ++i) {
-    agents.push_back(std::make_shared<TaskAgent>("agent_" + std::to_string(i)));
+    agents.push_back(std::make_shared<StubAgent>("agent_" + std::to_string(i)));
   }
 
   // Use utility function that operates on IAgentRegistry
@@ -115,7 +122,7 @@ TEST(InterfaceSegregation, BatchRegistrationUtility) {
  */
 TEST(InterfaceSegregation, AgentRestrictedToRouting) {
   MessageBus bus;
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAgent>("test_agent");
 
   // Register using IAgentRegistry
   IAgentRegistry& registry = bus;
@@ -147,8 +154,8 @@ TEST(InterfaceSegregation, SeparateInterfaceUsage) {
 
   // Setup code uses IAgentRegistry
   auto setupAgentsForTest = [](IAgentRegistry& registry) {
-    auto agent1 = std::make_shared<TaskAgent>("agent_1");
-    auto agent2 = std::make_shared<TaskAgent>("agent_2");
+    auto agent1 = std::make_shared<StubAgent>("agent_1");
+    auto agent2 = std::make_shared<StubAgent>("agent_2");
     registerAgent(registry, agent1);
     registerAgent(registry, agent2);
   };

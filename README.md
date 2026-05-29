@@ -1,6 +1,10 @@
-# ProjectKeystone - Hierarchical Multi-Agent System (HMAS)
+# ProjectKeystone — Pure Invisible Transport Layer
 
-**C++20-based hierarchical agent system implementing TDD principles**
+**C++20 message-routing transport layer for the HomericIntelligence distributed agent mesh**
+
+> **Note**: The 4-layer HMAS hierarchy (ChiefArchitectAgent → ComponentLeadAgent →
+> ModuleLeadAgent → TaskAgent) was extracted from this repository and merged into
+> **ProjectAgamemnon** per ADR-015. ProjectKeystone retains only transport primitives.
 
 > ✅ **All installation, build, and test steps are validated in CI/CD.**
 > See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
@@ -12,13 +16,14 @@
 
 ## Overview
 
-ProjectKeystone is a high-performance, hierarchical multi-agent system (HMAS) built
-with modern C++20. It implements a 4-layer agent architecture with message-passing
-communication, work-stealing task scheduling, and comprehensive resilience features.
+ProjectKeystone is a high-performance C++20 transport infrastructure library providing
+invisible, zero-configuration message routing for all HomericIntelligence components.
+Components never address Keystone directly — they publish and subscribe to logical
+NATS subjects, and Keystone handles all routing transparently.
 
 ### Key Features
 
-- **4-Layer Agent Hierarchy**: ChiefArchitect → ComponentLead → ModuleLead → TaskAgent
+- **Transparent Message Bus**: Decoupled agent communication with routing by agent ID
 - **Async Work-Stealing Scheduler**: High-performance task distribution across worker threads
 - **Message Bus Architecture**: Decoupled agent communication with routing
 - **Resilience Components**: Retry policies, circuit breakers, heartbeat monitoring
@@ -197,7 +202,7 @@ cmake -S . -B build/fuzz -G Ninja \
 ```
 ProjectKeystone/
 ├── include/            # Public headers
-│   ├── agents/         # Agent hierarchy
+│   ├── agents/         # Transport-layer agent primitives (AgentCore, AsyncAgent)
 │   ├── core/           # Core messaging and resilience
 │   └── concurrency/    # Work-stealing scheduler
 ├── src/                # Implementation
@@ -369,17 +374,15 @@ See [TDD Roadmap](docs/plan/TDD_FOUR_LAYER_ROADMAP.md) for detailed phase descri
 
 ## Architecture
 
-### Agent Hierarchy
+### Transport Layer
 
-```
-ChiefArchitectAgent (L0)
-    │
-    ├─── ComponentLeadAgent (L1)
-    │        │
-    │        └─── ModuleLeadAgent (L2)
-    │                 │
-    │                 └─── TaskAgent (L3)
-```
+ProjectKeystone is the invisible plumbing beneath every HomericIntelligence component.
+The 4-layer HMAS hierarchy (ChiefArchitectAgent → ComponentLeadAgent → ModuleLeadAgent
+→ TaskAgent) lives in **ProjectAgamemnon** (per ADR-015). Keystone provides the
+transport primitives that all agents build on:
+
+- **AgentCore** — base class providing inbox management and message routing
+- **AsyncAgent** — coroutine-based async message processing base class
 
 ### Core Components
 

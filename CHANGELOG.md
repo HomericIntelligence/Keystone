@@ -11,6 +11,17 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ## [Unreleased]
 
+### Removed
+
+- `keystone_agents` CMake library target removed per ADR-015: the 4-layer HMAS
+  agent hierarchy (ChiefArchitectAgent, ComponentLeadAgent, ModuleLeadAgent,
+  TaskAgent) and supporting code (CoordinationState, LeadAgentBase,
+  TaskExecutionStrategy) are now part of ProjectAgamemnon. AgentCore and
+  AsyncAgent transport primitives are compiled into keystone_core. All
+  agent-hierarchy-specific test targets, benchmark targets, E2E test files,
+  and integration test files that exercised only agent hierarchy behavior have
+  been deleted (#507).
+
 ### Added
 
 - Integration test `SchedulerSigtermTest` verifying SIGTERM mid-flight causes graceful drain: all submitted tasks

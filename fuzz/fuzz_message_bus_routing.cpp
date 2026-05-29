@@ -12,28 +12,26 @@
 // Build with: cmake -DENABLE_FUZZING=ON -DCMAKE_CXX_COMPILER=clang++ ..
 // Run with: ./fuzz_message_bus_routing -max_len=4096 -runs=1000000
 
+#include "agents/agent_core.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "agents/base_agent.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-
 using namespace keystone;
 using namespace keystone::core;
+using namespace keystone::agents;
 
-// Minimal test agent for fuzzing
-class FuzzAgent : public BaseAgent {
+// Minimal transport-level agent for fuzzing MessageBus routing.
+// BaseAgent was a legacy alias for the hierarchy base class now removed per
+// ADR-015; FuzzAgent derives directly from AgentCore (transport primitive).
+class FuzzAgent : public AgentCore {
  public:
-  explicit FuzzAgent(const std::string& id) : BaseAgent(id) {}
-
-  Response processMessage(const KeystoneMessage& msg) override {
-    // Just echo back
-    return Response{ResponseStatus::SUCCESS, "fuzz_ok", msg.payload};
-  }
+  explicit FuzzAgent(const std::string& id) : AgentCore(id) {}
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -46,7 +44,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto bus = std::make_unique<MessageBus>();
 
   // Create some agents with fuzzed IDs
-  std::vector<std::unique_ptr<FuzzAgent>> agents;
+  std::vector<std::shared_ptr<FuzzAgent>> agents;
 
   try {
     // Extract operation count from first byte (limit to avoid timeout)
@@ -59,21 +57,22 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       offset++;
 
       // Extract string length (limit to prevent excessive allocations)
-      if (offset >= size) break;
+      if (offset >= size)
+        break;
       uint8_t str_len = std::min(data[offset], uint8_t(64));
       offset++;
 
       // Extract agent ID string
-      if (offset + str_len > size) break;
-      std::string agent_id(reinterpret_cast<const char*>(data + offset),
-                           str_len);
+      if (offset + str_len > size)
+        break;
+      std::string agent_id(reinterpret_cast<const char*>(data + offset), str_len);
       offset += str_len;
 
       switch (op_type) {
         case 0: {
           // Register agent
-          auto agent = std::make_unique<FuzzAgent>(agent_id);
-          bus->registerAgent(agent_id, agent.get());
+          auto agent = std::make_shared<FuzzAgent>(agent_id);
+          bus->registerAgent(agent_id, agent);
           agents.push_back(std::move(agent));
           break;
         }
@@ -92,24 +91,26 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         case 3: {
           // Try to route a message
-          if (offset + 2 > size) break;
+          if (offset + 2 > size)
+            break;
 
           // Extract sender and receiver lengths
           uint8_t sender_len = std::min(data[offset], uint8_t(32));
           offset++;
 
-          if (offset + sender_len > size) break;
-          std::string sender(reinterpret_cast<const char*>(data + offset),
-                             sender_len);
+          if (offset + sender_len > size)
+            break;
+          std::string sender(reinterpret_cast<const char*>(data + offset), sender_len);
           offset += sender_len;
 
-          if (offset >= size) break;
+          if (offset >= size)
+            break;
           uint8_t receiver_len = std::min(data[offset], uint8_t(32));
           offset++;
 
-          if (offset + receiver_len > size) break;
-          std::string receiver(reinterpret_cast<const char*>(data + offset),
-                               receiver_len);
+          if (offset + receiver_len > size)
+            break;
+          std::string receiver(reinterpret_cast<const char*>(data + offset), receiver_len);
           offset += receiver_len;
 
           // Create and route message

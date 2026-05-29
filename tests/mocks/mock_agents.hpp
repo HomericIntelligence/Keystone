@@ -1,11 +1,10 @@
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include "agents/agent_core.hpp"
 #include "agents/async_agent.hpp"
-#include "agents/task_agent.hpp"
 #include "concurrency/task.hpp"
+
+#include <gmock/gmock.h>
 
 namespace keystone::test {
 
@@ -34,8 +33,10 @@ class MockAsyncAgent : public agents::AsyncAgent {
  public:
   explicit MockAsyncAgent(const std::string& id) : AsyncAgent(id) {}
 
-  MOCK_METHOD(concurrency::Task<core::Response>, processMessage,
-              (const core::KeystoneMessage& msg), (override));
+  MOCK_METHOD(concurrency::Task<core::Response>,
+              processMessage,
+              (const core::KeystoneMessage& msg),
+              (override));
 
   // Expose protected methods for testing
   using AsyncAgent::getMessage;
@@ -44,17 +45,8 @@ class MockAsyncAgent : public agents::AsyncAgent {
   using AsyncAgent::setMessageBus;
 };
 
-/**
- * @brief Mock TaskAgent for testing task execution
- *
- * Allows mocking processMessage() for TaskAgent-specific behavior.
- */
-class MockTaskAgent : public agents::TaskAgent {
- public:
-  explicit MockTaskAgent(const std::string& id) : TaskAgent(id) {}
-
-  MOCK_METHOD(concurrency::Task<core::Response>, processMessage,
-              (const core::KeystoneMessage& msg), (override));
-};
+// MockTaskAgent removed per ADR-015: TaskAgent (and its hierarchy) were
+// extracted to ProjectAgamemnon.  Use MockAsyncAgent for transport-layer
+// tests that need a controllable concrete AsyncAgent.
 
 }  // namespace keystone::test

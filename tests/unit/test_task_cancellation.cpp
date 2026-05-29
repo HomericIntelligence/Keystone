@@ -14,15 +14,35 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <gtest/gtest.h>
-
 #include "agents/async_agent.hpp"
-#include "agents/task_agent.hpp"
+#include "concurrency/task.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
 
+#include <gtest/gtest.h>
+
 using namespace keystone::core;
 using namespace keystone::agents;
+
+// Minimal concrete AsyncAgent for testing cancellation transport primitives.
+// TaskAgent was extracted to ProjectAgamemnon per ADR-015; tests use this
+// stub which implements only the processMessage() contract required by AsyncAgent.
+class StubAsyncAgent : public keystone::agents::AsyncAgent {
+ public:
+  explicit StubAsyncAgent(const std::string& id) : AsyncAgent(id) {}
+
+  keystone::concurrency::Task<keystone::core::Response> processMessage(
+      const keystone::core::KeystoneMessage& msg) override {
+    if (msg.action_type == keystone::core::ActionType::CANCEL_TASK) {
+      auto resp = handleCancellation(msg);
+      co_return resp;
+    }
+    keystone::core::Response r;
+    r.status = keystone::core::Response::Status::Success;
+    r.result = "stub_ok";
+    co_return r;
+  }
+};
 
 /**
  * @brief Test: Create cancellation message with correct fields
@@ -44,8 +64,7 @@ TEST(TaskCancellation, CreateCancellationMessage) {
  * @brief Test: Create cancellation message with custom session
  */
 TEST(TaskCancellation, CreateCancellationMessageWithSession) {
-  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_456",
-                                                 "session_xyz");
+  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_456", "session_xyz");
 
   EXPECT_EQ(msg.sender_id, "parent");
   EXPECT_EQ(msg.receiver_id, "child");
@@ -66,7 +85,7 @@ TEST(TaskCancellation, ActionTypeToString) {
  * @brief Test: Agent cancellation tracking (single task)
  */
 TEST(TaskCancellation, AgentCancellationTracking) {
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   // Initially, task is not cancelled
   EXPECT_FALSE(agent->isCancelled("task_1"));
@@ -84,7 +103,7 @@ TEST(TaskCancellation, AgentCancellationTracking) {
  * @brief Test: Agent cancellation tracking (multiple tasks)
  */
 TEST(TaskCancellation, AgentCancellationMultipleTasks) {
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   // Request cancellation for multiple tasks
   agent->requestCancellation("task_1");
@@ -109,8 +128,8 @@ TEST(TaskCancellation, AgentCancellationMultipleTasks) {
  */
 TEST(TaskCancellation, MessageBusRoutesCancellation) {
   MessageBus bus;
-  auto parent = std::make_shared<TaskAgent>("parent");
-  auto child = std::make_shared<TaskAgent>("child");
+  auto parent = std::make_shared<StubAsyncAgent>("parent");
+  auto child = std::make_shared<StubAsyncAgent>("child");
 
   bus.registerAgent(parent->getAgentId(), parent);
   bus.registerAgent(child->getAgentId(), child);
@@ -119,8 +138,7 @@ TEST(TaskCancellation, MessageBusRoutesCancellation) {
   child->setMessageBus(&bus);
 
   // Parent sends cancellation to child
-  auto cancel_msg =
-      KeystoneMessage::createCancellation("parent", "child", "task_xyz");
+  auto cancel_msg = KeystoneMessage::createCancellation("parent", "child", "task_xyz");
   EXPECT_TRUE(bus.routeMessage(cancel_msg));
 
   // Child should receive the cancellation message
@@ -136,8 +154,7 @@ TEST(TaskCancellation, MessageBusRoutesCancellation) {
  * @brief Test: Cancellation message has HIGH priority
  */
 TEST(TaskCancellation, CancellationHasHighPriority) {
-  auto msg =
-      KeystoneMessage::createCancellation("sender", "receiver", "task_1");
+  auto msg = KeystoneMessage::createCancellation("sender", "receiver", "task_1");
   EXPECT_EQ(msg.priority, Priority::HIGH);
 }
 
@@ -145,11 +162,10 @@ TEST(TaskCancellation, CancellationHasHighPriority) {
  * @brief Test: AsyncAgent::handleCancellation() marks task as cancelled
  */
 TEST(TaskCancellation, AsyncAgentHandlesCancellation) {
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   // Create cancellation message
-  auto cancel_msg =
-      KeystoneMessage::createCancellation("parent", "test_agent", "task_abc");
+  auto cancel_msg = KeystoneMessage::createCancellation("parent", "test_agent", "task_abc");
 
   // Initially not cancelled
   EXPECT_FALSE(agent->isCancelled("task_abc"));
@@ -167,7 +183,7 @@ TEST(TaskCancellation, AsyncAgentHandlesCancellation) {
  */
 TEST(TaskCancellation, MissingTaskIdReturnsError) {
   MessageBus bus;
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   bus.registerAgent(agent->getAgentId(), agent);
   agent->setMessageBus(&bus);
@@ -195,7 +211,7 @@ TEST(TaskCancellation, MissingTaskIdReturnsError) {
  * @brief Test: Thread-safe cancellation (concurrent access)
  */
 TEST(TaskCancellation, ThreadSafeCancellation) {
-  auto agent = std::make_shared<TaskAgent>("test_agent");
+  auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   // Launch multiple threads requesting cancellation
   std::vector<std::thread> threads;

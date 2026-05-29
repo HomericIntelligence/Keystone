@@ -11,24 +11,31 @@
  * which provides all three interfaces in a single class.
  */
 
-#include <gtest/gtest.h>
+#include "agents/agent_core.hpp"
+#include "core/message_bus.hpp"
 
 #include <thread>
 #include <vector>
 
-#include "agents/chief_architect_agent.hpp"
-#include "agents/task_agent.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::core;
 using namespace keystone::agents;
+
+// Minimal concrete AgentCore subclass for testing transport behavior.
+// The hierarchy agents (TaskAgent, ChiefArchitectAgent, etc.) were extracted
+// to ProjectAgamemnon per ADR-015; tests use this stub instead.
+class StubAgent : public AgentCore {
+ public:
+  explicit StubAgent(const std::string& id) : AgentCore(id) {}
+};
 
 /**
  * @brief Test: Register a single agent (IAgentRegistry interface)
  */
 TEST(MessageBus, RegisterAgent) {
   MessageBus bus;
-  auto agent = std::make_shared<TaskAgent>("test_1");
+  auto agent = std::make_shared<StubAgent>("test_1");
 
   EXPECT_NO_THROW(bus.registerAgent(agent->getAgentId(), agent));
   EXPECT_TRUE(bus.hasAgent("test_1"));
@@ -39,12 +46,11 @@ TEST(MessageBus, RegisterAgent) {
  */
 TEST(MessageBus, RegisterDuplicateAgentThrows) {
   MessageBus bus;
-  auto agent1 = std::make_shared<TaskAgent>("test_1");
-  auto agent2 = std::make_shared<TaskAgent>("test_1");  // Same ID
+  auto agent1 = std::make_shared<StubAgent>("test_1");
+  auto agent2 = std::make_shared<StubAgent>("test_1");  // Same ID
 
   bus.registerAgent(agent1->getAgentId(), agent1);
-  EXPECT_THROW(bus.registerAgent(agent2->getAgentId(), agent2),
-               std::runtime_error);
+  EXPECT_THROW(bus.registerAgent(agent2->getAgentId(), agent2), std::runtime_error);
 }
 
 /**
@@ -60,7 +66,7 @@ TEST(MessageBus, RegisterNullAgentThrows) {
  */
 TEST(MessageBus, UnregisterAgent) {
   MessageBus bus;
-  auto agent = std::make_shared<TaskAgent>("test_1");
+  auto agent = std::make_shared<StubAgent>("test_1");
 
   bus.registerAgent(agent->getAgentId(), agent);
   EXPECT_TRUE(bus.hasAgent("test_1"));
@@ -82,7 +88,7 @@ TEST(MessageBus, UnregisterNonExistentAgent) {
  */
 TEST(MessageBus, RouteMessageToRegisteredAgent) {
   MessageBus bus;
-  auto agent = std::make_shared<TaskAgent>("test_1");
+  auto agent = std::make_shared<StubAgent>("test_1");
   agent->setMessageBus(&bus);
 
   bus.registerAgent(agent->getAgentId(), agent);
@@ -112,9 +118,9 @@ TEST(MessageBus, RouteMessageToUnregisteredAgentFails) {
  */
 TEST(MessageBus, ListAgents) {
   MessageBus bus;
-  auto agent1 = std::make_shared<TaskAgent>("agent_1");
-  auto agent2 = std::make_shared<TaskAgent>("agent_2");
-  auto agent3 = std::make_shared<ChiefArchitectAgent>("agent_3");
+  auto agent1 = std::make_shared<StubAgent>("agent_1");
+  auto agent2 = std::make_shared<StubAgent>("agent_2");
+  auto agent3 = std::make_shared<StubAgent>("agent_3");
 
   bus.registerAgent(agent1->getAgentId(), agent1);
   bus.registerAgent(agent2->getAgentId(), agent2);
@@ -122,12 +128,9 @@ TEST(MessageBus, ListAgents) {
 
   auto agents = bus.listAgents();
   EXPECT_EQ(agents.size(), 3u);
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_1") !=
-              agents.end());
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_2") !=
-              agents.end());
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_3") !=
-              agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_1") != agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_2") != agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_3") != agents.end());
 }
 
 /**
@@ -135,19 +138,18 @@ TEST(MessageBus, ListAgents) {
  */
 TEST(MessageBus, ThreadSafetyConcurrentRegistration) {
   MessageBus bus;
-  std::vector<std::shared_ptr<TaskAgent>> agents;
+  std::vector<std::shared_ptr<StubAgent>> agents;
 
   // Create agents
   for (int32_t i = 0; i < 10; ++i) {
-    agents.push_back(std::make_shared<TaskAgent>("agent_" + std::to_string(i)));
+    agents.push_back(std::make_shared<StubAgent>("agent_" + std::to_string(i)));
   }
 
   // Concurrent registration
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < 10; ++i) {
-    threads.emplace_back([&bus, &agents, i]() {
-      bus.registerAgent(agents[i]->getAgentId(), agents[i]);
-    });
+    threads.emplace_back(
+        [&bus, &agents, i]() { bus.registerAgent(agents[i]->getAgentId(), agents[i]); });
   }
 
   for (auto& thread : threads) {
@@ -166,11 +168,11 @@ TEST(MessageBus, ThreadSafetyConcurrentRegistration) {
  */
 TEST(MessageBus, ThreadSafetyConcurrentRouting) {
   MessageBus bus;
-  std::vector<std::shared_ptr<TaskAgent>> agents;
+  std::vector<std::shared_ptr<StubAgent>> agents;
 
   // Create and register 10 agents
   for (int32_t i = 0; i < 10; ++i) {
-    auto agent = std::make_shared<TaskAgent>("agent_" + std::to_string(i));
+    auto agent = std::make_shared<StubAgent>("agent_" + std::to_string(i));
     agent->setMessageBus(&bus);
     bus.registerAgent(agent->getAgentId(), agent);
     agents.push_back(agent);
@@ -181,8 +183,7 @@ TEST(MessageBus, ThreadSafetyConcurrentRouting) {
   for (int32_t i = 0; i < 10; ++i) {
     threads.emplace_back([&bus, i]() {
       for (int32_t j = 0; j < 100; ++j) {
-        auto msg = KeystoneMessage::create(
-            "sender", "agent_" + std::to_string(i), "test");
+        auto msg = KeystoneMessage::create("sender", "agent_" + std::to_string(i), "test");
         bus.routeMessage(msg);
       }
     });
@@ -207,8 +208,8 @@ TEST(MessageBus, ThreadSafetyConcurrentRouting) {
  */
 TEST(MessageBus, BidirectionalMessageFlow) {
   MessageBus bus;
-  auto chief = std::make_shared<ChiefArchitectAgent>("chief");
-  auto task = std::make_shared<TaskAgent>("task");
+  auto chief = std::make_shared<StubAgent>("chief");
+  auto task = std::make_shared<StubAgent>("task");
 
   // Register and configure
   bus.registerAgent(chief->getAgentId(), chief);
