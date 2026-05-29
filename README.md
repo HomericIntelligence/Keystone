@@ -39,7 +39,7 @@ communication, work-stealing task scheduling, and comprehensive resilience featu
 | **CMake** | 3.20 | 3.28+ | FetchContent support |
 | **Ninja** | 1.10 | 1.11+ | Fast parallel builds |
 | **GNU Make** | - | - | Standard on Linux/macOS |
-| **Python** | 3.9+ | 3.12+ | For `src/keystone/` Python transport layer (see `pyproject.toml`) |
+| **Python** | 3.11+ | 3.12+ | For Conan build tooling and CI scripts |
 | **Docker** | 20.10 | 24.0+ | Optional, for containerized builds |
 
 ### Auto-Fetched Dependencies

@@ -174,22 +174,8 @@ status resolution priority (issue #107):
 4. None (if no status found)
 ```
 
-Keystone's `NATSListener` implements this exact resolution strategy in the
-`TaskEvent` Pydantic model (`src/keystone/models.py`).
-
-### Implementation Example (Python)
-
-```python
-from src.keystone.models import TaskEvent
-
-# All of these formats are accepted
-payload1 = {"status": "completed"}  # flat format
-payload2 = {"data": {"status": "completed"}}  # Hermes canonical
-payload3 = {"event": "task.completed", "data": {...}, "timestamp": "..."}  # full envelope
-
-event = TaskEvent.model_validate(payload)
-status = event.effective_status  # Resolves automatically
-```
+Keystone's C++ transport layer implements this exact resolution strategy via the
+KIM protocol routing in `src/core/` and `src/network/`.
 
 ### Deprecation Notice
 
@@ -212,12 +198,10 @@ This document was validated against the actual Hermes publisher in ProjectHermes
 
 ### Keystone Subscriber Validation
 
-Keystone's NATS listener is implemented in `src/keystone/nats_listener.py` and
-models are in `src/keystone/models.py`. The `TaskEvent` Pydantic model validates
-incoming payloads and resolves status fields with the 3-way priority listed above.
-
-All tests in `tests/test_task_event.py` and `tests/test_nats_listener.py` verify
-compliance with this specification.
+Keystone's NATS listener is implemented in C++ under `src/network/`. The transport
+layer validates incoming payloads and routes them per the 3-way status resolution
+priority listed above. Compliance is verified by the C++ integration tests under
+`tests/integration/`.
 
 ---
 

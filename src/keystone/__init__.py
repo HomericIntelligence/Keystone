@@ -1,1 +1,0 @@
-# ProjectKeystone Python transport layer
