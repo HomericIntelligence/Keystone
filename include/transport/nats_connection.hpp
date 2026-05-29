@@ -14,17 +14,39 @@
 
 #pragma once
 
-#include <nats.h>
-
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 
+#include <nats.h>
+
 namespace keystone {
 namespace transport {
+
+/**
+ * @brief RAII owner for a nats.c message.
+ *
+ * Wraps a raw natsMsg* with a custom deleter so that ownership is explicit and
+ * compiler-enforced.  The deleter is natsMsg_Destroy, which nats.c requires the
+ * caller to invoke after processing a message.
+ *
+ * A null NatsMsgPtr (constructed with nullptr) is valid and represents the
+ * "no message" (timeout) case returned by NatsConnection::fetch().
+ *
+ * Example:
+ * @code
+ * NatsMsgPtr msg = conn.fetch("hi.tasks.>", "my-consumer", 5000);
+ * if (msg) {
+ *   natsMsg_Ack(msg.get(), nullptr);
+ *   // msg is destroyed automatically when it goes out of scope
+ * }
+ * @endcode
+ */
+using NatsMsgPtr = std::unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>;
 
 /**
  * @brief NATS connection state observable by health checks
@@ -253,15 +275,19 @@ class NatsConnection {
    * - Provides backpressure: slow consumer simply stops fetching
    * - Timeout allows periodic wakeup for graceful shutdown checks
    *
+   * Ownership is transferred to the caller via NatsMsgPtr.  The caller does
+   * NOT need to call natsMsg_Destroy() — the unique_ptr destructor handles
+   * cleanup automatically.  A null NatsMsgPtr (i.e. !msg) indicates that the
+   * fetch timed out and no message is available; this is normal, not an error.
+   *
    * @param subject       Subject pattern to subscribe to (e.g., "hi.tasks.>")
    * @param consumer_name Durable consumer name (e.g., "my-myrmidon")
    * @param timeout_ms    Fetch timeout in milliseconds (default 30000)
-   * @return              Non-null natsMsg* on success; caller owns it and must
-   *                      call natsMsg_Destroy()
+   * @return              NatsMsgPtr owning the fetched message, or a null
+   *                      NatsMsgPtr on timeout.  Ownership is transferred via
+   *                      NatsMsgPtr; the caller must NOT call natsMsg_Destroy().
    *
-   * @throws std::system_error if fetch times out (timeout is normal, not an
-   * error)
-   * @throws std::system_error if network error occurs (transient)
+   * @throws std::system_error if a network error occurs (transient)
    * @throws std::domain_error if consumer or stream not found (configuration)
    * @throws std::runtime_error if authentication or authorization failure
    *
@@ -272,8 +298,9 @@ class NatsConnection {
    * - std::system_error: Transient errors (network, timeout)
    * - std::runtime_error: Permanent errors (auth, permission denied)
    */
-  natsMsg* fetch(std::string_view subject, std::string_view consumer_name,
-                 int64_t timeout_ms = 30000);
+  NatsMsgPtr fetch(std::string_view subject,
+                   std::string_view consumer_name,
+                   int64_t timeout_ms = 30000);
 
   // =========================================================================
   // Exception mapping utility (exposed for testing, not part of public API)
@@ -297,7 +324,9 @@ class NatsConnection {
   // nats.c static callback shims — nats.c passes a void* user data pointer
   // which we cast back to NatsConnection*. Protected to allow test subclasses
   // to invoke them directly without a live nats.c connection.
-  static void onError(natsConnection* nc, natsSubscription* sub, natsStatus err,
+  static void onError(natsConnection* nc,
+                      natsSubscription* sub,
+                      natsStatus err,
                       void* closure) noexcept;
   static void onDisconnected(natsConnection* nc, void* closure) noexcept;
   static void onReconnected(natsConnection* nc, void* closure) noexcept;

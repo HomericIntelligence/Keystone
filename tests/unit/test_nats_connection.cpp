@@ -16,18 +16,21 @@
  * - Callback replacement semantics
  * - jsContext() returns nullptr when not connected (issue #274)
  * - jsContext() caching semantics (issue #274)
+ * - NatsMsgPtr ownership contract for fetch() (issue #514)
  *
  * Tests do NOT exercise connect() against a live NATS server because the CI
  * environment has no NATS process. The callback dispatch path is exercised via
  * the NatsConnectionTestPeer helper below.
  */
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 #include <atomic>
+#include <memory>
 #include <string>
+#include <type_traits>
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::transport;
 
@@ -39,9 +42,7 @@ class NatsConnectionTestPeer : public NatsConnection {
  public:
   using NatsConnection::NatsConnection;
 
-  void fireError() {
-    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
-  }
+  void fireError() { NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this); }
 
   void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
   void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
@@ -463,4 +464,66 @@ TEST_F(NatsJsContextTest, JsContextNullDoesNotAffectOtherMethods) {
   EXPECT_EQ(conn_.getState(), NatsConnectionState::DISCONNECTED);
   EXPECT_FALSE(conn_.isConnected());
   EXPECT_EQ(conn_.handle(), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// NatsFetchOwnershipTest — NatsMsgPtr type alias and ownership contract
+// (issue #514)
+//
+// These tests validate the fetch() return type contract without a live NATS
+// server.  They confirm:
+//   1. NatsMsgPtr is a unique_ptr<natsMsg, …> (type-trait / static_assert).
+//   2. A null NatsMsgPtr (the timeout / no-message path) is constructible,
+//      usable, and does not crash on destruction.
+//   3. Calling fetch() on an unconnected NatsConnection throws
+//      std::runtime_error.
+//   4. Calling fetch() with empty arguments throws std::runtime_error before
+//      reaching the domain-error guard (because "not connected" fires first).
+// ---------------------------------------------------------------------------
+
+class NatsFetchOwnershipTest : public ::testing::Test {
+ protected:
+  NatsConnectionTestPeer conn_;  // never connected — jsContext() returns nullptr
+};
+
+// --- Static type check -------------------------------------------------
+
+// NatsMsgPtr must be a specialisation of std::unique_ptr whose element type is
+// natsMsg and whose deleter is a function pointer (not a stateful object).
+static_assert(std::is_same_v<NatsMsgPtr, std::unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>>,
+              "NatsMsgPtr must be unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>");
+
+// --- Runtime tests ------------------------------------------------------
+
+TEST_F(NatsFetchOwnershipTest, NullNatsMsgPtrIsValidAndDestructsCleanly) {
+  // Simulates the timeout return path of fetch(): a null NatsMsgPtr must
+  // construct, evaluate to false, expose a null .get(), and destruct without
+  // crashing or invoking natsMsg_Destroy on a null pointer.
+  NatsMsgPtr p{nullptr, &natsMsg_Destroy};
+
+  EXPECT_EQ(p.get(), nullptr);
+  EXPECT_FALSE(static_cast<bool>(p));
+  // Destructor is called here — must not crash.
+}
+
+TEST_F(NatsFetchOwnershipTest, NullNatsMsgPtrResetIsNoOp) {
+  // Verify that explicitly resetting a null NatsMsgPtr is also safe (models
+  // early-exit patterns in message-loop code that calls msg.reset()).
+  NatsMsgPtr p{nullptr, &natsMsg_Destroy};
+  EXPECT_NO_THROW(p.reset());
+  EXPECT_EQ(p.get(), nullptr);
+}
+
+TEST_F(NatsFetchOwnershipTest, FetchThrowsRuntimeErrorWhenNotConnected) {
+  // fetch() must throw std::runtime_error when jsContext() returns nullptr
+  // (i.e., the connection was never established).  This confirms the guard
+  // at the top of the implementation is intact after the RAII refactor.
+  EXPECT_THROW(conn_.fetch("hi.tasks.>", "my-consumer", 5000), std::runtime_error);
+}
+
+TEST_F(NatsFetchOwnershipTest, FetchThrowsRuntimeErrorBeforeDomainCheck) {
+  // The "not connected" guard must fire before the "empty arguments" guard so
+  // that callers always get a runtime_error (not domain_error) on an
+  // unconnected instance, even when arguments are empty.
+  EXPECT_THROW(conn_.fetch("", "", 0), std::runtime_error);
 }
