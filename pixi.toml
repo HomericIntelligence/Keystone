@@ -13,32 +13,12 @@ cxx-compiler = "*"
 gtest = "*"
 pkg-config = "*"
 just = ">=1.13"
-python = ">=3.11,<4"
-
-[pypi-dependencies]
-nats-py = ">=2.0,<3"
-httpx = ">=0.27,<1"
-pydantic = ">=2.0,<3"
-pydantic-settings = ">=2.0,<3"
-rich = ">=10.0,<15"
-python-dotenv = ">=1.0,<2"
-
-[feature.dev.pypi-dependencies]
-pytest = ">=7.0,<10"
-pytest-asyncio = ">=0.21,<2"
-ruff = ">=0.1,<1"
-mypy = ">=1.0,<2"
-keepachangelog = ">=2.0,<3"
-
-[environments]
-dev = { features = ["dev"], solve-group = "default" }
 
 [tasks]
 conan-install = "conan install . --output-folder=build-native --build=missing"
 configure = { cmd = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF", depends-on = ["conan-install"] }
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
-test = { cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q", depends-on = ["build"] }
-test-python = "python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+test = { cmd = "cd build-native && ctest --output-on-failure", depends-on = ["build"] }
 clean = "rm -rf build-native"
 format = "just format"
 format-check = "just format-check"
@@ -57,14 +37,5 @@ cmd = "build-native/async_delegation_tests"
 depends-on = ["build"]
 
 [tasks.test-all]
-cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+cmd = "cd build-native && ctest --output-on-failure"
 depends-on = ["build"]
-
-[tasks.test-py]
-cmd = "pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
-
-[tasks.lint-py]
-cmd = "ruff check ."
-
-[tasks.typecheck-py]
-cmd = "mypy conanfile.py"
