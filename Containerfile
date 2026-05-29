@@ -80,8 +80,8 @@ RUN cmake -S . -B build/release -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake \
     && cmake --build build/release
 
-# Stage 2: Runtime environment (smaller image)
-FROM ubuntu:24.04 AS runtime
+# Stage 2: Test runner (runs the built test suites)
+FROM ubuntu:24.04 AS test
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -100,13 +100,15 @@ WORKDIR /app
 CMD ["sh", "-c", "basic_delegation_tests && module_coordination_tests && component_coordination_tests"]
 
 # Stage 3: Production environment (Kubernetes deployment)
+# Ships the Keystone daemon service binary — NOT test executables.
+# See issue #513: the previous version incorrectly packaged test binaries here.
 FROM ubuntu:24.04 AS production
 
-# Install runtime dependencies + Python3 for health checks
+# Install runtime dependencies. wget is used for the healthcheck so that
+# Python3 (a dev tool) is not required in the production image.
 RUN apt-get update && apt-get install -y \
     libstdc++6 \
-    python3 \
-    python3-minimal \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -115,16 +117,10 @@ RUN groupadd -g 1001 hmas || true && \
     mkdir -p /app && \
     chown -R hmas:hmas /app
 
-# Copy built test executables from builder
-COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/async_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/distributed_hierarchy_tests /usr/local/bin/
-
-# Copy server wrapper script
-COPY scripts/hmas-server.sh /usr/local/bin/hmas-server.sh
-RUN chmod +x /usr/local/bin/hmas-server.sh
+# Copy only the production service binary from the builder stage.
+# The keystone_server target sets OUTPUT_NAME "keystone-server" so CMake
+# places it at build/release/bin/keystone-server.
+COPY --from=builder /workspace/build/release/bin/keystone-server /usr/local/bin/keystone-server
 
 # Set working directory
 WORKDIR /app
@@ -135,12 +131,14 @@ USER hmas
 # Expose ports
 EXPOSE 8080 9090 50051
 
-# Health check
+# Health check against the daemon's /v1/health endpoint (port 8080).
+# Uses wget (available in the base image after the apt layer above) so that
+# Python3 is not required in this image.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/v1/health')" || exit 1
+    CMD wget -qO- http://localhost:8080/v1/health || exit 1
 
-# Default command: run HMAS server
-CMD ["/usr/local/bin/hmas-server.sh"]
+# Default command: run the Keystone daemon
+CMD ["/usr/local/bin/keystone-server"]
 
 # Stage 4: Development environment (for iterative development)
 FROM builder AS development

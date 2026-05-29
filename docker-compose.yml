@@ -5,7 +5,7 @@ services:
   test:
     build:
       context: .
-      target: runtime
+      target: test
     image: projectkeystone:${GIT_COMMIT}-test
     container_name: projectkeystone-test-${GIT_COMMIT}
     environment:
