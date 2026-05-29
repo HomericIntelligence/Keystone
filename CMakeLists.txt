@@ -387,14 +387,17 @@ target_link_libraries(async_delegation_tests keystone_agents keystone_core
 
 gtest_discover_tests(async_delegation_tests)
 
-# E2E Tests - Async Agents (Coroutines) DISABLED: Phase 6 async features not yet
-# implemented add_executable(async_agents_tests tests/e2e/async_agents_test.cpp
-# tests/e2e/full_async_hierarchy_test.cpp)
-#
-# target_link_libraries(async_agents_tests keystone_agents keystone_core
-# keystone_concurrency GTest::gtest_main)
-#
-# gtest_discover_tests(async_agents_tests)
+# E2E Tests - Async Agents (Coroutines)
+# Enabled by #511: AsyncAgent and WorkStealingScheduler are fully implemented;
+# 5 tests in async_agents_test.cpp + 3 tests in full_async_hierarchy_test.cpp confirmed runnable.
+add_executable(async_agents_tests
+               tests/e2e/async_agents_test.cpp
+               tests/e2e/full_async_hierarchy_test.cpp)
+
+target_link_libraries(async_agents_tests keystone_agents keystone_core
+                      keystone_concurrency GTest::gtest_main)
+
+gtest_discover_tests(async_agents_tests)
 
 # E2E Tests - Distributed Hierarchy
 add_executable(distributed_hierarchy_tests
@@ -415,31 +418,34 @@ if(ENABLE_GRPC)
   gtest_discover_tests(distributed_grpc_tests)
 endif()
 
-# E2E Tests - Multi-Component Hierarchy DISABLED: Phase 4 multi-component
-# features not yet implemented add_executable(multi_component_tests
-# tests/e2e/multi_component_test.cpp)
+# E2E Tests - Multi-Component Hierarchy
+# TODO(#511): Blocked — tests/e2e/multi_component_test.cpp does not exist.
+#             Re-enable once the source file is created.
+# add_executable(multi_component_tests tests/e2e/multi_component_test.cpp)
 #
 # target_link_libraries(multi_component_tests keystone_agents keystone_core
 # keystone_concurrency GTest::gtest_main)
 #
 # gtest_discover_tests(multi_component_tests)
 
-# E2E Tests - Chaos Engineering DISABLED: Phase 5 chaos engineering features not
-# yet implemented add_executable(chaos_engineering_tests
-# tests/e2e/chaos_engineering_test.cpp)
-#
-# target_link_libraries( chaos_engineering_tests keystone_agents keystone_core
-# keystone_concurrency keystone_simulation GTest::gtest_main)
-#
-# gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
+# E2E Tests - Chaos Engineering
+# Enabled by #511: FailureInjector and SimulatedNetwork partition API exist;
+# 19 tests in chaos_engineering_test.cpp confirmed runnable (no #if 0 guard in code).
+add_executable(chaos_engineering_tests tests/e2e/chaos_engineering_test.cpp)
+
+target_link_libraries(chaos_engineering_tests keystone_agents keystone_core
+                      keystone_concurrency keystone_simulation GTest::gtest_main)
+
+gtest_discover_tests(chaos_engineering_tests DISCOVERY_TIMEOUT 10)
 
 # Unit Tests
 add_executable(
   unit_tests
   tests/unit/test_message_bus.cpp
   tests/unit/test_message_serializer.cpp
-  # DISABLED: Async API not yet implemented
-  # tests/unit/test_message_bus_async.cpp
+  # Enabled by #511: MessageBus async API (ISchedulerIntegration) is implemented;
+  # 9 tests in test_message_bus_async.cpp confirmed runnable.
+  tests/unit/test_message_bus_async.cpp
   tests/unit/test_async_task_agent.cpp # Issue #376: isFailed() guard
   tests/unit/test_message_priority.cpp
   tests/unit/test_agent_core.cpp # Additional coverage for AgentCore
