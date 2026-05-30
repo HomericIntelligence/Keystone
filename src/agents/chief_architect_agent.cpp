@@ -1,5 +1,6 @@
 #include "agents/chief_architect_agent.hpp"
 
+#include "agents/agent_awaitable.hpp"
 #include "agents/agent_envelope.hpp"
 #include "concurrency/logger.hpp"
 
@@ -60,10 +61,10 @@ concurrency::Task<core::Response> ChiefArchitectAgent::sendCommand(
   // Send to task agent via MessageBus
   sendMessage(msg);
 
-  // For Phase 1 synchronous testing, task agent processes immediately
-  // and sends response back via MessageBus
-  // Get the response
-  auto response_msg = getMessage();
+  // Await a response from the task agent via the inbox.  awaitMessage() polls
+  // getMessage() with proper coroutine suspension between retries (Issue #509).
+  // The default 500 ms deadline is sufficient for Phase-1 test scenarios.
+  auto response_msg = co_await awaitMessage(*this);
   if (response_msg) {
     co_return co_await processMessage(*response_msg);
   }
