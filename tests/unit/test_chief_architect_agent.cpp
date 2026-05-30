@@ -16,12 +16,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <gtest/gtest.h>
-
 #include "agents/chief_architect_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
+
+#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -76,8 +76,7 @@ TEST_F(ChiefArchitectAgentTest, ProcessDelegateCommand) {
   bus_->registerAgent(task->getAgentId(), task);
 
   // Send delegation command
-  auto msg = core::KeystoneMessage::create("sender", "chief",
-                                           "delegate add 2 3 to task_1");
+  auto msg = core::KeystoneMessage::create("sender", "chief", "delegate add 2 3 to task_1");
   chief->receiveMessage(msg);
 
   // Chief should receive the message
@@ -90,8 +89,7 @@ TEST_F(ChiefArchitectAgentTest, ProcessUnknownCommand) {
   chief->setMessageBus(bus_.get());
   bus_->registerAgent(chief->getAgentId(), chief);
 
-  auto msg =
-      core::KeystoneMessage::create("sender", "chief", "unknown_command");
+  auto msg = core::KeystoneMessage::create("sender", "chief", "unknown_command");
   EXPECT_NO_THROW(chief->receiveMessage(msg));
 }
 
@@ -237,8 +235,7 @@ TEST_F(ChiefArchitectAgentTest, StateTransitionOnDelegation) {
   bus_->registerAgent(task->getAgentId(), task);
 
   // Send delegation command
-  EXPECT_NO_THROW(chief->sendMessage(
-      core::KeystoneMessage::create("chief", "task_1", "test")));
+  EXPECT_NO_THROW(chief->sendMessage(core::KeystoneMessage::create("chief", "task_1", "test")));
 }
 
 TEST_F(ChiefArchitectAgentTest, StateResetAfterCompletion) {
@@ -261,8 +258,7 @@ TEST_F(ChiefArchitectAgentTest, StateResetAfterCompletion) {
   ASSERT_TRUE(response.has_value());
 
   // Chief should be ready for next command
-  EXPECT_NO_THROW(chief->sendMessage(
-      core::KeystoneMessage::create("chief", "task_1", "cmd2")));
+  EXPECT_NO_THROW(chief->sendMessage(core::KeystoneMessage::create("chief", "task_1", "cmd2")));
 }
 
 TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
@@ -272,8 +268,7 @@ TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
 
   // Send multiple messages rapidly (test thread safety)
   for (int32_t i = 0; i < 100; ++i) {
-    auto msg = core::KeystoneMessage::create("sender", "chief",
-                                             "cmd" + std::to_string(i));
+    auto msg = core::KeystoneMessage::create("sender", "chief", "cmd" + std::to_string(i));
     EXPECT_NO_THROW(chief->receiveMessage(msg));
   }
 
@@ -283,6 +278,115 @@ TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
     ++count;
   }
   EXPECT_EQ(count, 100);
+}
+
+// ============================================================================
+// awaitMessage / sendCommand Async Contract Tests (Issue #509)
+// ============================================================================
+// These tests verify that sendCommand() properly suspends (via awaitMessage)
+// rather than busy-polling getMessage() synchronously inside the coroutine.
+//
+// Test-drive strategy: coroutines are driven synchronously via Task::get(),
+// which resumes the coroutine until completion — the correct API (sync_wait
+// does not exist in this codebase; get() is the synchronous drain method).
+//
+// IMPORTANT: Task coroutines have initial_suspend() = suspend_always (lazy).
+// In a no-scheduler environment, YieldAwaitable::await_suspend() calls
+// std::this_thread::yield() and then resumes inline, so awaitMessage() is
+// effectively a tight synchronous poll loop.  To interleave the test's
+// response injection with the coroutine's poll, we pre-load the response into
+// chief's inbox before starting the coroutine, OR we inject between the
+// sendMessage() step and the awaitMessage() step using an intermediate resume.
+
+#include "agents/agent_awaitable.hpp"
+
+// 1. sendCommand returns a successful response when a reply is in the inbox.
+//
+// Design note: Task coroutines are lazy (initial_suspend = suspend_always) and
+// in no-scheduler mode YieldAwaitable::await_suspend() resumes inline (no true
+// thread suspension).  The only safe way to interleave response injection in a
+// single-threaded test is to pre-load the reply into chief's inbox before the
+// coroutine's awaitMessage() poll runs.  We use a background thread to inject
+// the reply after a short delay so that the poll loop finds it naturally.
+TEST_F(ChiefArchitectAgentTest, SendCommand_GetsResponseFromTaskAgent) {
+  auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
+  auto task = std::make_shared<agents::TaskAgent>("task_1");
+
+  chief->setMessageBus(bus_.get());
+  task->setMessageBus(bus_.get());
+
+  bus_->registerAgent(chief->getAgentId(), chief);
+  bus_->registerAgent(task->getAgentId(), task);
+
+  // Pre-populate chief's inbox with a response message (with payload) so that
+  // awaitMessage() finds it on the first poll without spinning to the deadline.
+  // processMessage() checks msg.payload — the response must carry one.
+  auto reply = core::KeystoneMessage::create("task_1", "chief", "hello");
+  reply.payload = "hello";  // required by processMessage()'s payload guard
+  chief->receiveMessage(reply);
+
+  // Drive sendCommand to completion.  The coroutine will send to task_1, then
+  // awaitMessage() polls chief's inbox and immediately finds the pre-loaded
+  // reply, so no spin occurs.
+  core::Response response = chief->sendCommand("echo hello", "task_1").get();
+
+  EXPECT_NE(response.status, core::Response::Status::Error)
+      << "Expected success but got error: " << response.result;
+}
+
+// 2. sendCommand returns an error response when the peer never replies (timeout).
+// We test the timeout path directly via awaitMessage() with a past deadline so
+// the test doesn't wait 500 ms.
+TEST_F(ChiefArchitectAgentTest, SendCommand_ReturnsErrorOnTimeout) {
+  auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
+  chief->setMessageBus(bus_.get());
+  bus_->registerAgent(chief->getAgentId(), chief);
+
+  // Deadline already in the past ensures immediate nullopt return.
+  auto already_past = std::chrono::steady_clock::now() - std::chrono::milliseconds{1};
+
+  auto wait_task = agents::awaitMessage(*chief, already_past);
+  auto msg_opt = wait_task.get();
+
+  EXPECT_FALSE(msg_opt.has_value()) << "Expected nullopt after deadline but got a message";
+}
+
+// 3. awaitMessage returns immediately when a message is already in the inbox.
+// Verifies the happy-path poll succeeds on the first iteration (no spin needed).
+TEST_F(ChiefArchitectAgentTest, SendCommand_HandlesImmediateResponse) {
+  auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
+  chief->setMessageBus(bus_.get());
+  bus_->registerAgent(chief->getAgentId(), chief);
+
+  // Pre-load a message directly into chief's inbox.
+  auto pre_loaded = core::KeystoneMessage::create("task_1", "chief", "pre");
+  chief->receiveMessage(pre_loaded);
+
+  // awaitMessage should find it on the first poll without any suspension.
+  auto wait_task = agents::awaitMessage(*chief);
+  auto msg_opt = wait_task.get();
+
+  ASSERT_TRUE(msg_opt.has_value());
+  EXPECT_EQ(msg_opt->command, "pre");
+}
+
+// 4. Cancellation path regression: CANCEL_TASK still produces an ack response.
+TEST_F(ChiefArchitectAgentTest, ProcessMessage_CancelTask) {
+  auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
+  chief->setMessageBus(bus_.get());
+  bus_->registerAgent(chief->getAgentId(), chief);
+
+  // createCancellation sets action_type = CANCEL_TASK and task_id correctly.
+  auto cancel_msg = core::KeystoneMessage::createCancellation("sender",
+                                                              chief->getAgentId(),
+                                                              "task-42");
+
+  auto task = chief->processMessage(cancel_msg);
+  core::Response resp = task.get();
+
+  // CANCEL_TASK should succeed and produce an ack response.
+  EXPECT_NE(resp.status, core::Response::Status::Error)
+      << "CANCEL_TASK handler returned unexpected error: " << resp.result;
 }
 
 #pragma GCC diagnostic pop

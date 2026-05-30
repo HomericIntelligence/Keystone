@@ -20,9 +20,42 @@ namespace transport {
 
 namespace {
 
-std::string getEnvVar(const char* name) {
-  const char* value = std::getenv(name);  // NOLINT(concurrency-mt-unsafe)
-  return value != nullptr ? std::string(value) : std::string{};
+/**
+ * @brief TLS environment variable cache.
+ *
+ * The three KEYSTONE_NATS_TLS_* env vars are read exactly once at first use
+ * via a C++20 guaranteed thread-safe static local initialiser (ISO C++11 §6.7
+ * / C++20 §9.7).  The immediately-invoked lambda ensures the three
+ * std::getenv() calls happen atomically before any concurrent first-caller
+ * races on the static.  No std::once_flag or std::mutex is required — the
+ * language guarantees are sufficient.
+ *
+ * Behavioural note: because the values are cached at first access, changes to
+ * these env vars after the first call to cachedTlsEnvVars() (or any function
+ * that delegates to it) will NOT be reflected.  This is intentional: env vars
+ * should be set before process start and must not change while the process is
+ * running.
+ */
+struct TlsEnvVars {
+  std::string ca_path;
+  std::string cert_path;
+  std::string key_path;
+};
+
+const TlsEnvVars& cachedTlsEnvVars() {
+  // Thread-safe by C++11/20 guaranteed static-local initialisation.
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static const TlsEnvVars vars = []() {
+    TlsEnvVars v;
+    const char* ca = std::getenv("KEYSTONE_NATS_TLS_CA_PATH");
+    const char* cert = std::getenv("KEYSTONE_NATS_TLS_CERT_PATH");
+    const char* key = std::getenv("KEYSTONE_NATS_TLS_KEY_PATH");
+    v.ca_path = ca != nullptr ? ca : "";
+    v.cert_path = cert != nullptr ? cert : "";
+    v.key_path = key != nullptr ? key : "";
+    return v;
+  }();
+  return vars;
 }
 
 // NATS error code categorization per ADR-014
@@ -80,15 +113,12 @@ NatsErrorCategory categorizeNatsError(natsStatus status) {
 // ---------------------------------------------------------------------------
 
 void NatsTlsConfig::validate() const {
-  // Get effective cert and key paths (env vars take precedence)
-  std::string cert_path = getEnvVar("KEYSTONE_NATS_TLS_CERT_PATH");
-  std::string key_path = getEnvVar("KEYSTONE_NATS_TLS_KEY_PATH");
-  if (cert_path.empty()) {
-    cert_path = client_cert_path;
-  }
-  if (key_path.empty()) {
-    key_path = client_key_path;
-  }
+  // Get effective cert and key paths (env vars take precedence).
+  // cachedTlsEnvVars() reads the environment exactly once (thread-safe static
+  // initialisation); see the implementation note in the anonymous namespace.
+  const TlsEnvVars& env = cachedTlsEnvVars();
+  std::string cert_path = env.cert_path.empty() ? client_cert_path : env.cert_path;
+  std::string key_path = env.key_path.empty() ? client_key_path : env.key_path;
 
   // Both must be set or both must be empty
   if ((!cert_path.empty() && key_path.empty()) || (cert_path.empty() && !key_path.empty())) {
@@ -156,11 +186,11 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
     }
   }
 
-  // CA certificate: env var takes precedence over config field
-  std::string ca_path = getEnvVar("KEYSTONE_NATS_TLS_CA_PATH");
-  if (ca_path.empty()) {
-    ca_path = tls.ca_cert_path;
-  }
+  // CA certificate: env var takes precedence over config field.
+  // cachedTlsEnvVars() reads the environment exactly once (thread-safe static
+  // initialisation); see the implementation note in the anonymous namespace.
+  const TlsEnvVars& env = cachedTlsEnvVars();
+  std::string ca_path = env.ca_path.empty() ? tls.ca_cert_path : env.ca_path;
   if (!ca_path.empty()) {
     if (natsOptions_LoadCATrustedCertificates(opts, ca_path.c_str()) != NATS_OK) {
       spdlog::error("NatsConnection: failed to load CA certificate from {}", ca_path);
@@ -170,14 +200,8 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
 
   // Client certificate (mutual TLS): env vars take precedence over config
   // fields
-  std::string cert_path = getEnvVar("KEYSTONE_NATS_TLS_CERT_PATH");
-  std::string key_path = getEnvVar("KEYSTONE_NATS_TLS_KEY_PATH");
-  if (cert_path.empty()) {
-    cert_path = tls.client_cert_path;
-  }
-  if (key_path.empty()) {
-    key_path = tls.client_key_path;
-  }
+  std::string cert_path = env.cert_path.empty() ? tls.client_cert_path : env.cert_path;
+  std::string key_path = env.key_path.empty() ? tls.client_key_path : env.key_path;
 
   if (!cert_path.empty() && !key_path.empty()) {
     if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(), key_path.c_str()) != NATS_OK) {
