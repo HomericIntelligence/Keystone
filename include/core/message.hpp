@@ -97,7 +97,8 @@ inline std::string contentTypeToString(ContentType type) {
  * - No session_id  (moved to agents::AgentEnvelope per Issue #515)
  * - No task_id     (moved to agents::AgentEnvelope per Issue #515)
  * - No metadata    (moved to agents::AgentEnvelope per Issue #515)
- * - No CANCEL_TASK / TASK_FAILED action types (moved to agents::AgentActionType)
+ * - No CANCEL_TASK / TASK_FAILED action types (moved to
+ * agents::AgentActionType)
  *
  * Agents that require orchestration-level semantics wrap an incoming
  * KeystoneMessage in an agents::AgentEnvelope.
@@ -116,10 +117,12 @@ struct KeystoneMessage {
   Priority priority;  ///< Message priority (HIGH/NORMAL/LOW)
 
   // Phase C: Deadline scheduling
-  std::optional<std::chrono::system_clock::time_point> deadline;  ///< Optional processing deadline
+  std::optional<std::chrono::system_clock::time_point>
+      deadline;  ///< Optional processing deadline
 
   // Issue #285: Cross-host tracing
-  std::optional<std::string> correlation_id;  ///< Optional correlation ID for distributed tracing
+  std::optional<std::string>
+      correlation_id;  ///< Optional correlation ID for distributed tracing
 
   // Payload and timing
   [[deprecated(
@@ -152,10 +155,10 @@ struct KeystoneMessage {
    * @param data Optional payload data
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(const std::string& sender,
-                                const std::string& receiver,
-                                const std::string& cmd,
-                                const std::optional<std::string>& data = std::nullopt);
+  static KeystoneMessage create(
+      const std::string& sender, const std::string& receiver,
+      const std::string& cmd,
+      const std::optional<std::string>& data = std::nullopt);
 
   /**
    * @brief Create a new transport message with action type
@@ -167,11 +170,10 @@ struct KeystoneMessage {
    * @param content Content type (default: TEXT_PLAIN)
    * @return KeystoneMessage New message with auto-generated ID
    */
-  static KeystoneMessage create(const std::string& sender,
-                                const std::string& receiver,
-                                ActionType action,
-                                const std::optional<std::string>& data = std::nullopt,
-                                ContentType content = ContentType::TEXT_PLAIN);
+  static KeystoneMessage create(
+      const std::string& sender, const std::string& receiver, ActionType action,
+      const std::optional<std::string>& data = std::nullopt,
+      ContentType content = ContentType::TEXT_PLAIN);
 
   /**
    * @brief Set deadline relative to current time

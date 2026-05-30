@@ -9,12 +9,9 @@ namespace keystone {
 namespace agents {
 
 template <typename StateEnum>
-LeadAgentBase<StateEnum>::LeadAgentBase(const std::string& agent_id,
-                                        StateEnum idle_state,
-                                        StateEnum planning_state,
-                                        StateEnum waiting_state,
-                                        StateEnum aggregating_state,
-                                        StateEnum error_state)
+LeadAgentBase<StateEnum>::LeadAgentBase(
+    const std::string& agent_id, StateEnum idle_state, StateEnum planning_state,
+    StateEnum waiting_state, StateEnum aggregating_state, StateEnum error_state)
     : AsyncAgent(agent_id),
       idle_state_(idle_state),
       planning_state_(planning_state),
@@ -35,15 +32,15 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
   auto envelope = AgentEnvelope::wrap(msg);
 
   // Step 1: Handle CANCEL_TASK agent action
-  if (envelope.agent_action.has_value() && *envelope.agent_action == AgentActionType::CANCEL_TASK) {
+  if (envelope.agent_action.has_value() &&
+      *envelope.agent_action == AgentActionType::CANCEL_TASK) {
     auto response = handleCancellation(envelope);
 
     // Send acknowledgement back to sender via MessageBus
-    auto response_msg =
-        core::KeystoneMessage::create(agent_id_,
-                                      msg.sender_id,  // Route back to original sender
-                                      "response",
-                                      response.result);
+    auto response_msg = core::KeystoneMessage::create(
+        agent_id_,
+        msg.sender_id,  // Route back to original sender
+        "response", response.result);
     response_msg.msg_id = msg.msg_id;  // Keep same msg_id for tracking
 
     sendMessage(response_msg);
@@ -52,23 +49,27 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
   }
 
   // Step 2a: Handle subordinate failure (Issue #87 - prevents DAG deadlock)
-  if (envelope.agent_action.has_value() && *envelope.agent_action == AgentActionType::TASK_FAILED) {
+  if (envelope.agent_action.has_value() &&
+      *envelope.agent_action == AgentActionType::TASK_FAILED) {
     processSubordinateFailure(msg);
-    co_return core::Response::createSuccess(msg, agent_id_, "Subordinate failure recorded");
+    co_return core::Response::createSuccess(msg, agent_id_,
+                                            "Subordinate failure recorded");
   }
 
   // Step 2b: Check if this is a subordinate result or a new goal
   if (isSubordinateResult(msg)) {
     // This is a subordinate result - process it
     processSubordinateResult(msg);
-    co_return core::Response::createSuccess(msg, agent_id_, "Subordinate result processed");
+    co_return core::Response::createSuccess(msg, agent_id_,
+                                            "Subordinate result processed");
   }
 
   // Step 3: This is a new goal - decompose and delegate
   coordination_.transitionTo(planning_state_, stateToString(planning_state_));
 
-  _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-      coordination_.setCurrentGoal(msg.command);
+  _Pragma("GCC diagnostic push")
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          coordination_.setCurrentGoal(msg.command);
   _Pragma("GCC diagnostic pop") coordination_.setRequesterId(msg.sender_id);
 
   // Step 4: Decompose goal into subtasks (hook method - subclass implements)
@@ -76,18 +77,18 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
 
   if (subtasks.empty()) {
     coordination_.transitionTo(error_state_, stateToString(error_state_));
-    co_return core::Response::createError(msg, agent_id_, "Failed to decompose goal");
+    co_return core::Response::createError(msg, agent_id_,
+                                          "Failed to decompose goal");
   }
 
   // SECURITY FIX: Check for integer overflow before cast
   // size_t can be much larger than int (e.g., 2^64-1 vs 2^31-1)
   if (subtasks.size() > static_cast<size_t>(std::numeric_limits<int>::max())) {
     coordination_.transitionTo(error_state_, stateToString(error_state_));
-    co_return core::Response::createError(msg,
-                                          agent_id_,
-                                          "Subtask count exceeds maximum: " +
-                                              std::to_string(subtasks.size()) + " > " +
-                                              std::to_string(std::numeric_limits<int>::max()));
+    co_return core::Response::createError(
+        msg, agent_id_,
+        "Subtask count exceeds maximum: " + std::to_string(subtasks.size()) +
+            " > " + std::to_string(std::numeric_limits<int>::max()));
   }
 
   // Step 5: Initialize coordination for expected results
@@ -99,7 +100,8 @@ concurrency::Task<core::Response> LeadAgentBase<StateEnum>::processMessage(
 
   // Step 7: Return success response
   co_return core::Response::createSuccess(
-      msg, agent_id_, "Goal decomposed into " + std::to_string(subtasks.size()) + " subtasks");
+      msg, agent_id_,
+      "Goal decomposed into " + std::to_string(subtasks.size()) + " subtasks");
 }
 
 }  // namespace agents

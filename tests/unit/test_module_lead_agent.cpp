@@ -16,14 +16,14 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "agents/agent_envelope.hpp"
 #include "agents/component_lead_agent.hpp"
 #include "agents/module_lead_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -59,7 +59,8 @@ TEST_F(ModuleLeadAgentTest, DecomposeModuleIntoTasks) {
   module->setAvailableTaskAgents(task_ids);
 
   // Send module goal
-  auto msg = core::KeystoneMessage::create("chief", "module_1", "process dataset");
+  auto msg =
+      core::KeystoneMessage::create("chief", "module_1", "process dataset");
   module->receiveMessage(msg);
 
   auto received = module->getMessage();
@@ -129,9 +130,12 @@ TEST_F(ModuleLeadAgentTest, CoordinateThreeTaskAgents) {
   module->setAvailableTaskAgents(task_ids);
 
   // Send messages to tasks
-  module->sendMessage(core::KeystoneMessage::create("module_1", "task_1", "cmd1"));
-  module->sendMessage(core::KeystoneMessage::create("module_1", "task_2", "cmd2"));
-  module->sendMessage(core::KeystoneMessage::create("module_1", "task_3", "cmd3"));
+  module->sendMessage(
+      core::KeystoneMessage::create("module_1", "task_1", "cmd1"));
+  module->sendMessage(
+      core::KeystoneMessage::create("module_1", "task_2", "cmd2"));
+  module->sendMessage(
+      core::KeystoneMessage::create("module_1", "task_3", "cmd3"));
 
   // All tasks should receive messages
   auto r1 = task1->getMessage();
@@ -156,14 +160,17 @@ TEST_F(ModuleLeadAgentTest, CoordinateWithPartialFailures) {
   bus_->registerAgent(task1->getAgentId(), task1);
   bus_->registerAgent(task2->getAgentId(), task2);
 
-  std::vector<std::string> task_ids = {"task_1", "task_2", "task_3"};  // task_3 doesn't exist
+  std::vector<std::string> task_ids = {"task_1", "task_2",
+                                       "task_3"};  // task_3 doesn't exist
   module->setAvailableTaskAgents(task_ids);
 
   // Try to send to all (one will fail)
-  EXPECT_NO_THROW(module->sendMessage(core::KeystoneMessage::create("module_1", "task_1", "cmd1")));
-  EXPECT_NO_THROW(module->sendMessage(core::KeystoneMessage::create("module_1", "task_2", "cmd2")));
   EXPECT_NO_THROW(module->sendMessage(
-      core::KeystoneMessage::create("module_1", "task_3", "cmd3")));  // Will fail routing
+      core::KeystoneMessage::create("module_1", "task_1", "cmd1")));
+  EXPECT_NO_THROW(module->sendMessage(
+      core::KeystoneMessage::create("module_1", "task_2", "cmd2")));
+  EXPECT_NO_THROW(module->sendMessage(core::KeystoneMessage::create(
+      "module_1", "task_3", "cmd3")));  // Will fail routing
 }
 
 TEST_F(ModuleLeadAgentTest, WaitForAllResults) {
@@ -183,8 +190,10 @@ TEST_F(ModuleLeadAgentTest, WaitForAllResults) {
   module->setAvailableTaskAgents(task_ids);
 
   // Send task results back to module
-  task1->sendMessage(core::KeystoneMessage::create("task_1", "module_1", "result1"));
-  task2->sendMessage(core::KeystoneMessage::create("task_2", "module_1", "result2"));
+  task1->sendMessage(
+      core::KeystoneMessage::create("task_1", "module_1", "result1"));
+  task2->sendMessage(
+      core::KeystoneMessage::create("task_2", "module_1", "result2"));
 
   // Module should receive both results
   auto r1 = module->getMessage();
@@ -255,12 +264,16 @@ TEST_F(ModuleLeadAgentTest, SingleTaskFailureTransitionsToError) {
   module->setAvailableTaskAgents(task_ids);
 
   // Simulate receiving a TASK_FAILED message from a TaskAgent
-  auto failure_msg =
-      core::KeystoneMessage::create("task_1", "module_1", "response", "command not found");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg = core::KeystoneMessage::create(
+      "task_1", "module_1", "response", "command not found");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
 
   // Initialize coordination for 1 expected result (single number → single task)
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 42")).get();
+  module
+      ->processMessage(
+          core::KeystoneMessage::create("chief", "module_1", "Calculate: 42"))
+      .get();
 
   // Deliver failure
   module->processMessage(failure_msg).get();
@@ -278,15 +291,20 @@ TEST_F(ModuleLeadAgentTest, SynthesizeAfterFailureReturnsErrorMessage) {
   module->setAvailableTaskAgents(task_ids);
 
   // Process goal to set up coordination for 2 tasks
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20"))
+  module
+      ->processMessage(core::KeystoneMessage::create("chief", "module_1",
+                                                     "Calculate: 10 + 20"))
       .get();
 
   // One success, one failure
-  auto success_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "10");
+  auto success_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "10");
   module->processMessage(success_msg).get();
 
-  auto failure_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "exec failed");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg = core::KeystoneMessage::create("task_2", "module_1",
+                                                   "response", "exec failed");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
@@ -305,13 +323,15 @@ TEST_F(ModuleLeadAgentTest, FailureBeforeAllResultsDoesNotDeadlock) {
 
   // Goal decomposes into 3 tasks (numbers extracted from "10 + 20 + 30")
   module
-      ->processMessage(
-          core::KeystoneMessage::create("chief", "module_1", "Calculate sum of: 10 + 20 + 30"))
+      ->processMessage(core::KeystoneMessage::create(
+          "chief", "module_1", "Calculate sum of: 10 + 20 + 30"))
       .get();
 
   // First task fails — must not leave the remaining 2 in permanent pending
-  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "error");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "error");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   // State must not be stuck in WAITING after any terminal event
@@ -320,7 +340,8 @@ TEST_F(ModuleLeadAgentTest, FailureBeforeAllResultsDoesNotDeadlock) {
               state == agents::ModuleLeadAgent::State::WAITING_FOR_TASKS);
 }
 
-TEST_F(ModuleLeadAgentTest, SuccessResultAfterFailureStillCountsTowardCompletion) {
+TEST_F(ModuleLeadAgentTest,
+       SuccessResultAfterFailureStillCountsTowardCompletion) {
   auto module = std::make_shared<agents::ModuleLeadAgent>("module_1");
   module->setMessageBus(bus_.get());
   bus_->registerAgent(module->getAgentId(), module);
@@ -328,17 +349,22 @@ TEST_F(ModuleLeadAgentTest, SuccessResultAfterFailureStillCountsTowardCompletion
   std::vector<std::string> task_ids = {"task_1", "task_2"};
   module->setAvailableTaskAgents(task_ids);
 
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 10 + 20"))
+  module
+      ->processMessage(core::KeystoneMessage::create("chief", "module_1",
+                                                     "Calculate: 10 + 20"))
       .get();
 
   // Failure first
-  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   // Then success — all results are now terminal, agent must not remain in
   // WAITING
-  auto success_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "20");
+  auto success_msg =
+      core::KeystoneMessage::create("task_2", "module_1", "response", "20");
   module->processMessage(success_msg).get();
 
   auto state = module->getCurrentState();
@@ -361,13 +387,17 @@ TEST_F(ModuleLeadAgentTest, TaskFailedNotTreatedAsSuccessResult) {
   module->setAvailableTaskAgents(task_ids);
 
   // Prime coordination for 1 task
-  module->processMessage(core::KeystoneMessage::create("chief", "module_1", "Calculate: 7")).get();
+  module
+      ->processMessage(
+          core::KeystoneMessage::create("chief", "module_1", "Calculate: 7"))
+      .get();
 
   // Send a TASK_FAILED with command == "response" (the ambiguous case from
   // #184)
-  auto failure_msg =
-      core::KeystoneMessage::create("task_1", "module_1", "response", "task failed badly");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg = core::KeystoneMessage::create(
+      "task_1", "module_1", "response", "task failed badly");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   // Must be in ERROR, not SYNTHESIZING — the failure was not treated as success
@@ -401,21 +431,23 @@ TEST_F(ModuleLeadAgentTest, FailurePropagatedUpwardToRequester) {
   // ComponentLeadAgent receives a goal and delegates to module_1
   // Use a goal pattern that decomposes to exactly 1 module
   component
-      ->processMessage(core::KeystoneMessage::create("chief",
-                                                     "component_1",
-                                                     "Implement Core component: Messaging(42)"))
+      ->processMessage(core::KeystoneMessage::create(
+          "chief", "component_1", "Implement Core component: Messaging(42)"))
       .get();
 
   // module_1 should have received a goal — prime module coordination for 1 task
   // Sender must be component_1 so requester_id_ is set correctly for upward
   // propagation.
-  module->processMessage(core::KeystoneMessage::create("component_1", "module_1", "Calculate: 42"))
+  module
+      ->processMessage(core::KeystoneMessage::create("component_1", "module_1",
+                                                     "Calculate: 42"))
       .get();
 
   // Deliver a TASK_FAILED to the module from task_1
-  auto failure_msg =
-      core::KeystoneMessage::create("task_1", "module_1", "response", "execution failed");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg = core::KeystoneMessage::create(
+      "task_1", "module_1", "response", "execution failed");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   // module_1 must be in ERROR
@@ -426,12 +458,14 @@ TEST_F(ModuleLeadAgentTest, FailurePropagatedUpwardToRequester) {
   std::optional<core::KeystoneMessage> msg;
   while ((msg = component->getMessage()).has_value()) {
     if (agents::AgentEnvelope::wrap(*msg).agent_action.has_value() &&
-        *agents::AgentEnvelope::wrap(*msg).agent_action == agents::AgentActionType::TASK_FAILED) {
+        *agents::AgentEnvelope::wrap(*msg).agent_action ==
+            agents::AgentActionType::TASK_FAILED) {
       received_failure = true;
       break;
     }
   }
-  EXPECT_TRUE(received_failure) << "ComponentLeadAgent did not receive TASK_FAILED from module";
+  EXPECT_TRUE(received_failure)
+      << "ComponentLeadAgent did not receive TASK_FAILED from module";
 }
 
 TEST_F(ModuleLeadAgentTest, FailureNotPropagatedUntilAllTerminal) {
@@ -451,13 +485,15 @@ TEST_F(ModuleLeadAgentTest, FailureNotPropagatedUntilAllTerminal) {
 
   // Prime module with a 2-task goal, setting parent as requester
   module
-      ->processMessage(
-          core::KeystoneMessage::create("parent_lead", "module_1", "Calculate: 10 + 20"))
+      ->processMessage(core::KeystoneMessage::create("parent_lead", "module_1",
+                                                     "Calculate: 10 + 20"))
       .get();
 
   // First task fails — only 1 of 2 done, upward propagation must NOT fire yet
-  auto failure_msg = core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
-  failure_msg.payload = std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
+  auto failure_msg =
+      core::KeystoneMessage::create("task_1", "module_1", "response", "boom");
+  failure_msg.payload =
+      std::string("TASK_FAILED:") + failure_msg.payload.value_or("");
   module->processMessage(failure_msg).get();
 
   // No TASK_FAILED should have been delivered to parent yet
@@ -465,14 +501,17 @@ TEST_F(ModuleLeadAgentTest, FailureNotPropagatedUntilAllTerminal) {
   std::optional<core::KeystoneMessage> msg;
   while ((msg = parent->getMessage()).has_value()) {
     if (agents::AgentEnvelope::wrap(*msg).agent_action.has_value() &&
-        *agents::AgentEnvelope::wrap(*msg).agent_action == agents::AgentActionType::TASK_FAILED) {
+        *agents::AgentEnvelope::wrap(*msg).agent_action ==
+            agents::AgentActionType::TASK_FAILED) {
       premature_failure = true;
     }
   }
-  EXPECT_FALSE(premature_failure) << "TASK_FAILED was sent upward before all subtasks terminated";
+  EXPECT_FALSE(premature_failure)
+      << "TASK_FAILED was sent upward before all subtasks terminated";
 
   // Second task succeeds — all done, now upward failure message must arrive
-  auto success_msg = core::KeystoneMessage::create("task_2", "module_1", "response", "20");
+  auto success_msg =
+      core::KeystoneMessage::create("task_2", "module_1", "response", "20");
   module->processMessage(success_msg).get();
 
   EXPECT_EQ(module->getCurrentState(), agents::ModuleLeadAgent::State::ERROR);
@@ -488,7 +527,8 @@ TEST_F(ModuleLeadAgentTest, ConcurrentCoordination) {
 
   // Send many messages concurrently
   for (int32_t i = 0; i < 50; ++i) {
-    auto msg = core::KeystoneMessage::create("sender", "module_1", "cmd" + std::to_string(i));
+    auto msg = core::KeystoneMessage::create("sender", "module_1",
+                                             "cmd" + std::to_string(i));
     EXPECT_NO_THROW(module->receiveMessage(msg));
   }
 

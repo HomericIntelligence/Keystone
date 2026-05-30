@@ -16,12 +16,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "agents/chief_architect_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
 #include "unit/agent_test_fixture.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::test;
@@ -76,7 +76,8 @@ TEST_F(ChiefArchitectAgentTest, ProcessDelegateCommand) {
   bus_->registerAgent(task->getAgentId(), task);
 
   // Send delegation command
-  auto msg = core::KeystoneMessage::create("sender", "chief", "delegate add 2 3 to task_1");
+  auto msg = core::KeystoneMessage::create("sender", "chief",
+                                           "delegate add 2 3 to task_1");
   chief->receiveMessage(msg);
 
   // Chief should receive the message
@@ -89,7 +90,8 @@ TEST_F(ChiefArchitectAgentTest, ProcessUnknownCommand) {
   chief->setMessageBus(bus_.get());
   bus_->registerAgent(chief->getAgentId(), chief);
 
-  auto msg = core::KeystoneMessage::create("sender", "chief", "unknown_command");
+  auto msg =
+      core::KeystoneMessage::create("sender", "chief", "unknown_command");
   EXPECT_NO_THROW(chief->receiveMessage(msg));
 }
 
@@ -235,7 +237,8 @@ TEST_F(ChiefArchitectAgentTest, StateTransitionOnDelegation) {
   bus_->registerAgent(task->getAgentId(), task);
 
   // Send delegation command
-  EXPECT_NO_THROW(chief->sendMessage(core::KeystoneMessage::create("chief", "task_1", "test")));
+  EXPECT_NO_THROW(chief->sendMessage(
+      core::KeystoneMessage::create("chief", "task_1", "test")));
 }
 
 TEST_F(ChiefArchitectAgentTest, StateResetAfterCompletion) {
@@ -258,7 +261,8 @@ TEST_F(ChiefArchitectAgentTest, StateResetAfterCompletion) {
   ASSERT_TRUE(response.has_value());
 
   // Chief should be ready for next command
-  EXPECT_NO_THROW(chief->sendMessage(core::KeystoneMessage::create("chief", "task_1", "cmd2")));
+  EXPECT_NO_THROW(chief->sendMessage(
+      core::KeystoneMessage::create("chief", "task_1", "cmd2")));
 }
 
 TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
@@ -268,7 +272,8 @@ TEST_F(ChiefArchitectAgentTest, ConcurrentStateAccess) {
 
   // Send multiple messages rapidly (test thread safety)
   for (int32_t i = 0; i < 100; ++i) {
-    auto msg = core::KeystoneMessage::create("sender", "chief", "cmd" + std::to_string(i));
+    auto msg = core::KeystoneMessage::create("sender", "chief",
+                                             "cmd" + std::to_string(i));
     EXPECT_NO_THROW(chief->receiveMessage(msg));
   }
 
@@ -334,25 +339,28 @@ TEST_F(ChiefArchitectAgentTest, SendCommand_GetsResponseFromTaskAgent) {
       << "Expected success but got error: " << response.result;
 }
 
-// 2. sendCommand returns an error response when the peer never replies (timeout).
-// We test the timeout path directly via awaitMessage() with a past deadline so
-// the test doesn't wait 500 ms.
+// 2. sendCommand returns an error response when the peer never replies
+// (timeout). We test the timeout path directly via awaitMessage() with a past
+// deadline so the test doesn't wait 500 ms.
 TEST_F(ChiefArchitectAgentTest, SendCommand_ReturnsErrorOnTimeout) {
   auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
   chief->setMessageBus(bus_.get());
   bus_->registerAgent(chief->getAgentId(), chief);
 
   // Deadline already in the past ensures immediate nullopt return.
-  auto already_past = std::chrono::steady_clock::now() - std::chrono::milliseconds{1};
+  auto already_past =
+      std::chrono::steady_clock::now() - std::chrono::milliseconds{1};
 
   auto wait_task = agents::awaitMessage(*chief, already_past);
   auto msg_opt = wait_task.get();
 
-  EXPECT_FALSE(msg_opt.has_value()) << "Expected nullopt after deadline but got a message";
+  EXPECT_FALSE(msg_opt.has_value())
+      << "Expected nullopt after deadline but got a message";
 }
 
 // 3. awaitMessage returns immediately when a message is already in the inbox.
-// Verifies the happy-path poll succeeds on the first iteration (no spin needed).
+// Verifies the happy-path poll succeeds on the first iteration (no spin
+// needed).
 TEST_F(ChiefArchitectAgentTest, SendCommand_HandlesImmediateResponse) {
   auto chief = std::make_shared<agents::ChiefArchitectAgent>("chief");
   chief->setMessageBus(bus_.get());
@@ -377,9 +385,8 @@ TEST_F(ChiefArchitectAgentTest, ProcessMessage_CancelTask) {
   bus_->registerAgent(chief->getAgentId(), chief);
 
   // createCancellation sets action_type = CANCEL_TASK and task_id correctly.
-  auto cancel_msg = core::KeystoneMessage::createCancellation("sender",
-                                                              chief->getAgentId(),
-                                                              "task-42");
+  auto cancel_msg = core::KeystoneMessage::createCancellation(
+      "sender", chief->getAgentId(), "task-42");
 
   auto task = chief->processMessage(cancel_msg);
   core::Response resp = task.get();

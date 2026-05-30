@@ -63,8 +63,8 @@ AgentEnvelope AgentEnvelope::create(const std::string& sender,
   }
 
   std::string payload = prefix + data.value_or("");
-  env.transport_msg =
-      core::KeystoneMessage::create(sender, receiver, core::ActionType::EXECUTE, payload);
+  env.transport_msg = core::KeystoneMessage::create(
+      sender, receiver, core::ActionType::EXECUTE, payload);
 
   return env;
 }
@@ -81,8 +81,8 @@ AgentEnvelope AgentEnvelope::createCancellation(const std::string& sender,
 
   // Encode task_id in the payload so the receiver can decode it via wrap().
   std::string payload = std::string(kCancelPrefix) + task_id_val;
-  env.transport_msg =
-      core::KeystoneMessage::create(sender, receiver, core::ActionType::EXECUTE, payload);
+  env.transport_msg = core::KeystoneMessage::create(
+      sender, receiver, core::ActionType::EXECUTE, payload);
   env.transport_msg.priority = core::Priority::HIGH;
 
   return env;
@@ -98,8 +98,8 @@ AgentEnvelope AgentEnvelope::createFailure(const std::string& sender,
   env.session_id = session;
 
   std::string payload = std::string(kFailedPrefix) + error_msg;
-  env.transport_msg =
-      core::KeystoneMessage::create(sender, receiver, core::ActionType::EXECUTE, payload);
+  env.transport_msg = core::KeystoneMessage::create(
+      sender, receiver, core::ActionType::EXECUTE, payload);
 
   return env;
 }

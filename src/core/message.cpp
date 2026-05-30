@@ -15,20 +15,23 @@ namespace core {
 // 'command' field.  Callers that access 'command' directly still get the
 // warning.
 // ---------------------------------------------------------------------------
-_Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+_Pragma("GCC diagnostic push")
+    _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
 
-    KeystoneMessage::KeystoneMessage() = default;
+        KeystoneMessage::KeystoneMessage() = default;
 KeystoneMessage::KeystoneMessage(const KeystoneMessage&) = default;
 KeystoneMessage::KeystoneMessage(KeystoneMessage&&) noexcept = default;
 KeystoneMessage& KeystoneMessage::operator=(const KeystoneMessage&) = default;
-KeystoneMessage& KeystoneMessage::operator=(KeystoneMessage&&) noexcept = default;
+KeystoneMessage& KeystoneMessage::operator=(KeystoneMessage&&) noexcept =
+    default;
 KeystoneMessage::~KeystoneMessage() = default;
 
 _Pragma("GCC diagnostic pop")
 
     namespace {
   // Simple UUID generation (not cryptographically secure, but sufficient for
-  // Phase 1). Thread-safe: uses thread_local to avoid data races across threads.
+  // Phase 1). Thread-safe: uses thread_local to avoid data races across
+  // threads.
   std::string generate_uuid() {
     thread_local std::random_device rd;
     thread_local std::mt19937 gen(rd());
@@ -46,16 +49,16 @@ _Pragma("GCC diagnostic pop")
   }
 }  // namespace
 
-KeystoneMessage KeystoneMessage::create(const std::string& sender,
-                                        const std::string& receiver,
-                                        const std::string& cmd,
-                                        const std::optional<std::string>& data) {
+KeystoneMessage KeystoneMessage::create(
+    const std::string& sender, const std::string& receiver,
+    const std::string& cmd, const std::optional<std::string>& data) {
   KeystoneMessage msg;
   msg.msg_id = generate_uuid();
   msg.sender_id = sender;
   msg.receiver_id = receiver;
-  _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-      msg.command = cmd;
+  _Pragma("GCC diagnostic push")
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          msg.command = cmd;
   _Pragma("GCC diagnostic pop") msg.payload = data;
   msg.timestamp = std::chrono::system_clock::now();
 
@@ -84,8 +87,9 @@ KeystoneMessage KeystoneMessage::create(const std::string& sender,
   msg.timestamp = std::chrono::system_clock::now();
 
   // Legacy field: set command based on action type
-  _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-      msg.command = actionTypeToString(action);
+  _Pragma("GCC diagnostic push")
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          msg.command = actionTypeToString(action);
   _Pragma("GCC diagnostic pop")
 
       // Phase C: Initialize priority and deadline
@@ -95,7 +99,8 @@ KeystoneMessage KeystoneMessage::create(const std::string& sender,
   return msg;
 }
 
-void KeystoneMessage::setDeadlineFromNow(std::chrono::milliseconds duration_ms) {
+void KeystoneMessage::setDeadlineFromNow(
+    std::chrono::milliseconds duration_ms) {
   deadline = std::chrono::system_clock::now() + duration_ms;
 }
 
@@ -106,7 +111,8 @@ bool KeystoneMessage::hasDeadlinePassed() const {
   return std::chrono::system_clock::now() > *deadline;
 }
 
-std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline() const {
+std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline()
+    const {
   if (!deadline.has_value()) {
     return std::nullopt;
   }

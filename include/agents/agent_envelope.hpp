@@ -1,11 +1,11 @@
 #pragma once
 
-#include "agents/agent_action_type.hpp"
-#include "core/message.hpp"
-
 #include <map>
 #include <optional>
 #include <string>
+
+#include "agents/agent_action_type.hpp"
+#include "core/message.hpp"
 
 namespace keystone {
 namespace agents {
@@ -74,11 +74,10 @@ struct AgentEnvelope {
    * @param data Optional payload
    * @return AgentEnvelope with transport_msg populated
    */
-  static AgentEnvelope create(const std::string& sender,
-                              const std::string& receiver,
-                              AgentActionType action,
-                              const std::string& session = "default",
-                              const std::optional<std::string>& data = std::nullopt);
+  static AgentEnvelope create(
+      const std::string& sender, const std::string& receiver,
+      AgentActionType action, const std::string& session = "default",
+      const std::optional<std::string>& data = std::nullopt);
 
   /**
    * @brief Create a task cancellation envelope
@@ -91,10 +90,9 @@ struct AgentEnvelope {
    * @param session Session identifier
    * @return AgentEnvelope with CANCEL_TASK agent_action
    */
-  static AgentEnvelope createCancellation(const std::string& sender,
-                                          const std::string& receiver,
-                                          const std::string& task_id_val,
-                                          const std::string& session = "default");
+  static AgentEnvelope createCancellation(
+      const std::string& sender, const std::string& receiver,
+      const std::string& task_id_val, const std::string& session = "default");
 
   /**
    * @brief Create a task failure notification envelope

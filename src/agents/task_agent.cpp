@@ -1,10 +1,5 @@
 #include "agents/task_agent.hpp"
 
-#include "agents/agent_envelope.hpp"
-#include "concurrency/logger.hpp"
-#include "core/error_sanitizer.hpp"
-#include "core/metrics.hpp"
-
 #include <array>
 #include <cctype>
 #include <chrono>
@@ -16,8 +11,13 @@
 #include <thread>
 #include <unordered_set>
 
+#include "agents/agent_envelope.hpp"
+#include "concurrency/logger.hpp"
+#include "core/error_sanitizer.hpp"
+#include "core/metrics.hpp"
+
 #ifdef ENABLE_GRPC
-#  include "hmas_coordinator.pb.h"
+#include "hmas_coordinator.pb.h"
 #endif
 
 namespace keystone {
@@ -44,21 +44,22 @@ static const std::unordered_set<std::string> ALLOWED_COMMANDS = {
 
 TaskAgent::TaskAgent(const std::string& agent_id) : AsyncAgent(agent_id) {}
 
-concurrency::Task<core::Response> TaskAgent::processMessage(const core::KeystoneMessage& msg) {
+concurrency::Task<core::Response> TaskAgent::processMessage(
+    const core::KeystoneMessage& msg) {
   // FIX C3: Changed to async (returns Task<Response>)
   // Record message processed for metrics tracking
   core::Metrics::getInstance().recordMessageProcessed(msg.msg_id);
 
   // Issue #376: Reject immediately if agent is in failed state
   if (isFailed()) {
-    auto response = core::Response::createError(msg,
-                                                agent_id_,
-                                                "Agent is in failed state: " + getFailureReason());
+    auto response = core::Response::createError(
+        msg, agent_id_, "Agent is in failed state: " + getFailureReason());
     sendResponseMessage(msg, response.result);
     co_return response;
   }
 
-  // Issue #515: CANCEL_TASK is no longer a core::ActionType; decode via envelope.
+  // Issue #515: CANCEL_TASK is no longer a core::ActionType; decode via
+  // envelope.
   {
     auto envelope = AgentEnvelope::wrap(msg);
     if (envelope.agent_action.has_value() &&
@@ -81,8 +82,9 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
 
   try {
     // Execute the bash command
-    _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-        std::string result = executeBash(msg.command);
+    _Pragma("GCC diagnostic push")
+        _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+            std::string result = executeBash(msg.command);
 
     // Log the execution (lock guards concurrent processMessage coroutines)
     {
@@ -98,12 +100,14 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
   } catch (const std::exception& e) {
     // FIX P3-08: Sanitize error message to prevent information disclosure
     std::string sanitized_error = core::sanitizeErrorMessage(e.what());
-    auto response = core::Response::createError(msg, agent_id_, sanitized_error);
+    auto response =
+        core::Response::createError(msg, agent_id_, sanitized_error);
 
     // Issue #87 / Issue #515: Send TASK_FAILED via AgentEnvelope so the parent
     // Lead Agent can unblock the DAG. The envelope encodes TASK_FAILED in the
     // payload prefix; action_type stays EXECUTE (pure transport).
-    auto failure_env = AgentEnvelope::createFailure(agent_id_, msg.sender_id, sanitized_error);
+    auto failure_env =
+        AgentEnvelope::createFailure(agent_id_, msg.sender_id, sanitized_error);
     failure_env.transport_msg.msg_id = msg.msg_id;
     sendMessage(failure_env.transport_msg);
 
@@ -111,8 +115,10 @@ concurrency::Task<core::Response> TaskAgent::processMessage(const core::Keystone
   }
 }
 
-void TaskAgent::sendResponseMessage(const core::KeystoneMessage& msg, const std::string& payload) {
-  auto response_msg = core::KeystoneMessage::create(agent_id_, msg.sender_id, "response", payload);
+void TaskAgent::sendResponseMessage(const core::KeystoneMessage& msg,
+                                    const std::string& payload) {
+  auto response_msg = core::KeystoneMessage::create(agent_id_, msg.sender_id,
+                                                    "response", payload);
   response_msg.msg_id = msg.msg_id;
   sendMessage(response_msg);
 }
@@ -132,7 +138,8 @@ void TaskAgent::validateCommand(const std::string& command) {
   // Pattern 1: Shell arithmetic - echo $((arithmetic expression))
   // Regex: ^echo \$\(\([-+*/0-9 ()]+\)\)$
   // Allows: echo $((5 + 3)), echo $((91 + 13)), echo $((10 * (5 + 2)))
-  static const std::regex arithmetic_pattern(R"(^echo \$\(\([-+*/0-9 ()]+\)\)$)");
+  static const std::regex arithmetic_pattern(
+      R"(^echo \$\(\([-+*/0-9 ()]+\)\)$)");
   if (std::regex_match(command, arithmetic_pattern)) {
     // Validate arithmetic expression doesn't contain command substitution
     // The regex already ensures only digits, operators, spaces, and parens
@@ -168,10 +175,11 @@ void TaskAgent::validateCommand(const std::string& command) {
     std::string args = command.substr(base_command.length());
 
     // Allow whitelisted command with safe arguments
-    const std::string very_dangerous = ";|&`$<>!{}[]";  // Command injection chars
+    const std::string very_dangerous =
+        ";|&`$<>!{}[]";  // Command injection chars
     if (args.find_first_of(very_dangerous) == std::string::npos &&
         args.find("..") == std::string::npos) {  // No directory traversal
-      return;                                    // SAFE: Whitelisted command with safe arguments
+      return;  // SAFE: Whitelisted command with safe arguments
     }
   }
 
@@ -185,8 +193,7 @@ void TaskAgent::validateCommand(const std::string& command) {
   ss << "  4. Whitelisted commands: ";
   bool first = true;
   for (const auto& cmd : ALLOWED_COMMANDS) {
-    if (!first)
-      ss << ", ";
+    if (!first) ss << ", ";
     ss << cmd;
     first = false;
   }
@@ -236,7 +243,8 @@ std::string TaskAgent::executeBash(const std::string& command) {
   }
 
   // Remove trailing whitespace (newlines, spaces, tabs, carriage returns)
-  while (!result.empty() && std::isspace(static_cast<unsigned char>(result.back()))) {
+  while (!result.empty() &&
+         std::isspace(static_cast<unsigned char>(result.back()))) {
     result.pop_back();
   }
 
@@ -246,19 +254,20 @@ std::string TaskAgent::executeBash(const std::string& command) {
 #ifdef ENABLE_GRPC
 void TaskAgent::initializeGrpc(const std::string& coordinator_address,
                                const std::string& registry_address,
-                               const std::string& agent_type,
-                               uint8_t level) {
+                               const std::string& agent_type, uint8_t level) {
   agent_type_ = agent_type;
   agent_level_ = level;
 
   // Create gRPC clients
   network::GrpcClientConfig coordinator_config;
   coordinator_config.server_address = coordinator_address;
-  coordinator_client_ = std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
+  coordinator_client_ =
+      std::make_unique<network::HMASCoordinatorClient>(coordinator_config);
 
   network::GrpcClientConfig registry_config;
   registry_config.server_address = registry_address;
-  registry_client_ = std::make_unique<network::ServiceRegistryClient>(registry_config);
+  registry_client_ =
+      std::make_unique<network::ServiceRegistryClient>(registry_config);
 
   // Register with ServiceRegistry
   hmas::AgentRegistration registration;
@@ -274,10 +283,12 @@ void TaskAgent::initializeGrpc(const std::string& coordinator_address,
       // Start heartbeat thread
       startHeartbeat();
     } else {
-      throw std::runtime_error("Failed to register with ServiceRegistry: " + response.message());
+      throw std::runtime_error("Failed to register with ServiceRegistry: " +
+                               response.message());
     }
   } catch (const std::exception& e) {
-    throw std::runtime_error("gRPC registration failed: " + std::string(e.what()));
+    throw std::runtime_error("gRPC registration failed: " +
+                             std::string(e.what()));
   }
 }
 
@@ -306,7 +317,8 @@ void TaskAgent::processYamlTask(const std::string& yaml_spec) {
   auto now = std::chrono::system_clock::now();
   auto time_t_now = std::chrono::system_clock::to_time_t(now);
   char time_buf[100];
-  std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&time_t_now));
+  std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ",
+                std::gmtime(&time_t_now));
   spec.status.completion_time = std::string(time_buf);
 
   if (!spec.status.start_time) {
@@ -330,7 +342,8 @@ void TaskAgent::processYamlTask(const std::string& yaml_spec) {
       coordinator_client_->submitResult(task_result);
     } catch (const std::exception& e) {
       // Log error but don't fail the task
-      concurrency::Logger::error("Failed to submit result via gRPC: {}", e.what());
+      concurrency::Logger::error("Failed to submit result via gRPC: {}",
+                                 e.what());
     }
   }
 }

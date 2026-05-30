@@ -1,13 +1,13 @@
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "agent_core.hpp"
 #include "agents/agent_envelope.hpp"
 #include "concurrency/task.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message.hpp"
-
-#include <memory>
-#include <string>
 
 namespace keystone {
 namespace agents {
@@ -22,7 +22,8 @@ namespace agents {
  * with a single async-by-default base class, enabling polymorphic collections
  * and runtime execution model flexibility.
  */
-class AsyncAgent : public AgentCore, public std::enable_shared_from_this<AsyncAgent> {
+class AsyncAgent : public AgentCore,
+                   public std::enable_shared_from_this<AsyncAgent> {
  public:
   /**
    * @brief Construct a new Async Agent
@@ -43,7 +44,8 @@ class AsyncAgent : public AgentCore, public std::enable_shared_from_this<AsyncAg
    * @return concurrency::Task<core::Response> Async task that resolves to
    * response
    */
-  virtual concurrency::Task<core::Response> processMessage(const core::KeystoneMessage& msg) = 0;
+  virtual concurrency::Task<core::Response> processMessage(
+      const core::KeystoneMessage& msg) = 0;
 
   /**
    * @brief Receive a message — auto-processes via scheduler when one is stored

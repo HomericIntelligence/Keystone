@@ -34,12 +34,12 @@ concurrency::Task<core::Response> TaskExecutionStrategy::process(
   try {
     // Execute the bash command
     _Pragma("GCC diagnostic push")
-    _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-    std::string result = executeBashCommand(msg.command);
+        _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+            std::string result = executeBashCommand(msg.command);
     _Pragma("GCC diagnostic pop")
 
-    // Create success response
-    auto response = core::Response::createSuccess(msg, "strategy", result);
+        // Create success response
+        auto response = core::Response::createSuccess(msg, "strategy", result);
     co_return response;
 
   } catch (const std::exception& e) {

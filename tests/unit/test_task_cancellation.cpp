@@ -15,14 +15,14 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "agents/agent_action_type.hpp"
 #include "agents/agent_envelope.hpp"
 #include "agents/async_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone::core;
 using namespace keystone::agents;
@@ -47,7 +47,8 @@ TEST(TaskCancellation, CreateCancellationEnvelope) {
  * @brief Test: Create cancellation envelope with custom session
  */
 TEST(TaskCancellation, CreateCancellationEnvelopeWithSession) {
-  auto env = AgentEnvelope::createCancellation("parent", "child", "task_456", "session_xyz");
+  auto env = AgentEnvelope::createCancellation("parent", "child", "task_456",
+                                               "session_xyz");
 
   EXPECT_EQ(env.transport_msg.sender_id, "parent");
   EXPECT_EQ(env.transport_msg.receiver_id, "child");
@@ -62,7 +63,8 @@ TEST(TaskCancellation, CreateCancellationEnvelopeWithSession) {
  * @brief Test: AgentActionType::CANCEL_TASK converts to string correctly
  */
 TEST(TaskCancellation, AgentActionTypeToString) {
-  EXPECT_EQ(agentActionTypeToString(AgentActionType::CANCEL_TASK), "CANCEL_TASK");
+  EXPECT_EQ(agentActionTypeToString(AgentActionType::CANCEL_TASK),
+            "CANCEL_TASK");
 }
 
 /**

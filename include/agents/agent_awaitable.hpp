@@ -6,9 +6,10 @@
 //   YieldAwaitable  — a trivial awaitable that suspends once and schedules the
 //                     coroutine back onto the WorkStealingScheduler (or yields
 //                     the OS thread when no scheduler is present).
-//   awaitMessage()  — a free-function coroutine that polls AgentCore::getMessage()
-//                     with bounded retry, properly suspending between polls instead
-//                     of busy-spinning.
+//   awaitMessage()  — a free-function coroutine that polls
+//   AgentCore::getMessage()
+//                     with bounded retry, properly suspending between polls
+//                     instead of busy-spinning.
 //
 // Design note (Issue #509): getMessage() is a non-blocking lock-free poll.
 // Calling it directly inside a coroutine immediately after sendMessage() is a
@@ -23,15 +24,15 @@
 // Thread-safety: each poll calls AgentCore::getMessage() which uses a lock-free
 // ConcurrentQueue — no additional locking is introduced.
 
-#include "agents/agent_core.hpp"
-#include "concurrency/scheduler_accessor.hpp"
-#include "concurrency/task.hpp"
-#include "core/message.hpp"
-
 #include <chrono>
 #include <coroutine>
 #include <optional>
 #include <thread>
+
+#include "agents/agent_core.hpp"
+#include "concurrency/scheduler_accessor.hpp"
+#include "concurrency/task.hpp"
+#include "core/message.hpp"
 
 namespace keystone {
 namespace agents {
@@ -92,8 +93,8 @@ struct YieldAwaitable {
  */
 inline concurrency::Task<std::optional<core::KeystoneMessage>> awaitMessage(
     AgentCore& agent,
-    std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() +
-                                                     std::chrono::milliseconds{500}) {
+    std::chrono::steady_clock::time_point deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds{500}) {
   while (true) {
     auto msg = agent.getMessage();
     if (msg.has_value()) {

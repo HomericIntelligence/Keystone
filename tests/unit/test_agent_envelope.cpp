@@ -7,11 +7,11 @@
  * into the transport layer (KeystoneMessage / core::ActionType).
  */
 
+#include <gtest/gtest.h>
+
 #include "agents/agent_action_type.hpp"
 #include "agents/agent_envelope.hpp"
 #include "core/message.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone::agents;
 using namespace keystone::core;
@@ -25,11 +25,13 @@ TEST(AgentActionTypeTest, ToStringDecompose) {
 }
 
 TEST(AgentActionTypeTest, ToStringCancelTask) {
-  EXPECT_EQ(agentActionTypeToString(AgentActionType::CANCEL_TASK), "CANCEL_TASK");
+  EXPECT_EQ(agentActionTypeToString(AgentActionType::CANCEL_TASK),
+            "CANCEL_TASK");
 }
 
 TEST(AgentActionTypeTest, ToStringTaskFailed) {
-  EXPECT_EQ(agentActionTypeToString(AgentActionType::TASK_FAILED), "TASK_FAILED");
+  EXPECT_EQ(agentActionTypeToString(AgentActionType::TASK_FAILED),
+            "TASK_FAILED");
 }
 
 // ---------------------------------------------------------------------------
@@ -37,7 +39,8 @@ TEST(AgentActionTypeTest, ToStringTaskFailed) {
 // ---------------------------------------------------------------------------
 
 TEST(AgentEnvelopeTest, CreateCancellationFields) {
-  auto env = AgentEnvelope::createCancellation("alice", "bob", "task-42", "sess-1");
+  auto env =
+      AgentEnvelope::createCancellation("alice", "bob", "task-42", "sess-1");
 
   EXPECT_EQ(env.transport_msg.sender_id, "alice");
   EXPECT_EQ(env.transport_msg.receiver_id, "bob");
@@ -85,7 +88,8 @@ TEST(AgentEnvelopeTest, CreateFailureTransportActionIsExecute) {
 // ---------------------------------------------------------------------------
 
 TEST(AgentEnvelopeTest, CreateDecompose) {
-  auto env = AgentEnvelope::create("sender", "receiver", AgentActionType::DECOMPOSE, "sess");
+  auto env = AgentEnvelope::create("sender", "receiver",
+                                   AgentActionType::DECOMPOSE, "sess");
 
   ASSERT_TRUE(env.agent_action.has_value());
   EXPECT_EQ(*env.agent_action, AgentActionType::DECOMPOSE);
@@ -97,8 +101,10 @@ TEST(AgentEnvelopeTest, CreateDecompose) {
 // ---------------------------------------------------------------------------
 
 TEST(AgentEnvelopeTest, WrapCancellationRoundTrip) {
-  // Create a cancellation envelope, extract the transport message, wrap it back.
-  auto original = AgentEnvelope::createCancellation("parent", "child", "task-99", "s1");
+  // Create a cancellation envelope, extract the transport message, wrap it
+  // back.
+  auto original =
+      AgentEnvelope::createCancellation("parent", "child", "task-99", "s1");
 
   auto decoded = AgentEnvelope::wrap(original.transport_msg);
 
@@ -118,7 +124,8 @@ TEST(AgentEnvelopeTest, WrapFailureRoundTrip) {
 }
 
 TEST(AgentEnvelopeTest, WrapDecomposeRoundTrip) {
-  auto original = AgentEnvelope::create("s", "r", AgentActionType::DECOMPOSE, "sess", "goal text");
+  auto original = AgentEnvelope::create("s", "r", AgentActionType::DECOMPOSE,
+                                        "sess", "goal text");
 
   auto decoded = AgentEnvelope::wrap(original.transport_msg);
 

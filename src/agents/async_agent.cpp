@@ -37,8 +37,7 @@ void AsyncAgent::receiveMessage(const core::KeystoneMessage& msg) {
 core::Response AsyncAgent::handleCancellation(const AgentEnvelope& envelope) {
   // Extract task_id from the agent envelope
   if (!envelope.task_id.has_value()) {
-    return core::Response::createError(envelope.transport_msg,
-                                       agent_id_,
+    return core::Response::createError(envelope.transport_msg, agent_id_,
                                        "CANCEL_TASK message missing task_id");
   }
 
@@ -48,9 +47,9 @@ core::Response AsyncAgent::handleCancellation(const AgentEnvelope& envelope) {
   requestCancellation(task_id);
 
   // Return acknowledgement
-  return core::Response::createSuccess(envelope.transport_msg,
-                                       agent_id_,
-                                       "Task " + task_id + " marked for cancellation");
+  return core::Response::createSuccess(
+      envelope.transport_msg, agent_id_,
+      "Task " + task_id + " marked for cancellation");
 }
 
 }  // namespace agents

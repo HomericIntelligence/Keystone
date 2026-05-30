@@ -16,16 +16,16 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
+#include <chrono>
+#include <thread>
+
 #include "agents/agent_action_type.hpp"
 #include "agents/agent_envelope.hpp"
 #include "agents/chief_architect_agent.hpp"
 #include "agents/task_agent.hpp"
 #include "core/message_bus.hpp"
-
-#include <chrono>
-#include <thread>
-
-#include <gtest/gtest.h>
 
 using namespace keystone::agents;
 using namespace keystone::core;
@@ -58,16 +58,16 @@ TEST(E2E_TaskCancellation, ParentCancelsChildTask) {
   const std::string task_id = "task_12345";
 
   // ACT: Parent sends cancellation request via AgentEnvelope
-  auto cancel_env = AgentEnvelope::createCancellation(chief->getAgentId(),
-                                                      task_agent->getAgentId(),
-                                                      task_id);
+  auto cancel_env = AgentEnvelope::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), task_id);
 
   // Chief sends the transport message from the envelope
   chief->sendMessage(cancel_env.transport_msg);
 
   // TaskAgent receives and processes the cancellation
   auto received_msg = task_agent->getMessage();
-  ASSERT_TRUE(received_msg.has_value()) << "TaskAgent should receive cancellation message";
+  ASSERT_TRUE(received_msg.has_value())
+      << "TaskAgent should receive cancellation message";
 
   // Verify the received message decodes as CANCEL_TASK via envelope
   auto decoded = AgentEnvelope::wrap(*received_msg);
@@ -113,9 +113,8 @@ TEST(E2E_TaskCancellation, CancelSpecificTask) {
   const std::string task3 = "task_003";
 
   // ACT: Cancel only task2
-  auto cancel_env = AgentEnvelope::createCancellation(chief->getAgentId(),
-                                                      task_agent->getAgentId(),
-                                                      task2);
+  auto cancel_env = AgentEnvelope::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), task2);
 
   chief->sendMessage(cancel_env.transport_msg);
 
@@ -146,16 +145,14 @@ TEST(E2E_TaskCancellation, CancellationHasHighPriority) {
   task_agent->setMessageBus(bus.get());
 
   // Send a LOW priority message first
-  auto low_msg = KeystoneMessage::create(chief->getAgentId(),
-                                         task_agent->getAgentId(),
-                                         "echo 'low priority'");
+  auto low_msg = KeystoneMessage::create(
+      chief->getAgentId(), task_agent->getAgentId(), "echo 'low priority'");
   low_msg.priority = Priority::LOW;
   chief->sendMessage(low_msg);
 
   // Send a HIGH priority cancellation message via AgentEnvelope
-  auto cancel_env = AgentEnvelope::createCancellation(chief->getAgentId(),
-                                                      task_agent->getAgentId(),
-                                                      "task_urgent");
+  auto cancel_env = AgentEnvelope::createCancellation(
+      chief->getAgentId(), task_agent->getAgentId(), "task_urgent");
 
   chief->sendMessage(cancel_env.transport_msg);
 
