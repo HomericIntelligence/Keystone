@@ -16,18 +16,30 @@
  * - Callback replacement semantics
  * - jsContext() returns nullptr when not connected (issue #274)
  * - jsContext() caching semantics (issue #274)
+ * - NatsTlsConfig::validate() cert/key parity when struct fields are used
+ *   (issue #518 — thread-safe env-var caching)
  *
  * Tests do NOT exercise connect() against a live NATS server because the CI
  * environment has no NATS process. The callback dispatch path is exercised via
  * the NatsConnectionTestPeer helper below.
+ *
+ * NOTE — env-var caching contract (issue #518):
+ * cachedTlsEnvVars() uses a C++20 guaranteed thread-safe static-local
+ * initialiser that reads the three KEYSTONE_NATS_TLS_* env vars exactly once
+ * per process lifetime.  Because the static fires on the first call within the
+ * test binary, tests that need to exercise the env-var override path must be
+ * run in a dedicated subprocess (see the TSan preset run in CI).  Unit tests
+ * here cover the struct-field code paths, which are fully exercisable without
+ * env-var manipulation.  The absence of data-race reports from the TSan run is
+ * the definitive oracle that the fix is correct.
  */
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 #include <atomic>
 #include <string>
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::transport;
 
@@ -39,9 +51,7 @@ class NatsConnectionTestPeer : public NatsConnection {
  public:
   using NatsConnection::NatsConnection;
 
-  void fireError() {
-    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
-  }
+  void fireError() { NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this); }
 
   void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
   void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
@@ -463,4 +473,65 @@ TEST_F(NatsJsContextTest, JsContextNullDoesNotAffectOtherMethods) {
   EXPECT_EQ(conn_.getState(), NatsConnectionState::DISCONNECTED);
   EXPECT_FALSE(conn_.isConnected());
   EXPECT_EQ(conn_.handle(), nullptr);
+}
+
+// ---------------------------------------------------------------------------
+// NatsTlsValidateStructFieldsTest — validate() with struct-field paths only
+// (issue #518 — thread-safe env-var caching via cachedTlsEnvVars())
+//
+// These tests exercise validate() when the KEYSTONE_NATS_TLS_* env vars are
+// NOT set (CI does not set them), so cachedTlsEnvVars() returns empty strings
+// and validate() falls back to struct fields.  This covers the primary
+// production code path where TLS is configured programmatically rather than
+// via the environment.
+//
+// The TSan preset run in CI is the definitive oracle that cachedTlsEnvVars()
+// is free of data races — the absence of TSan reports there confirms the fix.
+// ---------------------------------------------------------------------------
+
+class NatsTlsValidateStructFieldsTest : public ::testing::Test {};
+
+TEST_F(NatsTlsValidateStructFieldsTest, BothStructFieldsEmptyIsValid) {
+  // Assuming env vars are not set (CI guarantee), both effective paths are
+  // empty — validate() must not throw.
+  NatsTlsConfig tls;
+  EXPECT_NO_THROW(tls.validate());
+}
+
+TEST_F(NatsTlsValidateStructFieldsTest, BothStructFieldsSetIsValid) {
+  // Both cert and key provided via struct — validate() must not throw.
+  NatsTlsConfig tls;
+  tls.client_cert_path = "/path/to/cert.pem";
+  tls.client_key_path = "/path/to/key.pem";
+  EXPECT_NO_THROW(tls.validate());
+}
+
+TEST_F(NatsTlsValidateStructFieldsTest, CertStructFieldOnlyThrows) {
+  // Only cert set via struct (no env var override in CI) — validate() must
+  // throw because cert without key violates parity.
+  NatsTlsConfig tls;
+  tls.client_cert_path = "/path/to/cert.pem";
+  // client_key_path intentionally left empty
+  EXPECT_THROW(tls.validate(), std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidateStructFieldsTest, KeyStructFieldOnlyThrows) {
+  // Only key set via struct (no env var override in CI) — validate() must
+  // throw because key without cert violates parity.
+  NatsTlsConfig tls;
+  tls.client_key_path = "/path/to/key.pem";
+  // client_cert_path intentionally left empty
+  EXPECT_THROW(tls.validate(), std::invalid_argument);
+}
+
+TEST_F(NatsTlsValidateStructFieldsTest, ValidateCalledMultipleTimesIsIdempotent) {
+  // Calling validate() multiple times on a valid config must not throw and
+  // must not corrupt state.  This also exercises the static-cache path being
+  // called repeatedly — safe because cachedTlsEnvVars() returns a const ref.
+  NatsTlsConfig tls;
+  tls.client_cert_path = "/path/to/cert.pem";
+  tls.client_key_path = "/path/to/key.pem";
+  EXPECT_NO_THROW(tls.validate());
+  EXPECT_NO_THROW(tls.validate());
+  EXPECT_NO_THROW(tls.validate());
 }
