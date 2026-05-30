@@ -7,6 +7,7 @@
 
 #include <cerrno>
 #include <cstdlib>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -437,9 +438,9 @@ void NatsConnection::throwForNatsStatus(natsStatus status, const std::string& co
 // Pull-based fetch for durable consumers (rate-limiting pattern)
 // ---------------------------------------------------------------------------
 
-natsMsg* NatsConnection::fetch(std::string_view subject,
-                               std::string_view consumer_name,
-                               int64_t timeout_ms) {
+NatsMsgPtr NatsConnection::fetch(std::string_view subject,
+                                 std::string_view consumer_name,
+                                 int64_t timeout_ms) {
   jsCtx* js = jsContext();
   if (js == nullptr) {
     throw std::runtime_error("NatsConnection::fetch: not connected to NATS (jsContext is null)");
@@ -478,20 +479,21 @@ natsMsg* NatsConnection::fetch(std::string_view subject,
 
   if (s != NATS_OK) {
     // NATS_TIMEOUT is not an error in fetch semantics — it's normal when
-    // no message is available. Return nullptr instead of throwing.
+    // no message is available. Return a null NatsMsgPtr instead of throwing.
     if (s == NATS_TIMEOUT) {
-      return nullptr;
+      return NatsMsgPtr{nullptr, &natsMsg_Destroy};
     }
     throwForNatsStatus(s, "NatsConnection::fetch");
   }
 
   if (list.Count == 0 || list.Msgs == nullptr) {
-    return nullptr;
+    return NatsMsgPtr{nullptr, &natsMsg_Destroy};
   }
 
-  // Return the first (and only) message; caller takes ownership.
+  // Transfer ownership to the caller via NatsMsgPtr.  The unique_ptr destructor
+  // will call natsMsg_Destroy() automatically; the caller must NOT call it.
   // Remaining entries in list (none, since batch=1) would be destroyed here.
-  natsMsg* msg = list.Msgs[0];
+  NatsMsgPtr msg{list.Msgs[0], &natsMsg_Destroy};
   list.Msgs[0] = nullptr;
   list.Count = 0;
   natsMsgList_Destroy(&list);
