@@ -1,11 +1,12 @@
 #include "core/message_bus.hpp"
 
-#include <stdexcept>
-
 #include "agents/agent_core.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
+#include "core/message_serializer.hpp"
 #include "core/metrics.hpp"
 #include "core/subject_validator.hpp"
+
+#include <stdexcept>
 
 namespace keystone {
 namespace core {
@@ -34,8 +35,7 @@ void MessageBus::registerAgent(const std::string& agent_id,
 
   // FIX P2-10: Enforce maximum agent limit to prevent DoS
   if (agents_.size() >= Config::MAX_AGENTS) {
-    throw std::runtime_error("Maximum agent count exceeded: " +
-                             std::to_string(Config::MAX_AGENTS));
+    throw std::runtime_error("Maximum agent count exceeded: " + std::to_string(Config::MAX_AGENTS));
   }
 
   // Phase A2: Intern the agent_id string to get integer ID
@@ -68,6 +68,8 @@ bool MessageBus::routeMessage(const KeystoneMessage& msg) {
   // before making external calls (agent->receiveMessage or scheduler->submit)
   // FIX C2: Use shared_ptr to keep agent alive during async routing
   // FIX C5: Scheduler loaded atomically (no mutex needed)
+  // Issue #512: nats_publisher_ captured under its own mutex for off-host
+  // forwarding.
   // Phase A2: Use integer ID for O(1) lookup
   std::shared_ptr<agents::AgentCore> agent;
 
@@ -77,21 +79,46 @@ bool MessageBus::routeMessage(const KeystoneMessage& msg) {
     // Phase A2: Convert receiver_id string to integer ID (read-only operation)
     auto int_id = interning_.tryGetId(msg.receiver_id);
     if (!int_id) {
-      return false;  // Receiver not found (not even interned)
+      // Receiver not registered locally — forward to NATS if a publisher is
+      // set (Issue #512: TransparentBridge outbound path).
+      std::function<void(std::string_view, std::span<const std::byte>)> pub;
+      {
+        std::lock_guard<std::mutex> pub_lock(nats_publisher_mutex_);
+        pub = nats_publisher_;
+      }
+      if (pub) {
+        // Serialize the full message and publish to the per-agent subject.
+        const std::string subject = "hi.agents." + msg.receiver_id;
+        const std::vector<uint8_t> bytes = MessageSerializer::serialize(msg);
+        const auto* byte_ptr = reinterpret_cast<const std::byte*>(bytes.data());
+        pub(subject, std::span<const std::byte>(byte_ptr, bytes.size()));
+      }
+      return false;  // Receiver not found locally
     }
 
     // Lookup agent using integer ID (O(1) integer hash vs O(log n) string
     // compare)
     auto it = agents_.find(*int_id);
     if (it == agents_.end()) {
+      // Agent interned but not registered — same off-host forwarding path.
+      std::function<void(std::string_view, std::span<const std::byte>)> pub;
+      {
+        std::lock_guard<std::mutex> pub_lock(nats_publisher_mutex_);
+        pub = nats_publisher_;
+      }
+      if (pub) {
+        const std::string subject = "hi.agents." + msg.receiver_id;
+        const std::vector<uint8_t> bytes = MessageSerializer::serialize(msg);
+        const auto* byte_ptr = reinterpret_cast<const std::byte*>(bytes.data());
+        pub(subject, std::span<const std::byte>(byte_ptr, bytes.size()));
+      }
       return false;  // Receiver not found
     }
     agent = it->second;  // Ref count incremented - agent kept alive
   }  // ✅ Lock released before external calls
 
   // Load scheduler atomically (thread-safe)
-  concurrency::WorkStealingScheduler* sched =
-      scheduler_.load(std::memory_order_acquire);
+  concurrency::WorkStealingScheduler* sched = scheduler_.load(std::memory_order_acquire);
 
   // Record message sent to metrics for tracking
   Metrics::getInstance().recordMessageSent(msg.msg_id, msg.priority);
@@ -138,15 +165,12 @@ std::vector<std::string> MessageBus::listAgents() const {
 }
 
 void MessageBus::setNatsPublisher(
-    std::function<void(std::string_view subject,
-                       std::span<const std::byte> payload)>
-        publisher) {
+    std::function<void(std::string_view subject, std::span<const std::byte> payload)> publisher) {
   std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
   nats_publisher_ = std::move(publisher);
 }
 
-std::function<void(std::string_view subject,
-                   std::span<const std::byte> payload)>
+std::function<void(std::string_view subject, std::span<const std::byte> payload)>
 MessageBus::getNatsPublisher() const {
   std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
   return nats_publisher_;
