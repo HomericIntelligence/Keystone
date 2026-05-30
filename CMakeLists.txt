@@ -575,6 +575,10 @@ target_include_directories(
   keystone_transport PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE}
                             ${fmt_INCLUDE_DIRS_RELEASE})
 
+# Daemon — production service binary (issue #513)
+# Must come after keystone_core and keystone_transport are defined.
+add_subdirectory(src/daemon)
+
 # Unit Tests — NATS transport (issue #122)
 add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
 
