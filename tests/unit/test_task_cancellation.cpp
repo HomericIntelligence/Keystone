@@ -14,19 +14,20 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "agents/async_agent.hpp"
 #include "concurrency/task.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone::core;
 using namespace keystone::agents;
 
 // Minimal concrete AsyncAgent for testing cancellation transport primitives.
 // TaskAgent was extracted to ProjectAgamemnon per ADR-015; tests use this
-// stub which implements only the processMessage() contract required by AsyncAgent.
+// stub which implements only the processMessage() contract required by
+// AsyncAgent.
 class StubAsyncAgent : public keystone::agents::AsyncAgent {
  public:
   explicit StubAsyncAgent(const std::string& id) : AsyncAgent(id) {}
@@ -64,7 +65,8 @@ TEST(TaskCancellation, CreateCancellationMessage) {
  * @brief Test: Create cancellation message with custom session
  */
 TEST(TaskCancellation, CreateCancellationMessageWithSession) {
-  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_456", "session_xyz");
+  auto msg = KeystoneMessage::createCancellation("parent", "child", "task_456",
+                                                 "session_xyz");
 
   EXPECT_EQ(msg.sender_id, "parent");
   EXPECT_EQ(msg.receiver_id, "child");
@@ -138,7 +140,8 @@ TEST(TaskCancellation, MessageBusRoutesCancellation) {
   child->setMessageBus(&bus);
 
   // Parent sends cancellation to child
-  auto cancel_msg = KeystoneMessage::createCancellation("parent", "child", "task_xyz");
+  auto cancel_msg =
+      KeystoneMessage::createCancellation("parent", "child", "task_xyz");
   EXPECT_TRUE(bus.routeMessage(cancel_msg));
 
   // Child should receive the cancellation message
@@ -154,7 +157,8 @@ TEST(TaskCancellation, MessageBusRoutesCancellation) {
  * @brief Test: Cancellation message has HIGH priority
  */
 TEST(TaskCancellation, CancellationHasHighPriority) {
-  auto msg = KeystoneMessage::createCancellation("sender", "receiver", "task_1");
+  auto msg =
+      KeystoneMessage::createCancellation("sender", "receiver", "task_1");
   EXPECT_EQ(msg.priority, Priority::HIGH);
 }
 
@@ -165,7 +169,8 @@ TEST(TaskCancellation, AsyncAgentHandlesCancellation) {
   auto agent = std::make_shared<StubAsyncAgent>("test_agent");
 
   // Create cancellation message
-  auto cancel_msg = KeystoneMessage::createCancellation("parent", "test_agent", "task_abc");
+  auto cancel_msg =
+      KeystoneMessage::createCancellation("parent", "test_agent", "task_abc");
 
   // Initially not cancelled
   EXPECT_FALSE(agent->isCancelled("task_abc"));

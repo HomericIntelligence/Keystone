@@ -12,14 +12,14 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "agents/agent_core.hpp"
 #include "core/i_agent_registry.hpp"
 #include "core/i_message_router.hpp"
 #include "core/i_scheduler_integration.hpp"
 #include "core/message_bus.hpp"
 #include "test_utilities.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone;
 using namespace keystone::core;

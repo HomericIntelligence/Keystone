@@ -22,11 +22,11 @@
 
 #pragma once
 
+#include <nats.h>
+
 #include <atomic>
 #include <string>
 #include <thread>
-
-#include <nats.h>
 
 // Forward declarations — avoid pulling in full nats.h types in callers.
 namespace keystone {
@@ -64,9 +64,9 @@ struct BridgeConfig {
  * After attach() is called the bridge:
  * 1. Registers an outbound NATS publisher with MessageBus so that messages for
  *    unregistered (off-host) agents are serialized and published automatically.
- * 2. Starts an inbound pull loop that subscribes to BridgeConfig::inbound_subject,
- *    deserializes each payload, and routes the resulting KeystoneMessage into
- *    the local MessageBus.
+ * 2. Starts an inbound pull loop that subscribes to
+ * BridgeConfig::inbound_subject, deserializes each payload, and routes the
+ * resulting KeystoneMessage into the local MessageBus.
  *
  * No component needs to know whether its peer is local or remote.
  */
@@ -77,7 +77,8 @@ class TransparentBridge {
    * @param conn NATS connection.  Must outlive this object.
    * @param cfg  Optional configuration override.
    */
-  TransparentBridge(core::MessageBus& bus, NatsConnection& conn, BridgeConfig cfg = {});
+  TransparentBridge(core::MessageBus& bus, NatsConnection& conn,
+                    BridgeConfig cfg = {});
 
   ~TransparentBridge();
 

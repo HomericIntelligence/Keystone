@@ -11,13 +11,13 @@
  * which provides all three interfaces in a single class.
  */
 
-#include "agents/agent_core.hpp"
-#include "core/message_bus.hpp"
+#include <gtest/gtest.h>
 
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "agents/agent_core.hpp"
+#include "core/message_bus.hpp"
 
 using namespace keystone::core;
 using namespace keystone::agents;
@@ -50,7 +50,8 @@ TEST(MessageBus, RegisterDuplicateAgentThrows) {
   auto agent2 = std::make_shared<StubAgent>("test_1");  // Same ID
 
   bus.registerAgent(agent1->getAgentId(), agent1);
-  EXPECT_THROW(bus.registerAgent(agent2->getAgentId(), agent2), std::runtime_error);
+  EXPECT_THROW(bus.registerAgent(agent2->getAgentId(), agent2),
+               std::runtime_error);
 }
 
 /**
@@ -128,9 +129,12 @@ TEST(MessageBus, ListAgents) {
 
   auto agents = bus.listAgents();
   EXPECT_EQ(agents.size(), 3u);
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_1") != agents.end());
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_2") != agents.end());
-  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_3") != agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_1") !=
+              agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_2") !=
+              agents.end());
+  EXPECT_TRUE(std::find(agents.begin(), agents.end(), "agent_3") !=
+              agents.end());
 }
 
 /**
@@ -148,8 +152,9 @@ TEST(MessageBus, ThreadSafetyConcurrentRegistration) {
   // Concurrent registration
   std::vector<std::thread> threads;
   for (int32_t i = 0; i < 10; ++i) {
-    threads.emplace_back(
-        [&bus, &agents, i]() { bus.registerAgent(agents[i]->getAgentId(), agents[i]); });
+    threads.emplace_back([&bus, &agents, i]() {
+      bus.registerAgent(agents[i]->getAgentId(), agents[i]);
+    });
   }
 
   for (auto& thread : threads) {
@@ -183,7 +188,8 @@ TEST(MessageBus, ThreadSafetyConcurrentRouting) {
   for (int32_t i = 0; i < 10; ++i) {
     threads.emplace_back([&bus, i]() {
       for (int32_t j = 0; j < 100; ++j) {
-        auto msg = KeystoneMessage::create("sender", "agent_" + std::to_string(i), "test");
+        auto msg = KeystoneMessage::create(
+            "sender", "agent_" + std::to_string(i), "test");
         bus.routeMessage(msg);
       }
     });

@@ -424,13 +424,8 @@ if(ENABLE_GRPC)
   target_sources(unit_tests PRIVATE tests/fixtures/grpc_test_fixture.cpp
                                     tests/unit/test_grpc_tls.cpp)
   target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
-  target_link_libraries(
-    unit_tests
-    keystone_core
-    keystone_concurrency
-    keystone_network
-    keystone_transport
-    GTest::gtest_main)
+  target_link_libraries(unit_tests keystone_core keystone_concurrency
+                        keystone_network keystone_transport GTest::gtest_main)
 else()
   target_link_libraries(unit_tests keystone_core keystone_concurrency
                         keystone_transport GTest::gtest_main)
@@ -493,9 +488,10 @@ gtest_discover_tests(simulation_unit_tests)
 # Transport library — NATS connection with TLS support (issue #122),
 # NATSListener pull-based fetch loop (issues #178, #205, #307), and
 # TransparentBridge automatic off-host forwarding (issue #512).
-add_library(keystone_transport src/transport/nats_connection.cpp
-                               src/network/nats_listener.cpp
-                               src/transport/transparent_bridge.cpp)
+add_library(
+  keystone_transport
+  src/transport/nats_connection.cpp src/network/nats_listener.cpp
+  src/transport/transparent_bridge.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -509,8 +505,8 @@ target_include_directories(
   keystone_transport PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE}
                             ${fmt_INCLUDE_DIRS_RELEASE})
 
-# Daemon — production service binary (issue #513)
-# Must come after keystone_core and keystone_transport are defined.
+# Daemon — production service binary (issue #513) Must come after keystone_core
+# and keystone_transport are defined.
 add_subdirectory(src/daemon)
 
 # Unit Tests — NATS transport (issue #122)
@@ -521,8 +517,8 @@ target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 gtest_discover_tests(transport_unit_tests)
 
 # registry_integration_tests removed per ADR-015: used ChiefArchitectAgent /
-# TaskAgent as fixtures; source file deleted.
-# bridge_unit_tests removed per ADR-015: keystone_agents library removed
+# TaskAgent as fixtures; source file deleted. bridge_unit_tests removed per
+# ADR-015: keystone_agents library removed
 
 # Integration Tests (NATS: #178, #205, #307)
 add_executable(nats_integration_tests
@@ -626,8 +622,8 @@ target_link_libraries(scheduler_backoff_benchmarks keystone_concurrency
 # message_bus_performance_benchmarks removed per ADR-015: used TaskAgent as a
 # fixture; source file benchmarks/message_bus_performance.cpp deleted.
 
-# hmas_load_test removed per ADR-015: tested the full HMAS 4-layer hierarchy
-# now in ProjectAgamemnon.  Source file tests/load/hmas_load_test.cpp deleted.
+# hmas_load_test removed per ADR-015: tested the full HMAS 4-layer hierarchy now
+# in ProjectAgamemnon.  Source file tests/load/hmas_load_test.cpp deleted.
 
 # Phase 9.2: Fuzz testing targets (requires -DENABLE_FUZZING=ON
 # -DCMAKE_CXX_COMPILER=clang++)
@@ -676,9 +672,9 @@ endif()
 # =====================================================================
 include(GNUInstallDirs)
 
-# Install runtime libraries (keystone package)
-# keystone_agents removed per ADR-015: agent hierarchy extracted to
-# ProjectAgamemnon. AgentCore/AsyncAgent are now compiled into keystone_core.
+# Install runtime libraries (keystone package) keystone_agents removed per
+# ADR-015: agent hierarchy extracted to ProjectAgamemnon. AgentCore/AsyncAgent
+# are now compiled into keystone_core.
 install(
   TARGETS keystone_core keystone_concurrency keystone_simulation
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone
@@ -758,15 +754,12 @@ install(
   PATTERN "*.pdf"
   PATTERN "issues" EXCLUDE)
 
-# Install test executables (keystone-test package)
-# Note: basic_delegation_tests, module_coordination_tests,
-#       component_coordination_tests, async_delegation_tests, and
-#       registry_integration_tests removed per ADR-015 (agent hierarchy
-#       extracted to ProjectAgamemnon).
+# Install test executables (keystone-test package) Note: basic_delegation_tests,
+# module_coordination_tests, component_coordination_tests,
+# async_delegation_tests, and registry_integration_tests removed per ADR-015
+# (agent hierarchy extracted to ProjectAgamemnon).
 install(
-  TARGETS distributed_hierarchy_tests
-          unit_tests
-          concurrency_unit_tests
+  TARGETS distributed_hierarchy_tests unit_tests concurrency_unit_tests
           simulation_unit_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests COMPONENT keystone-test)
 

@@ -5,7 +5,7 @@
 > **Note**: The 4-layer HMAS hierarchy (ChiefArchitectAgent → ComponentLeadAgent →
 > ModuleLeadAgent → TaskAgent) was extracted from this repository and merged into
 > **ProjectAgamemnon** per ADR-015. ProjectKeystone retains only transport primitives.
-
+>
 > ✅ **All installation, build, and test steps are validated in CI/CD.**
 > See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
