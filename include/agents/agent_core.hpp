@@ -10,6 +10,7 @@
 #include "concurrentqueue.h"
 #include "core/config.hpp"  // FIX m3: Centralized configuration
 #include "core/message.hpp"
+#include "core/message_sink.hpp"  // Transport-facing sink interface
 
 namespace keystone {
 
@@ -41,7 +42,7 @@ namespace agents {
  * Phase C Enhancement: Uses lock-free concurrent queue for inbox
  * to eliminate contention under high message load.
  */
-class AgentCore {
+class AgentCore : public core::IMessageSink {
  public:
   /**
    * @brief Construct a new Agent Core
@@ -67,7 +68,7 @@ class AgentCore {
    *
    * @param msg Message to receive
    */
-  virtual void receiveMessage(const core::KeystoneMessage& msg);
+  void receiveMessage(const core::KeystoneMessage& msg) override;
 
   /**
    * @brief Get the next message from inbox

@@ -1,17 +1,11 @@
 #pragma once
 
+#include <concepts>
 #include <memory>
 #include <string>
 #include <vector>
 
-// Forward declarations
-namespace keystone {
-namespace agents {
-class AgentCore;
-}
-}  // namespace keystone
-
-#include "agents/concepts.hpp"
+#include "core/message_sink.hpp"
 
 namespace keystone {
 namespace core {
@@ -46,7 +40,7 @@ class IAgentRegistry {
    * @throws std::runtime_error if agent_id already registered
    */
   virtual void registerAgent(const std::string& agent_id,
-                             std::shared_ptr<agents::AgentCore> agent) = 0;
+                             std::shared_ptr<IMessageSink> agent) = 0;
 
   /**
    * @brief Register an agent with compile-time interface verification
@@ -54,11 +48,16 @@ class IAgentRegistry {
    * Template method using C++20 concepts to verify at compile time
    * that the agent implements the required Agent interface.
    *
-   * @tparam A Agent type satisfying the Agent concept
+   * @tparam A Agent type exposing getAgentId() and convertible to IMessageSink
    * @param agent Shared pointer to the agent
    * @throws std::runtime_error if agent_id already registered
    */
-  template <agents::Agent A>
+  template <typename A>
+    requires requires(const A& a) {
+      { a.getAgentId() } -> std::convertible_to<std::string>;
+      requires std::convertible_to<std::shared_ptr<A>,
+                                   std::shared_ptr<IMessageSink>>;
+    }
   void registerAgent(std::shared_ptr<A> agent) {
     if (!agent) {
       throw std::runtime_error(
@@ -66,8 +65,8 @@ class IAgentRegistry {
     }
 
     std::string agent_id = agent->getAgentId();
-    std::shared_ptr<agents::AgentCore> base_agent = agent;
-    registerAgent(agent_id, base_agent);
+    std::shared_ptr<IMessageSink> sink = agent;
+    registerAgent(agent_id, sink);
   }
 
   /**
