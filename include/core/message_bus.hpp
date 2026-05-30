@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -15,21 +16,14 @@
 #include "i_message_router.hpp"
 #include "i_scheduler_integration.hpp"
 #include "message.hpp"
+#include "message_sink.hpp"
 
 // Forward declarations (must be outside namespace keystone to avoid nesting)
-namespace keystone {
-namespace agents {
-class AgentCore;
-}
-}  // namespace keystone
 namespace keystone {
 namespace concurrency {
 class WorkStealingScheduler;
 }
 }  // namespace keystone
-
-// Include concepts for compile-time agent interface verification
-#include "agents/concepts.hpp"
 
 namespace keystone {
 namespace core {
@@ -99,7 +93,7 @@ class MessageBus : public IAgentRegistry,
    * @throws std::runtime_error if agent_id already registered
    */
   void registerAgent(const std::string& agent_id,
-                     std::shared_ptr<agents::AgentCore> agent) override;
+                     std::shared_ptr<IMessageSink> agent) override;
 
   /**
    * @brief Register an agent with compile-time interface verification (Issue
@@ -124,11 +118,16 @@ class MessageBus : public IAgentRegistry,
    * bus.registerAgent(agent);  // Compile error if interface incomplete
    * @endcode
    *
-   * @tparam A Agent type satisfying the Agent concept
+   * @tparam A Agent type exposing getAgentId() and convertible to IMessageSink
    * @param agent Shared pointer to the agent
    * @throws std::runtime_error if agent_id already registered
    */
-  template <agents::Agent A>
+  template <typename A>
+    requires requires(const A& a) {
+      { a.getAgentId() } -> std::convertible_to<std::string>;
+      requires std::convertible_to<std::shared_ptr<A>,
+                                   std::shared_ptr<IMessageSink>>;
+    }
   void registerAgent(std::shared_ptr<A> agent) {
     if (!agent) {
       throw std::runtime_error("MessageBus::registerAgent: null agent pointer");
@@ -137,11 +136,11 @@ class MessageBus : public IAgentRegistry,
     // Use the agent's ID
     std::string agent_id = agent->getAgentId();
 
-    // Convert to AgentCore pointer for storage
-    std::shared_ptr<agents::AgentCore> base_agent = agent;
+    // Upcast to the transport-facing sink interface for storage.
+    std::shared_ptr<IMessageSink> sink = agent;
 
     // Delegate to the existing implementation
-    registerAgent(agent_id, base_agent);
+    registerAgent(agent_id, sink);
   }
 
   /**
@@ -220,7 +219,7 @@ class MessageBus : public IAgentRegistry,
 
   // FIX C2: Use shared_ptr for safe lifetime management in async scenarios
   // Phase A2: Registry now uses integer IDs (interned from string IDs)
-  std::unordered_map<uint32_t, std::shared_ptr<agents::AgentCore>> agents_;
+  std::unordered_map<uint32_t, std::shared_ptr<IMessageSink>> agents_;
 
   // FIX C5: Atomic scheduler pointer for thread-safe access without
   // registry_mutex

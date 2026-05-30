@@ -1,6 +1,5 @@
 #include "core/message_bus.hpp"
 
-#include "agents/agent_core.hpp"
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message_serializer.hpp"
 #include "core/metrics.hpp"
@@ -22,7 +21,7 @@ concurrency::WorkStealingScheduler* MessageBus::getScheduler() const {
 }
 
 void MessageBus::registerAgent(const std::string& agent_id,
-                               std::shared_ptr<agents::AgentCore> agent) {
+                               std::shared_ptr<IMessageSink> agent) {
   // FIX C2: Use shared_ptr for safe lifetime management
   if (!agent) {
     throw std::invalid_argument("Cannot register null agent");
@@ -71,7 +70,7 @@ bool MessageBus::routeMessage(const KeystoneMessage& msg) {
   // Issue #512: nats_publisher_ captured under its own mutex for off-host
   // forwarding.
   // Phase A2: Use integer ID for O(1) lookup
-  std::shared_ptr<agents::AgentCore> agent;
+  std::shared_ptr<IMessageSink> agent;
 
   {
     std::lock_guard<std::mutex> lock(registry_mutex_);

@@ -16,7 +16,8 @@ namespace keystone::test {
 class MockAgentRegistry : public core::IAgentRegistry {
  public:
   MOCK_METHOD(void, registerAgent,
-              (const std::string& id, std::shared_ptr<agents::AgentCore> agent),
+              (const std::string& id,
+               std::shared_ptr<core::IMessageSink> agent),
               (override));
   MOCK_METHOD(void, unregisterAgent, (const std::string& id), (override));
   MOCK_METHOD(bool, hasAgent, (const std::string& id), (const, override));
