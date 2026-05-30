@@ -1,5 +1,5 @@
-from conan import ConanFile
-from conan.tools.cmake import CMakeToolchain, CMakeDeps
+from conan import ConanFile  # type: ignore
+from conan.tools.cmake import CMakeToolchain, CMakeDeps  # type: ignore
 
 
 class ProjectKeystoneConan(ConanFile):
@@ -13,7 +13,7 @@ class ProjectKeystoneConan(ConanFile):
         self.requires("spdlog/1.12.0")
         self.requires("concurrentqueue/1.0.4")
         self.requires("cnats/3.12.0")
-        if self.options.with_grpc:
+        if self.options.with_grpc:  # type: ignore
             self.requires("yaml-cpp/0.8.0")
 
     def build_requirements(self) -> None:
