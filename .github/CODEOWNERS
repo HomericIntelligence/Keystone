@@ -1,4 +1,4 @@
-# CODEOWNERS for ProjectKeystone HMAS
+# CODEOWNERS for ProjectKeystone (pure C++20 transport library)
 # See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
 # ============================================================================
@@ -60,28 +60,19 @@ include/concurrency/ @mvillmow
 src/concurrency/ @mvillmow
 
 # ============================================================================
-# Agent Hierarchy
+# Transport Layer
 # ============================================================================
+# The C++ agent hierarchy was extracted to ProjectAgamemnon (ADR-015) and the
+# Python orchestration to ProjectAgamemnon (ADR-016). Keystone is now a pure
+# C++20 transport library.
 
-# Base agent interface - affects all agent implementations
-include/agents/base_agent.hpp @mvillmow
-src/agents/base_agent.cpp @mvillmow
+# NATS transport + transparent off-host bridge
+include/transport/ @mvillmow
+src/transport/ @mvillmow
 
-# Level 0: ChiefArchitect (strategic decisions)
-include/agents/chief_architect_agent.hpp @mvillmow
-src/agents/chief_architect_agent.cpp @mvillmow
-
-# Level 1: ComponentLead (component coordination)
-include/agents/component_lead_agent.hpp @mvillmow
-src/agents/component_lead_agent.cpp @mvillmow
-
-# Level 2: ModuleLead (module design)
-include/agents/module_lead_agent.hpp @mvillmow
-src/agents/module_lead_agent.cpp @mvillmow
-
-# Level 3: TaskAgent (concrete execution)
-include/agents/task_agent.hpp @mvillmow
-src/agents/task_agent.cpp @mvillmow
+# NATS listener
+include/network/ @mvillmow
+src/network/ @mvillmow
 
 # ============================================================================
 # Testing Infrastructure

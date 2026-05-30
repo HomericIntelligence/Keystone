@@ -113,8 +113,8 @@ jobs:
 
   # ============================================================
   # 1. lint
-  #    clang-format, ruff, pre-commit, CMake cycle check,
-  #    cppcheck, clang-tidy, mypy
+  #    clang-format, pre-commit, CMake cycle check,
+  #    cppcheck, clang-tidy, mypy (conanfile.py)
   # ============================================================
   lint:
     name: lint
@@ -136,11 +136,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Python linters
-        run: pip install "ruff>=0.1,<1" "mypy>=1.8.0,<2" "conan>=2.0.0"
-
-      - name: Ruff lint (Python)
-        run: ruff check src/ tests/
+      # Keystone is a pure C++20 transport library (ADR-015/016): the agent
+      # layer and Python orchestration were extracted to ProjectAgamemnon.
+      # The only remaining Python is conanfile.py (C++ Conan recipe), so we
+      # install mypy (to typecheck it) and conan, but no longer ruff.
+      - name: Install Python tooling (conan + mypy for conanfile.py)
+        run: pip install "mypy>=1.8.0,<2" "conan>=2.0.0"
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
@@ -394,7 +395,7 @@ jobs:
 
   # ============================================================
   # 2. unit-tests
-  #    C++ unit tests + Python pytest
+  #    C++ unit tests (ctest)
   # ============================================================
   unit-tests:
     name: unit-tests
@@ -450,26 +451,9 @@ jobs:
         if: always()
         run: sccache --show-stats
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dev dependencies
-        run: pip install -e ".[dev]"
-
-      - name: Run Python unit tests
-        run: pytest tests/ --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q
-        timeout-minutes: 10
-
-      - name: Upload Python coverage XML
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: python-coverage
-          path: coverage.xml
-          retention-days: 14
-          if-no-files-found: ignore
+      # Python unit tests removed: the Python orchestration package was
+      # extracted to ProjectAgamemnon per ADR-016. Keystone is now a pure
+      # C++20 transport library and CI runs only the C++ ctest suite.
 
       - name: Upload C++ test logs
         if: failure()
@@ -656,23 +640,19 @@ jobs:
           conan_m = re.search(r'version\s*=\s*["\']([^"\']+)["\']', conan_text)
           conan_ver = conan_m.group(1) if conan_m else None
 
-          with open(root / "pyproject.toml", "rb") as fh:
-              pyproject = tomllib.load(fh)
-          pyproject_ver = pyproject.get("project", {}).get("version")
-
+          # pyproject.toml was removed (ADR-016: Python orchestration extracted
+          # to ProjectAgamemnon). Version sync now spans the C++/build files only.
           with open(root / "pixi.toml", "rb") as fh:
               pixi = tomllib.load(fh)
           pixi_ver = pixi.get("project", {}).get("version")
 
           print(f"CMakeLists.txt : {cmake_ver}")
           print(f"conanfile.py   : {conan_ver}")
-          print(f"pyproject.toml : {pyproject_ver}")
           print(f"pixi.toml      : {pixi_ver}")
 
           versions = {
               "CMakeLists.txt": cmake_ver,
               "conanfile.py":   conan_ver,
-              "pyproject.toml": pyproject_ver,
               "pixi.toml":      pixi_ver,
           }
 
@@ -704,34 +684,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install pip-audit
-        run: pip install pip-audit
-
-      - name: Python dependency audit (pip-audit)
-        run: |
-          set -euo pipefail
-          # pip-audit --strict exits non-zero on any finding — fail-fast per
-          # docs/runbooks/no-silent-failures.md (Bucket F). If a finding is
-          # genuinely unfixable, add it to a `--ignore-vuln` allowlist with an
-          # inline comment naming the tracking issue and planned fix date.
-          #
-          # Auditing the project path directly resolves pyproject.toml's
-          # production dependency closure without installing the project
-          # itself. This avoids the editable-distribution edge case in
-          # pip-audit 2.10+ where `--strict --skip-editable` errors with
-          # "distribution marked as editable" because projectkeystone is
-          # installed via `pip install -e` but is intentionally absent from
-          # PyPI (Keystone is a C++20 library; pyproject.toml exists only
-          # for dev/test tooling).
-          #
-          # Dev extras (mypy, conan, pytest, ...) are tools, not shipped
-          # code, and are intentionally out of scope here.
-          pip-audit --strict .
+      # pip-audit removed: Keystone has no Python runtime dependencies after the
+      # ADR-016 Python orchestration extraction to ProjectAgamemnon (pyproject
+      # and all pypi-dependencies were deleted). The Trivy filesystem scan below
+      # covers the C++ dependency surface; Python dependency auditing now lives
+      # in ProjectAgamemnon.
 
       - name: Run Trivy filesystem scan (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0

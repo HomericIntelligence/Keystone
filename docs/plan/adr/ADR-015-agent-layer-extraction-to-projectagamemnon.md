@@ -1,6 +1,6 @@
 # ADR-015: Agent Layer Extraction to ProjectAgamemnon
 
-**Status**: Accepted
+**Status**: Implemented
 **Date**: 2026-03-28
 **Deciders**: ProjectKeystone Development Team
 **Tags**: architecture, extraction, agent-hierarchy, transport, projectagamemnon, decoupling
