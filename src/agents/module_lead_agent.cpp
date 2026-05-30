@@ -37,12 +37,11 @@ void ModuleLeadAgent::setAvailableTaskAgents(
 
 bool ModuleLeadAgent::isSubordinateResult(const core::KeystoneMessage& msg) {
   // Exclude TASK_FAILED so processSubordinateFailure() handles it instead
-  _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  bool result = msg.command == "response" &&
-                msg.action_type != core::ActionType::TASK_FAILED;
-  _Pragma("GCC diagnostic pop")
-  return result;
+  _Pragma("GCC diagnostic push") _Pragma(
+      "GCC diagnostic ignored \"-Wdeprecated-declarations\"") bool result =
+      msg.command == "response" &&
+      msg.action_type != core::ActionType::TASK_FAILED;
+  _Pragma("GCC diagnostic pop") return result;
 }
 
 std::vector<std::string> ModuleLeadAgent::decomposeGoal(

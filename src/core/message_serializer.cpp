@@ -29,14 +29,15 @@ SerializableMessage SerializableMessage::fromKeystoneMessage(
   }
 
   _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  smsg.command = cista::offset::string{msg.command.c_str()};
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          smsg.command = cista::offset::string{msg.command.c_str()};
   _Pragma("GCC diagnostic pop")
 
-  if (msg.payload.has_value()) {
+      if (msg.payload.has_value()) {
     smsg.payload = cista::offset::string{msg.payload.value().c_str()};
     smsg.has_payload = true;
-  } else {
+  }
+  else {
     smsg.payload = cista::offset::string{""};
     smsg.has_payload = false;
   }
@@ -77,13 +78,14 @@ KeystoneMessage SerializableMessage::toKeystoneMessage() const {
   }
 
   _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  msg.command = std::string{command.data(), command.size()};
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          msg.command = std::string{command.data(), command.size()};
   _Pragma("GCC diagnostic pop")
 
-  if (has_payload) {
+      if (has_payload) {
     msg.payload = std::string{payload.data(), payload.size()};
-  } else {
+  }
+  else {
     msg.payload = std::nullopt;
   }
 

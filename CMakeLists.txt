@@ -561,9 +561,10 @@ gtest_discover_tests(simulation_unit_tests)
 # Transport library — NATS connection with TLS support (issue #122),
 # NATSListener pull-based fetch loop (issues #178, #205, #307), and
 # TransparentBridge automatic off-host forwarding (issue #512).
-add_library(keystone_transport src/transport/nats_connection.cpp
-                               src/network/nats_listener.cpp
-                               src/transport/transparent_bridge.cpp)
+add_library(
+  keystone_transport
+  src/transport/nats_connection.cpp src/network/nats_listener.cpp
+  src/transport/transparent_bridge.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -577,8 +578,8 @@ target_include_directories(
   keystone_transport PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE}
                             ${fmt_INCLUDE_DIRS_RELEASE})
 
-# Daemon — production service binary (issue #513)
-# Must come after keystone_core and keystone_transport are defined.
+# Daemon — production service binary (issue #513) Must come after keystone_core
+# and keystone_transport are defined.
 add_subdirectory(src/daemon)
 
 # Unit Tests — NATS transport (issue #122)
