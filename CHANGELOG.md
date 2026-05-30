@@ -47,7 +47,7 @@ complete before worker threads exit (#303)
 
 - Remove duplicate clang-format step from lint job; pre-commit hook (mirrors-clang-format v18.1.0) is the single source
 of truth for C++ formatting checks
-- License replaced from MIT placeholder to BSD 3-Clause
+- License file updated to BSD 3-Clause (replacing MIT placeholder)
 - Unsized integers converted to sized types (`int32_t`, `uint32_t`, `size_t`)
 - `CONTRIBUTING.md` rewritten to match current C++20/Conan/just workflow
 - `pixi.toml` and `justfile` aligned with ecosystem conventions
