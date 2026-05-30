@@ -489,16 +489,19 @@ target_link_libraries(simulation_unit_tests keystone_simulation
 
 gtest_discover_tests(simulation_unit_tests)
 
-# Transport library — NATS connection with TLS support (issue #122) and
-# NATSListener pull-based fetch loop (issues #178, #205, #307)
+# Transport library — NATS connection with TLS support (issue #122),
+# NATSListener pull-based fetch loop (issues #178, #205, #307), and
+# TransparentBridge automatic off-host forwarding (issue #512).
 add_library(keystone_transport src/transport/nats_connection.cpp
-                               src/network/nats_listener.cpp)
+                               src/network/nats_listener.cpp
+                               src/transport/transparent_bridge.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                             $<INSTALL_INTERFACE:include/keystone>)
 
-target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt)
+target_link_libraries(keystone_transport PUBLIC nats spdlog::spdlog fmt::fmt
+                                                keystone_core)
 
 # Explicitly add spdlog and fmt include directories for Conan packages
 target_include_directories(
@@ -518,6 +521,7 @@ gtest_discover_tests(transport_unit_tests)
 
 # registry_integration_tests removed per ADR-015: used ChiefArchitectAgent /
 # TaskAgent as fixtures; source file deleted.
+# bridge_unit_tests removed per ADR-015: keystone_agents library removed
 
 # Integration Tests (NATS: #178, #205, #307)
 add_executable(nats_integration_tests
