@@ -438,6 +438,7 @@ endif()
 add_executable(
   unit_tests
   tests/unit/test_message_bus.cpp
+  tests/unit/test_message_sink.cpp # Part A: transport decoupled from agents
   tests/unit/test_message_serializer.cpp
   # DISABLED: Async API not yet implemented
   # tests/unit/test_message_bus_async.cpp

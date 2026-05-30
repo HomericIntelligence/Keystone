@@ -13,9 +13,6 @@
 
 // Forward declarations
 namespace keystone {
-namespace agents {
-class AgentCore;
-}
 namespace concurrency {
 class WorkStealingScheduler;
 }
@@ -36,7 +33,7 @@ class MockAgentRegistry : public core::IAgentRegistry {
 
   MOCK_METHOD(void, registerAgent,
               (const std::string& agent_id,
-               std::shared_ptr<agents::AgentCore> agent),
+               std::shared_ptr<core::IMessageSink> agent),
               (override));
 
   MOCK_METHOD(void, unregisterAgent, (const std::string& agent_id), (override));
@@ -95,7 +92,7 @@ class MockMessageBus : public core::IAgentRegistry,
   // IAgentRegistry interface
   MOCK_METHOD(void, registerAgent,
               (const std::string& agent_id,
-               std::shared_ptr<agents::AgentCore> agent),
+               std::shared_ptr<core::IMessageSink> agent),
               (override));
 
   MOCK_METHOD(void, unregisterAgent, (const std::string& agent_id), (override));
