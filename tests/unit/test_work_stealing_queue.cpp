@@ -223,7 +223,7 @@ TEST(WorkStealingQueueTest, FIFOStealSemantics) {
 
   // Owner pushes items in order 1, 2, 3, 4, 5
   for (int i = 1; i <= 5; ++i) {
-    auto item = WorkItem::makeFunction([i]() {
+    auto item = WorkItem::makeFunction([]() {
       // No-op
     });
     queue.push(std::move(item));
