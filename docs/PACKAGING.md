@@ -572,7 +572,7 @@ If LICENSE file is missing:
 
 ```bash
 touch LICENSE
-echo "MIT License" > LICENSE
+echo "BSD 3-Clause License" > LICENSE
 cpack
 ```
 

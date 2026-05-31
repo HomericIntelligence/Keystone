@@ -37,6 +37,13 @@ complete before worker threads exit (#303)
 - Remove duplicate clang-format step from lint job; pre-commit hook (mirrors-clang-format v18.1.0) is the single source
 of truth for C++ formatting checks
 - License file updated to BSD 3-Clause (replacing MIT placeholder)
+- Audit remediation: corrected the remaining MIT license references (README badge and license section,
+`CPACK_RPM_PACKAGE_LICENSE`, `docs/PACKAGING.md` example) to BSD-3-Clause so advertised licensing matches the
+actual `LICENSE` file (#504)
+- Audit remediation: `Containerfile` test stage now ships the transport/concurrency smoke tests
+(`transport_unit_tests`, `bridge_unit_tests`, `concurrency_unit_tests`) instead of the removed agent
+delegation/coordination e2e binaries — the agent hierarchy and Python orchestration were already extracted to
+ProjectAgamemnon (ADR-015/016, #578) (#504)
 - Unsized integers converted to sized types (`int32_t`, `uint32_t`, `size_t`)
 - `CONTRIBUTING.md` rewritten to match current C++20/Conan/just workflow
 - `pixi.toml` and `justfile` aligned with ecosystem conventions
