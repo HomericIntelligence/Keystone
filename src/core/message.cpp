@@ -62,11 +62,9 @@ KeystoneMessage KeystoneMessage::create(
   msg.payload = data;
   msg.timestamp = std::chrono::system_clock::now();
 
-  // Phase A: Initialize new fields with defaults for backward compatibility
+  // Initialize new fields with defaults for backward compatibility
   msg.action_type = ActionType::EXECUTE;
   msg.content_type = ContentType::TEXT_PLAIN;
-  msg.session_id = "default";
-  // metadata is empty by default
 
   // Phase C: Initialize priority to NORMAL by default
   msg.priority = Priority::NORMAL;
@@ -77,7 +75,6 @@ KeystoneMessage KeystoneMessage::create(
 KeystoneMessage KeystoneMessage::create(const std::string& sender,
                                         const std::string& receiver,
                                         ActionType action,
-                                        const std::string& session,
                                         const std::optional<std::string>& data,
                                         ContentType content) {
   KeystoneMessage msg;
@@ -86,7 +83,6 @@ KeystoneMessage KeystoneMessage::create(const std::string& sender,
   msg.receiver_id = receiver;
   msg.action_type = action;
   msg.content_type = content;
-  msg.session_id = session;
   msg.payload = data;
   msg.timestamp = std::chrono::system_clock::now();
 
@@ -127,26 +123,6 @@ std::optional<std::chrono::milliseconds> KeystoneMessage::getTimeUntilDeadline()
   }
 
   return std::chrono::duration_cast<std::chrono::milliseconds>(*deadline - now);
-}
-
-KeystoneMessage KeystoneMessage::createCancellation(
-    const std::string& sender, const std::string& receiver,
-    const std::string& task_id, const std::string& session) {
-  KeystoneMessage msg;
-  msg.msg_id = generate_uuid();
-  msg.sender_id = sender;
-  msg.receiver_id = receiver;
-  msg.action_type = ActionType::CANCEL_TASK;
-  msg.content_type = ContentType::TEXT_PLAIN;
-  msg.session_id = session;
-  msg.task_id = task_id;          // Set the task to cancel
-  msg.priority = Priority::HIGH;  // Cancellations are high priority
-  _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  msg.command = "CANCEL_TASK";
-  _Pragma("GCC diagnostic pop")
-  msg.timestamp = std::chrono::system_clock::now();
-  return msg;
 }
 
 Response Response::createSuccess(const KeystoneMessage& original_msg,
