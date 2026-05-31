@@ -87,7 +87,7 @@ compile: $(BUILD_DIR)/$(BUILD_SUBDIR)
 # Test Recipes
 # ============================================================================
 
-.PHONY: test test.unit test.basic test.module test.component test.async test.distributed test.concurrency test.simulation test.grpc test.profiling
+.PHONY: test test.unit test.basic test.module test.component test.async test.distributed test.concurrency test.simulation test.profiling
 
 # Test executables
 TEST_BASIC := basic_delegation_tests
@@ -98,7 +98,6 @@ TEST_DISTRIBUTED := distributed_hierarchy_tests
 TEST_UNIT := unit_tests
 TEST_CONCURRENCY := concurrency_unit_tests
 TEST_SIMULATION := simulation_unit_tests
-TEST_GRPC := distributed_grpc_tests
 TEST_PROFILING := profiling_tests
 
 # Run all tests with ctest
@@ -147,11 +146,6 @@ test.simulation: compile
 	@echo "Running simulation unit tests..."
 	$(CONTAINER_CHECK)
 	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_SIMULATION)
-
-test.grpc: compile.grpc
-	@echo "Running gRPC distributed tests..."
-	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_GRPC)
 
 test.profiling: compile.profile
 	@echo "Running profiling tests..."
@@ -327,9 +321,6 @@ container.shell: container.up
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_msan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 # Feature flag patterns
-%.grpc:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_GRPC=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
-
 %.coverage:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_COVERAGE=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
@@ -375,7 +366,6 @@ help:
 	@echo "  .msan                   MemorySanitizer"
 	@echo ""
 	@echo "Feature Modifiers:"
-	@echo "  .grpc                   Enable gRPC support"
 	@echo "  .coverage               Enable coverage instrumentation"
 	@echo "  .profile                Enable profiling"
 	@echo "  .fuzz                   Enable fuzzing"
@@ -392,7 +382,6 @@ help:
 	@echo "  make test.distributed   Run distributed hierarchy tests"
 	@echo "  make test.concurrency   Run concurrency unit tests"
 	@echo "  make test.simulation    Run simulation unit tests"
-	@echo "  make test.grpc          Run gRPC tests (requires .grpc build)"
 	@echo "  make test.profiling     Run profiling tests"
 	@echo ""
 	@echo "Benchmarks & Load Testing:"

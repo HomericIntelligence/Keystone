@@ -23,8 +23,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENABLE_COVERAGE": "OFF",
-        "ENABLE_GRPC": "OFF"
+        "ENABLE_COVERAGE": "OFF"
       }
     },
     {
@@ -32,8 +31,7 @@
       "displayName": "Release",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "ENABLE_GRPC": "OFF"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -57,7 +55,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "ENABLE_GRPC": "OFF",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread"
       }
     },
@@ -68,7 +65,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "ENABLE_GRPC": "OFF",
         "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined"
       }
     },
@@ -79,7 +75,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "ENABLE_GRPC": "OFF",
         "CMAKE_CXX_FLAGS": "-fsanitize=undefined"
       }
     }
