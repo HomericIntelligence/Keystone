@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 #include <optional>
 #include <string>
 
@@ -37,18 +36,14 @@ inline std::string priorityToString(Priority priority) {
 }
 
 /**
- * @brief Action types for agent communication in HMAS
+ * @brief Action types carried by a transport message
  *
- * Defines the different types of actions that can be requested or performed
- * in the hierarchical agent system.
+ * Defines the transport-level action semantics that a message may carry.
  */
 enum class ActionType {
-  DECOMPOSE,      ///< Decompose a goal into subtasks/subgoals
   EXECUTE,        ///< Execute a concrete task or command
   RETURN_RESULT,  ///< Return the result of a computation
-  SHUTDOWN,       ///< Graceful shutdown signal
-  CANCEL_TASK,    ///< Cancel a running task (Issue #52)
-  TASK_FAILED     ///< Report task failure to parent agent (Issue #87)
+  SHUTDOWN        ///< Graceful shutdown signal
 };
 
 /**
@@ -66,18 +61,12 @@ enum class ContentType {
  */
 inline std::string actionTypeToString(ActionType type) {
   switch (type) {
-    case ActionType::DECOMPOSE:
-      return "DECOMPOSE";
     case ActionType::EXECUTE:
       return "EXECUTE";
     case ActionType::RETURN_RESULT:
       return "RETURN_RESULT";
     case ActionType::SHUTDOWN:
       return "SHUTDOWN";
-    case ActionType::CANCEL_TASK:
-      return "CANCEL_TASK";
-    case ActionType::TASK_FAILED:
-      return "TASK_FAILED";
     default:
       return "UNKNOWN";
   }
@@ -100,17 +89,11 @@ inline std::string contentTypeToString(ContentType type) {
 /**
  * @brief Keystone Interchange Message (KIM) protocol
  *
- * Enhanced message structure for work-stealing concurrent agent communication.
- * Messages are passed between agents to delegate tasks and return results.
+ * Pure transport message structure for routing payloads between endpoints.
  *
- * Phase A additions:
+ * Fields:
  * - action_type: Semantic action classification
  * - content_type: Payload format specification
- * - session_id: Context isolation for concurrent operations
- * - metadata: Extensible key-value attributes
- *
- * Phase 1.2 (Issue #52) additions:
- * - task_id: Optional task identifier for cancellation tracking
  */
 struct KeystoneMessage {
   // Core identifiers
@@ -118,11 +101,9 @@ struct KeystoneMessage {
   std::string sender_id;    ///< ID of the sending agent
   std::string receiver_id;  ///< ID of the receiving agent
 
-  // Phase A: Enhanced fields
+  // Enhanced fields
   ActionType action_type;    ///< Type of action requested/performed
   ContentType content_type;  ///< Format of the payload
-  std::string session_id;    ///< Session/context identifier
-  std::map<std::string, std::string> metadata;  ///< Extensible metadata
 
   // Phase C: Priority field
   Priority priority;  ///< Message priority (HIGH/NORMAL/LOW)
@@ -130,10 +111,6 @@ struct KeystoneMessage {
   // Phase C: Deadline scheduling
   std::optional<std::chrono::system_clock::time_point>
       deadline;  ///< Optional processing deadline
-
-  // Phase 1.2 (Issue #52): Task cancellation
-  std::optional<std::string>
-      task_id;  ///< Optional task ID for tracking/cancellation
 
   // Issue #285: Cross-host tracing
   std::optional<std::string>
@@ -179,14 +156,12 @@ struct KeystoneMessage {
    * @param sender Sender agent ID
    * @param receiver Receiver agent ID
    * @param action Action type
-   * @param session Session identifier
    * @param data Optional payload data
    * @param content Content type (default: TEXT_PLAIN)
    * @return KeystoneMessage New message with auto-generated ID
    */
   static KeystoneMessage create(
       const std::string& sender, const std::string& receiver, ActionType action,
-      const std::string& session,
       const std::optional<std::string>& data = std::nullopt,
       ContentType content = ContentType::TEXT_PLAIN);
 
@@ -210,23 +185,6 @@ struct KeystoneMessage {
    * @return milliseconds until deadline, nullopt if no deadline set
    */
   std::optional<std::chrono::milliseconds> getTimeUntilDeadline() const;
-
-  /**
-   * @brief Create a task cancellation message
-   *
-   * Phase 1.2 (Issue #52): Factory method for creating CANCEL_TASK messages.
-   * Cancellation is cooperative - agents check for cancellation and respond
-   * gracefully.
-   *
-   * @param sender Sender agent ID (parent requesting cancellation)
-   * @param receiver Receiver agent ID (child executing the task)
-   * @param task_id Task identifier to cancel
-   * @param session Session identifier (default: "default")
-   * @return KeystoneMessage Cancellation message with CANCEL_TASK action
-   */
-  static KeystoneMessage createCancellation(
-      const std::string& sender, const std::string& receiver,
-      const std::string& task_id, const std::string& session = "default");
 };
 
 /**

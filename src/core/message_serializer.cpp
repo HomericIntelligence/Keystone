@@ -20,13 +20,6 @@ SerializableMessage SerializableMessage::fromKeystoneMessage(
 
   smsg.action_type = static_cast<uint32_t>(msg.action_type);
   smsg.content_type = static_cast<uint32_t>(msg.content_type);
-  smsg.session_id = cista::offset::string{msg.session_id.c_str()};
-
-  // Convert metadata map
-  for (const auto& [key, value] : msg.metadata) {
-    smsg.metadata[cista::offset::string{key.c_str()}] =
-        cista::offset::string{value.c_str()};
-  }
 
   _Pragma("GCC diagnostic push")
   _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
@@ -68,13 +61,6 @@ KeystoneMessage SerializableMessage::toKeystoneMessage() const {
 
   msg.action_type = static_cast<ActionType>(action_type);
   msg.content_type = static_cast<ContentType>(content_type);
-  msg.session_id = std::string{session_id.data(), session_id.size()};
-
-  // Convert metadata map
-  for (const auto& [key, value] : metadata) {
-    msg.metadata[std::string{key.data(), key.size()}] =
-        std::string{value.data(), value.size()};
-  }
 
   _Pragma("GCC diagnostic push")
   _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")

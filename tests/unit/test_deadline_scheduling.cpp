@@ -148,12 +148,11 @@ TEST(DeadlineSchedulingTest, MultipleMessagesWithDeadlines) {
  */
 TEST(DeadlineSchedulingTest, DeadlineWithEnhancedMessage) {
   auto msg = KeystoneMessage::create("sender", "receiver", ActionType::EXECUTE,
-                                     "session123", "payload data");
+                                     "payload data");
 
   msg.setDeadlineFromNow(100ms);
 
   EXPECT_EQ(msg.action_type, ActionType::EXECUTE);
-  EXPECT_EQ(msg.session_id, "session123");
   EXPECT_TRUE(msg.deadline.has_value());
   EXPECT_FALSE(msg.hasDeadlinePassed());
 }

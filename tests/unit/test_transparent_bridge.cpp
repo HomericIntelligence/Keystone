@@ -96,7 +96,7 @@ TEST(MessageBusOutbound, OutboundPayloadRoundTrips) {
   });
 
   auto msg = KeystoneMessage::create(
-      "alice", "remote-bob", ActionType::EXECUTE, "session-42", std::string("hello remote"));
+      "alice", "remote-bob", ActionType::EXECUTE, std::string("hello remote"));
   bus.routeMessage(msg);
 
   ASSERT_FALSE(captured_payload.empty());
@@ -106,7 +106,6 @@ TEST(MessageBusOutbound, OutboundPayloadRoundTrips) {
 
   EXPECT_EQ(decoded.sender_id, "alice");
   EXPECT_EQ(decoded.receiver_id, "remote-bob");
-  EXPECT_EQ(decoded.session_id, "session-42");
   EXPECT_TRUE(decoded.payload.has_value());
   EXPECT_EQ(*decoded.payload, "hello remote");
 }
