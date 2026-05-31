@@ -88,16 +88,21 @@ RUN apt-get update && apt-get install -y \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built test executables from builder
-COPY --from=builder /workspace/build/release/bin/basic_delegation_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/module_coordination_tests /usr/local/bin/
-COPY --from=builder /workspace/build/release/bin/component_coordination_tests /usr/local/bin/
+# Copy built test executables from builder.
+# The agent-delegation/coordination e2e binaries (basic_delegation_tests,
+# module_coordination_tests, component_coordination_tests) were removed when
+# the agent hierarchy was extracted to ProjectAgamemnon (ADR-015), so they no
+# longer build. Ship the transport/concurrency smoke tests instead — these
+# exercise the pure-C++20 transport role Keystone now owns.
+COPY --from=builder /workspace/build/release/bin/transport_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/bridge_unit_tests /usr/local/bin/
+COPY --from=builder /workspace/build/release/bin/concurrency_unit_tests /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
 
-# Default command: run all tests
-CMD ["sh", "-c", "basic_delegation_tests && module_coordination_tests && component_coordination_tests"]
+# Default command: run the transport/concurrency smoke tests
+CMD ["sh", "-c", "transport_unit_tests && bridge_unit_tests && concurrency_unit_tests"]
 
 # Stage 3: Production environment (Kubernetes deployment)
 # Ships the Keystone daemon service binary — NOT test executables.

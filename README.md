@@ -13,7 +13,7 @@
 [![Required Checks](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml)
 [![Extras](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml)
 [![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 ## Overview
 
@@ -435,7 +435,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+BSD 3-Clause License - See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
