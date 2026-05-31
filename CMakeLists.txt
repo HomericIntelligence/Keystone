@@ -29,9 +29,6 @@ endif()
 # Code coverage (Phase 9.1)
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 
-# gRPC support for distributed multi-node communication (Phase 8)
-option(ENABLE_GRPC "Enable gRPC support for distributed nodes" OFF)
-
 # Profiling tests (Phase 2.3 - Issue #53)
 option(ENABLE_PROFILING "Enable profiling tests (slow)" OFF)
 
@@ -171,48 +168,11 @@ set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
 FetchContent_MakeAvailable(natsc)
 set_directory_properties(PROPERTIES COMPILE_OPTIONS "${_saved_compile_options}")
 
-# yaml-cpp — YAML parser for task specifications (Phase 8 only)
-if(ENABLE_GRPC)
-  find_package(yaml-cpp REQUIRED)
-endif()
-
-# gRPC and Protobuf for distributed communication (Phase 8)
-if(ENABLE_GRPC)
-  message(
-    STATUS "gRPC support enabled for distributed multi-node communication")
-  find_package(Protobuf REQUIRED)
-  find_package(gRPC REQUIRED)
-
-  # Generate protobuf and gRPC source files
-  set(PROTO_FILES
-      ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto
-      ${PROJECT_SOURCE_DIR}/proto/service_registry.proto
-      ${PROJECT_SOURCE_DIR}/proto/common.proto)
-
-  # Create proto directory if it doesn't exist
-  file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/proto)
-
-  # Protobuf generation
-  protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
-
-  # gRPC generation (if proto files exist)
-  if(EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
-    set(GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>)
-
-    foreach(PROTO_FILE ${PROTO_FILES})
-      get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
-      list(APPEND GRPC_SRCS
-           "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.cc")
-      list(APPEND GRPC_HDRS
-           "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.h")
-    endforeach()
-  endif()
-else()
-  message(
-    STATUS
-      "gRPC support disabled. Use -DENABLE_GRPC=ON to enable Phase 8 distributed features"
-  )
-endif()
+# gRPC / Protobuf / yaml-cpp were used solely by the HMAS *orchestration* layer
+# (coordinator service, service registry, task router, result aggregator,
+# hierarchical-task YAML parser). That layer moved to ProjectAgamemnon per
+# ADR-015/016; Keystone is now a pure C++20 transport library. The gRPC stack
+# and the ENABLE_GRPC option have been removed entirely.
 
 enable_testing()
 
@@ -289,32 +249,11 @@ target_include_directories(
 # keystone_core needs concurrency components for Logger usage
 target_link_libraries(keystone_core PUBLIC keystone_concurrency)
 
-# Network library (Phase 8: Distributed communication)
-if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
-  add_library(
-    keystone_network
-    ${PROTO_SRCS}
-    ${GRPC_SRCS}
-    src/network/grpc_server.cpp
-    src/network/grpc_client.cpp
-    src/network/service_registry.cpp
-    src/network/task_router.cpp
-    src/network/yaml_parser.cpp)
-
-  target_include_directories(
-    keystone_network
-    PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-           $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-           $<BUILD_INTERFACE:${Protobuf_INCLUDE_DIRS}>
-           $<INSTALL_INTERFACE:include/keystone>)
-
-  target_link_libraries(
-    keystone_network PUBLIC keystone_core protobuf::libprotobuf gRPC::grpc++
-                            gRPC::grpc++_reflection yaml-cpp::yaml-cpp)
-
-  message(
-    STATUS "keystone_network library configured for distributed communication")
-endif()
+# Network orchestration library (keystone_network) removed: the HMAS gRPC
+# coordinator, service registry, task router, result aggregator, and
+# hierarchical-task YAML parser were extracted to ProjectAgamemnon per
+# ADR-015/016. The only network code that remains is the transport-layer
+# NATSListener, compiled into keystone_transport below.
 
 # Agents library removed: the C++ agent hierarchy was extracted to
 # ProjectAgamemnon per ADR-015. Keystone is now a pure C++20 transport library;
@@ -346,15 +285,9 @@ target_link_libraries(distributed_hierarchy_tests keystone_simulation
 
 gtest_discover_tests(distributed_hierarchy_tests)
 
-# E2E Tests - Distributed gRPC (Phase 8)
-if(ENABLE_GRPC)
-  add_executable(distributed_grpc_tests tests/e2e/distributed_grpc_test.cpp)
-
-  target_link_libraries(distributed_grpc_tests keystone_network keystone_core
-                        GTest::gtest_main)
-
-  gtest_discover_tests(distributed_grpc_tests)
-endif()
+# E2E distributed gRPC tests removed: they exercised the HMAS gRPC
+# coordinator/registry orchestration layer now living in ProjectAgamemnon
+# (ADR-015/016).
 
 # Unit Tests
 add_executable(
@@ -389,23 +322,11 @@ add_executable(
                                         # validation
 )
 
-# Add gRPC test fixture if gRPC is enabled (Phase 2.2: Issue #53)
-if(ENABLE_GRPC)
-  target_sources(unit_tests PRIVATE tests/fixtures/grpc_test_fixture.cpp
-                                    tests/unit/test_grpc_tls.cpp)
-  target_include_directories(unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests)
-  target_link_libraries(
-    unit_tests
-    keystone_core
-    keystone_concurrency
-    keystone_network
-    keystone_transport
-    GTest::gtest_main)
-else()
-  target_link_libraries(
-    unit_tests keystone_core keystone_concurrency
-    keystone_transport GTest::gtest_main)
-endif()
+# The gRPC test fixture (grpc_test_fixture.cpp) and TLS test (test_grpc_tls.cpp)
+# were removed with the HMAS orchestration layer (ADR-015/016).
+target_link_libraries(
+  unit_tests keystone_core keystone_concurrency
+  keystone_transport GTest::gtest_main)
 
 gtest_discover_tests(unit_tests)
 
@@ -640,15 +561,6 @@ install(
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone-dev
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
 
-# Install network library if gRPC is enabled
-if(ENABLE_GRPC)
-  install(
-    TARGETS keystone_network
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT keystone-dev
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
-endif()
-
 # =====================================================================# Version
 # Information (needed early for CMake package config)
 # =====================================================================
@@ -664,14 +576,6 @@ install(
   COMPONENT keystone-dev
   FILES_MATCHING
   PATTERN "*.hpp")
-
-# Install generated proto headers if gRPC is enabled
-if(ENABLE_GRPC AND EXISTS ${PROJECT_SOURCE_DIR}/proto/hmas_coordinator.proto)
-  install(
-    FILES ${GRPC_HDRS} ${PROTO_HDRS}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/keystone/proto
-    COMPONENT keystone-dev)
-endif()
 
 # Configure and install CMake package configuration files (keystone-dev package)
 include(CMakePackageConfigHelpers)
@@ -723,13 +627,6 @@ install(
           bridge_unit_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests COMPONENT keystone-test)
 
-# Install gRPC tests if enabled
-if(ENABLE_GRPC)
-  install(TARGETS distributed_grpc_tests
-          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests
-                  COMPONENT keystone-test)
-endif()
-
 # Install benchmarks (keystone-misc package)
 install(
   TARGETS message_pool_benchmarks distributed_benchmarks
@@ -753,15 +650,8 @@ install(
   COMPONENT keystone-dev
   OPTIONAL)
 
-# Install proto files for development (keystone-dev package)
-if(ENABLE_GRPC)
-  install(
-    DIRECTORY ${PROJECT_SOURCE_DIR}/proto/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/keystone/proto
-    COMPONENT keystone-dev
-    FILES_MATCHING
-    PATTERN "*.proto")
-endif()
+# Proto files removed with the HMAS orchestration layer (ADR-015/016); Keystone
+# no longer ships any .proto definitions.
 
 # =====================================================================# CPack
 # Configuration

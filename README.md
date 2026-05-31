@@ -62,14 +62,6 @@ All libraries are **automatically downloaded** via CMake FetchContent - no manua
 | [Cista](https://github.com/felixguendling/cista) | 0.14 | Zero-copy serialization |
 | [concurrentqueue](https://github.com/cameron314/concurrentqueue) | 1.0.4 | Lock-free MPMC queue |
 
-### Optional Dependencies (Phase 8)
-
-For distributed features (`-DENABLE_GRPC=ON`):
-
-- **yaml-cpp** 0.7.0 - YAML task specification
-- **gRPC** - Distributed communication
-- **Protobuf** - Message serialization
-
 ## First-Time Setup
 
 ### Docker Setup (Recommended)
@@ -188,7 +180,6 @@ build/
 | Flag | Description | Default |
 | :--- | :--- | :--- |
 | `ENABLE_FUZZING` | Build fuzz test targets (requires Clang) | OFF |
-| `ENABLE_GRPC` | Enable Phase 8 distributed features | OFF |
 | `ENABLE_COVERAGE` | Enable code coverage instrumentation | OFF |
 | `ENABLE_CLANG_TIDY` | Run clang-tidy during build | OFF |
 

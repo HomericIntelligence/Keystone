@@ -27,7 +27,7 @@ dev = { features = ["dev"], solve-group = "default" }
 
 [tasks]
 conan-install = "conan install . --output-folder=build-native --build=missing"
-configure = { cmd = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF", depends-on = ["conan-install"] }
+configure = { cmd = "cmake -G Ninja -B build-native -S .", depends-on = ["conan-install"] }
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
 test = { cmd = "cd build-native && ctest --output-on-failure", depends-on = ["build"] }
 clean = "rm -rf build-native"
