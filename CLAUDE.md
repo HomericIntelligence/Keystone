@@ -22,18 +22,18 @@ invisible plumbing beneath every other component.
 ### Primary Language: C++20
 
 **The transport runtime in this project is EXCLUSIVELY C++20. Do NOT use
-Python, Mojo, or other languages for new transport, message-bus, or
-agent-runtime code.**
+Python, Mojo, or other languages for transport, message-bus, or agent-runtime
+code.**
 
-**Exception — supporting Python tooling.** A small number of Python modules
-remain in `src/keystone/` as a thin orchestration / test harness layer
-(`config.py`, `daemon.py`, `dag_walker.py`, `models.py`, `nats_listener.py`,
-`task_claimer.py`, `validation.py`, `logging.py`). These predate the ADR-015
-extraction to ProjectAgamemnon and are still imported by the Python tests
-under `tests/`. They are maintained in-place but **must not** grow new
-production responsibilities — any new orchestration logic belongs in
-ProjectAgamemnon, and any new transport logic must be implemented in C++20
-under `src/transport/`, `src/network/`, or `include/`.
+**No Python runtime.** Keystone ships no Python. The former `src/keystone/`
+orchestration package (`config.py`, `daemon.py`, `dag_walker.py`, `models.py`,
+`nats_listener.py`, `task_claimer.py`, `validation.py`, `logging.py`) and its
+`pyproject.toml` were removed and extracted to ProjectAgamemnon per ADR-016.
+The only Python remaining in the repo is `conanfile.py` (the C++ Conan recipe)
+and a couple of build/lint helper scripts under `scripts/`. Any new
+orchestration logic belongs in ProjectAgamemnon; any new transport logic must
+be implemented in C++20 under `src/transport/`, `src/network/`, `src/core/`,
+or `include/`.
 
 ### Required Technologies
 
@@ -135,7 +135,11 @@ Keystone enforces pull-based, rate-limited delivery to prevent myrmidon overload
 
 ---
 
-## What Was Moved to ProjectAgamemnon (ADR-006, ADR-015)
+## What Was Moved to ProjectAgamemnon (ADR-006, ADR-015, ADR-016)
+
+These layers have been **deleted from Keystone** and now live in
+ProjectAgamemnon. The decoupling prerequisite (MessageBus → `core::IMessageSink`)
+landed first, so the transport core builds with no agent dependency.
 
 ### C++ Agent Layer (ADR-015)
 
@@ -149,10 +153,10 @@ The following are **no longer part of Keystone**. They live in ProjectAgamemnon:
 - Work-stealing scheduler
 - HMAS 4-layer hierarchy design
 
-### Python Orchestration Layer (ADR-015, 2026)
+### Python Orchestration Layer (ADR-016, 2026)
 
 The following Python modules were also extracted from Keystone into ProjectAgamemnon
-as part of the ADR-015 follow-up (HomericIntelligence/Odysseus#143):
+as part of ADR-016 (HomericIntelligence/Odysseus#143):
 
 - `dag_walker.py` — DAGWalker (task ready-set computation, cycle detection)
 - `task_claimer.py` — TaskClaimer (per-team concurrency guard, drain)
@@ -222,18 +226,16 @@ build/
 
 ### Test Structure
 
+All tests are C++20 GoogleTest suites (the Python test harness was removed with
+the `src/keystone/` extraction to ProjectAgamemnon per ADR-016).
+
 ```
 tests/
 ├── unit/           # Unit tests per component
 ├── integration/    # Cross-component integration tests
 ├── e2e/            # End-to-end and distributed tests
-├── load/           # Load and throughput tests
 ├── fixtures/       # Shared test fixtures
-├── mocks/          # Mock implementations
-├── conftest.py     # pytest configuration and fixtures
-├── helpers.py      # Shared test helper utilities
-├── __init__.py     # Python package marker
-└── test_*.py       # Python integration and daemon tests
+└── mocks/          # Mock implementations (IMessageSink, registry, etc.)
 ```
 
 ---

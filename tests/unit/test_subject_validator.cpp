@@ -11,11 +11,26 @@
  * (Issue #280).
  */
 
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+#include "core/message_sink.hpp"
+#include "core/subject_validator.hpp"
+
+#include <memory>
+
 #include <gtest/gtest.h>
 
-#include "agents/task_agent.hpp"
-#include "core/message_bus.hpp"
-#include "core/subject_validator.hpp"
+namespace {
+
+// Minimal non-agent message sink used purely as a registration fixture for the
+// MessageBus integration tests below. The transport core depends only on
+// core::IMessageSink (the agent layer was extracted to ProjectAgamemnon per
+// ADR-015), so these tests no longer need a concrete agent type.
+struct StubSink : public keystone::core::IMessageSink {
+  void receiveMessage(const keystone::core::KeystoneMessage& /*msg*/) override {}
+};
+
+}  // namespace
 
 // =============================================================================
 // Valid identifiers -- must pass without throwing
@@ -114,20 +129,20 @@ TEST(SubjectValidatorTest, ErrorMessageContainsLabel) {
 
 TEST(SubjectValidatorTest, MessageBusRejectsPathTraversalAgentId) {
   keystone::core::MessageBus bus;
-  auto agent = std::make_shared<keystone::agents::TaskAgent>("../../evil");
-  EXPECT_THROW(bus.registerAgent("../../evil", agent), std::invalid_argument);
+  auto sink = std::make_shared<StubSink>();
+  EXPECT_THROW(bus.registerAgent("../../evil", sink), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, MessageBusRejectsSlashInAgentId) {
   keystone::core::MessageBus bus;
-  auto agent = std::make_shared<keystone::agents::TaskAgent>("foo/bar");
-  EXPECT_THROW(bus.registerAgent("foo/bar", agent), std::invalid_argument);
+  auto sink = std::make_shared<StubSink>();
+  EXPECT_THROW(bus.registerAgent("foo/bar", sink), std::invalid_argument);
 }
 
 TEST(SubjectValidatorTest, MessageBusAcceptsValidAgentId) {
   keystone::core::MessageBus bus;
-  auto agent = std::make_shared<keystone::agents::TaskAgent>("valid-agent_1");
-  EXPECT_NO_THROW(bus.registerAgent("valid-agent_1", agent));
+  auto sink = std::make_shared<StubSink>();
+  EXPECT_NO_THROW(bus.registerAgent("valid-agent_1", sink));
   EXPECT_TRUE(bus.hasAgent("valid-agent_1"));
 }
 

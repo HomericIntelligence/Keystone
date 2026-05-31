@@ -17,10 +17,10 @@ target_include_directories(
 
 target_link_libraries(
   keystone_server
-  # keystone_agents is required: keystone_core's message_bus.cpp references the
-  # typeinfo for keystone::agents::AgentCore (the bus stores AgentCore handles in
-  # its registry), so the daemon binary must resolve those symbols at link time.
-  PRIVATE keystone_core keystone_transport keystone_agents)
+  # Pure transport: the MessageBus registry now stores core::IMessageSink
+  # handles (ADR-015 decoupling, #577), so the daemon no longer links the agent
+  # layer — that hierarchy was extracted to ProjectAgamemnon.
+  PRIVATE keystone_core keystone_transport)
 
 set_target_properties(keystone_server PROPERTIES OUTPUT_NAME "keystone-server")
 

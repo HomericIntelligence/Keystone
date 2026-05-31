@@ -1,7 +1,12 @@
-# ProjectKeystone - Hierarchical Multi-Agent System (HMAS)
+# ProjectKeystone - Pure C++20 Message Transport Library
 
-**C++20-based hierarchical agent system implementing TDD principles**
+**C++20 message transport: lock-free local message bus + transparent NATS cross-host bridge**
 
+> ℹ️ The 4-layer agent hierarchy (ChiefArchitect → ComponentLead → ModuleLead →
+> TaskAgent) and the Python orchestration package were extracted to
+> **ProjectAgamemnon** per ADR-015 / ADR-016. Keystone is now a pure transport
+> library; the transport core depends only on `core::IMessageSink`.
+>
 > ✅ **All installation, build, and test steps are validated in CI/CD.**
 > See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
@@ -12,21 +17,24 @@
 
 ## Overview
 
-ProjectKeystone is a high-performance, hierarchical multi-agent system (HMAS) built
-with modern C++20. It implements a 4-layer agent architecture with message-passing
-communication, work-stealing task scheduling, and comprehensive resilience features.
+ProjectKeystone is a high-performance message **transport** library built with
+modern C++20. It moves bytes from publisher to subscriber reliably and
+transparently: a lock-free intra-host message bus plus a transparent NATS
+JetStream bridge for cross-host delivery. Agent runtime and orchestration logic
+were extracted to ProjectAgamemnon (ADR-015 / ADR-016); the transport core
+depends only on the one-method `core::IMessageSink` interface.
 
 ### Key Features
 
-- **4-Layer Agent Hierarchy**: ChiefArchitect → ComponentLead → ModuleLead → TaskAgent
+- **Lock-Free Message Bus**: `core::MessageBus` routing to any `IMessageSink`
+- **Transparent NATS Bridge**: Automatic off-host forwarding via NATS JetStream
 - **Async Work-Stealing Scheduler**: High-performance task distribution across worker threads
-- **Message Bus Architecture**: Decoupled agent communication with routing
 - **Resilience Components**: Retry policies, circuit breakers, heartbeat monitoring
 - **Zero-Copy Serialization**: Efficient message passing with Cista
 - **Distributed Simulation**: NUMA-aware distributed work-stealing
-- **Comprehensive Testing**: Extensive unit and E2E test coverage
-- **Performance Benchmarks**: 45+ benchmark tests across 5 suites
-- **Fuzz Testing**: 4 libFuzzer targets for robustness
+- **Comprehensive Testing**: Extensive C++ unit and integration coverage
+- **Performance Benchmarks**: message-pool, distributed, scheduler, and allocation suites
+- **Fuzz Testing**: libFuzzer targets for the untrusted-input surface
 - **Static Analysis**: clang-tidy and cppcheck integration
 
 ## Build Requirements
@@ -39,7 +47,7 @@ communication, work-stealing task scheduling, and comprehensive resilience featu
 | **CMake** | 3.20 | 3.28+ | FetchContent support |
 | **Ninja** | 1.10 | 1.11+ | Fast parallel builds |
 | **GNU Make** | - | - | Standard on Linux/macOS |
-| **Python** | 3.9+ | 3.12+ | For `src/keystone/` Python transport layer (see `pyproject.toml`) |
+| **Python** | 3.11+ | 3.12+ | Optional — only to run/typecheck `conanfile.py` (the C++ Conan recipe). Keystone ships no Python runtime. |
 | **Docker** | 20.10 | 24.0+ | Optional, for containerized builds |
 
 ### Auto-Fetched Dependencies
@@ -197,13 +205,14 @@ cmake -S . -B build/fuzz -G Ninja \
 ```
 ProjectKeystone/
 ├── include/            # Public headers
-│   ├── agents/         # Agent hierarchy
-│   ├── core/           # Core messaging and resilience
+│   ├── core/           # Message bus, IMessageSink, serialization, resilience
+│   ├── transport/      # NATS connection + transparent bridge
+│   ├── network/        # NATS listener
 │   └── concurrency/    # Work-stealing scheduler
 ├── src/                # Implementation
-├── tests/              # Unit and E2E tests
+├── tests/              # C++ GoogleTest suites
 │   ├── unit/           # Component unit tests
-│   └── e2e/            # End-to-end integration tests
+│   └── e2e/            # End-to-end / distributed tests
 ├── benchmarks/         # Performance benchmarks
 ├── fuzz/               # Fuzz test targets
 ├── scripts/            # Automation scripts
@@ -369,28 +378,28 @@ See [TDD Roadmap](docs/plan/TDD_FOUR_LAYER_ROADMAP.md) for detailed phase descri
 
 ## Architecture
 
-### Agent Hierarchy
+Keystone moves bytes from publisher to subscriber, reliably and transparently.
+A message is routed locally to any registered `core::IMessageSink`, or — when
+the destination is off-host — promoted onto the appropriate NATS subject by the
+transparent bridge. The former agent hierarchy (ChiefArchitect → ComponentLead
+→ ModuleLead → TaskAgent) now lives in ProjectAgamemnon (ADR-015).
 
 ```
-ChiefArchitectAgent (L0)
-    │
-    ├─── ComponentLeadAgent (L1)
-    │        │
-    │        └─── ModuleLeadAgent (L2)
-    │                 │
-    │                 └─── TaskAgent (L3)
+Publisher → MessageBus.routeMessage(msg)
+                 ├─ local sink  → lock-free delivery to IMessageSink
+                 └─ off-host    → TransparentBridge → NATS JetStream → remote MessageBus
 ```
 
 ### Core Components
 
-- **MessageBus**: Central routing for agent communication
+- **MessageBus**: Central routing to registered `IMessageSink` targets
+- **IMessageSink**: One-method delivery interface (transport ⟷ consumer boundary)
+- **TransparentBridge**: Automatic off-host forwarding over NATS JetStream
 - **WorkStealingScheduler**: Thread pool with task stealing
 - **RetryPolicy**: Exponential backoff for transient failures
 - **CircuitBreaker**: Fast failure for persistent errors
-- **HeartbeatMonitor**: Agent liveness tracking
+- **HeartbeatMonitor**: Liveness tracking
 - **MessagePool**: Zero-allocation message pooling
-
-See [Architecture Docs](docs/plan/FOUR_LAYER_ARCHITECTURE.md) for details.
 
 ## Documentation
 

@@ -14,10 +14,10 @@
  *   NatsConnection has no JetStream context (not connected)
  */
 
-#include "agents/agent_core.hpp"
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
 #include "core/message_serializer.hpp"
+#include "core/message_sink.hpp"
 #include "transport/nats_connection.hpp"
 #include "transport/transparent_bridge.hpp"
 
@@ -122,14 +122,15 @@ TEST(MessageBusOutbound, LocalDeliveryDoesNotInvokePublisher) {
     ++publish_calls;
   });
 
-  // Register a minimal no-op agent.
-  struct NoOpAgent : keystone::agents::AgentCore {
-    explicit NoOpAgent(std::string id) : AgentCore(std::move(id)) {}
+  // Register a minimal non-agent message sink. The transport core depends only
+  // on core::IMessageSink (the agent layer was extracted to ProjectAgamemnon
+  // per ADR-015), so this test no longer needs a concrete agent type.
+  struct NoOpSink : public IMessageSink {
     void receiveMessage(const KeystoneMessage& /*msg*/) override {}
   };
 
-  auto agent = std::make_shared<NoOpAgent>("local-agent");
-  bus.registerAgent("local-agent", agent);
+  auto sink = std::make_shared<NoOpSink>();
+  bus.registerAgent("local-agent", sink);
 
   auto msg = KeystoneMessage::create("sender", "local-agent", "hi");
   EXPECT_TRUE(bus.routeMessage(msg));

@@ -1,6 +1,6 @@
 # ADR-016: Python Orchestration Migration to ProjectAgamemnon
 
-**Status**: Accepted
+**Status**: Implemented
 **Date**: 2026-04-25
 **Deciders**: ProjectKeystone Development Team
 **Tags**: architecture, extraction, orchestration, python, projectagamemnon, decoupling
@@ -125,4 +125,4 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 **Last Updated**: 2026-04-25
 **Version**: 1.0
 **Project**: ProjectKeystone
-**Status**: Accepted (2026-04-25)
+**Status**: Implemented (2026-04-25)

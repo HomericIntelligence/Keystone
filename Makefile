@@ -187,22 +187,9 @@ benchmark.strings: compile.release
 	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/string_allocation_benchmarks
 
 # ============================================================================
-# Load Testing
+# Load Testing — removed: the hmas_load_test binary exercised the agent
+# hierarchy extracted to ProjectAgamemnon per ADR-015.
 # ============================================================================
-
-.PHONY: load-test load-test.quick
-
-# Run all load test scenarios
-load-test: compile.release
-	@echo "Running load tests (full duration)..."
-	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) ./tests/load/run_all_scenarios.sh
-
-# Run load tests in quick mode (for CI)
-load-test.quick: compile.release
-	@echo "Running load tests (quick mode)..."
-	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) ./tests/load/run_all_scenarios.sh --quick
 
 # ============================================================================
 # Coverage
@@ -413,8 +400,6 @@ help:
 	@echo "  make benchmark.message-pool  Run message pool benchmarks"
 	@echo "  make benchmark.distributed   Run distributed benchmarks"
 	@echo "  make benchmark.strings       Run string allocation benchmarks"
-	@echo "  make load-test          Run all load tests (full)"
-	@echo "  make load-test.quick    Run load tests (quick, for CI)"
 	@echo ""
 	@echo "Coverage:"
 	@echo "  make coverage           Generate coverage report"

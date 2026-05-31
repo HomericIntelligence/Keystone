@@ -1,7 +1,7 @@
 [project]
 name = "projectkeystone"
 version = "0.1.0"
-description = "Hierarchical Multi-Agent System in C++20"
+description = "Pure C++20 message transport library (NATS bridge, message bus)"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
@@ -13,22 +13,14 @@ cxx-compiler = "*"
 gtest = "*"
 pkg-config = "*"
 just = ">=1.13"
+# python is retained only as the interpreter for conanfile.py (the C++ Conan
+# recipe) and for typechecking it with mypy. Keystone ships no Python: the
+# orchestration package was extracted to ProjectAgamemnon per ADR-016.
 python = ">=3.11,<4"
 
-[pypi-dependencies]
-nats-py = ">=2.0,<3"
-httpx = ">=0.27,<1"
-pydantic = ">=2.0,<3"
-pydantic-settings = ">=2.0,<3"
-rich = ">=10.0,<15"
-python-dotenv = ">=1.0,<2"
-
 [feature.dev.pypi-dependencies]
-pytest = ">=7.0,<10"
-pytest-asyncio = ">=0.21,<2"
-ruff = ">=0.1,<1"
+# mypy typechecks conanfile.py only.
 mypy = ">=1.0,<2"
-keepachangelog = ">=2.0,<3"
 
 [environments]
 dev = { features = ["dev"], solve-group = "default" }
@@ -37,8 +29,7 @@ dev = { features = ["dev"], solve-group = "default" }
 conan-install = "conan install . --output-folder=build-native --build=missing"
 configure = { cmd = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF", depends-on = ["conan-install"] }
 build = { cmd = "ninja -C build-native", depends-on = ["configure"] }
-test = { cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q", depends-on = ["build"] }
-test-python = "python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+test = { cmd = "cd build-native && ctest --output-on-failure", depends-on = ["build"] }
 clean = "rm -rf build-native"
 format = "just format"
 format-check = "just format-check"
@@ -48,23 +39,11 @@ test-ubsan = "make test.debug.ubsan"
 build-asan = "make compile.debug.asan"
 build-tsan = "make compile.debug.tsan"
 
-[tasks.test-phase1]
-cmd = "build-native/basic_delegation_tests"
-depends-on = ["build"]
-
-[tasks.test-phase-a]
-cmd = "build-native/async_delegation_tests"
-depends-on = ["build"]
-
 [tasks.test-all]
-cmd = "cd build-native && ctest --output-on-failure && cd .. && python -m pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
+cmd = "cd build-native && ctest --output-on-failure"
 depends-on = ["build"]
 
-[tasks.test-py]
-cmd = "pytest tests/ -v --ignore=tests/e2e --ignore=tests/load --ignore=tests/integration -q"
-
-[tasks.lint-py]
-cmd = "ruff check ."
-
+# Typecheck the Conan recipe (conanfile.py is the only Python in the repo's
+# build surface).
 [tasks.typecheck-py]
 cmd = "mypy conanfile.py"

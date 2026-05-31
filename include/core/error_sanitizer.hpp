@@ -13,9 +13,9 @@ namespace core {
  * before sending to external systems or logs.
  *
  * Removes:
- * - File paths (e.g., /home/user/ProjectKeystone/src/agents/task_agent.cpp:85)
+ * - File paths (e.g., /home/user/ProjectKeystone/src/core/message_bus.cpp:85)
  * - Memory addresses (e.g., 0x7fff5fbff710)
- * - Internal namespaces (e.g., keystone::agents::)
+ * - Internal namespaces (e.g., keystone::core::)
  *
  * @param error_message Raw error message
  * @param production_mode If true, apply aggressive sanitization
@@ -37,7 +37,7 @@ inline std::string sanitizeErrorMessage(const std::string& error_message,
   static const std::regex addr_regex(R"(0x[0-9a-fA-F]+)");
   sanitized = std::regex_replace(sanitized, addr_regex, "[address]");
 
-  // 3. Remove C++ namespace paths (e.g., keystone::agents::TaskAgent)
+  // 3. Remove C++ namespace paths (e.g., keystone::core::MessageBus)
   // Only in production mode to keep debugging info in dev
   if (production_mode) {
     static const std::regex namespace_regex(R"((\w+::)+)");
