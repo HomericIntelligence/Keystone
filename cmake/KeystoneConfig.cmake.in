@@ -10,12 +10,6 @@ include(CMakeFindDependencyMacro)
 # Find required dependencies
 find_dependency(Threads REQUIRED)
 
-# Optional: Find gRPC dependencies if ENABLE_GRPC was ON during build
-if(@ENABLE_GRPC@)
-    find_dependency(Protobuf REQUIRED)
-    find_dependency(gRPC REQUIRED)
-endif()
-
 # Define library locations
 set(_Keystone_LIBDIR "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@")
 set(_Keystone_INCLUDEDIR "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_INCLUDEDIR@/keystone")
@@ -47,15 +41,6 @@ if(NOT TARGET Keystone::keystone_concurrency)
     )
 endif()
 
-if(NOT TARGET Keystone::keystone_agents)
-    add_library(Keystone::keystone_agents STATIC IMPORTED)
-    set_target_properties(Keystone::keystone_agents PROPERTIES
-        IMPORTED_LOCATION "${_Keystone_LIBDIR}/${_Keystone_LIBPREFIX}keystone_agents${_Keystone_LIBSUFFIX}"
-        INTERFACE_INCLUDE_DIRECTORIES "${_Keystone_INCLUDEDIR}"
-        INTERFACE_LINK_LIBRARIES "Keystone::keystone_core;Keystone::keystone_concurrency"
-    )
-endif()
-
 if(NOT TARGET Keystone::keystone_simulation)
     add_library(Keystone::keystone_simulation STATIC IMPORTED)
     set_target_properties(Keystone::keystone_simulation PROPERTIES
@@ -65,22 +50,8 @@ if(NOT TARGET Keystone::keystone_simulation)
     )
 endif()
 
-if(@ENABLE_GRPC@)
-    if(NOT TARGET Keystone::keystone_network)
-        add_library(Keystone::keystone_network STATIC IMPORTED)
-        set_target_properties(Keystone::keystone_network PROPERTIES
-            IMPORTED_LOCATION "${_Keystone_LIBDIR}/${_Keystone_LIBPREFIX}keystone_network${_Keystone_LIBSUFFIX}"
-            INTERFACE_INCLUDE_DIRECTORIES "${_Keystone_INCLUDEDIR}"
-            INTERFACE_LINK_LIBRARIES "Keystone::keystone_core"
-        )
-    endif()
-endif()
-
-# Define available components
-set(Keystone_COMPONENTS core concurrency agents simulation)
-if(@ENABLE_GRPC@)
-    list(APPEND Keystone_COMPONENTS network)
-endif()
+# Define available components (post ADR-015/016: pure transport)
+set(Keystone_COMPONENTS core concurrency simulation)
 
 # Check requested components
 foreach(component ${Keystone_FIND_COMPONENTS})
@@ -100,13 +71,8 @@ set(Keystone_VERSION @CPACK_PACKAGE_VERSION@)
 set(Keystone_LIBRARIES
     Keystone::keystone_core
     Keystone::keystone_concurrency
-    Keystone::keystone_agents
     Keystone::keystone_simulation
 )
-
-if(@ENABLE_GRPC@)
-    list(APPEND Keystone_LIBRARIES Keystone::keystone_network)
-endif()
 
 # Include directories are handled by target properties
 get_target_property(Keystone_INCLUDE_DIRS Keystone::keystone_core INTERFACE_INCLUDE_DIRECTORIES)
