@@ -56,13 +56,12 @@ ProjectKeystone is distributed as five separate packages to support different us
 
 ```cmake
 # In your CMakeLists.txt
-find_package(Keystone REQUIRED COMPONENTS core concurrency agents)
+find_package(Keystone REQUIRED COMPONENTS core concurrency)
 
 add_executable(my_app main.cpp)
 target_link_libraries(my_app
     Keystone::keystone_core
     Keystone::keystone_concurrency
-    Keystone::keystone_agents
 )
 ```
 
@@ -200,12 +199,10 @@ This generates:
 
 ```bash
 mkdir -p build && cd build
-cmake -G Ninja -DENABLE_GRPC=ON ..
+cmake -G Ninja ..
 ninja
 cpack
 ```
-
-This includes the `keystone_network` library and gRPC tests.
 
 ### Build Specific Package Format
 
@@ -365,9 +362,7 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 /usr/lib/
 ├── libkeystone_core.so
 ├── libkeystone_concurrency.so
-├── libkeystone_agents.so
-├── libkeystone_simulation.so
-└── libkeystone_network.so (if ENABLE_GRPC=ON)
+└── libkeystone_simulation.so
 
 /usr/share/doc/ProjectKeystone/
 ├── README.md
@@ -383,34 +378,22 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 │   ├── message.hpp
 │   ├── message_bus.hpp
 │   └── ...
-├── agents/
-│   ├── base_agent.hpp
-│   ├── chief_architect_agent.hpp
-│   └── ...
 ├── concurrency/
 │   ├── task.hpp
 │   ├── thread_pool.hpp
 │   └── ...
-├── simulation/
-│   └── ...
-└── network/ (if ENABLE_GRPC=ON)
+└── simulation/
     └── ...
 
 /usr/lib/
 ├── libkeystone_core.a
 ├── libkeystone_concurrency.a
-├── libkeystone_agents.a
 └── libkeystone_simulation.a
 
 /usr/lib/cmake/Keystone/
 ├── KeystoneConfig.cmake
 ├── KeystoneConfigVersion.cmake
 └── KeystoneTargets.cmake
-
-/usr/share/keystone/proto/ (if ENABLE_GRPC=ON)
-├── hmas_coordinator.proto
-├── service_registry.proto
-└── common.proto
 
 /usr/share/doc/ProjectKeystone/build/
 ├── Dockerfile
@@ -441,7 +424,6 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 ├── component_coordination_tests
 ├── async_delegation_tests
 ├── distributed_hierarchy_tests
-├── distributed_grpc_tests (if ENABLE_GRPC=ON)
 ├── unit_tests
 ├── concurrency_unit_tests
 └── simulation_unit_tests
