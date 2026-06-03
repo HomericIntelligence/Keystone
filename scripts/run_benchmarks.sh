@@ -91,8 +91,6 @@ BENCHMARKS=(
     "hierarchy_benchmarks"
     "message_pool_benchmarks"
     "distributed_benchmarks"
-    # "message_bus_benchmarks"  # Disabled - compilation errors (see CMakeLists.txt:424)
-    # "resilience_benchmarks"    # Disabled - compilation errors (see CMakeLists.txt:434)
 )
 
 # Check that benchmarks exist
