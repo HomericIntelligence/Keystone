@@ -22,11 +22,17 @@
 using namespace keystone::concurrency;
 
 // Test: Create and destroy ThreadPool
-// DISABLED under sanitizers: TSan instruments thread-startup so heavily
-// that ThreadPool(4) + ~ThreadPool() takes >600s on CI runners.
-// Pool construction/destruction is validated indirectly by all other tests.
-// Tracked for re-enablement under non-sanitizer CI in issue #586.
-TEST(ThreadPoolTest, DISABLED_CreateAndDestroy) {
+// Under sanitizer builds (asan/tsan/ubsan/lsan), thread startup/join
+// instrumentation makes ThreadPool(4) + ~ThreadPool() exceed CTest's timeout,
+// so the test skips itself at runtime when compiled with
+// -DKEYSTONE_SANITIZER_BUILD=1 (injected by the Makefile %.asan/%.ubsan/%.lsan/%.tsan
+// rules and by the asan/ubsan/tsan CMake presets). The non-sanitizer
+// `unit-tests` CI job runs it normally. See issues #511 and #586.
+TEST(ThreadPoolTest, CreateAndDestroy) {
+#ifdef KEYSTONE_SANITIZER_BUILD
+  GTEST_SKIP() << "Disabled under sanitizers (#586): construction+destruction "
+                  "exceeds CTest timeout under thread instrumentation.";
+#endif
   ThreadPool pool(4);
   EXPECT_EQ(pool.size(), 4u);
 }
@@ -157,11 +163,13 @@ TEST(ThreadPoolTest, NoWorkAfterShutdown) {
 }
 
 // Test: Thread pool with hardware_concurrency threads
-// DISABLED under sanitizers: ASan/LSan/TSan instrument thread-startup so
-// heavily that ThreadPool() + ~ThreadPool() hangs on CI runners (>120s
-// CTest timeout). Construction is validated indirectly by all other tests.
-// Tracked for re-enablement under non-sanitizer CI in issue #586.
-TEST(ThreadPoolTest, DISABLED_HardwareConcurrency) {
+// Same sanitizer-skip rationale as ThreadPoolTest.CreateAndDestroy above.
+// See issues #511 and #586.
+TEST(ThreadPoolTest, HardwareConcurrency) {
+#ifdef KEYSTONE_SANITIZER_BUILD
+  GTEST_SKIP() << "Disabled under sanitizers (#586): construction+destruction "
+                  "exceeds CTest timeout under thread instrumentation.";
+#endif
   ThreadPool pool;  // Uses std::thread::hardware_concurrency()
 
   EXPECT_GT(pool.size(), 0);

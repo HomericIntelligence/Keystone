@@ -55,7 +55,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread -DKEYSTONE_SANITIZER_BUILD=1"
       }
     },
     {
@@ -65,7 +65,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined"
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -DKEYSTONE_SANITIZER_BUILD=1"
       }
     },
     {
@@ -75,7 +75,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_COVERAGE": "OFF",
-        "CMAKE_CXX_FLAGS": "-fsanitize=undefined"
+        "CMAKE_CXX_FLAGS": "-fsanitize=undefined -DKEYSTONE_SANITIZER_BUILD=1"
       }
     }
   ],
