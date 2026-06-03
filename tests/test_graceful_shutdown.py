@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+# Allow importing from src/keystone without an installed package
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from keystone.nats_listener import NATSListener
 from keystone.task_claimer import TaskClaimer

@@ -12,6 +12,10 @@ cxx-compiler = "*"
 gtest = "*"
 pkg-config = "*"
 just = ">=1.13"
+python = ">=3.9"
+pytest = ">=8.0"
+pytest-asyncio = ">=0.23"
+pydantic = ">=2.0"
 
 [tasks]
 configure = "cmake -G Ninja -B build-native -S . -DENABLE_GRPC=OFF"
