@@ -25,6 +25,7 @@ using namespace keystone::concurrency;
 // DISABLED under sanitizers: TSan instruments thread-startup so heavily
 // that ThreadPool(4) + ~ThreadPool() takes >600s on CI runners.
 // Pool construction/destruction is validated indirectly by all other tests.
+// Tracked for re-enablement under non-sanitizer CI in issue #586.
 TEST(ThreadPoolTest, DISABLED_CreateAndDestroy) {
   ThreadPool pool(4);
   EXPECT_EQ(pool.size(), 4u);
@@ -159,6 +160,7 @@ TEST(ThreadPoolTest, NoWorkAfterShutdown) {
 // DISABLED under sanitizers: ASan/LSan/TSan instrument thread-startup so
 // heavily that ThreadPool() + ~ThreadPool() hangs on CI runners (>120s
 // CTest timeout). Construction is validated indirectly by all other tests.
+// Tracked for re-enablement under non-sanitizer CI in issue #586.
 TEST(ThreadPoolTest, DISABLED_HardwareConcurrency) {
   ThreadPool pool;  // Uses std::thread::hardware_concurrency()
 
