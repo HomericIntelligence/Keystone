@@ -9,9 +9,9 @@ subscribers (e.g., Odysseus, myrmidons) must adhere to.
 **Keystone owns all NATS streams and subject schemas.** No component creates or manages
 NATS streams directly.
 
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-06-03
 **Document Version**: 1.1
-**Status**: Validated against Keystone implementation (issue #252)
+**Status**: Contract applies to downstream consumers post-ADR-016; Keystone forwards verbatim
 
 ---
 
@@ -70,9 +70,11 @@ Odysseus).
 
 ### Backwards Compatibility: Alternative Formats
 
-Keystone's subscriber code accepts multiple payload formats for backwards compatibility
-with pre-issue-#107 publishers. While new publishers **must** use the canonical Hermes
-format above, Keystone will accept:
+Keystone forwards payloads verbatim and does not inspect their format; the backwards
+compatibility described here is a contract that **downstream consumers** of Keystone
+subjects (e.g., ProjectAgamemnon, Argus, pipeline myrmidons) must honor when reading
+pre-issue-#107 messages. While new publishers **must** use the canonical Hermes format
+above, consumers should accept:
 
 - **Flat format** (deprecated): `{"status": "...", "newStatus": "...", ...}` — status at top level
 - **Hermes format** (canonical): `{"event": "...", "data": {"status": "...", ...}, "timestamp": "..."}`
@@ -90,8 +92,10 @@ For events on `hi.tasks.>` subjects, the `data` object contains:
 | `data.result` | any | no | Task output. Present on `completed` events. |
 | `data.error` | string | no | Error description. Present on `failed` events. |
 
-**Note**: Keystone also accepts `status`, `teamId`, and other fields at the top level for
-backwards compatibility with legacy publishers (see [Backwards Compatibility](#backwards-compatibility-alternative-formats)).
+**Note**: For backwards compatibility, consumers should also accept `status`, `teamId`,
+and other fields at the top level when emitted by legacy publishers (see
+[Backwards Compatibility](#backwards-compatibility-alternative-formats)). Keystone itself
+does not parse these fields — it forwards the payload unchanged.
 
 #### Task Status Values
 
@@ -148,48 +152,41 @@ backwards compatibility with legacy publishers (see [Backwards Compatibility](#b
 }
 ```
 
-This was the format used before issue #107 was fixed (Keystone was reading top-level `status`).
-Hermes now emits the canonical format with `status` nested inside `data`.
+This was the format used before issue #107 was fixed (subscribers were reading top-level
+`status`). Hermes now emits the canonical format with `status` nested inside `data`.
 
-**Keystone currently accepts this for backwards compatibility**, but new publishers
+**Consumers should still accept this for backwards compatibility**, but new publishers
 **must use the canonical format** (see [Canonical Envelope Schema](#canonical-envelope-schema-hermes-format)).
+Keystone itself forwards the payload regardless of which format is used.
 
 ### Error: Missing `status` entirely
 
-If a payload has neither `data.status` nor top-level `status`, Keystone will still dispatch
-the event but with no effective status. This is acceptable for sparse payloads and events
-like `task.updated` where the verb itself conveys the action.
+If a payload has neither `data.status` nor top-level `status`, Keystone still forwards
+it on the subject (Keystone does not validate payload contents). Downstream consumers
+will see no effective status for that event; this is acceptable for sparse payloads and
+events like `task.updated` where the verb itself conveys the action.
 
 ---
 
 ## Subscriber Contract
 
-All subscribers reading from Keystone subjects **must** implement the following
-status resolution priority (issue #107):
+This contract applies to **downstream consumers** that subscribe to Keystone-owned
+NATS subjects (e.g., ProjectAgamemnon's orchestration daemon, Argus, pipeline
+myrmidons). It does **not** apply to Keystone itself: Keystone is a pure byte
+transport (see CLAUDE.md) and does not inspect the `status` field.
+
+Consumers reading from Keystone subjects **must** implement the following status
+resolution priority (issue #107):
 
 ```
-1. payload["status"] (top-level, highest priority)
-2. payload["data"]["status"] (nested, canonical format)
-3. payload["newStatus"] (fallback for alternative formats)
-4. None (if no status found)
+1. payload["status"]              (top-level, highest priority)
+2. payload["data"]["status"]      (nested, canonical Hermes format)
+3. payload["newStatus"]           (legacy fallback)
+4. (none)                         (if no status found)
 ```
 
-Keystone's `NATSListener` implements this exact resolution strategy in the
-`TaskEvent` Pydantic model (`src/keystone/models.py`).
-
-### Implementation Example (Python)
-
-```python
-from src.keystone.models import TaskEvent
-
-# All of these formats are accepted
-payload1 = {"status": "completed"}  # flat format
-payload2 = {"data": {"status": "completed"}}  # Hermes canonical
-payload3 = {"event": "task.completed", "data": {...}, "timestamp": "..."}  # full envelope
-
-event = TaskEvent.model_validate(payload)
-status = event.effective_status  # Resolves automatically
-```
+The reference implementation of this resolution now lives in ProjectAgamemnon's
+`TaskEvent` model (extracted from Keystone per ADR-016).
 
 ### Deprecation Notice
 
@@ -210,14 +207,16 @@ This document was validated against the actual Hermes publisher in ProjectHermes
 - `data` object containing task ID, team ID, status, and optional `result`/`error`
 - ISO 8601 UTC `timestamp`
 
-### Keystone Subscriber Validation
+### Keystone Transport Implementation
 
-Keystone's NATS listener is implemented in `src/keystone/nats_listener.py` and
-models are in `src/keystone/models.py`. The `TaskEvent` Pydantic model validates
-incoming payloads and resolves status fields with the 3-way priority listed above.
-
-All tests in `tests/test_task_event.py` and `tests/test_nats_listener.py` verify
-compliance with this specification.
+Keystone's NATS transport is implemented in C++20 under `src/transport/`
+(BlazingMQ-backed local queue, transparent NATS bridge) and `src/network/`
+(NATS connection and listener primitives). Keystone forwards messages
+verbatim and does not parse payload `status` — that responsibility belongs
+to downstream consumers (see [Subscriber Contract](#subscriber-contract)).
+The Python `TaskEvent` model and its tests (`tests/test_task_event.py`,
+`tests/test_nats_listener.py`) were removed alongside the Python orchestration
+package per ADR-016 and now live in ProjectAgamemnon.
 
 ---
 

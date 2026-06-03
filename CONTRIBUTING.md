@@ -153,16 +153,6 @@ cmake --preset asan && cmake --build --preset asan && ctest --preset asan --outp
 cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan --output-on-failure
 ```
 
-## Python Conventions
-
-### TaskEvent camelCase Fields
-
-The `TaskEvent` model in `src/keystone/models.py` uses camelCase field names
-(`newStatus`, `taskId`, `teamId`) to match the JSON payload schema directly,
-avoiding an additional alias layer. This intentionally violates PEP 8 to maintain
-1:1 correspondence with the incoming NATS message format and reduce serialization
-overhead.
-
 ## Code Standards
 
 ### Language
@@ -196,14 +186,6 @@ language to the implementation.
 Default to **no comments**. Add one only when the *why* is non-obvious: a hidden
 constraint, a subtle invariant, or a workaround for a specific upstream bug. If
 removing a comment wouldn't confuse a future reader, don't write it.
-
-## Python Field Naming Conventions
-
-**TaskEvent Field Naming (camelCase):** The `TaskEvent` model in `src/keystone/models.py`
-uses camelCase field names (`newStatus`, `taskId`, `teamId`) to match the JSON payload
-schema directly. This intentionally violates PEP 8 to avoid an unnecessary alias layer.
-Fields are marked with `# noqa: N815` to suppress linter warnings. This is a deliberate
-design choice to keep deserialization transparent.
 
 ## Formatting and Linting
 
