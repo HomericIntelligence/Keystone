@@ -23,13 +23,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
 
       - name: Cache Conan packages
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
@@ -37,7 +37,7 @@ jobs:
             conan-${{ runner.os }}-
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/profiling/_deps
           key: fetchcontent-profiling-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: profiling-test-results
           path: build/profiling/profiling_test_results.xml

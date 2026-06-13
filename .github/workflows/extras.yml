@@ -25,13 +25,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
 
       - name: Cache Conan packages
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
@@ -39,7 +39,7 @@ jobs:
             conan-${{ runner.os }}-
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.release/_deps
           key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
@@ -47,7 +47,7 @@ jobs:
             fetchcontent-release-${{ runner.os }}-
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
 
       - name: Configure sccache
         run: |
@@ -69,7 +69,7 @@ jobs:
         run: make benchmark.native
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: benchmark-results
           path: build/reports/benchmarks/
@@ -90,13 +90,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
 
       - name: Cache Conan packages
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
@@ -104,7 +104,7 @@ jobs:
             conan-${{ runner.os }}-
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.release/_deps
           key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
@@ -112,7 +112,7 @@ jobs:
             fetchcontent-release-${{ runner.os }}-
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
 
       - name: Configure sccache
         run: |
@@ -156,7 +156,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -164,7 +164,7 @@ jobs:
           include-coverage: "true"
 
       - name: Cache Conan packages
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
@@ -172,7 +172,7 @@ jobs:
             conan-${{ runner.os }}-
 
       - name: Cache FetchContent downloads
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.debug.coverage/_deps
           key: fetchcontent-coverage-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
@@ -180,7 +180,7 @@ jobs:
             fetchcontent-coverage-${{ runner.os }}-
 
       - name: Set up sccache
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
 
       - name: Configure sccache
         run: |
@@ -207,7 +207,7 @@ jobs:
           BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-report
           path: build/coverage/html/
@@ -215,7 +215,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
         with:
           files: build/coverage/coverage_filtered.info
           flags: unittests
