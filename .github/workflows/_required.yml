@@ -466,7 +466,12 @@ jobs:
   # ============================================================
   # 3. integration-tests
   #    C++ integration/sample/example/application tests
-  #    + all sanitizer builds (asan, ubsan, tsan, lsan) as matrix
+  #    + all sanitizer builds (asan, ubsan, tsan, lsan) as matrix.
+  #    The sanitizer Makefile rules and CMake presets add
+  #    -DKEYSTONE_SANITIZER_BUILD=1 to CMAKE_CXX_FLAGS, which makes two
+  #    ThreadPool construction/destruction tests skip themselves at runtime
+  #    via GTEST_SKIP() (see #511, #586). Those two tests run unfiltered in
+  #    the non-sanitizer `unit-tests` job above.
   # ============================================================
   integration-tests:
     name: integration-tests

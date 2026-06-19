@@ -29,11 +29,15 @@ endif
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
 BUILD_FLAGS_release := -O3 -DNDEBUG
-BUILD_FLAGS_asan := -fsanitize=address -fno-omit-frame-pointer
-BUILD_FLAGS_ubsan := -fsanitize=undefined -fno-omit-frame-pointer
-BUILD_FLAGS_lsan := -fsanitize=leak -fno-omit-frame-pointer
-BUILD_FLAGS_tsan := -fsanitize=thread -fno-omit-frame-pointer
-BUILD_FLAGS_msan := -fsanitize=memory -fno-omit-frame-pointer
+# Issue #586: KEYSTONE_SANITIZER_BUILD gates a GTEST_SKIP() in two ThreadPool
+# construction/destruction tests whose runtime exceeds CTEST_TIMEOUT under
+# thread-instrumentation. The non-sanitizer unit-tests CI job runs them
+# unfiltered.
+BUILD_FLAGS_asan := -fsanitize=address -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
+BUILD_FLAGS_ubsan := -fsanitize=undefined -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
+BUILD_FLAGS_lsan := -fsanitize=leak -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
+BUILD_FLAGS_tsan := -fsanitize=thread -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
+BUILD_FLAGS_msan := -fsanitize=memory -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
 
 BUILD_DIR ?= build
 EMPTY :=
