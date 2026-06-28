@@ -297,6 +297,9 @@ jobs:
       - name: Run mypy (Python typecheck)
         run: mypy conanfile.py
 
+      - name: Verify agent + Python extraction (ADR-015 / ADR-016)
+        run: ./scripts/check-extraction.sh
+
   markdownlint:
     name: markdownlint
     runs-on: ubuntu-24.04

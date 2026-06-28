@@ -114,7 +114,8 @@ class MessageBus : public IAgentRegistry,
    *
    * Example:
    * @code
-   * auto agent = std::make_shared<ChiefArchitectAgent>("chief");
+   * // MyAgent satisfies the AgentLike concept (getAgentId() + IMessageSink).
+   * auto agent = std::make_shared<MyAgent>("worker-1");
    * bus.registerAgent(agent);  // Compile error if interface incomplete
    * @endcode
    *
