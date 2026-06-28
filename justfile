@@ -39,6 +39,11 @@ test-tsan: build-tsan
 lint:
   make lint
 
+# Enforces ADR-015 (agent layer) + ADR-016 (Python orchestration) extraction.
+# Fails if any extracted artifact reappears in the tree.
+check-extraction:
+  ./scripts/check-extraction.sh
+
 format:
   make format
 

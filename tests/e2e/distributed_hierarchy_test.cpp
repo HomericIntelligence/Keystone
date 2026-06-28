@@ -130,7 +130,7 @@ TEST_F(DistributedHierarchyTest, MultipleCommandsDistributed) {
       // ComponentLead receives and delegates to ModuleLead
       size_t module_node = 2;
       cluster.getNetwork()->send(1, module_node, [&]() {
-        // ModuleLead delegates to TaskAgent
+        // Worker agent receives and executes
         cluster.getNetwork()->send(2, 3, [&]() { total_task_executions++; });
       });
     });

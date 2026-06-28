@@ -35,6 +35,12 @@ orchestration logic belongs in ProjectAgamemnon; any new transport logic must
 be implemented in C++20 under `src/transport/`, `src/network/`, `src/core/`,
 or `include/`.
 
+`scripts/check-extraction.sh` (invoked via `just check-extraction` in the
+`lint` job of `.github/workflows/_required.yml`) fails the build if any
+artifact extracted under ADR-015 (agent classes `ChiefArchitectAgent`,
+`ComponentLeadAgent`, `ModuleLeadAgent`, `TaskAgent`) or ADR-016 (Python
+orchestration modules under `src/keystone/`) reappears in the tree.
+
 ### Required Technologies
 
 | Technology | Version | Purpose |
