@@ -12,6 +12,8 @@
 
 [![Required Checks](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml)
 [![Extras](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml)
+[![Profiling Tests (Weekly)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/profiling-weekly.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/profiling-weekly.yml)
+[![Release Please](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/release-please.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/release-please.yml)
 [![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
@@ -213,7 +215,7 @@ ProjectKeystone/
 
 | Metric | Status | Target |
 |--------|--------|--------|
-| **Line Coverage** | 86.2% | ≥95% |
+| **Line Coverage** | See CI | ≥95% |
 | **Function Coverage** | 88.5% | ≥90% |
 | **Tests Passing** | 481/481 (100%) | 100% |
 | **Benchmark Suites** | 5 suites, 45+ tests | - |
@@ -440,5 +442,5 @@ Built with:
 
 ---
 
-**Status**: Phase 9 (Enhanced Testing & Quality) - 86.2% coverage, 481 tests
+**Status**: Phase 9 (Enhanced Testing & Quality)
 **Last Updated**: 2025-12-02
