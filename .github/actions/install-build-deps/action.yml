@@ -71,9 +71,13 @@ runs:
 
     - name: Install just
       if: inputs.include-just == 'true'
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
-      shell: bash
+      # Use the pinned setup-just action instead of piping just.systems/install.sh
+      # into bash: the install script's unauthenticated GitHub release download
+      # intermittently returns HTTP 403 on CI runners, which turned main red on
+      # the required `lint` job. setup-just downloads via the Actions toolkit
+      # (authenticated, cached) and is already the canonical pattern used in
+      # _required.yml.
+      uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3  # v4.0.0
 
     - name: Set up compiler alternatives
       run: |
