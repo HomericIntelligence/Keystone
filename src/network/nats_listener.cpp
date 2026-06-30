@@ -1,7 +1,5 @@
 #include "network/nats_listener.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <cctype>
 #include <chrono>
 #include <stdexcept>
@@ -9,6 +7,8 @@
 #include <string_view>
 #include <thread>
 #include <vector>
+
+#include <spdlog/spdlog.h>
 
 namespace keystone {
 namespace network {
@@ -25,8 +25,7 @@ bool is_safe_token(std::string_view token) {
     return false;
   }
   for (char c : token) {
-    if (std::isalnum(static_cast<unsigned char>(c)) == 0 && c != '-' &&
-        c != '_') {
+    if (std::isalnum(static_cast<unsigned char>(c)) == 0 && c != '-' && c != '_') {
       return false;
     }
   }
@@ -52,8 +51,8 @@ bool is_terminal_verb(std::string_view verb) {
 }
 
 bool is_known_verb(std::string_view verb) {
-  return verb == "completed" || verb == "failed" || verb == "updated" ||
-         verb == "created" || verb == "assigned" || verb == "started";
+  return verb == "completed" || verb == "failed" || verb == "updated" || verb == "created" ||
+         verb == "assigned" || verb == "started";
 }
 
 }  // namespace
@@ -62,8 +61,7 @@ bool is_known_verb(std::string_view verb) {
 // SubjectClassification — pure parsing, no NATS dependency, unit-testable.
 // ---------------------------------------------------------------------------
 
-SubjectClassification NATSListener::classify_subject(
-    std::string_view subject) noexcept {
+SubjectClassification NATSListener::classify_subject(std::string_view subject) noexcept {
   SubjectClassification result;
   auto parts = split_subject(subject);
 
@@ -106,7 +104,9 @@ NATSListener::NATSListener(NATSListenerConfig cfg, AdvanceDagCallback cb)
   }
 }
 
-NATSListener::~NATSListener() { stop(); }
+NATSListener::~NATSListener() {
+  stop();
+}
 
 natsStatus NATSListener::start(jsCtx* js) {
   if (!js) {
@@ -129,19 +129,21 @@ natsStatus NATSListener::start(jsCtx* js) {
     jsErrCode jerr = static_cast<jsErrCode>(0);
     // Pass NULL for the message handler callback since we'll use pull-based
     // fetch
-    s = js_Subscribe(&sub_, js, cfg_.subject.c_str(), nullptr, nullptr, nullptr,
-                     &sub_opts, &jerr);
+    s = js_Subscribe(&sub_, js, cfg_.subject.c_str(), nullptr, nullptr, nullptr, &sub_opts, &jerr);
     if (s == NATS_OK) {
       break;
     }
-    spdlog::warn(
-        "NATSListener: subscribe attempt {}/{} failed status={} jerr={}",
-        attempt, attempts, static_cast<int>(s), static_cast<int>(jerr));
+    spdlog::warn("NATSListener: subscribe attempt {}/{} failed status={} jerr={}",
+                 attempt,
+                 attempts,
+                 static_cast<int>(s),
+                 static_cast<int>(jerr));
   }
 
   if (s != NATS_OK) {
     spdlog::error("NATSListener: all {} subscribe attempt(s) failed status={}",
-                  attempts, static_cast<int>(s));
+                  attempts,
+                  static_cast<int>(s));
     return s;
   }
 
@@ -149,8 +151,7 @@ natsStatus NATSListener::start(jsCtx* js) {
   try {
     listener_thread_ = std::thread(&NATSListener::pull_loop, this);
   } catch (const std::exception& ex) {
-    spdlog::error("NATSListener: failed to start listener thread: {}",
-                  ex.what());
+    spdlog::error("NATSListener: failed to start listener thread: {}", ex.what());
     natsSubscription_Unsubscribe(sub_);
     natsSubscription_Destroy(sub_);
     sub_ = nullptr;
@@ -203,8 +204,7 @@ void NATSListener::pull_loop() noexcept {
 
     if (s != NATS_OK) {
       // Error in fetch (connection issue, etc.)
-      spdlog::error("NATSListener: natsSubscription_Fetch failed status={}",
-                    static_cast<int>(s));
+      spdlog::error("NATSListener: natsSubscription_Fetch failed status={}", static_cast<int>(s));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       continue;
     }
@@ -234,11 +234,9 @@ void NATSListener::handle_message(natsMsg* msg) noexcept {
   auto finish = [&]() {
     // Only ack/nak if not already done (for safety)
     if (msg != nullptr) {
-      natsStatus ack_s =
-          should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
+      natsStatus ack_s = should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
       if (ack_s != NATS_OK) {
-        spdlog::warn("NATSListener: ack/nak failed status={}",
-                     static_cast<int>(ack_s));
+        spdlog::warn("NATSListener: ack/nak failed status={}", static_cast<int>(ack_s));
       }
       natsMsg_Destroy(msg);
     }
@@ -256,20 +254,19 @@ void NATSListener::handle_message(natsMsg* msg) noexcept {
         return;  // nak
 
       case SubjectVerdict::kUnsafeToken:
-        spdlog::warn(
-            "NATSListener: unsafe token team_id={} task_id={} subject={}",
-            cls.team_id, cls.task_id, subject);
+        spdlog::warn("NATSListener: unsafe token team_id={} task_id={} subject={}",
+                     cls.team_id,
+                     cls.task_id,
+                     subject);
         return;  // nak
 
       case SubjectVerdict::kUnknownVerb:
-        spdlog::debug("NATSListener: unknown verb={} subject={}", cls.verb,
-                      subject);
+        spdlog::debug("NATSListener: unknown verb={} subject={}", cls.verb, subject);
         should_ack = true;
         return;
 
       case SubjectVerdict::kNonTerminalVerb:
-        spdlog::debug("NATSListener: non-terminal verb={} subject={}", cls.verb,
-                      subject);
+        spdlog::debug("NATSListener: non-terminal verb={} subject={}", cls.verb, subject);
         should_ack = true;
         return;
 
@@ -277,18 +274,21 @@ void NATSListener::handle_message(natsMsg* msg) noexcept {
         try {
           callback_(cls.team_id, cls.task_id);
           spdlog::info("NATSListener: advancing_dag team_id={} task_id={}",
-                       cls.team_id, cls.task_id);
+                       cls.team_id,
+                       cls.task_id);
           should_ack = true;
         } catch (const std::exception& ex) {
-          spdlog::error(
-              "NATSListener: callback threw team_id={} task_id={} error={}",
-              cls.team_id, cls.task_id, ex.what());
+          spdlog::error("NATSListener: callback threw team_id={} task_id={} error={}",
+                        cls.team_id,
+                        cls.task_id,
+                        ex.what());
           // nak: allow redelivery
         } catch (...) {
           spdlog::error(
               "NATSListener: callback threw unknown exception "
               "team_id={} task_id={}",
-              cls.team_id, cls.task_id);
+              cls.team_id,
+              cls.task_id);
           // nak
         }
         return;

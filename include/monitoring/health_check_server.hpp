@@ -1,5 +1,7 @@
 #pragma once
 
+#include "monitoring/nats_status.hpp"
+
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -7,8 +9,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-
-#include "monitoring/nats_status.hpp"
 
 namespace keystone {
 namespace monitoring {
@@ -56,10 +56,10 @@ class HealthCheckServer {
    *        when supplied the readiness probe is not ready until this returns
    * true
    */
-  explicit HealthCheckServer(
-      uint16_t port = 8080, ReadinessCheck readiness_check = nullptr,
-      NatsStatusTracker* nats_status = nullptr,
-      NatsConnectionCheck nats_connection_check = nullptr);
+  explicit HealthCheckServer(uint16_t port = 8080,
+                             ReadinessCheck readiness_check = nullptr,
+                             NatsStatusTracker* nats_status = nullptr,
+                             NatsConnectionCheck nats_connection_check = nullptr);
 
   /**
    * @brief Destructor - stops server if running
@@ -138,8 +138,7 @@ class HealthCheckServer {
    * @param nats_status Optional NATS tracker (may be nullptr)
    * @return JSON body string
    */
-  static std::string generateV1HealthResponse(
-      const NatsStatusTracker* nats_status);
+  static std::string generateV1HealthResponse(const NatsStatusTracker* nats_status);
 
   std::atomic<uint16_t> port_;
   std::atomic<bool> running_{false};
@@ -147,9 +146,8 @@ class HealthCheckServer {
   std::atomic<int> server_fd_{-1};
   mutable std::mutex readiness_mutex_;
   ReadinessCheck readiness_check_;
-  NatsConnectionCheck
-      nats_connection_check_;  // issue #204: gates /ready on NATS connectivity
-  NatsStatusTracker* nats_status_{nullptr};  // non-owning
+  NatsConnectionCheck nats_connection_check_;  // issue #204: gates /ready on NATS connectivity
+  NatsStatusTracker* nats_status_{nullptr};    // non-owning
 };
 
 }  // namespace monitoring

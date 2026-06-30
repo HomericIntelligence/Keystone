@@ -3,9 +3,9 @@
  * @brief Unit tests for ThreadPool
  */
 
-#include <gtest/gtest.h>
-#include <spdlog/sinks/ringbuffer_sink.h>
-#include <spdlog/spdlog.h>
+#include "concurrency/logger.hpp"
+#include "concurrency/task.hpp"
+#include "concurrency/thread_pool.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -15,9 +15,9 @@
 #include <thread>
 #include <vector>
 
-#include "concurrency/logger.hpp"
-#include "concurrency/task.hpp"
-#include "concurrency/thread_pool.hpp"
+#include <gtest/gtest.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
+#include <spdlog/spdlog.h>
 
 using namespace keystone::concurrency;
 
@@ -284,8 +284,7 @@ std::vector<std::string> captureThreadPoolLogLines(std::function<void()> fn) {
   return sink->last_formatted();
 }
 
-bool anyLineContains(const std::vector<std::string>& lines,
-                     const std::string& substr) {
+bool anyLineContains(const std::vector<std::string>& lines, const std::string& substr) {
   for (const auto& line : lines) {
     if (line.find(substr) != std::string::npos) {
       return true;
@@ -319,8 +318,7 @@ TEST(ThreadPoolLogTest, WorkerStdExceptionIsLogged) {
     });
   }
 
-  EXPECT_TRUE(anyLineContains(lines, "worker-boom"))
-      << "Expected exception message in log output";
+  EXPECT_TRUE(anyLineContains(lines, "worker-boom")) << "Expected exception message in log output";
   EXPECT_TRUE(anyLineContains(lines, "Exception in worker"))
       << "Expected 'Exception in worker' prefix in log output";
 

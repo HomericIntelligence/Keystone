@@ -68,10 +68,14 @@ inline std::string agentLevelToString(AgentLevel level) {
  * @endcode
  */
 inline std::optional<AgentLevel> stringToAgentLevel(std::string_view str) {
-  if (str == "L0") return AgentLevel::L0;
-  if (str == "L1") return AgentLevel::L1;
-  if (str == "L2") return AgentLevel::L2;
-  if (str == "L3") return AgentLevel::L3;
+  if (str == "L0")
+    return AgentLevel::L0;
+  if (str == "L1")
+    return AgentLevel::L1;
+  if (str == "L2")
+    return AgentLevel::L2;
+  if (str == "L3")
+    return AgentLevel::L3;
   return std::nullopt;
 }
 
@@ -96,7 +100,9 @@ inline uint8_t agentLevelValue(AgentLevel level) {
  * @param value Numeric value to check
  * @return true if value is in range [0, 3], false otherwise
  */
-inline bool isValidAgentLevel(uint8_t value) { return value <= 3; }
+inline bool isValidAgentLevel(uint8_t value) {
+  return value <= 3;
+}
 
 /**
  * @brief Convert numeric value to AgentLevel

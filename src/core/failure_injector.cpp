@@ -7,8 +7,7 @@
 namespace keystone {
 namespace core {
 
-FailureInjector::FailureInjector(uint32_t seed)
-    : rng_(seed == 0 ? std::random_device{}() : seed) {}
+FailureInjector::FailureInjector(uint32_t seed) : rng_(seed == 0 ? std::random_device{}() : seed) {}
 
 // ============================================================================
 // Agent Crash Simulation
@@ -41,8 +40,7 @@ void FailureInjector::injectAgentTimeout(const std::string& agent_id,
   total_failures_++;
 }
 
-std::chrono::milliseconds FailureInjector::getAgentTimeout(
-    const std::string& agent_id) const {
+std::chrono::milliseconds FailureInjector::getAgentTimeout(const std::string& agent_id) const {
   std::lock_guard<std::mutex> lock(timeout_mutex_);
   auto it = timeout_agents_.find(agent_id);
   if (it != timeout_agents_.end()) {

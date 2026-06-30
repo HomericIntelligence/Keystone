@@ -10,12 +10,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <benchmark/benchmark.h>
+#include "core/message.hpp"
+#include "core/message_pool.hpp"
 
 #include <cstdint>
 
-#include "core/message.hpp"
-#include "core/message_pool.hpp"
+#include <benchmark/benchmark.h>
 
 using namespace keystone::core;
 
@@ -189,8 +189,7 @@ static void BM_PoolHitRate(benchmark::State& state) {
   }
 
   auto stats = MessagePool::getStats();
-  double hit_rate =
-      static_cast<double>(stats.pool_hits) / stats.total_acquires * 100.0;
+  double hit_rate = static_cast<double>(stats.pool_hits) / stats.total_acquires * 100.0;
   state.counters["HitRate%"] = hit_rate;
   state.counters["PoolHits"] = stats.pool_hits;
   state.counters["PoolMisses"] = stats.pool_misses;
@@ -223,8 +222,7 @@ static void BM_ThreadLocalPooling(benchmark::State& state) {
 
   if (state.thread_index() == 0) {
     auto stats = MessagePool::getStats();
-    double hit_rate =
-        static_cast<double>(stats.pool_hits) / stats.total_acquires * 100.0;
+    double hit_rate = static_cast<double>(stats.pool_hits) / stats.total_acquires * 100.0;
     state.counters["HitRate%"] = hit_rate;
   }
 

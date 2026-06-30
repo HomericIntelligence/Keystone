@@ -1,14 +1,14 @@
 #pragma once
 
+#include "core/config.hpp"   // FIX m3: Centralized configuration
+#include "core/message.hpp"  // For Priority enum
+
 #include <atomic>
 #include <chrono>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <string>
-
-#include "core/config.hpp"   // FIX m3: Centralized configuration
-#include "core/message.hpp"  // For Priority enum
 
 namespace keystone {
 namespace core {

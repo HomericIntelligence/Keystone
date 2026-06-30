@@ -55,8 +55,7 @@ struct Config {
    *
    * Default: 100ms (guarantees max 100ms latency for low-priority messages)
    */
-  static constexpr std::chrono::milliseconds AGENT_LOW_PRIORITY_CHECK_INTERVAL{
-      100};
+  static constexpr std::chrono::milliseconds AGENT_LOW_PRIORITY_CHECK_INTERVAL{100};
 
   // ========================================================================
   // Metrics Configuration

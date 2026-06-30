@@ -3,11 +3,11 @@
  * @brief Unit tests for RetryPolicy
  */
 
-#include <gtest/gtest.h>
+#include "core/retry_policy.hpp"
 
 #include <thread>
 
-#include "core/retry_policy.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::core;
 
@@ -18,11 +18,10 @@ class RetryPolicyTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Default configuration
-    default_config_ =
-        RetryPolicy::Config{.max_attempts = 3,
-                            .initial_delay_ms = std::chrono::milliseconds(100),
-                            .max_delay_ms = std::chrono::milliseconds(5000),
-                            .backoff_multiplier = 2.0};
+    default_config_ = RetryPolicy::Config{.max_attempts = 3,
+                                          .initial_delay_ms = std::chrono::milliseconds(100),
+                                          .max_delay_ms = std::chrono::milliseconds(5000),
+                                          .backoff_multiplier = 2.0};
   }
 
   RetryPolicy::Config default_config_;
@@ -107,11 +106,10 @@ TEST_F(RetryPolicyTest, GetNextDelayExponentialBackoff) {
 }
 
 TEST_F(RetryPolicyTest, GetNextDelayMaxCap) {
-  RetryPolicy::Config config{
-      .max_attempts = 10,
-      .initial_delay_ms = std::chrono::milliseconds(1000),
-      .max_delay_ms = std::chrono::milliseconds(5000),
-      .backoff_multiplier = 2.0};
+  RetryPolicy::Config config{.max_attempts = 10,
+                             .initial_delay_ms = std::chrono::milliseconds(1000),
+                             .max_delay_ms = std::chrono::milliseconds(5000),
+                             .backoff_multiplier = 2.0};
   RetryPolicy policy(config);
 
   // Record many attempts

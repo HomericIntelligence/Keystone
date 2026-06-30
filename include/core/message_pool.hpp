@@ -1,9 +1,9 @@
 #pragma once
 
+#include "core/message.hpp"
+
 #include <optional>
 #include <vector>
-
-#include "core/message.hpp"
 
 namespace keystone {
 namespace core {

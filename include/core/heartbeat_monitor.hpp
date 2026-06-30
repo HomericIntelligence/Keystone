@@ -48,11 +48,9 @@ class HeartbeatMonitor {
    * @brief Heartbeat monitoring configuration
    */
   struct Config {
-    std::chrono::milliseconds heartbeat_interval{
-        1000};  ///< Expected heartbeat interval
-    std::chrono::milliseconds timeout_threshold{
-        3000};                     ///< Timeout before marking as dead
-    bool auto_remove_dead{false};  ///< Automatically remove dead agents
+    std::chrono::milliseconds heartbeat_interval{1000};  ///< Expected heartbeat interval
+    std::chrono::milliseconds timeout_threshold{3000};   ///< Timeout before marking as dead
+    bool auto_remove_dead{false};                        ///< Automatically remove dead agents
   };
 
   /**

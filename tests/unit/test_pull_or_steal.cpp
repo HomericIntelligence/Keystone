@@ -3,13 +3,13 @@
  * @brief Unit tests for PullOrSteal awaitable
  */
 
-#include <gtest/gtest.h>
+#include "concurrency/pull_or_steal.hpp"
+#include "concurrency/task.hpp"
 
 #include <atomic>
 #include <vector>
 
-#include "concurrency/pull_or_steal.hpp"
-#include "concurrency/task.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::concurrency;
 
@@ -66,8 +66,7 @@ TEST(PullOrStealTest, StealFromMultipleQueues) {
   WorkStealingQueue victim1;
   WorkStealingQueue victim2;
   WorkStealingQueue victim3;
-  std::vector<WorkStealingQueue*> all_queues = {&own_queue, &victim1, &victim2,
-                                                &victim3};
+  std::vector<WorkStealingQueue*> all_queues = {&own_queue, &victim1, &victim2, &victim3};
 
   // Add work to victim2 only
   victim2.push(WorkItem::makeFunction([]() {}));
@@ -235,7 +234,9 @@ TEST(PullOrStealTest, CoroutineWorkItem) {
   std::vector<WorkStealingQueue*> all_queues = {&own_queue};
 
   // Create a simple coroutine work item
-  auto simpleCoroutine = []() -> Task<void> { co_return; }();
+  auto simpleCoroutine = []() -> Task<void> {
+    co_return;
+  }();
 
   own_queue.push(WorkItem::makeCoroutine(simpleCoroutine.get_handle()));
 

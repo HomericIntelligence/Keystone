@@ -37,8 +37,8 @@ class SimulatedNetwork {
   struct Config {
     std::chrono::microseconds min_latency{100};   ///< Minimum network latency
     std::chrono::microseconds max_latency{1000};  ///< Maximum network latency
-    size_t bandwidth_mbps{1000};   ///< Bandwidth in Mbps (unused for now)
-    double packet_loss_rate{0.0};  ///< Packet loss probability [0.0, 1.0]
+    size_t bandwidth_mbps{1000};                  ///< Bandwidth in Mbps (unused for now)
+    double packet_loss_rate{0.0};                 ///< Packet loss probability [0.0, 1.0]
   };
 
   /**
@@ -172,9 +172,7 @@ class SimulatedNetwork {
    * @brief Get messages dropped due to partition
    * @return Partition-dropped message count
    */
-  size_t getPartitionDroppedMessages() const {
-    return partition_dropped_messages_.load();
-  }
+  size_t getPartitionDroppedMessages() const { return partition_dropped_messages_.load(); }
 
  private:
   Config config_;  ///< Network configuration

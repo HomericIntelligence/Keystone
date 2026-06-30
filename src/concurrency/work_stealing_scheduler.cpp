@@ -5,22 +5,21 @@
 
 #include "concurrency/work_stealing_scheduler.hpp"
 
+#include "concurrency/scheduler_accessor.hpp"
+
 #include <random>
 #include <sstream>
 
-#include "concurrency/scheduler_accessor.hpp"
-
 // Phase D: CPU affinity support (Linux-specific)
 #ifdef __linux__
-#include <pthread.h>
-#include <sched.h>
+#  include <pthread.h>
+#  include <sched.h>
 #endif
 
 namespace keystone {
 namespace concurrency {
 
-WorkStealingScheduler::WorkStealingScheduler(size_t num_workers,
-                                             bool enable_cpu_affinity)
+WorkStealingScheduler::WorkStealingScheduler(size_t num_workers, bool enable_cpu_affinity)
     : num_workers_(num_workers), enable_cpu_affinity_(enable_cpu_affinity) {
   // FIX P2-10: Enforce maximum worker thread limit to prevent DoS
   if (num_workers_ > MAX_WORKER_THREADS) {
@@ -78,11 +77,9 @@ void WorkStealingScheduler::submit(std::coroutine_handle<> handle) {
   submitTo(worker_idx, handle);
 }
 
-void WorkStealingScheduler::submitTo(size_t worker_index,
-                                     std::function<void()> func) {
+void WorkStealingScheduler::submitTo(size_t worker_index, std::function<void()> func) {
   if (worker_index >= num_workers_) {
-    Logger::error("Invalid worker index: {} (max: {})", worker_index,
-                  num_workers_ - 1);
+    Logger::error("Invalid worker index: {} (max: {})", worker_index, num_workers_ - 1);
     return;
   }
 
@@ -96,11 +93,9 @@ void WorkStealingScheduler::submitTo(size_t worker_index,
   shutdown_cv_.notify_all();
 }
 
-void WorkStealingScheduler::submitTo(size_t worker_index,
-                                     std::coroutine_handle<> handle) {
+void WorkStealingScheduler::submitTo(size_t worker_index, std::coroutine_handle<> handle) {
   if (worker_index >= num_workers_) {
-    Logger::error("Invalid worker index: {} (max: {})", worker_index,
-                  num_workers_ - 1);
+    Logger::error("Invalid worker index: {} (max: {})", worker_index, num_workers_ - 1);
     return;
   }
 
@@ -142,9 +137,13 @@ void WorkStealingScheduler::shutdown() {
   Logger::info("WorkStealingScheduler shutdown complete");
 }
 
-bool WorkStealingScheduler::isRunning() const { return running_.load(); }
+bool WorkStealingScheduler::isRunning() const {
+  return running_.load();
+}
 
-size_t WorkStealingScheduler::getNumWorkers() const { return num_workers_; }
+size_t WorkStealingScheduler::getNumWorkers() const {
+  return num_workers_;
+}
 
 size_t WorkStealingScheduler::getApproximateWorkCount() const {
   size_t total = 0;
@@ -196,8 +195,8 @@ size_t WorkStealingScheduler::getNextWorkerIndex() {
   return idx % num_workers_;
 }
 
-std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(
-    size_t worker_index, const char* phase_label) {
+std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(size_t worker_index,
+                                                            const char* phase_label) {
   auto& own_queue = *worker_queues_[worker_index];
 
   if (auto work = own_queue.pop()) {
@@ -208,7 +207,9 @@ std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(
     size_t victim_idx = (worker_index + i) % num_workers_;
     if (auto work = worker_queues_[victim_idx]->steal()) {
       Logger::trace("Worker {} stole work from worker {} ({} phase)",
-                    worker_index, victim_idx, phase_label);
+                    worker_index,
+                    victim_idx,
+                    phase_label);
       return work;
     }
   }
@@ -216,8 +217,7 @@ std::optional<WorkItem> WorkStealingScheduler::tryStealOnce(
   return std::nullopt;
 }
 
-std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(
-    size_t worker_index) {
+std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(size_t worker_index) {
   size_t iterations = 0;
 
   // Phase 1: SPIN (0-100 iterations)
@@ -249,8 +249,7 @@ std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(
       return work;
     }
     std::unique_lock<std::mutex> lock(shutdown_mutex_);
-    shutdown_cv_.wait_for(lock, SLEEP_DURATION,
-                          [this]() { return shutdown_requested_.load(); });
+    shutdown_cv_.wait_for(lock, SLEEP_DURATION, [this]() { return shutdown_requested_.load(); });
     if (shutdown_requested_.load()) {
       return std::nullopt;
     }
@@ -347,14 +346,15 @@ void WorkStealingScheduler::setCPUAffinity(size_t worker_index) {
 
   if (result != 0) {
     Logger::warn("Worker {} failed to set CPU affinity to core {}: error {}",
-                 worker_index, cpu_id, result);
+                 worker_index,
+                 cpu_id,
+                 result);
   } else {
     Logger::debug("Worker {} pinned to CPU core {}", worker_index, cpu_id);
   }
 #else
   // Other platforms: No-op (affinity not supported or not implemented)
-  Logger::debug("Worker {}: CPU affinity not supported on this platform",
-                worker_index);
+  Logger::debug("Worker {}: CPU affinity not supported on this platform", worker_index);
   (void)worker_index;  // Suppress unused parameter warning
 #endif
 }

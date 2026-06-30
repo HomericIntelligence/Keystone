@@ -9,14 +9,14 @@
  * - Wake-up latency (target: < 1ms)
  */
 
-#include <benchmark/benchmark.h>
+#include "concurrency/work_stealing_scheduler.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <thread>
 
-#include "concurrency/work_stealing_scheduler.hpp"
+#include <benchmark/benchmark.h>
 
 using namespace keystone::concurrency;
 using namespace std::chrono_literals;
@@ -36,9 +36,7 @@ static void BM_IdleCPU_WithBackoff(benchmark::State& state) {
     std::this_thread::sleep_for(100ms);
     auto end = std::chrono::steady_clock::now();
 
-    auto duration =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start)
-            .count();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
     state.SetIterationTime(duration / 1e9);
   }
 
@@ -65,9 +63,8 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
 
     scheduler.submit([submit_time, total_latency_ns, task_count]() {
       auto execute_time = std::chrono::steady_clock::now();
-      auto latency = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                         execute_time - submit_time)
-                         .count();
+      auto latency =
+          std::chrono::duration_cast<std::chrono::nanoseconds>(execute_time - submit_time).count();
       total_latency_ns->fetch_add(latency);
       task_count->fetch_add(1);
     });
@@ -82,8 +79,7 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
   int32_t count = task_count->load();
   if (count > 0) {
     int64_t avg_latency_ns = total_latency_ns->load() / count;
-    state.counters["avg_latency_us"] =
-        benchmark::Counter(avg_latency_ns / 1000.0);
+    state.counters["avg_latency_us"] = benchmark::Counter(avg_latency_ns / 1000.0);
   }
 
   scheduler.shutdown();
@@ -105,8 +101,8 @@ static void BM_ThroughputWithBackoff(benchmark::State& state) {
   std::this_thread::sleep_for(100ms);
 
   state.counters["tasks_completed"] = benchmark::Counter(counter->load());
-  state.counters["tasks_per_sec"] =
-      benchmark::Counter(counter->load(), benchmark::Counter::kIsRate);
+  state.counters["tasks_per_sec"] = benchmark::Counter(counter->load(),
+                                                       benchmark::Counter::kIsRate);
 
   scheduler.shutdown();
 }
@@ -124,8 +120,7 @@ static void BM_WakeUpLatency(benchmark::State& state) {
     // Measure wake-up time
     auto submit_time = std::chrono::steady_clock::now();
     auto work_executed = std::make_shared<std::atomic<bool>>(false);
-    auto execute_time =
-        std::make_shared<std::chrono::steady_clock::time_point>();
+    auto execute_time = std::make_shared<std::chrono::steady_clock::time_point>();
 
     scheduler.submit([work_executed, execute_time]() {
       *execute_time = std::chrono::steady_clock::now();
@@ -137,9 +132,8 @@ static void BM_WakeUpLatency(benchmark::State& state) {
       std::this_thread::sleep_for(100us);
     }
 
-    auto wakeup_latency = std::chrono::duration_cast<std::chrono::microseconds>(
-                              *execute_time - submit_time)
-                              .count();
+    auto wakeup_latency =
+        std::chrono::duration_cast<std::chrono::microseconds>(*execute_time - submit_time).count();
 
     state.counters["wakeup_latency_us"] = benchmark::Counter(wakeup_latency);
   }
@@ -216,8 +210,7 @@ static void BM_BackoffPhaseLatencies(benchmark::State& state) {
 
     // Measure latency
     auto submit_time = std::chrono::steady_clock::now();
-    auto execute_time =
-        std::make_shared<std::chrono::steady_clock::time_point>();
+    auto execute_time = std::make_shared<std::chrono::steady_clock::time_point>();
     auto work_done = std::make_shared<std::atomic<bool>>(false);
 
     scheduler.submit([execute_time, work_done]() {
@@ -229,9 +222,8 @@ static void BM_BackoffPhaseLatencies(benchmark::State& state) {
       std::this_thread::sleep_for(10us);
     }
 
-    auto latency = std::chrono::duration_cast<std::chrono::microseconds>(
-                       *execute_time - submit_time)
-                       .count();
+    auto latency =
+        std::chrono::duration_cast<std::chrono::microseconds>(*execute_time - submit_time).count();
 
     state.counters["latency_us"] = benchmark::Counter(latency);
   }

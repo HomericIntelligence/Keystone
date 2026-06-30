@@ -19,7 +19,7 @@
  *  6. Assert that the atomic counter equals M.
  */
 
-#include <gtest/gtest.h>
+#include "concurrency/work_stealing_scheduler.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -27,7 +27,7 @@
 #include <functional>
 #include <thread>
 
-#include "concurrency/work_stealing_scheduler.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::concurrency;
 
@@ -126,8 +126,7 @@ TEST_F(SchedulerSigtermTest, InflightTasksCompleteOnSigterm) {
   // Spawn a helper thread that watches for the signal flag and drives shutdown.
   // This is necessary because calling scheduler.shutdown() inside a signal
   // handler violates POSIX async-signal-safety requirements.
-  std::thread shutdown_driver(
-      [&scheduler]() { driveShutdownFromSignal(scheduler); });
+  std::thread shutdown_driver([&scheduler]() { driveShutdownFromSignal(scheduler); });
 
   // Raise SIGTERM on this thread. The handler sets g_sigterm_received = true;
   // shutdown_driver wakes up and calls scheduler.shutdown().
@@ -138,11 +137,10 @@ TEST_F(SchedulerSigtermTest, InflightTasksCompleteOnSigterm) {
 
   // All 20 tasks must have completed — none may be dropped.
   EXPECT_EQ(counter.load(std::memory_order_acquire), num_tasks)
-      << "Scheduler dropped tasks on SIGTERM: expected " << num_tasks
-      << " completions, got " << counter.load(std::memory_order_acquire);
+      << "Scheduler dropped tasks on SIGTERM: expected " << num_tasks << " completions, got "
+      << counter.load(std::memory_order_acquire);
 
-  EXPECT_FALSE(scheduler.isRunning())
-      << "Scheduler should not be running after shutdown";
+  EXPECT_FALSE(scheduler.isRunning()) << "Scheduler should not be running after shutdown";
 }
 
 // ---------------------------------------------------------------------------
@@ -161,8 +159,7 @@ TEST_F(SchedulerSigtermTest, InflightTasksCompleteOnSigterm) {
 TEST_F(SchedulerSigtermTest, PerWorkerDrainOnSigterm) {
   constexpr size_t num_workers = 3;
   constexpr int32_t tasks_per_worker = 8;
-  constexpr int32_t num_tasks =
-      static_cast<int32_t>(num_workers) * tasks_per_worker;
+  constexpr int32_t num_tasks = static_cast<int32_t>(num_workers) * tasks_per_worker;
   constexpr auto task_duration = std::chrono::milliseconds(20);
 
   WorkStealingScheduler scheduler(num_workers);
@@ -180,16 +177,15 @@ TEST_F(SchedulerSigtermTest, PerWorkerDrainOnSigterm) {
     }
   }
 
-  std::thread shutdown_driver(
-      [&scheduler]() { driveShutdownFromSignal(scheduler); });
+  std::thread shutdown_driver([&scheduler]() { driveShutdownFromSignal(scheduler); });
 
   std::raise(SIGTERM);
 
   shutdown_driver.join();
 
   EXPECT_EQ(counter.load(std::memory_order_acquire), num_tasks)
-      << "Per-worker drain incomplete: expected " << num_tasks
-      << " completions, got " << counter.load(std::memory_order_acquire);
+      << "Per-worker drain incomplete: expected " << num_tasks << " completions, got "
+      << counter.load(std::memory_order_acquire);
 
   EXPECT_FALSE(scheduler.isRunning());
 }
@@ -217,12 +213,10 @@ TEST_F(SchedulerSigtermTest, LargeWorkloadDrainsCompletely) {
 
   // Submit all tasks immediately (no sleep — most land in queues unprocessed).
   for (int32_t i = 0; i < num_tasks; ++i) {
-    scheduler.submit(
-        [&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
+    scheduler.submit([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
   }
 
-  std::thread shutdown_driver(
-      [&scheduler]() { driveShutdownFromSignal(scheduler); });
+  std::thread shutdown_driver([&scheduler]() { driveShutdownFromSignal(scheduler); });
 
   // Small delay to allow a few tasks to start executing before SIGTERM.
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -231,8 +225,8 @@ TEST_F(SchedulerSigtermTest, LargeWorkloadDrainsCompletely) {
   shutdown_driver.join();
 
   EXPECT_EQ(counter.load(std::memory_order_acquire), num_tasks)
-      << "Large-workload drain incomplete: expected " << num_tasks
-      << " completions, got " << counter.load(std::memory_order_acquire);
+      << "Large-workload drain incomplete: expected " << num_tasks << " completions, got "
+      << counter.load(std::memory_order_acquire);
 
   EXPECT_FALSE(scheduler.isRunning());
 }
@@ -255,8 +249,7 @@ TEST_F(SchedulerSigtermTest, SigtermWithEmptyQueueShutdownsCleanly) {
 
   EXPECT_TRUE(scheduler.isRunning());
 
-  std::thread shutdown_driver(
-      [&scheduler]() { driveShutdownFromSignal(scheduler); });
+  std::thread shutdown_driver([&scheduler]() { driveShutdownFromSignal(scheduler); });
 
   std::raise(SIGTERM);
 

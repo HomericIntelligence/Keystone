@@ -22,11 +22,11 @@
 
 #pragma once
 
-#include <nats.h>
-
 #include <atomic>
 #include <string>
 #include <thread>
+
+#include <nats.h>
 
 // Forward declarations — avoid pulling in full nats.h types in callers.
 namespace keystone {
@@ -77,8 +77,7 @@ class TransparentBridge {
    * @param conn NATS connection.  Must outlive this object.
    * @param cfg  Optional configuration override.
    */
-  TransparentBridge(core::MessageBus& bus, NatsConnection& conn,
-                    BridgeConfig cfg = {});
+  TransparentBridge(core::MessageBus& bus, NatsConnection& conn, BridgeConfig cfg = {});
 
   ~TransparentBridge();
 

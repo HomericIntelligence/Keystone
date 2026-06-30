@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
+#include "core/failure_injector.hpp"
 
 #include <chrono>
 
-#include "core/failure_injector.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::core;
 using namespace std::chrono_literals;
@@ -277,8 +277,7 @@ TEST_F(FailureInjectorTest, ConcurrentCrashInjection) {
   for (int32_t t = 0; t < THREADS; ++t) {
     threads.emplace_back([&, t]() {
       for (int32_t i = 0; i < CRASHES_PER_THREAD; ++i) {
-        std::string agent_id =
-            "agent_" + std::to_string(t) + "_" + std::to_string(i);
+        std::string agent_id = "agent_" + std::to_string(t) + "_" + std::to_string(i);
         injector->injectAgentCrash(agent_id);
       }
     });

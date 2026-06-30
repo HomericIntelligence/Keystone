@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
+#include "simulation/simulated_cluster.hpp"
 
 #include <chrono>
 #include <thread>
 
-#include "simulation/simulated_cluster.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::simulation;
 using namespace std::chrono_literals;
@@ -26,10 +26,9 @@ TEST_F(SimulatedClusterTest, CreateWithDefaultConfig) {
 }
 
 TEST_F(SimulatedClusterTest, CreateWithCustomConfig) {
-  SimulatedCluster::Config config{
-      .num_nodes = 4,
-      .workers_per_node = 8,
-      .network_config = {.min_latency = 50us, .max_latency = 150us}};
+  SimulatedCluster::Config config{.num_nodes = 4,
+                                  .workers_per_node = 8,
+                                  .network_config = {.min_latency = 50us, .max_latency = 150us}};
   SimulatedCluster cluster(config);
 
   EXPECT_EQ(cluster.getNumNodes(), 4);
@@ -43,8 +42,7 @@ TEST_F(SimulatedClusterTest, CreateWithCustomConfig) {
 }
 
 TEST_F(SimulatedClusterTest, StartAndShutdown) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
 
   cluster.start();
@@ -84,8 +82,7 @@ TEST_F(SimulatedClusterTest, UnregisterAgent) {
 }
 
 TEST_F(SimulatedClusterTest, SubmitToRegisteredAgent) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -110,8 +107,7 @@ TEST_F(SimulatedClusterTest, SubmitToRegisteredAgent) {
 }
 
 TEST_F(SimulatedClusterTest, SubmitToUnregisteredAgent) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -130,8 +126,7 @@ TEST_F(SimulatedClusterTest, SubmitToUnregisteredAgent) {
 }
 
 TEST_F(SimulatedClusterTest, SubmitDirectlyToNode) {
-  SimulatedCluster::Config config{
-      .num_nodes = 3, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 3, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -151,10 +146,9 @@ TEST_F(SimulatedClusterTest, SubmitDirectlyToNode) {
 }
 
 TEST_F(SimulatedClusterTest, RemoteWorkSteal) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2,
-      .workers_per_node = 2,
-      .network_config = {.min_latency = 10us, .max_latency = 20us}};
+  SimulatedCluster::Config config{.num_nodes = 2,
+                                  .workers_per_node = 2,
+                                  .network_config = {.min_latency = 10us, .max_latency = 20us}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -171,10 +165,9 @@ TEST_F(SimulatedClusterTest, RemoteWorkSteal) {
 }
 
 TEST_F(SimulatedClusterTest, ProcessNetworkMessages) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2,
-      .workers_per_node = 2,
-      .network_config = {.min_latency = 10us, .max_latency = 20us}};
+  SimulatedCluster::Config config{.num_nodes = 2,
+                                  .workers_per_node = 2,
+                                  .network_config = {.min_latency = 10us, .max_latency = 20us}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -198,8 +191,7 @@ TEST_F(SimulatedClusterTest, ProcessNetworkMessages) {
 }
 
 TEST_F(SimulatedClusterTest, GetStats) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -219,8 +211,7 @@ TEST_F(SimulatedClusterTest, GetStats) {
 }
 
 TEST_F(SimulatedClusterTest, QueueDepthTracking) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -245,8 +236,7 @@ TEST_F(SimulatedClusterTest, QueueDepthTracking) {
 }
 
 TEST_F(SimulatedClusterTest, LoadImbalanceCalculation) {
-  SimulatedCluster::Config config{
-      .num_nodes = 3, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 3, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -266,8 +256,7 @@ TEST_F(SimulatedClusterTest, LoadImbalanceCalculation) {
 }
 
 TEST_F(SimulatedClusterTest, ResetStats) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 2, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -292,10 +281,9 @@ TEST_F(SimulatedClusterTest, ResetStats) {
 }
 
 TEST_F(SimulatedClusterTest, NetworkStatistics) {
-  SimulatedCluster::Config config{
-      .num_nodes = 2,
-      .workers_per_node = 2,
-      .network_config = {.min_latency = 100us, .max_latency = 100us}};
+  SimulatedCluster::Config config{.num_nodes = 2,
+                                  .workers_per_node = 2,
+                                  .network_config = {.min_latency = 100us, .max_latency = 100us}};
   SimulatedCluster cluster(config);
   cluster.start();
 
@@ -319,8 +307,7 @@ TEST_F(SimulatedClusterTest, NetworkStatistics) {
 }
 
 TEST_F(SimulatedClusterTest, MultiNodeWorkDistribution) {
-  SimulatedCluster::Config config{
-      .num_nodes = 4, .workers_per_node = 2, .network_config = {}};
+  SimulatedCluster::Config config{.num_nodes = 4, .workers_per_node = 2, .network_config = {}};
   SimulatedCluster cluster(config);
   cluster.start();
 

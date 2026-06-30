@@ -61,10 +61,9 @@ class CircuitBreaker {
    * @brief Circuit breaker configuration
    */
   struct Config {
-    uint32_t failure_threshold{5};  ///< Failures before opening circuit
-    std::chrono::milliseconds timeout_ms{
-        10000};                     ///< Time before trying half-open
-    uint32_t success_threshold{2};  ///< Successes to close circuit
+    uint32_t failure_threshold{5};                ///< Failures before opening circuit
+    std::chrono::milliseconds timeout_ms{10000};  ///< Time before trying half-open
+    uint32_t success_threshold{2};                ///< Successes to close circuit
   };
 
   /**

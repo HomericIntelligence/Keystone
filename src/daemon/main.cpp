@@ -1,3 +1,10 @@
+#include "core/message_bus.hpp"
+#include "monitoring/health_check_server.hpp"
+#include "monitoring/nats_status.hpp"
+#include "network/nats_listener.hpp"
+#include "transport/nats_connection.hpp"
+#include "transport/transparent_bridge.hpp"
+
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -5,13 +12,6 @@
 #include <iostream>
 #include <string>
 #include <thread>
-
-#include "core/message_bus.hpp"
-#include "monitoring/health_check_server.hpp"
-#include "monitoring/nats_status.hpp"
-#include "network/nats_listener.hpp"
-#include "transport/nats_connection.hpp"
-#include "transport/transparent_bridge.hpp"
 
 namespace {
 std::atomic<bool> g_stop{false};
@@ -31,8 +31,7 @@ int main() {
   std::signal(SIGINT, signalHandler);
 
   keystone::monitoring::NatsStatusTracker nats_status;
-  keystone::monitoring::HealthCheckServer health_server(8080, nullptr,
-                                                        &nats_status);
+  keystone::monitoring::HealthCheckServer health_server(8080, nullptr, &nats_status);
 
   if (!health_server.start()) {
     std::cerr << "keystone-daemon: failed to start health check server\n";
@@ -70,8 +69,7 @@ int main() {
   // DAG-advance callback: log the event (production code would call the real
   // DAG advancer once it is wired in from ProjectAgamemnon).
   auto dag_advance = [](std::string_view team_id, std::string_view task_id) {
-    std::cout << "keystone-daemon: dag_advance team=" << team_id
-              << " task=" << task_id << '\n';
+    std::cout << "keystone-daemon: dag_advance team=" << team_id << " task=" << task_id << '\n';
   };
 
   keystone::transport::NatsConnection nats_conn(nats_cfg);
@@ -85,10 +83,8 @@ int main() {
 
   // Wire NatsStatusTracker callbacks into NATS connection lifecycle (Issue
   // #210).
-  nats_conn.setDisconnectedCallback(
-      [&nats_status]() { nats_status.setDisconnected(); });
-  nats_conn.setReconnectedCallback(
-      [&nats_status]() { nats_status.setConnected(); });
+  nats_conn.setDisconnectedCallback([&nats_status]() { nats_status.setDisconnected(); });
+  nats_conn.setReconnectedCallback([&nats_status]() { nats_status.setConnected(); });
 
   // Attempt to connect to NATS; log a warning but continue if unavailable so
   // the health endpoint remains reachable.
@@ -101,8 +97,7 @@ int main() {
     natsStatus bridge_s = bridge.attach();
     if (bridge_s != NATS_OK) {
       std::cerr << "keystone-daemon: TransparentBridge::attach failed status="
-                << static_cast<int>(bridge_s)
-                << " (continuing without bridge)\n";
+                << static_cast<int>(bridge_s) << " (continuing without bridge)\n";
     } else {
       std::cout << "keystone-daemon: TransparentBridge attached "
                    "subject=hi.agents.>\n";
@@ -112,11 +107,11 @@ int main() {
     if (js != nullptr) {
       natsStatus s = listener.start(js);
       if (s != NATS_OK) {
-        std::cerr << "keystone-daemon: NATSListener::start failed status="
-                  << static_cast<int>(s) << " (continuing without NATS)\n";
+        std::cerr << "keystone-daemon: NATSListener::start failed status=" << static_cast<int>(s)
+                  << " (continuing without NATS)\n";
       } else {
-        std::cout << "keystone-daemon: NATSListener active subject="
-                  << listener_cfg.subject << '\n';
+        std::cout << "keystone-daemon: NATSListener active subject=" << listener_cfg.subject
+                  << '\n';
       }
     } else {
       std::cerr << "keystone-daemon: failed to obtain JetStream context "

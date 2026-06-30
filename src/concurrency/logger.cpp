@@ -5,11 +5,11 @@
 
 #include "concurrency/logger.hpp"
 
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include <mutex>
 #include <random>
 #include <sstream>
+
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace keystone {
 namespace concurrency {
@@ -32,8 +32,14 @@ std::string generateCorrelationId() {
   c = (c & 0x3FFFFFFFu) | 0x80000000u;  // variant 10xx
 
   char buf[37];
-  std::snprintf(buf, sizeof(buf), "%08x-%04x-%04x-%04x-%04x%08x", a,
-                (b >> 16) & 0xFFFF, b & 0xFFFF, (c >> 16) & 0xFFFF, c & 0xFFFF,
+  std::snprintf(buf,
+                sizeof(buf),
+                "%08x-%04x-%04x-%04x-%04x%08x",
+                a,
+                (b >> 16) & 0xFFFF,
+                b & 0xFFFF,
+                (c >> 16) & 0xFFFF,
+                c & 0xFFFF,
                 d);
   return std::string(buf);
 }
@@ -41,7 +47,8 @@ std::string generateCorrelationId() {
 // LogContext thread-local storage
 thread_local LogContext::Context LogContext::context_;
 
-void LogContext::set(const std::string& agent_id, int32_t worker_id,
+void LogContext::set(const std::string& agent_id,
+                     int32_t worker_id,
                      const std::string& session_id) {
   context_.agent_id = agent_id;
   context_.worker_id = worker_id;
@@ -55,19 +62,29 @@ void LogContext::clear() {
   context_.correlation_id.clear();
 }
 
-std::string LogContext::getAgentId() { return context_.agent_id; }
+std::string LogContext::getAgentId() {
+  return context_.agent_id;
+}
 
-int32_t LogContext::getWorkerId() { return context_.worker_id; }
+int32_t LogContext::getWorkerId() {
+  return context_.worker_id;
+}
 
-std::string LogContext::getSessionId() { return context_.session_id; }
+std::string LogContext::getSessionId() {
+  return context_.session_id;
+}
 
 void LogContext::setCorrelationId(const std::string& correlation_id) {
   context_.correlation_id = correlation_id;
 }
 
-void LogContext::clearCorrelationId() { context_.correlation_id.clear(); }
+void LogContext::clearCorrelationId() {
+  context_.correlation_id.clear();
+}
 
-std::string LogContext::getCorrelationId() { return context_.correlation_id; }
+std::string LogContext::getCorrelationId() {
+  return context_.correlation_id;
+}
 
 std::string LogContext::getContextString() {
   if (context_.agent_id.empty()) {
@@ -75,8 +92,7 @@ std::string LogContext::getContextString() {
   }
 
   std::ostringstream oss;
-  oss << "[" << context_.agent_id << ":" << context_.worker_id << ":"
-      << context_.session_id;
+  oss << "[" << context_.agent_id << ":" << context_.worker_id << ":" << context_.session_id;
   if (!context_.correlation_id.empty()) {
     oss << ":corr=" << context_.correlation_id;
   }
@@ -86,12 +102,10 @@ std::string LogContext::getContextString() {
 
 // CorrelationScope
 
-CorrelationScope::CorrelationScope()
-    : CorrelationScope(generateCorrelationId()) {}
+CorrelationScope::CorrelationScope() : CorrelationScope(generateCorrelationId()) {}
 
 CorrelationScope::CorrelationScope(std::string correlation_id)
-    : previous_id_(LogContext::getCorrelationId()),
-      current_id_(std::move(correlation_id)) {
+    : previous_id_(LogContext::getCorrelationId()), current_id_(std::move(correlation_id)) {
   LogContext::setCorrelationId(current_id_);
 }
 

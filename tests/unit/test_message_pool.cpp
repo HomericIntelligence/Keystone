@@ -3,12 +3,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-#include <gtest/gtest.h>
+#include "core/message_pool.hpp"
 
 #include <thread>
 #include <vector>
 
-#include "core/message_pool.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::core;
 
@@ -219,8 +219,7 @@ TEST_F(MessagePoolTest, MessageResetOnRelease) {
   msg.command = "test_command";
   msg.payload = "{\"key\": \"value\"}";
   msg.priority = Priority::HIGH;
-  msg.deadline =
-      std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+  msg.deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(100);
 
   // Release back to pool
   MessagePool::release(std::move(msg));

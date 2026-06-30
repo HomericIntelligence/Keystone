@@ -18,7 +18,8 @@ CircuitBreaker::CircuitBreaker(Config config) : config_(config) {
   Logger::info(
       "CircuitBreaker: Created (failure_threshold={}, timeout={}ms, "
       "success_threshold={})",
-      config_.failure_threshold, config_.timeout_ms.count(),
+      config_.failure_threshold,
+      config_.timeout_ms.count(),
       config_.success_threshold);
 }
 
@@ -28,11 +29,11 @@ bool CircuitBreaker::allowRequest(const std::string& target_id) {
   auto it = circuits_.find(target_id);
   if (it == circuits_.end()) {
     // First request to this target - create circuit in CLOSED state
-    circuits_[target_id] = CircuitStatus{
-        .target_id = target_id,
-        .state = State::CLOSED,
-        .last_failure_time = std::chrono::steady_clock::time_point{},
-        .circuit_opened_time = std::chrono::steady_clock::time_point{}};
+    circuits_[target_id] =
+        CircuitStatus{.target_id = target_id,
+                      .state = State::CLOSED,
+                      .last_failure_time = std::chrono::steady_clock::time_point{},
+                      .circuit_opened_time = std::chrono::steady_clock::time_point{}};
     return true;
   }
 
@@ -51,8 +52,7 @@ bool CircuitBreaker::allowRequest(const std::string& target_id) {
         return true;
       }
       // Still in timeout - reject request
-      Logger::trace("CircuitBreaker: Request to {} rejected (circuit OPEN)",
-                    target_id);
+      Logger::trace("CircuitBreaker: Request to {} rejected (circuit OPEN)", target_id);
       return false;
 
     case State::HALF_OPEN:
@@ -76,7 +76,8 @@ void CircuitBreaker::recordSuccess(const std::string& target_id) {
   status.consecutive_successes++;
   status.consecutive_failures = 0;  // Reset failure counter
 
-  Logger::trace("CircuitBreaker: Success for {} (consecutive={})", target_id,
+  Logger::trace("CircuitBreaker: Success for {} (consecutive={})",
+                target_id,
                 status.consecutive_successes);
 
   if (status.state == State::HALF_OPEN) {
@@ -93,11 +94,11 @@ void CircuitBreaker::recordFailure(const std::string& target_id) {
   auto it = circuits_.find(target_id);
   if (it == circuits_.end()) {
     // Create circuit if it doesn't exist
-    circuits_[target_id] = CircuitStatus{
-        .target_id = target_id,
-        .state = State::CLOSED,
-        .last_failure_time = std::chrono::steady_clock::time_point{},
-        .circuit_opened_time = std::chrono::steady_clock::time_point{}};
+    circuits_[target_id] =
+        CircuitStatus{.target_id = target_id,
+                      .state = State::CLOSED,
+                      .last_failure_time = std::chrono::steady_clock::time_point{},
+                      .circuit_opened_time = std::chrono::steady_clock::time_point{}};
     it = circuits_.find(target_id);
   }
 
@@ -107,7 +108,8 @@ void CircuitBreaker::recordFailure(const std::string& target_id) {
   status.consecutive_successes = 0;  // Reset success counter
   status.last_failure_time = std::chrono::steady_clock::now();
 
-  Logger::debug("CircuitBreaker: Failure for {} (consecutive={})", target_id,
+  Logger::debug("CircuitBreaker: Failure for {} (consecutive={})",
+                target_id,
                 status.consecutive_failures);
 
   if (status.state == State::CLOSED) {
@@ -121,8 +123,7 @@ void CircuitBreaker::recordFailure(const std::string& target_id) {
   }
 }
 
-CircuitBreaker::State CircuitBreaker::getState(
-    const std::string& target_id) const {
+CircuitBreaker::State CircuitBreaker::getState(const std::string& target_id) const {
   std::lock_guard<std::mutex> lock(circuits_mutex_);
 
   auto it = circuits_.find(target_id);
@@ -195,17 +196,16 @@ void CircuitBreaker::transitionToOpen(CircuitStatus& status) {
   status.state = State::OPEN;
   status.circuit_opened_time = std::chrono::steady_clock::now();
 
-  Logger::warn(
-      "CircuitBreaker: Circuit OPENED for {} ({} consecutive failures)",
-      status.target_id, status.consecutive_failures);
+  Logger::warn("CircuitBreaker: Circuit OPENED for {} ({} consecutive failures)",
+               status.target_id,
+               status.consecutive_failures);
 }
 
 void CircuitBreaker::transitionToHalfOpen(CircuitStatus& status) {
   status.state = State::HALF_OPEN;
   status.consecutive_successes = 0;
 
-  Logger::info("CircuitBreaker: Circuit HALF_OPEN for {} (testing recovery)",
-               status.target_id);
+  Logger::info("CircuitBreaker: Circuit HALF_OPEN for {} (testing recovery)", status.target_id);
 }
 
 void CircuitBreaker::transitionToClosed(CircuitStatus& status) {
@@ -213,14 +213,13 @@ void CircuitBreaker::transitionToClosed(CircuitStatus& status) {
   status.consecutive_failures = 0;
   status.consecutive_successes = 0;
 
-  Logger::info("CircuitBreaker: Circuit CLOSED for {} (normal operation)",
-               status.target_id);
+  Logger::info("CircuitBreaker: Circuit CLOSED for {} (normal operation)", status.target_id);
 }
 
 bool CircuitBreaker::isTimeoutElapsed(const CircuitStatus& status) const {
   auto now = std::chrono::steady_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      now - status.circuit_opened_time);
+  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                                       status.circuit_opened_time);
 
   return elapsed >= config_.timeout_ms;
 }

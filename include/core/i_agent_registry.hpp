@@ -1,11 +1,11 @@
 #pragma once
 
+#include "core/message_sink.hpp"
+
 #include <concepts>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "core/message_sink.hpp"
 
 namespace keystone {
 namespace core {
@@ -39,8 +39,7 @@ class IAgentRegistry {
    * @param agent Shared pointer to the agent (lifetime managed by shared_ptr)
    * @throws std::runtime_error if agent_id already registered
    */
-  virtual void registerAgent(const std::string& agent_id,
-                             std::shared_ptr<IMessageSink> agent) = 0;
+  virtual void registerAgent(const std::string& agent_id, std::shared_ptr<IMessageSink> agent) = 0;
 
   /**
    * @brief Register an agent with compile-time interface verification
@@ -55,13 +54,11 @@ class IAgentRegistry {
   template <typename A>
     requires requires(const A& a) {
       { a.getAgentId() } -> std::convertible_to<std::string>;
-      requires std::convertible_to<std::shared_ptr<A>,
-                                   std::shared_ptr<IMessageSink>>;
+      requires std::convertible_to<std::shared_ptr<A>, std::shared_ptr<IMessageSink>>;
     }
   void registerAgent(std::shared_ptr<A> agent) {
     if (!agent) {
-      throw std::runtime_error(
-          "IAgentRegistry::registerAgent: null agent pointer");
+      throw std::runtime_error("IAgentRegistry::registerAgent: null agent pointer");
     }
 
     std::string agent_id = agent->getAgentId();

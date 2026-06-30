@@ -1,8 +1,5 @@
-#include <arpa/inet.h>
-#include <gtest/gtest.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "monitoring/health_check_server.hpp"
+#include "monitoring/nats_status.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -10,8 +7,11 @@
 #include <thread>
 #include <vector>
 
-#include "monitoring/health_check_server.hpp"
-#include "monitoring/nats_status.hpp"
+#include <arpa/inet.h>
+#include <gtest/gtest.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 using namespace keystone::monitoring;
 
@@ -41,8 +41,7 @@ class HealthV1EndpointTest : public ::testing::Test {
       return "";
     }
 
-    std::string request =
-        "GET " + path + " HTTP/1.1\r\nHost: localhost\r\n\r\n";
+    std::string request = "GET " + path + " HTTP/1.1\r\nHost: localhost\r\n\r\n";
     if (write(sock, request.c_str(), request.size()) < 0) {
       close(sock);
       return "";
@@ -60,10 +59,12 @@ class HealthV1EndpointTest : public ::testing::Test {
 
   int getStatusCode(const std::string& response) {
     size_t start = response.find("HTTP/1.1 ");
-    if (start == std::string::npos) return 0;
+    if (start == std::string::npos)
+      return 0;
     start += 9;
     size_t end = response.find(' ', start);
-    if (end == std::string::npos) return 0;
+    if (end == std::string::npos)
+      return 0;
     try {
       return std::stoi(response.substr(start, end - start));
     } catch (...) {
@@ -73,7 +74,8 @@ class HealthV1EndpointTest : public ::testing::Test {
 
   std::string getBody(const std::string& response) {
     size_t pos = response.find("\r\n\r\n");
-    if (pos == std::string::npos) return "";
+    if (pos == std::string::npos)
+      return "";
     return response.substr(pos + 4);
   }
 

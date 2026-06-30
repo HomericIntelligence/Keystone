@@ -3,9 +3,9 @@
  * @brief Unit tests for agent type definitions (AgentLevel enum)
  */
 
-#include <gtest/gtest.h>
-
 #include "core/agent_types.hpp"
+
+#include <gtest/gtest.h>
 
 namespace keystone {
 namespace core {
@@ -114,8 +114,7 @@ TEST(AgentTypesTest, RoundTripConversion) {
   }
 
   // Test: enum → value → enum
-  AgentLevel levels[] = {AgentLevel::L0, AgentLevel::L1, AgentLevel::L2,
-                         AgentLevel::L3};
+  AgentLevel levels[] = {AgentLevel::L0, AgentLevel::L1, AgentLevel::L2, AgentLevel::L3};
   for (auto level : levels) {
     uint8_t value = agentLevelValue(level);
     auto converted = valueToAgentLevel(value);

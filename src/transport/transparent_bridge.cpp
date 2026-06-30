@@ -1,6 +1,8 @@
 #include "transport/transparent_bridge.hpp"
 
-#include <spdlog/spdlog.h>
+#include "core/message_bus.hpp"
+#include "core/message_serializer.hpp"
+#include "transport/nats_connection.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -12,9 +14,7 @@
 #include <thread>
 #include <vector>
 
-#include "core/message_bus.hpp"
-#include "core/message_serializer.hpp"
-#include "transport/nats_connection.hpp"
+#include <spdlog/spdlog.h>
 
 namespace keystone {
 namespace transport {
@@ -31,11 +31,12 @@ std::string deriveNatsSubject(std::string_view receiver_id) {
 // TransparentBridge
 // ---------------------------------------------------------------------------
 
-TransparentBridge::TransparentBridge(core::MessageBus& bus,
-                                     NatsConnection& conn, BridgeConfig cfg)
+TransparentBridge::TransparentBridge(core::MessageBus& bus, NatsConnection& conn, BridgeConfig cfg)
     : bus_(bus), conn_(conn), cfg_(std::move(cfg)) {}
 
-TransparentBridge::~TransparentBridge() { stop(); }
+TransparentBridge::~TransparentBridge() {
+  stop();
+}
 
 natsStatus TransparentBridge::attach() {
   // -------------------------------------------------------------------------
@@ -43,22 +44,23 @@ natsStatus TransparentBridge::attach() {
   // MessageBus::routeMessage() serialises the KeystoneMessage and calls this
   // lambda with (subject, serialized_bytes) when local lookup fails (#512).
   // -------------------------------------------------------------------------
-  bus_.setNatsPublisher(
-      [this](std::string_view subject, std::span<const std::byte> payload) {
-        natsConnection* nc = conn_.handle();
-        if (nc == nullptr || payload.empty()) {
-          return;
-        }
-        natsStatus s = natsConnection_Publish(
-            nc, subject.data(), reinterpret_cast<const char*>(payload.data()),
-            static_cast<int>(payload.size()));
-        if (s != NATS_OK) {
-          spdlog::error(
-              "TransparentBridge: natsConnection_Publish failed subject={} "
-              "status={}",
-              subject, static_cast<int>(s));
-        }
-      });
+  bus_.setNatsPublisher([this](std::string_view subject, std::span<const std::byte> payload) {
+    natsConnection* nc = conn_.handle();
+    if (nc == nullptr || payload.empty()) {
+      return;
+    }
+    natsStatus s = natsConnection_Publish(nc,
+                                          subject.data(),
+                                          reinterpret_cast<const char*>(payload.data()),
+                                          static_cast<int>(payload.size()));
+    if (s != NATS_OK) {
+      spdlog::error(
+          "TransparentBridge: natsConnection_Publish failed subject={} "
+          "status={}",
+          subject,
+          static_cast<int>(s));
+    }
+  });
 
   // -------------------------------------------------------------------------
   // Inbound path: subscribe to cfg_.inbound_subject and start pull loop.
@@ -80,14 +82,16 @@ natsStatus TransparentBridge::attach() {
 
   for (int attempt = 1; attempt <= attempts; ++attempt) {
     jsErrCode jerr = static_cast<jsErrCode>(0);
-    s = js_Subscribe(&sub_, js, cfg_.inbound_subject.c_str(), nullptr, nullptr,
-                     nullptr, &sub_opts, &jerr);
+    s = js_Subscribe(
+        &sub_, js, cfg_.inbound_subject.c_str(), nullptr, nullptr, nullptr, &sub_opts, &jerr);
     if (s == NATS_OK) {
       break;
     }
-    spdlog::warn(
-        "TransparentBridge: subscribe attempt {}/{} failed status={} jerr={}",
-        attempt, attempts, static_cast<int>(s), static_cast<int>(jerr));
+    spdlog::warn("TransparentBridge: subscribe attempt {}/{} failed status={} jerr={}",
+                 attempt,
+                 attempts,
+                 static_cast<int>(s),
+                 static_cast<int>(jerr));
   }
 
   if (s != NATS_OK) {
@@ -102,8 +106,7 @@ natsStatus TransparentBridge::attach() {
   try {
     inbound_thread_ = std::thread(&TransparentBridge::inbound_loop, this);
   } catch (const std::exception& ex) {
-    spdlog::error("TransparentBridge: failed to start inbound thread: {}",
-                  ex.what());
+    spdlog::error("TransparentBridge: failed to start inbound thread: {}", ex.what());
     natsSubscription_Unsubscribe(sub_);
     natsSubscription_Destroy(sub_);
     sub_ = nullptr;
@@ -149,9 +152,8 @@ void TransparentBridge::inbound_loop() noexcept {
     }
 
     if (s != NATS_OK) {
-      spdlog::error(
-          "TransparentBridge: natsSubscription_Fetch failed status={}",
-          static_cast<int>(s));
+      spdlog::error("TransparentBridge: natsSubscription_Fetch failed status={}",
+                    static_cast<int>(s));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       continue;
     }
@@ -180,8 +182,8 @@ void TransparentBridge::inbound_loop() noexcept {
 
       try {
         const auto* bytes = static_cast<const uint8_t*>(data);
-        core::KeystoneMessage km = core::MessageSerializer::deserialize(
-            bytes, static_cast<size_t>(data_len));
+        core::KeystoneMessage km =
+            core::MessageSerializer::deserialize(bytes, static_cast<size_t>(data_len));
 
         // Route to local MessageBus.  If no local agent is registered for this
         // receiver_id the message is dropped (avoid re-publishing to NATS and
@@ -195,21 +197,17 @@ void TransparentBridge::inbound_loop() noexcept {
         }
         should_ack = true;
       } catch (const std::exception& ex) {
-        spdlog::error("TransparentBridge: deserialization failed: {}",
-                      ex.what());
+        spdlog::error("TransparentBridge: deserialization failed: {}", ex.what());
         // nak — allow redelivery
       } catch (...) {
-        spdlog::error(
-            "TransparentBridge: deserialization threw unknown exception");
+        spdlog::error("TransparentBridge: deserialization threw unknown exception");
         // nak
       }
     }();
 
-    natsStatus ack_s =
-        should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
+    natsStatus ack_s = should_ack ? natsMsg_Ack(msg, nullptr) : natsMsg_Nak(msg, nullptr);
     if (ack_s != NATS_OK) {
-      spdlog::warn("TransparentBridge: ack/nak failed status={}",
-                   static_cast<int>(ack_s));
+      spdlog::warn("TransparentBridge: ack/nak failed status={}", static_cast<int>(ack_s));
     }
     natsMsg_Destroy(msg);
   }

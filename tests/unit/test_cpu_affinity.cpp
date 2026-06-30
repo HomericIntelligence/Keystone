@@ -1,10 +1,10 @@
-#include <gtest/gtest.h>
+#include "concurrency/work_stealing_scheduler.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <thread>
 
-#include "concurrency/work_stealing_scheduler.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::concurrency;
 
@@ -40,8 +40,7 @@ TEST(CPUAffinityTest, DisabledByDefault) {
 
   std::atomic<int32_t> counter{0};
   for (int32_t i = 0; i < 50; ++i) {
-    scheduler.submit(
-        [&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
+    scheduler.submit([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
   }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -60,8 +59,7 @@ TEST(CPUAffinityTest, MoreWorkersThanCores) {
 
   std::atomic<int32_t> counter{0};
   for (size_t i = 0; i < 100; ++i) {
-    scheduler.submit(
-        [&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
+    scheduler.submit([&counter]() { counter.fetch_add(1, std::memory_order_relaxed); });
   }
 
   std::this_thread::sleep_for(std::chrono::milliseconds(200));

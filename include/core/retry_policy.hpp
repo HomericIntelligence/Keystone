@@ -48,22 +48,20 @@ class RetryPolicy {
    * @brief Retry policy configuration
    */
   struct Config {
-    uint32_t max_attempts{3};  ///< Maximum retry attempts
+    uint32_t max_attempts{3};                         ///< Maximum retry attempts
     std::chrono::milliseconds initial_delay_ms{100};  ///< Initial backoff delay
     std::chrono::milliseconds max_delay_ms{5000};     ///< Maximum backoff delay
-    double backoff_multiplier{2.0};  ///< Exponential backoff multiplier
+    double backoff_multiplier{2.0};                   ///< Exponential backoff multiplier
   };
 
   /**
    * @brief Retry statistics for a message
    */
   struct RetryStats {
-    uint32_t attempts{0};  ///< Number of attempts made
-    std::chrono::steady_clock::time_point
-        first_attempt;  ///< Time of first attempt
-    std::chrono::steady_clock::time_point
-        last_attempt;                          ///< Time of last attempt
-    std::chrono::milliseconds total_delay{0};  ///< Total delay accumulated
+    uint32_t attempts{0};                                 ///< Number of attempts made
+    std::chrono::steady_clock::time_point first_attempt;  ///< Time of first attempt
+    std::chrono::steady_clock::time_point last_attempt;   ///< Time of last attempt
+    std::chrono::milliseconds total_delay{0};             ///< Total delay accumulated
   };
 
   /**

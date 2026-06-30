@@ -45,7 +45,7 @@ services:
     container_name: projectkeystone-dev-${GIT_COMMIT}
     user: "${BUILD_UID}:${BUILD_GID}"  # Run as host user
     volumes:
-      - .:/workspace
+      - .:/workspace:Z
     working_dir: /workspace
     stdin_open: true
     tty: true
@@ -64,7 +64,7 @@ services:
     image: projectkeystone-builder:${GIT_COMMIT}-latest
     container_name: projectkeystone-build-${GIT_COMMIT}
     volumes:
-      - .:/workspace
+      - .:/workspace:Z
     environment:
       - GIT_COMMIT=${GIT_COMMIT}
       - BUILD_UID=${BUILD_UID}

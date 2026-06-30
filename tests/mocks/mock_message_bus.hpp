@@ -1,10 +1,10 @@
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include "core/i_agent_registry.hpp"
 #include "core/i_message_router.hpp"
 #include "core/i_scheduler_integration.hpp"
+
+#include <gmock/gmock.h>
 
 namespace keystone::test {
 
@@ -15,9 +15,9 @@ namespace keystone::test {
  */
 class MockAgentRegistry : public core::IAgentRegistry {
  public:
-  MOCK_METHOD(void, registerAgent,
-              (const std::string& id,
-               std::shared_ptr<core::IMessageSink> agent),
+  MOCK_METHOD(void,
+              registerAgent,
+              (const std::string& id, std::shared_ptr<core::IMessageSink> agent),
               (override));
   MOCK_METHOD(void, unregisterAgent, (const std::string& id), (override));
   MOCK_METHOD(bool, hasAgent, (const std::string& id), (const, override));
@@ -31,8 +31,7 @@ class MockAgentRegistry : public core::IAgentRegistry {
  */
 class MockMessageRouter : public core::IMessageRouter {
  public:
-  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg),
-              (override));
+  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg), (override));
 };
 
 /**
@@ -42,10 +41,8 @@ class MockMessageRouter : public core::IMessageRouter {
  */
 class MockSchedulerIntegration : public core::ISchedulerIntegration {
  public:
-  MOCK_METHOD(void, setScheduler,
-              (concurrency::WorkStealingScheduler * scheduler), (override));
-  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (),
-              (const, override));
+  MOCK_METHOD(void, setScheduler, (concurrency::WorkStealingScheduler * scheduler), (override));
+  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (), (const, override));
 };
 
 /**

@@ -107,8 +107,7 @@ class ProfilingSession {
 
   // Global profiling state
   static bool checkEnabled();
-  static void recordDuration(const std::string& section_name,
-                             double duration_us);
+  static void recordDuration(const std::string& section_name, double duration_us);
 
   // Data storage
   struct SectionData {
@@ -120,8 +119,7 @@ class ProfilingSession {
   static std::shared_mutex& getGlobalMutex();
 
   // Internal version that assumes global mutex already held (shared or unique)
-  static std::optional<SectionStats> getStatsUnlocked(
-      const std::string& section_name);
+  static std::optional<SectionStats> getStatsUnlocked(const std::string& section_name);
 };
 
 }  // namespace core

@@ -3,7 +3,7 @@
  * @brief Unit tests for Task<T> coroutine type
  */
 
-#include <gtest/gtest.h>
+#include "concurrency/task.hpp"
 
 #include <atomic>
 #include <functional>
@@ -12,13 +12,15 @@
 #include <string>
 #include <vector>
 
-#include "concurrency/task.hpp"
+#include <gtest/gtest.h>
 
 using namespace keystone::concurrency;
 
 // Test: Simple Task<int> creation and get()
 TEST(TaskTest, SimpleIntTask) {
-  auto task = []() -> Task<int32_t> { co_return 42; }();
+  auto task = []() -> Task<int32_t> {
+    co_return 42;
+  }();
 
   EXPECT_FALSE(task.done());
   int32_t result = task.get();
@@ -68,7 +70,9 @@ TEST(TaskTest, ExceptionPropagation) {
 
 // Test: Task move constructor
 TEST(TaskTest, MoveConstructor) {
-  auto task1 = []() -> Task<int32_t> { co_return 100; }();
+  auto task1 = []() -> Task<int32_t> {
+    co_return 100;
+  }();
 
   Task<int32_t> task2 = std::move(task1);
 
@@ -78,9 +82,13 @@ TEST(TaskTest, MoveConstructor) {
 
 // Test: Task move assignment
 TEST(TaskTest, MoveAssignment) {
-  auto task1 = []() -> Task<int32_t> { co_return 200; }();
+  auto task1 = []() -> Task<int32_t> {
+    co_return 200;
+  }();
 
-  auto task2 = []() -> Task<int32_t> { co_return 300; }();
+  auto task2 = []() -> Task<int32_t> {
+    co_return 300;
+  }();
 
   task2 = std::move(task1);
 
@@ -90,7 +98,9 @@ TEST(TaskTest, MoveAssignment) {
 
 // Test: Manual resume
 TEST(TaskTest, ManualResume) {
-  auto task = []() -> Task<int32_t> { co_return 42; }();
+  auto task = []() -> Task<int32_t> {
+    co_return 42;
+  }();
 
   EXPECT_FALSE(task.done());
 
@@ -103,7 +113,9 @@ TEST(TaskTest, ManualResume) {
 
 // Test: Chaining coroutines with co_await
 TEST(TaskTest, CoroutineChaining) {
-  auto inner = []() -> Task<int32_t> { co_return 10; };
+  auto inner = []() -> Task<int32_t> {
+    co_return 10;
+  };
 
   // Keep outer lambda alive until get() completes to avoid
   // stack-use-after-scope
@@ -118,7 +130,9 @@ TEST(TaskTest, CoroutineChaining) {
 
 // Test: Multiple co_await in sequence
 TEST(TaskTest, MultipleCoAwait) {
-  auto getValue = [](int32_t x) -> Task<int32_t> { co_return x; };
+  auto getValue = [](int32_t x) -> Task<int32_t> {
+    co_return x;
+  };
 
   // Keep lambda alive until get() completes to avoid stack-use-after-scope
   auto sumLambda = [&]() -> Task<int32_t> {
@@ -177,7 +191,9 @@ TEST(TaskTest, VoidTaskChaining) {
 
 // Test: await_ready returns correct value
 TEST(TaskTest, AwaitReady) {
-  auto task = []() -> Task<int32_t> { co_return 42; }();
+  auto task = []() -> Task<int32_t> {
+    co_return 42;
+  }();
 
   // Before resume, not ready
   EXPECT_FALSE(task.await_ready());
@@ -213,7 +229,9 @@ TEST(TaskTest, ComplexComputation) {
 TEST(TaskTest, EarlyDestruction) {
   // This test verifies that destroying a Task before completion is safe
   {
-    auto task = []() -> Task<int32_t> { co_return 42; }();
+    auto task = []() -> Task<int32_t> {
+      co_return 42;
+    }();
 
     EXPECT_FALSE(task.done());
     // Task destroyed here without calling get()
@@ -224,7 +242,9 @@ TEST(TaskTest, EarlyDestruction) {
 
 // Test: Multiple get() calls return same result
 TEST(TaskTest, MultipleGetCalls) {
-  auto task = []() -> Task<int32_t> { co_return 42; }();
+  auto task = []() -> Task<int32_t> {
+    co_return 42;
+  }();
 
   int32_t result1 = task.get();
   int32_t result2 = task.get();
@@ -439,7 +459,9 @@ TEST(TaskTest, SymmetricTransferChaining) {
 
 // Test: Multiple levels of coroutine chaining
 TEST(TaskTest, DeepCoroutineChaining) {
-  auto level3 = []() -> Task<int32_t> { co_return 1; };
+  auto level3 = []() -> Task<int32_t> {
+    co_return 1;
+  };
 
   // Keep lambdas alive until get() completes to avoid stack-use-after-scope
   auto level2 = [&]() -> Task<int32_t> {

@@ -5,9 +5,9 @@
 
 #include "core/heartbeat_monitor.hpp"
 
-#include <algorithm>
-
 #include "concurrency/logger.hpp"
+
+#include <algorithm>
 
 namespace keystone {
 namespace core {
@@ -48,7 +48,8 @@ void HeartbeatMonitor::recordHeartbeat(const std::string& agent_id) {
     if (was_dead) {
       Logger::info("HeartbeatMonitor: Agent {} recovered", agent_id);
     } else {
-      Logger::trace("HeartbeatMonitor: Heartbeat from {} (total={})", agent_id,
+      Logger::trace("HeartbeatMonitor: Heartbeat from {} (total={})",
+                    agent_id,
                     it->second.total_heartbeats);
     }
   }
@@ -64,8 +65,8 @@ bool HeartbeatMonitor::isAlive(const std::string& agent_id) const {
 
   // Check if heartbeat is within timeout threshold
   auto now = std::chrono::steady_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      now - it->second.last_heartbeat);
+  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                                       it->second.last_heartbeat);
 
   return elapsed < config_.timeout_threshold;
 }
@@ -79,8 +80,8 @@ size_t HeartbeatMonitor::checkAgents() {
   std::vector<std::string> to_remove;
 
   for (auto& [agent_id, status] : agents_) {
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now - status.last_heartbeat);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                                         status.last_heartbeat);
 
     bool currently_alive = (elapsed < config_.timeout_threshold);
 
@@ -90,9 +91,9 @@ size_t HeartbeatMonitor::checkAgents() {
       newly_failed++;
       total_failures_++;
 
-      Logger::warn(
-          "HeartbeatMonitor: Agent {} failed (last heartbeat {}ms ago)",
-          agent_id, elapsed.count());
+      Logger::warn("HeartbeatMonitor: Agent {} failed (last heartbeat {}ms ago)",
+                   agent_id,
+                   elapsed.count());
 
       // Invoke failure callback
       {
@@ -150,8 +151,8 @@ std::vector<std::string> HeartbeatMonitor::getAliveAgents() const {
   auto now = std::chrono::steady_clock::now();
 
   for (const auto& [agent_id, status] : agents_) {
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now - status.last_heartbeat);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                                         status.last_heartbeat);
 
     if (elapsed < config_.timeout_threshold) {
       alive.push_back(agent_id);
@@ -168,8 +169,8 @@ std::vector<std::string> HeartbeatMonitor::getDeadAgents() const {
   auto now = std::chrono::steady_clock::now();
 
   for (const auto& [agent_id, status] : agents_) {
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        now - status.last_heartbeat);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now -
+                                                                         status.last_heartbeat);
 
     if (elapsed >= config_.timeout_threshold) {
       dead.push_back(agent_id);

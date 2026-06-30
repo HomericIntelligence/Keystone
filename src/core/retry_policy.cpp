@@ -5,10 +5,10 @@
 
 #include "core/retry_policy.hpp"
 
+#include "concurrency/logger.hpp"
+
 #include <algorithm>
 #include <cmath>
-
-#include "concurrency/logger.hpp"
 
 namespace keystone {
 namespace core {
@@ -18,10 +18,10 @@ using namespace concurrency;
 RetryPolicy::RetryPolicy() : RetryPolicy(Config{}) {}
 
 RetryPolicy::RetryPolicy(Config config) : config_(config) {
-  Logger::info(
-      "RetryPolicy: Created (max_attempts={}, initial_delay={}ms, backoff={}x)",
-      config_.max_attempts, config_.initial_delay_ms.count(),
-      config_.backoff_multiplier);
+  Logger::info("RetryPolicy: Created (max_attempts={}, initial_delay={}ms, backoff={}x)",
+               config_.max_attempts,
+               config_.initial_delay_ms.count(),
+               config_.backoff_multiplier);
 }
 
 bool RetryPolicy::shouldRetry(const std::string& message_id) const {
@@ -37,8 +37,7 @@ bool RetryPolicy::shouldRetry(const std::string& message_id) const {
   return it->second.attempts < config_.max_attempts;
 }
 
-std::chrono::milliseconds RetryPolicy::getNextDelay(
-    const std::string& message_id) {
+std::chrono::milliseconds RetryPolicy::getNextDelay(const std::string& message_id) {
   std::lock_guard<std::mutex> lock(stats_mutex_);
 
   auto it = retry_stats_.find(message_id);
@@ -59,11 +58,10 @@ void RetryPolicy::recordAttempt(const std::string& message_id) {
   auto it = retry_stats_.find(message_id);
   if (it == retry_stats_.end()) {
     // First attempt
-    retry_stats_[message_id] =
-        RetryStats{.attempts = 1,
-                   .first_attempt = now,
-                   .last_attempt = now,
-                   .total_delay = std::chrono::milliseconds(0)};
+    retry_stats_[message_id] = RetryStats{.attempts = 1,
+                                          .first_attempt = now,
+                                          .last_attempt = now,
+                                          .total_delay = std::chrono::milliseconds(0)};
 
     Logger::trace("RetryPolicy: First attempt for message {}", message_id);
   } else {
@@ -78,7 +76,9 @@ void RetryPolicy::recordAttempt(const std::string& message_id) {
     total_retries_++;
 
     Logger::debug("RetryPolicy: Retry attempt {} for message {} (delay={}ms)",
-                  it->second.attempts, message_id, delay.count());
+                  it->second.attempts,
+                  message_id,
+                  delay.count());
   }
 }
 
@@ -96,12 +96,13 @@ void RetryPolicy::recordSuccess(const std::string& message_id) {
     Logger::debug(
         "RetryPolicy: Message {} succeeded after {} attempts "
         "(total_delay={}ms)",
-        message_id, attempts, total_delay.count());
+        message_id,
+        attempts,
+        total_delay.count());
   } else {
     // First attempt succeeded
     total_successes_++;
-    Logger::trace("RetryPolicy: Message {} succeeded on first attempt",
-                  message_id);
+    Logger::trace("RetryPolicy: Message {} succeeded on first attempt", message_id);
   }
 }
 
@@ -116,15 +117,15 @@ void RetryPolicy::recordFailure(const std::string& message_id) {
     total_failures_++;
 
     Logger::warn("RetryPolicy: Message {} permanently failed after {} attempts",
-                 message_id, attempts);
+                 message_id,
+                 attempts);
   } else {
     total_failures_++;
     Logger::warn("RetryPolicy: Message {} failed on first attempt", message_id);
   }
 }
 
-std::optional<RetryPolicy::RetryStats> RetryPolicy::getStats(
-    const std::string& message_id) const {
+std::optional<RetryPolicy::RetryStats> RetryPolicy::getStats(const std::string& message_id) const {
   std::lock_guard<std::mutex> lock(stats_mutex_);
 
   auto it = retry_stats_.find(message_id);
@@ -151,8 +152,7 @@ void RetryPolicy::reset() {
   Logger::debug("RetryPolicy: Statistics reset");
 }
 
-std::chrono::milliseconds RetryPolicy::calculateBackoff(
-    uint32_t attempts) const {
+std::chrono::milliseconds RetryPolicy::calculateBackoff(uint32_t attempts) const {
   if (attempts == 0) {
     return std::chrono::milliseconds(0);
   }
@@ -162,8 +162,7 @@ std::chrono::milliseconds RetryPolicy::calculateBackoff(
                     std::pow(config_.backoff_multiplier, attempts);
 
   // Cap at max delay
-  delay_ms =
-      std::min(delay_ms, static_cast<double>(config_.max_delay_ms.count()));
+  delay_ms = std::min(delay_ms, static_cast<double>(config_.max_delay_ms.count()));
 
   return std::chrono::milliseconds(static_cast<int64_t>(delay_ms));
 }

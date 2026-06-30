@@ -1,12 +1,12 @@
 #pragma once
 
-#include <cista/containers.h>
-#include <cista/serialization.h>
+#include "core/message.hpp"
 
 #include <cstdint>
 #include <vector>
 
-#include "core/message.hpp"
+#include <cista/containers.h>
+#include <cista/serialization.h>
 
 namespace keystone {
 namespace core {
@@ -96,8 +96,7 @@ class MessageSerializer {
    * @param size Size of the buffer
    * @return const SerializableMessage* Pointer to deserialized message
    */
-  static const SerializableMessage* deserializeInPlace(const uint8_t* buffer,
-                                                       size_t size);
+  static const SerializableMessage* deserializeInPlace(const uint8_t* buffer, size_t size);
 };
 
 }  // namespace core
