@@ -536,6 +536,24 @@ jobs:
           retention-days: 7
 
   # ============================================================
+  # 3a. test  (canonical aggregate)
+  #    Roll-up gate for the test category. Depends on the C++
+  #    unit-tests and integration-tests jobs and emits the
+  #    canonical `test` check-run for the Odysseus ecosystem board.
+  #    The granular unit-tests / integration-tests sub-checks are
+  #    retained above; this job only aggregates their result so a
+  #    single canonical `test` context exists.
+  # ============================================================
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Aggregate test result
+        run: echo "unit-tests + integration-tests passed; canonical 'test' category satisfied"
+
+  # ============================================================
   # 4. build
   # ============================================================
   build:
@@ -585,6 +603,101 @@ jobs:
       - name: Show sccache stats
         if: always()
         run: sccache --show-stats
+
+  # NOTE: canonical `install` category is not yet wired (no install
+  # smoke test exists for the C++20 library). Tracked in
+  # HomericIntelligence/ProjectKeystone#596.
+  #
+  # ============================================================
+  # 4a. package  (canonical)
+  #    Builds the release tree and produces the CPack artifacts
+  #    (DEB / RPM / TGZ / ZIP) on every push/PR, validating that
+  #    the packaging path stays green between releases. The
+  #    release-time `Publish Release Artifacts` job uploads these
+  #    same packages to a GitHub Release; this job only verifies
+  #    they build, emitting the canonical `package` check-run.
+  # ============================================================
+  package:
+    name: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+      - name: Install build dependencies
+        uses: ./.github/actions/install-build-deps
+
+      - name: Cache Conan packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-
+
+      - name: Cache FetchContent downloads
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: build/x86.release/_deps
+          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-release-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
+
+      - name: Configure sccache
+        run: |
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+
+      - name: Install Conan dependencies
+        run: make deps.native
+
+      - name: Build release
+        run: make compile.release.native
+
+      - name: Build CPack packages (DEB, RPM, TGZ, ZIP)
+        run: |
+          set -euo pipefail
+          cd build/x86.release
+          cpack -G DEB
+          cpack -G RPM
+          cpack -G TGZ
+          cpack -G ZIP
+
+      - name: List produced packages
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          pkgs=(build/x86.release/*.deb build/x86.release/*.rpm \
+                build/x86.release/*.tar.gz build/x86.release/*.zip)
+          if [ "${#pkgs[@]}" -eq 0 ]; then
+            echo "::error::CPack produced no package artifacts"
+            exit 1
+          fi
+          printf '%s\n' "${pkgs[@]}"
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+      - name: Upload package artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: cpack-packages
+          path: |
+            build/x86.release/*.deb
+            build/x86.release/*.rpm
+            build/x86.release/*.tar.gz
+            build/x86.release/*.zip
+          retention-days: 30
+          if-no-files-found: ignore
 
   # ============================================================
   # 5. schema-validation
