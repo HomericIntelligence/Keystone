@@ -98,7 +98,21 @@ runs:
       run: |
         # shellcheck source=/dev/null
         source "${GITHUB_ACTION_PATH}/podman-version.env"
-        sudo apt-get install -y "podman=${PODMAN_APT_VERSION}" podman-compose
+        # Prefer the reproducibility-pinned apt version, but the ubuntu-24.04
+        # runner image periodically rotates the available podman patch revision
+        # out of its apt repo (e.g. 5.0.2+ds1-4ubuntu1 disappeared, turning the
+        # required jobs red with "Version '...' for 'podman' was not found").
+        # Fall back to the newest available podman so an upstream apt rotation
+        # cannot hard-break CI, while still pinning when the exact version is
+        # present.
+        if apt-cache madison podman | grep -qF "${PODMAN_APT_VERSION}"; then
+          echo "Installing pinned podman=${PODMAN_APT_VERSION}"
+          sudo apt-get install -y "podman=${PODMAN_APT_VERSION}" podman-compose
+        else
+          echo "Pinned podman=${PODMAN_APT_VERSION} not available in apt; installing latest available podman" >&2
+          apt-cache madison podman >&2 || true
+          sudo apt-get install -y podman podman-compose
+        fi
       shell: bash
 
     - name: Start Podman rootless socket
