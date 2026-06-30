@@ -1,9 +1,9 @@
-#include "core/profiling.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/profiling.hpp"
 
 using namespace keystone::core;
 

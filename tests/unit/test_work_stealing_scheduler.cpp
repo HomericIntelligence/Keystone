@@ -3,15 +3,15 @@
  * @brief Unit tests for WorkStealingScheduler
  */
 
-#include "concurrency/task.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "concurrency/task.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
 
 using namespace keystone::concurrency;
 
@@ -212,7 +212,8 @@ TEST(WorkStealingSchedulerTest, ApproximateWorkCount) {
 
   // Submit work with delays
   for (int32_t i = 0; i < 50; ++i) {
-    scheduler.submit([]() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); });
+    scheduler.submit(
+        []() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); });
   }
 
   // Check approximate work count (should be > 0 while work is pending)
@@ -243,7 +244,8 @@ TEST(WorkStealingSchedulerTest, ParallelExecution) {
 
       // Update max concurrent
       int32_t max = max_concurrent->load();
-      while (current > max && !max_concurrent->compare_exchange_weak(max, current)) {
+      while (current > max &&
+             !max_concurrent->compare_exchange_weak(max, current)) {
         max = max_concurrent->load();
       }
 

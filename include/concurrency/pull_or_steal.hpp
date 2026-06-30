@@ -1,12 +1,12 @@
 #pragma once
 
-#include "concurrency/work_stealing_queue.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <coroutine>
 #include <optional>
 #include <vector>
+
+#include "concurrency/work_stealing_queue.hpp"
 
 namespace keystone {
 namespace concurrency {
@@ -41,8 +41,7 @@ class PullOrSteal {
    * @param shutdown_flag Atomic flag for shutdown signaling
    */
   PullOrSteal(WorkStealingQueue& own_queue,
-              std::vector<WorkStealingQueue*>& all_queues,
-              size_t worker_index,
+              std::vector<WorkStealingQueue*>& all_queues, size_t worker_index,
               std::atomic<bool>& shutdown_flag);
 
   /**
@@ -100,8 +99,7 @@ class PullOrStealWithTimeout {
  public:
   PullOrStealWithTimeout(WorkStealingQueue& own_queue,
                          std::vector<WorkStealingQueue*>& all_queues,
-                         size_t worker_index,
-                         std::atomic<bool>& shutdown_flag,
+                         size_t worker_index, std::atomic<bool>& shutdown_flag,
                          std::chrono::milliseconds timeout);
 
   bool await_ready() noexcept;

@@ -1,11 +1,11 @@
-#include "simulation/simulated_cluster.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <chrono>
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "simulation/simulated_cluster.hpp"
 
 using namespace keystone::simulation;
 using namespace std::chrono_literals;
@@ -40,9 +40,10 @@ class DistributedHierarchyTest : public ::testing::Test {
  */
 TEST_F(DistributedHierarchyTest, FourLayerHierarchyAcrossNodes) {
   // Configure 4-node cluster with network latency
-  SimulatedCluster::Config config{.num_nodes = 4,
-                                  .workers_per_node = 2,
-                                  .network_config = {.min_latency = 100us, .max_latency = 200us}};
+  SimulatedCluster::Config config{
+      .num_nodes = 4,
+      .workers_per_node = 2,
+      .network_config = {.min_latency = 100us, .max_latency = 200us}};
 
   SimulatedCluster cluster(config);
   cluster.start();
@@ -107,9 +108,10 @@ TEST_F(DistributedHierarchyTest, FourLayerHierarchyAcrossNodes) {
  * Test: Multiple commands flowing through distributed hierarchy
  */
 TEST_F(DistributedHierarchyTest, MultipleCommandsDistributed) {
-  SimulatedCluster::Config config{.num_nodes = 4,
-                                  .workers_per_node = 4,
-                                  .network_config = {.min_latency = 100us, .max_latency = 150us}};
+  SimulatedCluster::Config config{
+      .num_nodes = 4,
+      .workers_per_node = 4,
+      .network_config = {.min_latency = 100us, .max_latency = 150us}};
 
   SimulatedCluster cluster(config);
   cluster.start();
@@ -155,9 +157,10 @@ TEST_F(DistributedHierarchyTest, MultipleCommandsDistributed) {
  * Test: Load balancing with concentrated workload
  */
 TEST_F(DistributedHierarchyTest, LoadBalancingAcrossNodes) {
-  SimulatedCluster::Config config{.num_nodes = 4,
-                                  .workers_per_node = 2,
-                                  .network_config = {.min_latency = 50us, .max_latency = 100us}};
+  SimulatedCluster::Config config{
+      .num_nodes = 4,
+      .workers_per_node = 2,
+      .network_config = {.min_latency = 50us, .max_latency = 100us}};
 
   SimulatedCluster cluster(config);
   cluster.start();
@@ -208,10 +211,10 @@ TEST_F(DistributedHierarchyTest, LoadBalancingAcrossNodes) {
  */
 TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
   // Test with low latency (100µs)
-  SimulatedCluster::Config low_latency_config{.num_nodes = 2,
-                                              .workers_per_node = 4,
-                                              .network_config = {.min_latency = 100us,
-                                                                 .max_latency = 100us}};
+  SimulatedCluster::Config low_latency_config{
+      .num_nodes = 2,
+      .workers_per_node = 4,
+      .network_config = {.min_latency = 100us, .max_latency = 100us}};
 
   SimulatedCluster low_latency_cluster(low_latency_config);
   low_latency_cluster.start();
@@ -236,15 +239,16 @@ TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
 
   auto end_low = std::chrono::steady_clock::now();
   auto duration_low =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end_low - start_low).count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(end_low - start_low)
+          .count();
 
   low_latency_cluster.shutdown();
 
   // Test with high latency (1ms)
-  SimulatedCluster::Config high_latency_config{.num_nodes = 2,
-                                               .workers_per_node = 4,
-                                               .network_config = {.min_latency = 1ms,
-                                                                  .max_latency = 1ms}};
+  SimulatedCluster::Config high_latency_config{
+      .num_nodes = 2,
+      .workers_per_node = 4,
+      .network_config = {.min_latency = 1ms, .max_latency = 1ms}};
 
   SimulatedCluster high_latency_cluster(high_latency_config);
   high_latency_cluster.start();
@@ -268,8 +272,9 @@ TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
   }
 
   auto end_high = std::chrono::steady_clock::now();
-  auto duration_high =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end_high - start_high).count();
+  auto duration_high = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           end_high - start_high)
+                           .count();
 
   high_latency_cluster.shutdown();
 
@@ -287,9 +292,10 @@ TEST_F(DistributedHierarchyTest, NetworkLatencyImpact) {
  * Test: Agent migration scenario (moving agents between nodes)
  */
 TEST_F(DistributedHierarchyTest, AgentMigrationBetweenNodes) {
-  SimulatedCluster::Config config{.num_nodes = 3,
-                                  .workers_per_node = 2,
-                                  .network_config = {.min_latency = 100us, .max_latency = 200us}};
+  SimulatedCluster::Config config{
+      .num_nodes = 3,
+      .workers_per_node = 2,
+      .network_config = {.min_latency = 100us, .max_latency = 200us}};
 
   SimulatedCluster cluster(config);
   cluster.start();
@@ -342,9 +348,10 @@ TEST_F(DistributedHierarchyTest, AgentMigrationBetweenNodes) {
  * Test: Statistics collection in distributed hierarchy
  */
 TEST_F(DistributedHierarchyTest, DistributedStatisticsCollection) {
-  SimulatedCluster::Config config{.num_nodes = 3,
-                                  .workers_per_node = 4,
-                                  .network_config = {.min_latency = 100us, .max_latency = 200us}};
+  SimulatedCluster::Config config{
+      .num_nodes = 3,
+      .workers_per_node = 4,
+      .network_config = {.min_latency = 100us, .max_latency = 200us}};
 
   SimulatedCluster cluster(config);
   cluster.start();

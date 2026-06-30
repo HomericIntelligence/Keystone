@@ -12,15 +12,15 @@
  * non-agent sink and exercises the decoupled path end-to-end.
  */
 
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-#include "core/message_sink.hpp"
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+#include "core/message_sink.hpp"
 
 using namespace keystone::core;
 
@@ -35,7 +35,9 @@ namespace {
  */
 struct StubSink : public IMessageSink {
   std::vector<KeystoneMessage> got;
-  void receiveMessage(const KeystoneMessage& msg) override { got.push_back(msg); }
+  void receiveMessage(const KeystoneMessage& msg) override {
+    got.push_back(msg);
+  }
 };
 
 }  // namespace

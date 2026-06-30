@@ -1,14 +1,14 @@
-#include "monitoring/health_check_server.hpp"
-
-#include <atomic>
-#include <chrono>
-#include <thread>
-
 #include <arpa/inet.h>
 #include <gtest/gtest.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+#include <atomic>
+#include <chrono>
+#include <thread>
+
+#include "monitoring/health_check_server.hpp"
 
 using namespace keystone::monitoring;
 
@@ -60,13 +60,15 @@ class HealthCheckServerTest : public ::testing::Test {
     server_addr.sin_port = htons(port_);
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+    if (connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) <
+        0) {
       close(sock);
       return "";
     }
 
     // Send GET request
-    std::string request = "GET " + path + " HTTP/1.1\r\nHost: localhost\r\n\r\n";
+    std::string request =
+        "GET " + path + " HTTP/1.1\r\nHost: localhost\r\n\r\n";
     if (write(sock, request.c_str(), request.size()) < 0) {
       close(sock);
       return "";
@@ -89,18 +91,15 @@ class HealthCheckServerTest : public ::testing::Test {
    * @brief Extract HTTP status code from response
    */
   int32_t getStatusCode(const std::string& response) {
-    if (response.empty())
-      return 0;
+    if (response.empty()) return 0;
 
     // Look for "HTTP/1.1 200 OK" pattern
     size_t start = response.find("HTTP/1.1 ");
-    if (start == std::string::npos)
-      return 0;
+    if (start == std::string::npos) return 0;
 
     start += 9;  // Skip "HTTP/1.1 "
     size_t end = response.find(" ", start);
-    if (end == std::string::npos)
-      return 0;
+    if (end == std::string::npos) return 0;
 
     try {
       return std::stoi(response.substr(start, end - start));
@@ -114,8 +113,7 @@ class HealthCheckServerTest : public ::testing::Test {
    */
   std::string getBody(const std::string& response) {
     size_t body_start = response.find("\r\n\r\n");
-    if (body_start == std::string::npos)
-      return "";
+    if (body_start == std::string::npos) return "";
     return response.substr(body_start + 4);
   }
 
@@ -206,9 +204,7 @@ TEST_F(HealthCheckServerTest, ReadinessEndpointDefaultReady) {
  */
 TEST_F(HealthCheckServerTest, ReadinessEndpointCustomReady) {
   bool is_ready = true;
-  auto readiness_check = [&is_ready]() {
-    return is_ready;
-  };
+  auto readiness_check = [&is_ready]() { return is_ready; };
 
   server_ = std::make_unique<HealthCheckServer>(port_, readiness_check);
   ASSERT_TRUE(server_->start());
@@ -232,9 +228,7 @@ TEST_F(HealthCheckServerTest, ReadinessEndpointCustomReady) {
  */
 TEST_F(HealthCheckServerTest, ReadinessEndpointCustomNotReady) {
   bool is_ready = false;
-  auto readiness_check = [&is_ready]() {
-    return is_ready;
-  };
+  auto readiness_check = [&is_ready]() { return is_ready; };
 
   server_ = std::make_unique<HealthCheckServer>(port_, readiness_check);
   ASSERT_TRUE(server_->start());
@@ -258,9 +252,7 @@ TEST_F(HealthCheckServerTest, ReadinessEndpointCustomNotReady) {
  */
 TEST_F(HealthCheckServerTest, ReadinessStateTransition) {
   bool is_ready = false;
-  auto readiness_check = [&is_ready]() {
-    return is_ready;
-  };
+  auto readiness_check = [&is_ready]() { return is_ready; };
 
   server_ = std::make_unique<HealthCheckServer>(port_, readiness_check);
   ASSERT_TRUE(server_->start());
@@ -357,7 +349,8 @@ TEST_F(HealthCheckServerTest, InvalidMethod) {
   server_addr.sin_port = htons(port_);
   server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
-  ASSERT_GE(connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)), 0);
+  ASSERT_GE(connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)),
+            0);
 
   // Send POST request (not allowed)
   std::string request = "POST /healthz HTTP/1.1\r\nHost: localhost\r\n\r\n";

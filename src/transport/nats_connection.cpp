@@ -5,15 +5,15 @@
 
 #include "transport/nats_connection.hpp"
 
+#include <nats.h>
+#include <spdlog/spdlog.h>
+
 #include <cerrno>
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <system_error>
-
-#include <nats.h>
-#include <spdlog/spdlog.h>
 
 namespace keystone {
 namespace transport {
@@ -117,11 +117,13 @@ void NatsTlsConfig::validate() const {
   // cachedTlsEnvVars() reads the environment exactly once (thread-safe static
   // initialisation); see the implementation note in the anonymous namespace.
   const TlsEnvVars& env = cachedTlsEnvVars();
-  std::string cert_path = env.cert_path.empty() ? client_cert_path : env.cert_path;
+  std::string cert_path =
+      env.cert_path.empty() ? client_cert_path : env.cert_path;
   std::string key_path = env.key_path.empty() ? client_key_path : env.key_path;
 
   // Both must be set or both must be empty
-  if ((!cert_path.empty() && key_path.empty()) || (cert_path.empty() && !key_path.empty())) {
+  if ((!cert_path.empty() && key_path.empty()) ||
+      (cert_path.empty() && !key_path.empty())) {
     throw std::invalid_argument(
         "NatsTlsConfig: client certificate and key must both be set or both "
         "be empty; cert_path='" +
@@ -133,11 +135,10 @@ void NatsTlsConfig::validate() const {
 // Construction / destruction
 // ---------------------------------------------------------------------------
 
-NatsConnection::NatsConnection(NatsConfig config) : config_(std::move(config)) {}
+NatsConnection::NatsConnection(NatsConfig config)
+    : config_(std::move(config)) {}
 
-NatsConnection::~NatsConnection() {
-  disconnect();
-}
+NatsConnection::~NatsConnection() { disconnect(); }
 
 // ---------------------------------------------------------------------------
 // Callback registration
@@ -192,22 +193,27 @@ bool NatsConnection::applyTlsOptions(natsOptions* opts) const {
   const TlsEnvVars& env = cachedTlsEnvVars();
   std::string ca_path = env.ca_path.empty() ? tls.ca_cert_path : env.ca_path;
   if (!ca_path.empty()) {
-    if (natsOptions_LoadCATrustedCertificates(opts, ca_path.c_str()) != NATS_OK) {
-      spdlog::error("NatsConnection: failed to load CA certificate from {}", ca_path);
+    if (natsOptions_LoadCATrustedCertificates(opts, ca_path.c_str()) !=
+        NATS_OK) {
+      spdlog::error("NatsConnection: failed to load CA certificate from {}",
+                    ca_path);
       return false;
     }
   }
 
   // Client certificate (mutual TLS): env vars take precedence over config
   // fields
-  std::string cert_path = env.cert_path.empty() ? tls.client_cert_path : env.cert_path;
-  std::string key_path = env.key_path.empty() ? tls.client_key_path : env.key_path;
+  std::string cert_path =
+      env.cert_path.empty() ? tls.client_cert_path : env.cert_path;
+  std::string key_path =
+      env.key_path.empty() ? tls.client_key_path : env.key_path;
 
   if (!cert_path.empty() && !key_path.empty()) {
-    if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(), key_path.c_str()) != NATS_OK) {
-      spdlog::error("NatsConnection: failed to load client certificate from {} / {}",
-                    cert_path,
-                    key_path);
+    if (natsOptions_LoadCertificatesChain(opts, cert_path.c_str(),
+                                          key_path.c_str()) != NATS_OK) {
+      spdlog::error(
+          "NatsConnection: failed to load client certificate from {} / {}",
+          cert_path, key_path);
       return false;
     }
   }
@@ -253,7 +259,8 @@ bool NatsConnection::connect() {
   }
 
   // Reconnection policy
-  if (natsOptions_SetMaxReconnect(opts, config_.max_reconnect_attempts) != NATS_OK) {
+  if (natsOptions_SetMaxReconnect(opts, config_.max_reconnect_attempts) !=
+      NATS_OK) {
     return false;
   }
 
@@ -277,16 +284,20 @@ bool NatsConnection::connect() {
   }
 
   // Lifecycle callbacks — pass `this` as closure so static shims can dispatch
-  if (natsOptions_SetErrorHandler(opts, NatsConnection::onError, this) != NATS_OK) {
+  if (natsOptions_SetErrorHandler(opts, NatsConnection::onError, this) !=
+      NATS_OK) {
     return false;
   }
-  if (natsOptions_SetDisconnectedCB(opts, NatsConnection::onDisconnected, this) != NATS_OK) {
+  if (natsOptions_SetDisconnectedCB(opts, NatsConnection::onDisconnected,
+                                    this) != NATS_OK) {
     return false;
   }
-  if (natsOptions_SetReconnectedCB(opts, NatsConnection::onReconnected, this) != NATS_OK) {
+  if (natsOptions_SetReconnectedCB(opts, NatsConnection::onReconnected, this) !=
+      NATS_OK) {
     return false;
   }
-  if (natsOptions_SetClosedCB(opts, NatsConnection::onClosed, this) != NATS_OK) {
+  if (natsOptions_SetClosedCB(opts, NatsConnection::onClosed, this) !=
+      NATS_OK) {
     return false;
   }
 
@@ -323,8 +334,9 @@ jsCtx* NatsConnection::jsContext() noexcept {
   }
   const natsStatus status = natsConnection_JetStream(&js_ctx_, conn_, nullptr);
   if (status != NATS_OK) {
-    spdlog::error("NatsConnection::jsContext: natsConnection_JetStream failed: {}",
-                  natsStatus_GetText(status));
+    spdlog::error(
+        "NatsConnection::jsContext: natsConnection_JetStream failed: {}",
+        natsStatus_GetText(status));
     js_ctx_ = nullptr;
     return nullptr;
   }
@@ -343,19 +355,15 @@ bool NatsConnection::isConnected() const noexcept {
   return getState() == NatsConnectionState::CONNECTED;
 }
 
-natsConnection* NatsConnection::handle() const noexcept {
-  return conn_;
-}
+natsConnection* NatsConnection::handle() const noexcept { return conn_; }
 
 // ---------------------------------------------------------------------------
 // Static callback shims
 // ---------------------------------------------------------------------------
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-void NatsConnection::onError(natsConnection* /*nc*/,
-                             natsSubscription* /*sub*/,
-                             natsStatus err,
-                             void* closure) noexcept {
+void NatsConnection::onError(natsConnection* /*nc*/, natsSubscription* /*sub*/,
+                             natsStatus err, void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   ErrorCallback cb;
   {
@@ -368,9 +376,11 @@ void NatsConnection::onError(natsConnection* /*nc*/,
   }
 }
 
-void NatsConnection::onDisconnected(natsConnection* /*nc*/, void* closure) noexcept {
+void NatsConnection::onDisconnected(natsConnection* /*nc*/,
+                                    void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
-  self->state_.store(NatsConnectionState::RECONNECTING, std::memory_order_release);
+  self->state_.store(NatsConnectionState::RECONNECTING,
+                     std::memory_order_release);
   DisconnectedCallback cb;
   {
     std::lock_guard<std::mutex> lock(self->callbacks_mutex_);
@@ -381,7 +391,8 @@ void NatsConnection::onDisconnected(natsConnection* /*nc*/, void* closure) noexc
   }
 }
 
-void NatsConnection::onReconnected(natsConnection* /*nc*/, void* closure) noexcept {
+void NatsConnection::onReconnected(natsConnection* /*nc*/,
+                                   void* closure) noexcept {
   auto* self = static_cast<NatsConnection*>(closure);
   self->state_.store(NatsConnectionState::CONNECTED, std::memory_order_release);
   ReconnectedCallback cb;
@@ -411,14 +422,16 @@ void NatsConnection::onClosed(natsConnection* /*nc*/, void* closure) noexcept {
 // Exception mapping (ADR-014: exception contract)
 // ---------------------------------------------------------------------------
 
-void NatsConnection::throwForNatsStatus(natsStatus status, const std::string& context) {
+void NatsConnection::throwForNatsStatus(natsStatus status,
+                                        const std::string& context) {
   if (status == NATS_OK) {
     return;  // No error
   }
 
   const char* nats_text = natsStatus_GetText(status);
-  std::string error_msg = context + ": " + (nats_text != nullptr ? nats_text : "unknown error") +
-                          " (nats_status=" + std::to_string(static_cast<int>(status)) + ")";
+  std::string error_msg =
+      context + ": " + (nats_text != nullptr ? nats_text : "unknown error") +
+      " (nats_status=" + std::to_string(static_cast<int>(status)) + ")";
 
   NatsErrorCategory category = categorizeNatsError(status);
 
@@ -427,7 +440,8 @@ void NatsConnection::throwForNatsStatus(natsStatus status, const std::string& co
       throw std::domain_error(error_msg);
 
     case NatsErrorCategory::kTransient:
-      throw std::system_error(std::error_code(EAGAIN, std::generic_category()), error_msg);
+      throw std::system_error(std::error_code(EAGAIN, std::generic_category()),
+                              error_msg);
 
     case NatsErrorCategory::kPermanent:
       throw std::runtime_error(error_msg);
@@ -443,11 +457,13 @@ NatsMsgPtr NatsConnection::fetch(std::string_view subject,
                                  int64_t timeout_ms) {
   jsCtx* js = jsContext();
   if (js == nullptr) {
-    throw std::runtime_error("NatsConnection::fetch: not connected to NATS (jsContext is null)");
+    throw std::runtime_error(
+        "NatsConnection::fetch: not connected to NATS (jsContext is null)");
   }
 
   if (subject.empty() || consumer_name.empty()) {
-    throw std::domain_error("NatsConnection::fetch: subject and consumer_name must not be empty");
+    throw std::domain_error(
+        "NatsConnection::fetch: subject and consumer_name must not be empty");
   }
 
   // Subscribe to the subject with durable consumer semantics
@@ -457,15 +473,16 @@ NatsMsgPtr NatsConnection::fetch(std::string_view subject,
   sub_opts.Config.MaxAckPending = 1;  // Rate-limiting per CLAUDE.md
 
   natsSubscription* sub = nullptr;
-  natsStatus s = js_Subscribe(
-      &sub, js, std::string(subject).c_str(), nullptr, nullptr, nullptr, &sub_opts, nullptr);
+  natsStatus s = js_Subscribe(&sub, js, std::string(subject).c_str(), nullptr,
+                              nullptr, nullptr, &sub_opts, nullptr);
 
   if (s != NATS_OK) {
     throwForNatsStatus(s, "NatsConnection::fetch subscribe");
   }
 
   if (sub == nullptr) {
-    throw std::runtime_error("NatsConnection::fetch: subscription returned null");
+    throw std::runtime_error(
+        "NatsConnection::fetch: subscription returned null");
   }
 
   // Fetch a single message with timeout using natsMsgList

@@ -8,17 +8,18 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+#include <gtest/gtest.h>
+
 #include "core/message.hpp"
 #include "core/message_serializer.hpp"
-
-#include <gtest/gtest.h>
 
 using namespace keystone::core;
 
 // Test: Serialize and deserialize basic message
 TEST(MessageSerializerTest, BasicSerializeDeserialize) {
   // Create a message
-  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE, "test payload");
+  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
+                                     "test payload");
 
   // Serialize
   auto buffer = MessageSerializer::serialize(msg);
@@ -38,7 +39,8 @@ TEST(MessageSerializerTest, BasicSerializeDeserialize) {
 
 // Test: Serialize message without payload
 TEST(MessageSerializerTest, SerializeWithoutPayload) {
-  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::SHUTDOWN, std::nullopt);
+  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::SHUTDOWN,
+                                     std::nullopt);
 
   // Serialize and deserialize
   auto buffer = MessageSerializer::serialize(msg);
@@ -51,7 +53,8 @@ TEST(MessageSerializerTest, SerializeWithoutPayload) {
 
 // Test: Serialize different action types
 TEST(MessageSerializerTest, DifferentActionTypes) {
-  ActionType types[] = {ActionType::EXECUTE, ActionType::RETURN_RESULT, ActionType::SHUTDOWN};
+  ActionType types[] = {ActionType::EXECUTE, ActionType::RETURN_RESULT,
+                        ActionType::SHUTDOWN};
 
   for (auto type : types) {
     auto msg = KeystoneMessage::create("agent1", "agent2", type);
@@ -65,11 +68,11 @@ TEST(MessageSerializerTest, DifferentActionTypes) {
 
 // Test: Serialize different content types
 TEST(MessageSerializerTest, DifferentContentTypes) {
-  auto msg1 = KeystoneMessage::create(
-      "agent1", "agent2", ActionType::EXECUTE, "text data", ContentType::TEXT_PLAIN);
+  auto msg1 = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
+                                      "text data", ContentType::TEXT_PLAIN);
 
-  auto msg2 = KeystoneMessage::create(
-      "agent1", "agent2", ActionType::EXECUTE, "binary data", ContentType::BINARY_CISTA);
+  auto msg2 = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
+                                      "binary data", ContentType::BINARY_CISTA);
 
   auto buffer1 = MessageSerializer::serialize(msg1);
   auto buffer2 = MessageSerializer::serialize(msg2);
@@ -85,7 +88,8 @@ TEST(MessageSerializerTest, DifferentContentTypes) {
 TEST(MessageSerializerTest, LargePayload) {
   std::string large_payload(10000, 'x');  // 10KB payload
 
-  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::RETURN_RESULT, large_payload);
+  auto msg = KeystoneMessage::create("agent1", "agent2",
+                                     ActionType::RETURN_RESULT, large_payload);
 
   auto buffer = MessageSerializer::serialize(msg);
   auto deserialized = MessageSerializer::deserialize(buffer);
@@ -95,16 +99,20 @@ TEST(MessageSerializerTest, LargePayload) {
 
 // Test: Zero-copy deserialization
 TEST(MessageSerializerTest, ZeroCopyDeserialize) {
-  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE, "payload");
+  auto msg = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
+                                     "payload");
 
   auto buffer = MessageSerializer::serialize(msg);
 
   // Zero-copy deserialize
-  const auto* smsg = MessageSerializer::deserializeInPlace(buffer.data(), buffer.size());
+  const auto* smsg =
+      MessageSerializer::deserializeInPlace(buffer.data(), buffer.size());
 
   ASSERT_NE(smsg, nullptr);
-  EXPECT_EQ(std::string(smsg->sender_id.data(), smsg->sender_id.size()), "agent1");
-  EXPECT_EQ(std::string(smsg->receiver_id.data(), smsg->receiver_id.size()), "agent2");
+  EXPECT_EQ(std::string(smsg->sender_id.data(), smsg->sender_id.size()),
+            "agent1");
+  EXPECT_EQ(std::string(smsg->receiver_id.data(), smsg->receiver_id.size()),
+            "agent2");
   EXPECT_EQ(smsg->action_type, static_cast<uint32_t>(ActionType::EXECUTE));
 }
 
@@ -124,8 +132,7 @@ TEST(MessageSerializerTest, TimestampPreservation) {
 
 // Test: Special characters in strings
 TEST(MessageSerializerTest, SpecialCharacters) {
-  auto msg = KeystoneMessage::create("agent-1.test",
-                                     "agent@2#special",
+  auto msg = KeystoneMessage::create("agent-1.test", "agent@2#special",
                                      ActionType::EXECUTE,
                                      "payload with\nnewlines\tand\ttabs");
 
@@ -139,8 +146,7 @@ TEST(MessageSerializerTest, SpecialCharacters) {
 
 // Test: Backward compatibility with legacy create()
 TEST(MessageSerializerTest, LegacyCreateCompatibility) {
-  auto msg = KeystoneMessage::create("agent1",
-                                     "agent2",
+  auto msg = KeystoneMessage::create("agent1", "agent2",
                                      "echo hello",  // legacy command
                                      "some data");
 

@@ -1,12 +1,12 @@
 #include "core/metrics.hpp"
 
-#include "concurrency/logger.hpp"  // Phase D: For queue depth alerting
-#include "core/config.hpp"         // FIX m3: Centralized configuration
-
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <vector>
+
+#include "concurrency/logger.hpp"  // Phase D: For queue depth alerting
+#include "core/config.hpp"         // FIX m3: Centralized configuration
 
 namespace keystone {
 namespace core {
@@ -51,19 +51,21 @@ void Metrics::recordMessageSent(const std::string& msg_id, Priority priority) {
       // oldest entries
       if (message_timestamps_.size() > Config::METRICS_MAX_TIMESTAMP_ENTRIES) {
         // Calculate how many entries to remove (10% of limit)
-        size_t entries_to_remove = message_timestamps_.size() -
-                                   Config::METRICS_MAX_TIMESTAMP_ENTRIES;
+        size_t entries_to_remove =
+            message_timestamps_.size() - Config::METRICS_MAX_TIMESTAMP_ENTRIES;
 
         // Sort entries by timestamp and remove oldest
         std::vector<std::pair<std::string, LatencyRecord>> sorted_entries(
             message_timestamps_.begin(), message_timestamps_.end());
 
-        std::sort(sorted_entries.begin(), sorted_entries.end(), [](const auto& a, const auto& b) {
-          return a.second.send_time < b.second.send_time;
-        });
+        std::sort(sorted_entries.begin(), sorted_entries.end(),
+                  [](const auto& a, const auto& b) {
+                    return a.second.send_time < b.second.send_time;
+                  });
 
         // Remove oldest entries
-        for (size_t i = 0; i < entries_to_remove && i < sorted_entries.size(); ++i) {
+        for (size_t i = 0; i < entries_to_remove && i < sorted_entries.size();
+             ++i) {
           message_timestamps_.erase(sorted_entries[i].first);
         }
       }
@@ -80,8 +82,9 @@ void Metrics::recordMessageProcessed(const std::string& msg_id) {
     auto it = message_timestamps_.find(msg_id);
     if (it != message_timestamps_.end()) {
       auto now = std::chrono::steady_clock::now();
-      auto latency_us =
-          std::chrono::duration_cast<std::chrono::microseconds>(now - it->second.send_time).count();
+      auto latency_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                            now - it->second.send_time)
+                            .count();
 
       total_latency_us_.fetch_add(latency_us, std::memory_order_relaxed);
       latency_sample_count_.fetch_add(1, std::memory_order_relaxed);
@@ -101,22 +104,21 @@ void Metrics::recordQueueDepth(const std::string& agent_id, size_t depth) {
   // Update max depth
   size_t current_max = max_queue_depth_.load(std::memory_order_relaxed);
   while (depth > current_max) {
-    if (max_queue_depth_.compare_exchange_weak(current_max, depth, std::memory_order_relaxed)) {
+    if (max_queue_depth_.compare_exchange_weak(current_max, depth,
+                                               std::memory_order_relaxed)) {
       break;
     }
   }
 
   // Phase D: Alert on queue depth thresholds
   if (depth > Config::METRICS_QUEUE_DEPTH_CRITICAL) {
-    concurrency::Logger::critical("Agent {} queue CRITICAL: {} messages (threshold: {})",
-                                  agent_id,
-                                  depth,
-                                  Config::METRICS_QUEUE_DEPTH_CRITICAL);
+    concurrency::Logger::critical(
+        "Agent {} queue CRITICAL: {} messages (threshold: {})", agent_id, depth,
+        Config::METRICS_QUEUE_DEPTH_CRITICAL);
   } else if (depth > Config::METRICS_QUEUE_DEPTH_WARNING) {
-    concurrency::Logger::warn("Agent {} queue high: {} messages (threshold: {})",
-                              agent_id,
-                              depth,
-                              Config::METRICS_QUEUE_DEPTH_WARNING);
+    concurrency::Logger::warn(
+        "Agent {} queue high: {} messages (threshold: {})", agent_id, depth,
+        Config::METRICS_QUEUE_DEPTH_WARNING);
   }
 }
 
@@ -191,7 +193,8 @@ int64_t Metrics::getInFlightCount() const {
   return in_flight_count_.load(std::memory_order_relaxed);
 }
 
-void Metrics::recordDeadlineMiss(const std::string& /* msg_id */, int64_t late_by_ms) {
+void Metrics::recordDeadlineMiss(const std::string& /* msg_id */,
+                                 int64_t late_by_ms) {
   deadline_misses_.fetch_add(1, std::memory_order_relaxed);
   total_deadline_miss_ms_.fetch_add(late_by_ms, std::memory_order_relaxed);
 }
@@ -267,7 +270,8 @@ std::string Metrics::generateReport() const {
 
   // Priority distribution
   auto priority_stats = getPriorityStats();
-  uint64_t total_priority = priority_stats.high_count + priority_stats.normal_count +
+  uint64_t total_priority = priority_stats.high_count +
+                            priority_stats.normal_count +
                             priority_stats.low_count;
   ss << "Priority Distribution:\n";
   ss << "  HIGH:    " << priority_stats.high_count;
@@ -277,7 +281,8 @@ std::string Metrics::generateReport() const {
   ss << "\n";
   ss << "  NORMAL:  " << priority_stats.normal_count;
   if (total_priority > 0) {
-    ss << " (" << (100.0 * priority_stats.normal_count / total_priority) << "%)";
+    ss << " (" << (100.0 * priority_stats.normal_count / total_priority)
+       << "%)";
   }
   ss << "\n";
   ss << "  LOW:     " << priority_stats.low_count;
@@ -321,7 +326,8 @@ void Metrics::cleanupOldTimestamps() {
   auto now = std::chrono::steady_clock::now();
 
   // Iterate and erase old entries (more efficient than sorting)
-  for (auto it = message_timestamps_.begin(); it != message_timestamps_.end();) {
+  for (auto it = message_timestamps_.begin();
+       it != message_timestamps_.end();) {
     if (now - it->second.send_time > Config::METRICS_TIMESTAMP_EXPIRY) {
       it = message_timestamps_.erase(it);
     } else {

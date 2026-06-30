@@ -1,12 +1,5 @@
 #pragma once
 
-#include "agent_id_interning.hpp"
-#include "i_agent_registry.hpp"
-#include "i_message_router.hpp"
-#include "i_scheduler_integration.hpp"
-#include "message.hpp"
-#include "message_sink.hpp"
-
 #include <atomic>
 #include <concepts>
 #include <cstddef>
@@ -17,6 +10,13 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include "agent_id_interning.hpp"
+#include "i_agent_registry.hpp"
+#include "i_message_router.hpp"
+#include "i_scheduler_integration.hpp"
+#include "message.hpp"
+#include "message_sink.hpp"
 
 // Forward declarations (must be outside namespace keystone to avoid nesting)
 namespace keystone {
@@ -46,7 +46,9 @@ namespace core {
  * interface they need (IAgentRegistry for setup, IMessageRouter for routing,
  * ISchedulerIntegration for async configuration).
  */
-class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedulerIntegration {
+class MessageBus : public IAgentRegistry,
+                   public IMessageRouter,
+                   public ISchedulerIntegration {
  public:
   MessageBus() = default;
   ~MessageBus() = default;
@@ -90,7 +92,8 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
    * @param agent Shared pointer to the agent (lifetime managed by shared_ptr)
    * @throws std::runtime_error if agent_id already registered
    */
-  void registerAgent(const std::string& agent_id, std::shared_ptr<IMessageSink> agent) override;
+  void registerAgent(const std::string& agent_id,
+                     std::shared_ptr<IMessageSink> agent) override;
 
   /**
    * @brief Register an agent with compile-time interface verification (Issue
@@ -123,7 +126,8 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
   template <typename A>
     requires requires(const A& a) {
       { a.getAgentId() } -> std::convertible_to<std::string>;
-      requires std::convertible_to<std::shared_ptr<A>, std::shared_ptr<IMessageSink>>;
+      requires std::convertible_to<std::shared_ptr<A>,
+                                   std::shared_ptr<IMessageSink>>;
     }
   void registerAgent(std::shared_ptr<A> agent) {
     if (!agent) {
@@ -197,13 +201,15 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
    *                  Called when message needs off-host forwarding.
    *                  Can be null to disable NATS forwarding.
    */
-  void setNatsPublisher(
-      std::function<void(std::string_view subject, std::span<const std::byte> payload)> publisher);
+  void setNatsPublisher(std::function<void(std::string_view subject,
+                                           std::span<const std::byte> payload)>
+                            publisher);
 
   /**
    * @brief Get current NATS publisher callback (may be nullptr)
    */
-  std::function<void(std::string_view subject, std::span<const std::byte> payload)>
+  std::function<void(std::string_view subject,
+                     std::span<const std::byte> payload)>
   getNatsPublisher() const;
 
  private:
@@ -222,7 +228,9 @@ class MessageBus : public IAgentRegistry, public IMessageRouter, public ISchedul
 
   // Issue #206/#333: NATS publisher for transparent bridge forwarding
   mutable std::mutex nats_publisher_mutex_;
-  std::function<void(std::string_view subject, std::span<const std::byte> payload)> nats_publisher_;
+  std::function<void(std::string_view subject,
+                     std::span<const std::byte> payload)>
+      nats_publisher_;
 };
 
 }  // namespace core

@@ -3,19 +3,20 @@
  * @brief Unit tests for CircuitBreaker
  */
 
-#include "core/circuit_breaker.hpp"
+#include <gtest/gtest.h>
 
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/circuit_breaker.hpp"
 
 using namespace keystone::core;
 
 class CircuitBreakerTest : public ::testing::Test {
  protected:
-  CircuitBreaker::Config default_config_{.failure_threshold = 3,
-                                         .timeout_ms = std::chrono::milliseconds(500),
-                                         .success_threshold = 2};
+  CircuitBreaker::Config default_config_{
+      .failure_threshold = 3,
+      .timeout_ms = std::chrono::milliseconds(500),
+      .success_threshold = 2};
 };
 
 TEST_F(CircuitBreakerTest, DefaultConstruction) {

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "concurrency/logger.hpp"
-#include "concurrency/pull_or_steal.hpp"
-#include "concurrency/work_stealing_queue.hpp"
-
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -11,6 +7,10 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include "concurrency/logger.hpp"
+#include "concurrency/pull_or_steal.hpp"
+#include "concurrency/work_stealing_queue.hpp"
 
 namespace keystone {
 namespace concurrency {
@@ -54,8 +54,9 @@ class WorkStealingScheduler {
    * Phase D: CPU affinity improves cache locality by preventing thread
    * migration. When enabled, worker i is pinned to CPU core (i % num_cores).
    */
-  explicit WorkStealingScheduler(size_t num_workers = std::thread::hardware_concurrency(),
-                                 bool enable_cpu_affinity = false);
+  explicit WorkStealingScheduler(
+      size_t num_workers = std::thread::hardware_concurrency(),
+      bool enable_cpu_affinity = false);
 
   /**
    * @brief Destructor - ensures graceful shutdown
@@ -182,7 +183,8 @@ class WorkStealingScheduler {
    * "SLEEP")
    * @return Work item if found, nullopt otherwise
    */
-  std::optional<WorkItem> tryStealOnce(size_t worker_index, const char* phase_label);
+  std::optional<WorkItem> tryStealOnce(size_t worker_index,
+                                       const char* phase_label);
 
   /**
    * @brief Get next worker index for round-robin submission

@@ -81,7 +81,8 @@ class FailureInjector {
    * @param agent_id Agent to delay
    * @param delay Response delay
    */
-  void injectAgentTimeout(const std::string& agent_id, std::chrono::milliseconds delay);
+  void injectAgentTimeout(const std::string& agent_id,
+                          std::chrono::milliseconds delay);
 
   /**
    * @brief Get the timeout delay for an agent

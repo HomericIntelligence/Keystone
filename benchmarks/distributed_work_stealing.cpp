@@ -1,4 +1,4 @@
-#include "simulation/simulated_cluster.hpp"
+#include <benchmark/benchmark.h>
 
 #include <atomic>
 #include <chrono>
@@ -6,7 +6,7 @@
 #include <thread>
 #include <vector>
 
-#include <benchmark/benchmark.h>
+#include "simulation/simulated_cluster.hpp"
 
 using namespace keystone::simulation;
 using namespace std::chrono_literals;
@@ -16,7 +16,8 @@ static void BM_WorkStealing_LocalOnly(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 1, .workers_per_node = 4, .network_config = {}};
+    SimulatedCluster::Config config{
+        .num_nodes = 1, .workers_per_node = 4, .network_config = {}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -51,11 +52,12 @@ static void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 2,
-                                    .workers_per_node = 4,
-                                    .network_config = {.min_latency = 100us,
-                                                       .max_latency = 100us,
-                                                       .packet_loss_rate = 0.0}};
+    SimulatedCluster::Config config{
+        .num_nodes = 2,
+        .workers_per_node = 4,
+        .network_config = {.min_latency = 100us,
+                           .max_latency = 100us,
+                           .packet_loss_rate = 0.0}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -89,11 +91,12 @@ static void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 2,
-                                    .workers_per_node = 4,
-                                    .network_config = {.min_latency = 500us,
-                                                       .max_latency = 500us,
-                                                       .packet_loss_rate = 0.0}};
+    SimulatedCluster::Config config{
+        .num_nodes = 2,
+        .workers_per_node = 4,
+        .network_config = {.min_latency = 500us,
+                           .max_latency = 500us,
+                           .packet_loss_rate = 0.0}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -125,11 +128,11 @@ static void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 2,
-                                    .workers_per_node = 4,
-                                    .network_config = {.min_latency = 1ms,
-                                                       .max_latency = 1ms,
-                                                       .packet_loss_rate = 0.0}};
+    SimulatedCluster::Config config{
+        .num_nodes = 2,
+        .workers_per_node = 4,
+        .network_config = {
+            .min_latency = 1ms, .max_latency = 1ms, .packet_loss_rate = 0.0}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -161,9 +164,10 @@ static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 4,
-                                    .workers_per_node = 2,
-                                    .network_config = {.min_latency = 100us, .max_latency = 200us}};
+    SimulatedCluster::Config config{
+        .num_nodes = 4,
+        .workers_per_node = 2,
+        .network_config = {.min_latency = 100us, .max_latency = 200us}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -195,7 +199,8 @@ static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
 
     auto stats = cluster.getStats();
     state.counters["LoadImbalance"] = stats.load_imbalance;
-    state.counters["NetworkMessages"] = static_cast<double>(stats.total_network_messages);
+    state.counters["NetworkMessages"] =
+        static_cast<double>(stats.total_network_messages);
 
     cluster.shutdown();
   }
@@ -209,9 +214,10 @@ static void BM_NetworkOverhead_MessageOnly(benchmark::State& state) {
   const size_t num_messages = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 2,
-                                    .workers_per_node = 2,
-                                    .network_config = {.min_latency = 100us, .max_latency = 100us}};
+    SimulatedCluster::Config config{
+        .num_nodes = 2,
+        .workers_per_node = 2,
+        .network_config = {.min_latency = 100us, .max_latency = 100us}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -251,7 +257,8 @@ static void BM_AgentAffinity_Registered(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 4, .workers_per_node = 4, .network_config = {}};
+    SimulatedCluster::Config config{
+        .num_nodes = 4, .workers_per_node = 4, .network_config = {}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -264,7 +271,8 @@ static void BM_AgentAffinity_Registered(benchmark::State& state) {
     std::atomic<size_t> completed{0};
 
     // Submit tasks to agents (should route to home nodes)
-    std::vector<std::string> agents = {"agent_A", "agent_B", "agent_C", "agent_D"};
+    std::vector<std::string> agents = {"agent_A", "agent_B", "agent_C",
+                                       "agent_D"};
     for (size_t i = 0; i < num_tasks; ++i) {
       cluster.submit(agents[i % 4], [&completed]() {
         volatile int32_t sum = 0;
@@ -292,11 +300,12 @@ static void BM_PacketLoss_Impact(benchmark::State& state) {
   const size_t num_messages = 100;
 
   for (auto _ : state) {
-    SimulatedCluster::Config config{.num_nodes = 2,
-                                    .workers_per_node = 2,
-                                    .network_config = {.min_latency = 100us,
-                                                       .max_latency = 100us,
-                                                       .packet_loss_rate = packet_loss}};
+    SimulatedCluster::Config config{
+        .num_nodes = 2,
+        .workers_per_node = 2,
+        .network_config = {.min_latency = 100us,
+                           .max_latency = 100us,
+                           .packet_loss_rate = packet_loss}};
     SimulatedCluster cluster(config);
     cluster.start();
 
@@ -315,7 +324,8 @@ static void BM_PacketLoss_Impact(benchmark::State& state) {
 
     state.counters["PacketLoss%"] = packet_loss * 100.0;
     state.counters["Delivered"] = static_cast<double>(received.load());
-    state.counters["DeliveryRate%"] = (static_cast<double>(received.load()) / num_messages) * 100.0;
+    state.counters["DeliveryRate%"] =
+        (static_cast<double>(received.load()) / num_messages) * 100.0;
 
     cluster.shutdown();
   }

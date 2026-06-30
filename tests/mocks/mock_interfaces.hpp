@@ -1,15 +1,15 @@
 #pragma once
 
-#include "core/i_agent_registry.hpp"
-#include "core/i_message_router.hpp"
-#include "core/i_scheduler_integration.hpp"
-#include "core/message.hpp"
+#include <gmock/gmock.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <gmock/gmock.h>
+#include "core/i_agent_registry.hpp"
+#include "core/i_message_router.hpp"
+#include "core/i_scheduler_integration.hpp"
+#include "core/message.hpp"
 
 // Forward declarations
 namespace keystone {
@@ -31,9 +31,9 @@ class MockAgentRegistry : public core::IAgentRegistry {
   MockAgentRegistry() = default;
   ~MockAgentRegistry() override = default;
 
-  MOCK_METHOD(void,
-              registerAgent,
-              (const std::string& agent_id, std::shared_ptr<core::IMessageSink> agent),
+  MOCK_METHOD(void, registerAgent,
+              (const std::string& agent_id,
+               std::shared_ptr<core::IMessageSink> agent),
               (override));
 
   MOCK_METHOD(void, unregisterAgent, (const std::string& agent_id), (override));
@@ -54,7 +54,8 @@ class MockMessageRouter : public core::IMessageRouter {
   MockMessageRouter() = default;
   ~MockMessageRouter() override = default;
 
-  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg), (override));
+  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg),
+              (override));
 };
 
 /**
@@ -68,9 +69,11 @@ class MockSchedulerIntegration : public core::ISchedulerIntegration {
   MockSchedulerIntegration() = default;
   ~MockSchedulerIntegration() override = default;
 
-  MOCK_METHOD(void, setScheduler, (concurrency::WorkStealingScheduler * scheduler), (override));
+  MOCK_METHOD(void, setScheduler,
+              (concurrency::WorkStealingScheduler * scheduler), (override));
 
-  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (), (const, override));
+  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (),
+              (const, override));
 };
 
 /**
@@ -87,9 +90,9 @@ class MockMessageBus : public core::IAgentRegistry,
   ~MockMessageBus() override = default;
 
   // IAgentRegistry interface
-  MOCK_METHOD(void,
-              registerAgent,
-              (const std::string& agent_id, std::shared_ptr<core::IMessageSink> agent),
+  MOCK_METHOD(void, registerAgent,
+              (const std::string& agent_id,
+               std::shared_ptr<core::IMessageSink> agent),
               (override));
 
   MOCK_METHOD(void, unregisterAgent, (const std::string& agent_id), (override));
@@ -99,12 +102,15 @@ class MockMessageBus : public core::IAgentRegistry,
   MOCK_METHOD(std::vector<std::string>, listAgents, (), (const, override));
 
   // IMessageRouter interface
-  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg), (override));
+  MOCK_METHOD(bool, routeMessage, (const core::KeystoneMessage& msg),
+              (override));
 
   // ISchedulerIntegration interface
-  MOCK_METHOD(void, setScheduler, (concurrency::WorkStealingScheduler * scheduler), (override));
+  MOCK_METHOD(void, setScheduler,
+              (concurrency::WorkStealingScheduler * scheduler), (override));
 
-  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (), (const, override));
+  MOCK_METHOD(concurrency::WorkStealingScheduler*, getScheduler, (),
+              (const, override));
 };
 
 }  // namespace keystone::test

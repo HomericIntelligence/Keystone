@@ -1,13 +1,13 @@
 #pragma once
 
-#include "concurrency/scheduler_accessor.hpp"
-#include "concurrency/work_stealing_scheduler.hpp"
-
 #include <coroutine>
 #include <exception>
 #include <optional>
 #include <stdexcept>
 #include <utility>
+
+#include "concurrency/scheduler_accessor.hpp"
+#include "concurrency/work_stealing_scheduler.hpp"
 
 namespace keystone {
 namespace concurrency {
@@ -102,7 +102,8 @@ class Task {
   Task(const Task&) = delete;
   Task& operator=(const Task&) = delete;
 
-  Task(Task&& other) noexcept : handle_(std::exchange(other.handle_, nullptr)) {}
+  Task(Task&& other) noexcept
+      : handle_(std::exchange(other.handle_, nullptr)) {}
 
   Task& operator=(Task&& other) noexcept {
     if (this != &other) {
@@ -188,7 +189,8 @@ class Task {
    * @param awaiting The coroutine that is awaiting this task
    * @return Handle to the coroutine to resume next
    */
-  std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) noexcept {
+  std::coroutine_handle<> await_suspend(
+      std::coroutine_handle<> awaiting) noexcept {
     // Store the awaiting coroutine as our continuation
     // This is used in final_suspend regardless of execution mode
     handle_.promise().continuation = awaiting;
@@ -318,7 +320,8 @@ class Task<void> {
   Task(const Task&) = delete;
   Task& operator=(const Task&) = delete;
 
-  Task(Task&& other) noexcept : handle_(std::exchange(other.handle_, nullptr)) {}
+  Task(Task&& other) noexcept
+      : handle_(std::exchange(other.handle_, nullptr)) {}
 
   Task& operator=(Task&& other) noexcept {
     if (this != &other) {
@@ -378,7 +381,8 @@ class Task<void> {
    * @param awaiting The coroutine that is awaiting this task
    * @return Handle to the coroutine to resume next
    */
-  std::coroutine_handle<> await_suspend(std::coroutine_handle<> awaiting) noexcept {
+  std::coroutine_handle<> await_suspend(
+      std::coroutine_handle<> awaiting) noexcept {
     // Store the awaiting coroutine as our continuation
     // This is used in final_suspend regardless of execution mode
     handle_.promise().continuation = awaiting;
