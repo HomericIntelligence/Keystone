@@ -324,9 +324,8 @@ add_executable(
 
 # The gRPC test fixture (grpc_test_fixture.cpp) and TLS test (test_grpc_tls.cpp)
 # were removed with the HMAS orchestration layer (ADR-015/016).
-target_link_libraries(
-  unit_tests keystone_core keystone_concurrency
-  keystone_transport GTest::gtest_main)
+target_link_libraries(unit_tests keystone_core keystone_concurrency
+                      keystone_transport GTest::gtest_main)
 
 gtest_discover_tests(unit_tests)
 
@@ -383,9 +382,10 @@ gtest_discover_tests(simulation_unit_tests)
 # Transport library — NATS connection with TLS support (issue #122),
 # NATSListener pull-based fetch loop (issues #178, #205, #307), and
 # TransparentBridge automatic off-host forwarding (issue #512).
-add_library(keystone_transport src/transport/nats_connection.cpp
-                               src/network/nats_listener.cpp
-                               src/transport/transparent_bridge.cpp)
+add_library(
+  keystone_transport
+  src/transport/nats_connection.cpp src/network/nats_listener.cpp
+  src/transport/transparent_bridge.cpp)
 
 target_include_directories(
   keystone_transport PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -399,8 +399,8 @@ target_include_directories(
   keystone_transport PUBLIC ${spdlog_INCLUDE_DIRS_RELEASE}
                             ${fmt_INCLUDE_DIRS_RELEASE})
 
-# Daemon — production service binary (issue #513)
-# Must come after keystone_core and keystone_transport are defined.
+# Daemon — production service binary (issue #513) Must come after keystone_core
+# and keystone_transport are defined.
 add_subdirectory(src/daemon)
 
 # Unit Tests — NATS transport (issue #122)
@@ -618,12 +618,8 @@ install(
 
 # Install test executables (keystone-test package)
 install(
-  TARGETS distributed_hierarchy_tests
-          unit_tests
-          concurrency_unit_tests
-          simulation_unit_tests
-          transport_unit_tests
-          bridge_unit_tests
+  TARGETS distributed_hierarchy_tests unit_tests concurrency_unit_tests
+          simulation_unit_tests transport_unit_tests bridge_unit_tests
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/tests COMPONENT keystone-test)
 
 # Install benchmarks (keystone-misc package)

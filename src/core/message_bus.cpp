@@ -1,11 +1,11 @@
 #include "core/message_bus.hpp"
 
+#include <stdexcept>
+
 #include "concurrency/work_stealing_scheduler.hpp"
 #include "core/message_serializer.hpp"
 #include "core/metrics.hpp"
 #include "core/subject_validator.hpp"
-
-#include <stdexcept>
 
 namespace keystone {
 namespace core {
@@ -34,7 +34,8 @@ void MessageBus::registerAgent(const std::string& agent_id,
 
   // FIX P2-10: Enforce maximum agent limit to prevent DoS
   if (agents_.size() >= Config::MAX_AGENTS) {
-    throw std::runtime_error("Maximum agent count exceeded: " + std::to_string(Config::MAX_AGENTS));
+    throw std::runtime_error("Maximum agent count exceeded: " +
+                             std::to_string(Config::MAX_AGENTS));
   }
 
   // Phase A2: Intern the agent_id string to get integer ID
@@ -117,7 +118,8 @@ bool MessageBus::routeMessage(const KeystoneMessage& msg) {
   }  // ✅ Lock released before external calls
 
   // Load scheduler atomically (thread-safe)
-  concurrency::WorkStealingScheduler* sched = scheduler_.load(std::memory_order_acquire);
+  concurrency::WorkStealingScheduler* sched =
+      scheduler_.load(std::memory_order_acquire);
 
   // Record message sent to metrics for tracking
   Metrics::getInstance().recordMessageSent(msg.msg_id, msg.priority);
@@ -164,12 +166,15 @@ std::vector<std::string> MessageBus::listAgents() const {
 }
 
 void MessageBus::setNatsPublisher(
-    std::function<void(std::string_view subject, std::span<const std::byte> payload)> publisher) {
+    std::function<void(std::string_view subject,
+                       std::span<const std::byte> payload)>
+        publisher) {
   std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
   nats_publisher_ = std::move(publisher);
 }
 
-std::function<void(std::string_view subject, std::span<const std::byte> payload)>
+std::function<void(std::string_view subject,
+                   std::span<const std::byte> payload)>
 MessageBus::getNatsPublisher() const {
   std::lock_guard<std::mutex> lock(nats_publisher_mutex_);
   return nats_publisher_;

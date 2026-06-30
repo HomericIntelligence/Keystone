@@ -35,14 +35,14 @@
  * the definitive oracle that the fix is correct.
  */
 
-#include "transport/nats_connection.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <memory>
 #include <string>
 #include <type_traits>
 
-#include <gtest/gtest.h>
+#include "transport/nats_connection.hpp"
 
 using namespace keystone::transport;
 
@@ -54,7 +54,9 @@ class NatsConnectionTestPeer : public NatsConnection {
  public:
   using NatsConnection::NatsConnection;
 
-  void fireError() { NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this); }
+  void fireError() {
+    NatsConnection::onError(nullptr, nullptr, static_cast<natsStatus>(0), this);
+  }
 
   void fireDisconnected() { NatsConnection::onDisconnected(nullptr, this); }
   void fireReconnected() { NatsConnection::onReconnected(nullptr, this); }
@@ -495,15 +497,18 @@ TEST_F(NatsJsContextTest, JsContextNullDoesNotAffectOtherMethods) {
 
 class NatsFetchOwnershipTest : public ::testing::Test {
  protected:
-  NatsConnectionTestPeer conn_;  // never connected — jsContext() returns nullptr
+  NatsConnectionTestPeer
+      conn_;  // never connected — jsContext() returns nullptr
 };
 
 // --- Static type check -------------------------------------------------
 
 // NatsMsgPtr must be a specialisation of std::unique_ptr whose element type is
 // natsMsg and whose deleter is a function pointer (not a stateful object).
-static_assert(std::is_same_v<NatsMsgPtr, std::unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>>,
-              "NatsMsgPtr must be unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>");
+static_assert(
+    std::is_same_v<NatsMsgPtr,
+                   std::unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>>,
+    "NatsMsgPtr must be unique_ptr<natsMsg, decltype(&natsMsg_Destroy)>");
 
 // --- Runtime tests ------------------------------------------------------
 
@@ -530,7 +535,8 @@ TEST_F(NatsFetchOwnershipTest, FetchThrowsRuntimeErrorWhenNotConnected) {
   // fetch() must throw std::runtime_error when jsContext() returns nullptr
   // (i.e., the connection was never established).  This confirms the guard
   // at the top of the implementation is intact after the RAII refactor.
-  EXPECT_THROW(conn_.fetch("hi.tasks.>", "my-consumer", 5000), std::runtime_error);
+  EXPECT_THROW(conn_.fetch("hi.tasks.>", "my-consumer", 5000),
+               std::runtime_error);
 }
 
 TEST_F(NatsFetchOwnershipTest, FetchThrowsRuntimeErrorBeforeDomainCheck) {
@@ -589,7 +595,8 @@ TEST_F(NatsTlsValidateStructFieldsTest, KeyStructFieldOnlyThrows) {
   EXPECT_THROW(tls.validate(), std::invalid_argument);
 }
 
-TEST_F(NatsTlsValidateStructFieldsTest, ValidateCalledMultipleTimesIsIdempotent) {
+TEST_F(NatsTlsValidateStructFieldsTest,
+       ValidateCalledMultipleTimesIsIdempotent) {
   // Calling validate() multiple times on a valid config must not throw and
   // must not corrupt state.  This also exercises the static-cache path being
   // called repeatedly — safe because cachedTlsEnvVars() returns a const ref.
