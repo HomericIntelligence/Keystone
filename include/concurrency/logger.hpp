@@ -251,8 +251,12 @@ class Logger {
     std::string full_fmt = context + " " + fmt;
 
     // Use runtime format to avoid compile-time format string requirement
-    logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt),
-                 std::forward<Args>(args)...);
+    if constexpr (sizeof...(args) > 0) {
+      logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt),
+                   std::forward<Args>(args)...);
+    } else {
+      logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt));
+    }
   }
 };
 
