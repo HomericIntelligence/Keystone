@@ -18,8 +18,9 @@
 NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 # Container runtime (Podman)
-CONTAINER_CHECK := podman compose up -d dev >/dev/null 2>&1 || true;
-CONTAINER_PREFIX := podman compose exec -T dev
+# Use podman-compose instead of docker compose CLI plugin (which delegates to snap)
+CONTAINER_CHECK := DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev >/dev/null 2>&1 || true;
+CONTAINER_PREFIX := DOCKER_HOST="$(DOCKER_HOST)" podman-compose exec -T dev
 
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
@@ -277,25 +278,25 @@ clean:
 
 container.build:
 	@echo "Building container image: dev..."
-	podman compose build dev
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose build dev
 
 container.build.%:
 	@echo "Building container image: $*..."
-	podman compose build $*
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose build $*
 
 container.up:
 	@echo "Starting dev container..."
-	podman compose up -d dev
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev
 	sleep 2
 
 container.clean:
 	@echo "Cleaning container resources..."
-	podman compose down -v
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose down -v
 	podman rmi -f projectkeystone-dev:latest projectkeystone:latest || true
 
 container.down:
 	@echo "Stopping containers..."
-	podman compose down
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose down
 
 container.shell: container.up
 	$(CONTAINER_PREFIX) /bin/bash
