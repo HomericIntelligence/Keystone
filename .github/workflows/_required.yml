@@ -235,9 +235,17 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.debug.clang-tidy/_deps
-          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # The -podman-v2 discriminator invalidates pre-migration caches whose
+          # _deps/*-subbuild/CMakeCache.txt were stamped with the host build path
+          # (/home/runner/work/.../build/...). Now that configure runs inside the
+          # dev container (path /workspace/build/...), restoring a host-stamped
+          # subbuild cache makes cmake abort with "The current CMakeCache.txt
+          # directory ... is different than the directory ... where CMakeCache.txt
+          # was created". Bumping the key abandons those caches so the first
+          # in-container run repopulates them with /workspace/... paths.
+          key: fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-clang-tidy-${{ runner.os }}-
+            fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-
 
       - name: Install Conan dependencies
         run: make deps
@@ -440,9 +448,12 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.debug/_deps
-          key: fetchcontent-debug-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step above for the full rationale).
+          key: fetchcontent-debug-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-debug-${{ runner.os }}-
+            fetchcontent-debug-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -578,9 +589,12 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step in the lint job for the full rationale).
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -1023,9 +1037,12 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build/x86.debug.coverage/_deps
-          key: fetchcontent-coverage-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step in the lint job for the full rationale).
+          key: fetchcontent-coverage-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-coverage-${{ runner.os }}-
+            fetchcontent-coverage-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -1050,9 +1067,25 @@ jobs:
         run: make test.debug.coverage
 
       - name: Generate coverage report
+        # Must run inside the dev container for the same reason as the lint
+        # job's configure/build steps (and the make compile/test.debug.coverage
+        # steps above, which already exec in-container via the Makefile's
+        # CONTAINER_PREFIX): generate_coverage.sh reconfigures CMake against
+        # build/conan-deps/conan_toolchain.cmake and reads ~/.conan2, both of
+        # which were produced *inside* the container by `make deps`. Running it
+        # on the host configures against a host-path CMakeCache and a host
+        # ~/.conan2 that does not match the in-container Conan layout (gmock_main
+        # "not found in package"). Executing in-container keeps every CMakeCache
+        # absolute path under /workspace/build/... consistent with lint and the
+        # make compile/test steps. lcov, genhtml, bc and llvm-cov-18 are all
+        # present in the dev image (Containerfile builder + development stages).
+        # The report files land under the bind-mounted build/ dir, so the host
+        # upload-artifact / codecov steps below still read them.
         run: |
           chmod +x scripts/generate_coverage.sh
-          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          '
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
