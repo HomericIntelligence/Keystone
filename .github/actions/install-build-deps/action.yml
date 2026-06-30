@@ -96,7 +96,9 @@ runs:
 
     - name: Install Podman and docker-compose
       run: |
-        sudo apt-get install -y podman podman-compose
+        # shellcheck source=/dev/null
+        source "${GITHUB_ACTION_PATH}/podman-version.env"
+        sudo apt-get install -y "podman=${PODMAN_APT_VERSION}" podman-compose
       shell: bash
 
     - name: Start Podman rootless socket
@@ -105,8 +107,54 @@ runs:
         echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> "$GITHUB_ENV"
       shell: bash
 
+    - name: Set container build environment
+      run: |
+        echo "GIT_COMMIT=${{ github.sha }}" >> "$GITHUB_ENV"
+        echo "BUILD_UID=$(id -u)" >> "$GITHUB_ENV"
+        echo "BUILD_GID=$(id -g)" >> "$GITHUB_ENV"
+      shell: bash
+
     - name: Fix workspace permissions for Podman bind mounts
       run: chmod -R a+rwX .
+      shell: bash
+
+    - name: Restore dev container image cache
+      id: image_cache
+      uses: actions/cache@v5
+      with:
+        path: /tmp/dev-image.tar
+        key: podman-${{ hashFiles('Containerfile', 'docker-compose.yml', 'conanfile.py') }}
+        restore-keys: |
+          podman-
+
+    - name: Load or build dev container image
+      run: |
+        if [ "${{ steps.image_cache.outputs.cache-hit }}" = "true" ] && podman load -i /tmp/dev-image.tar 2>/dev/null; then
+          echo "Loaded dev image from cache"
+        else
+          DOCKER_HOST="$DOCKER_HOST" podman-compose build dev
+          podman save -o /tmp/dev-image.tar projectkeystone-dev:latest
+        fi
+      shell: bash
+
+    - name: Start dev container
+      run: |
+        DOCKER_HOST="$DOCKER_HOST" podman-compose up -d dev
+      shell: bash
+
+    - name: Wait for dev container readiness
+      run: |
+        for i in $(seq 1 10); do
+          if DOCKER_HOST="$DOCKER_HOST" podman-compose exec -T dev true 2>/dev/null; then
+            echo "Container ready"
+            exit 0
+          fi
+          echo "Waiting for container... attempt $i/10"
+          sleep 2
+        done
+        echo "Container failed to become ready" >&2
+        DOCKER_HOST="$DOCKER_HOST" podman-compose logs dev >&2
+        exit 1
       shell: bash
 
     - name: Verify Podman works

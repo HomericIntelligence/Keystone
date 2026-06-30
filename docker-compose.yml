@@ -41,8 +41,8 @@ services:
       args:
         BUILD_UID: "${BUILD_UID}"
         BUILD_GID: "${BUILD_GID}"
-    image: projectkeystone-dev:${GIT_COMMIT}-dev
-    container_name: projectkeystone-dev-${GIT_COMMIT}
+    image: projectkeystone-dev:latest
+    container_name: projectkeystone-dev
     user: "${BUILD_UID}:${BUILD_GID}"  # Run as host user
     volumes:
       - .:/workspace:Z
@@ -50,6 +50,10 @@ services:
     stdin_open: true
     tty: true
     command: /bin/bash
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
     environment:
       - HOME=/workspace/.docker-home  # Avoid permission issues with $HOME
       - GIT_COMMIT=${GIT_COMMIT}

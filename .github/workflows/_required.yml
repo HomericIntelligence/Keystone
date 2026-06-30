@@ -243,18 +243,31 @@ jobs:
         run: make deps
 
       - name: Configure CMake with clang-tidy
+        # `make deps` runs Conan inside the dev container, so the generated
+        # conan_toolchain.cmake references container-internal compiler/library
+        # paths. Configure must therefore run inside the same container or the
+        # toolchain will not resolve — this preserves the environment-parity
+        # goal. We reuse the Makefile's container invocation pattern
+        # (DOCKER_HOST + podman-compose exec -T dev).
         run: |
-          CONAN_TOOLCHAIN=""
-          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
-            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
-          fi
-          cmake -S . -B build/x86.debug.clang-tidy \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DENABLE_CLANG_TIDY=ON \
-            $CONAN_TOOLCHAIN
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            CONAN_TOOLCHAIN=""
+            if [ -f build/conan-deps/conan_toolchain.cmake ]; then
+              CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
+            fi
+            cmake -S . -B build/x86.debug.clang-tidy \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DENABLE_CLANG_TIDY=ON \
+              $CONAN_TOOLCHAIN
+          '
 
       - name: Build with clang-tidy
+        # Must run inside the dev container for the same reason as the configure
+        # step: the build consumes the container-generated Conan toolchain and
+        # uses the container's clang/clang-tidy. clang-tidy-output.txt and
+        # clang-tidy-build.rc are written under /workspace, which is bind-mounted
+        # back to the host so the gating step below can read them.
         run: |
           # clang-tidy build often returns non-zero when diagnostics are found.
           # The next step parses clang-tidy-output.txt and decides whether those
@@ -262,13 +275,15 @@ jobs:
           # We must capture the build output without aborting the job — but we
           # also must record the build rc for the next step to inspect, rather
           # than silently masking it with continue-on-error.
-          set +e
-          set -o pipefail
-          cmake --build build/x86.debug.clang-tidy -j"$(nproc)" 2>&1 | tee clang-tidy-output.txt
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > clang-tidy-build.rc
-          echo "clang-tidy build exited rc=$rc (gating happens in next step)"
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            set +e
+            set -o pipefail
+            cmake --build build/x86.debug.clang-tidy -j"$(nproc)" 2>&1 | tee clang-tidy-output.txt
+            rc=${PIPESTATUS[0]}
+            set -e
+            echo "$rc" > clang-tidy-build.rc
+            echo "clang-tidy build exited rc=$rc (gating happens in next step)"
+          '
 
       - name: Fail on clang-tidy errors
         run: |
