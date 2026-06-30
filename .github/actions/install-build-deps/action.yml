@@ -110,7 +110,13 @@ runs:
           sudo apt-get install -y "podman=${PODMAN_APT_VERSION}" podman-compose
         else
           echo "Pinned podman=${PODMAN_APT_VERSION} not available in apt; installing latest available podman" >&2
-          apt-cache madison podman >&2 || true
+          # Dump the candidate versions for debugging apt rotations. Capture the
+          # status in a conditional so a non-zero apt-cache exit is reported as a
+          # diagnostic rather than silently swallowed with `|| true` (which the
+          # forbid-suppressions check rejects) and without aborting the install.
+          if ! apt-cache madison podman >&2; then
+            echo "Note: 'apt-cache madison podman' returned non-zero while listing candidates" >&2
+          fi
           sudo apt-get install -y podman podman-compose
         fi
       shell: bash
@@ -167,6 +173,12 @@ runs:
         fi
         if [ "$loaded" != "true" ]; then
           DOCKER_HOST="$DOCKER_HOST" podman-compose build dev
+          # podman save with the docker-archive transport refuses to write over
+          # an existing tarball ("docker-archive doesn't support modifying
+          # existing images"), which aborts the job if a stale/partial
+          # /tmp/dev-image.tar is present (e.g. from a failed cache restore).
+          # Remove any prior archive so save always writes a fresh one.
+          rm -f /tmp/dev-image.tar
           podman save -o /tmp/dev-image.tar projectkeystone-dev:latest
         fi
       shell: bash
