@@ -30,9 +30,11 @@ jobs:
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build and publish release artifacts when a new release is created
+  # Build and publish release artifacts when a new release is created.
+  # Emits the canonical `release` check-run for the Odysseus ecosystem
+  # board (renamed from "Publish Release Artifacts").
   publish:
-    name: Publish Release Artifacts
+    name: release
     runs-on: ubuntu-24.04
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
