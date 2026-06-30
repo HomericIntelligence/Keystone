@@ -554,9 +554,12 @@ jobs:
         run: make compile.debug.ubsan && make test.debug.ubsan
 
       - name: Build + test (TSan)
+        # tsan.supp is loaded INSIDE the dev container by the Makefile's `test`
+        # rule (TSAN_OPTIONS=suppressions=/workspace/tsan.supp...). A host-runner
+        # TSAN_OPTIONS here would NOT reach the in-container ctest, because
+        # `podman-compose exec` does not forward host env into the container, so
+        # it is omitted to avoid implying the suppressions load from the host.
         run: make compile.debug.tsan && make test.debug.tsan
-        env:
-          TSAN_OPTIONS: "suppressions=${{ github.workspace }}/tsan.supp:second_deadlock_stack=1"
 
       - name: Build + test (LSan)
         run: make compile.debug.lsan && make test.debug.lsan

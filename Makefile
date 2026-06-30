@@ -22,6 +22,17 @@ NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 CONTAINER_CHECK := DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev >/dev/null 2>&1 || true;
 CONTAINER_PREFIX := DOCKER_HOST="$(DOCKER_HOST)" podman-compose exec -T dev
 
+# Sanitizer runtime options that must be set INSIDE the dev container.
+# `podman-compose exec` does NOT forward the host's TSAN_OPTIONS into the
+# container, so a TSAN_OPTIONS set on the CI runner (pointing at a host path
+# like $GITHUB_WORKSPACE/tsan.supp) never reaches ctest, leaving the
+# moodycamel::ConcurrentQueue suppressions in tsan.supp unloaded and failing
+# tests on benign internal queue races (e.g. SimulationCornerCaseTest.MessageFlood).
+# The repo is mounted at /workspace (see docker-compose.yml), so reference the
+# suppression file by its in-container path. second_deadlock_stack=1 mirrors the
+# CI default. Set unconditionally — harmless for non-TSan builds, which ignore it.
+CONTAINER_TSAN_OPTIONS := suppressions=/workspace/tsan.supp:second_deadlock_stack=1
+
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
 BUILD_FLAGS_release := -O3 -DNDEBUG
@@ -115,7 +126,7 @@ TEST_PROFILING := profiling_tests
 test: compile
 	@echo "Running all tests..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
+	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
 
 # Individual test suites (run specific executable)
 test.unit: compile
