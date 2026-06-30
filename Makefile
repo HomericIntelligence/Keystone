@@ -52,6 +52,15 @@ ifneq ($(CONAN_TOOLCHAIN),)
     CMAKE_EXTRA_FLAGS += -DCMAKE_TOOLCHAIN_FILE=$(CONAN_TOOLCHAIN)
 endif
 
+# Feature options (ENABLE_COVERAGE/PROFILING/FUZZING) are CMake option() cache
+# variables — they must reach cmake as -D<opt>=ON args, NOT inside
+# -DCMAKE_CXX_FLAGS (where they would become inert clang preprocessor defines).
+# The feature-flag pattern rules below append to this variable; `compile`
+# forwards it on the cmake configure line. Kept separate from CMAKE_EXTRA_FLAGS
+# so the recursive pattern-rule make does not have to override the Conan
+# toolchain append above.
+CMAKE_FEATURE_FLAGS ?=
+
 # ============================================================================
 # Dependency Management (Conan)
 # ============================================================================
@@ -82,7 +91,7 @@ $(BUILD_DIR)/$(BUILD_SUBDIR):
 compile: $(BUILD_DIR)/$(BUILD_SUBDIR)
 	@echo "Building $* mode..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS)"
+	$(CONTAINER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS) $(CMAKE_FEATURE_FLAGS)"
 	$(CONTAINER_PREFIX) bash -c "cmake --build $(BUILD_DIR)/$(BUILD_SUBDIR) -j$(NPROC)"
 
 # ============================================================================
@@ -323,14 +332,22 @@ container.shell: container.up
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_msan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 # Feature flag patterns
+# ENABLE_COVERAGE/PROFILING/FUZZING are CMake option() cache variables (see
+# CMakeLists.txt), NOT compiler flags. They are forwarded via
+# CMAKE_FEATURE_FLAGS (-D<opt>=ON cmake args) rather than BUILD_FLAGS, which is
+# passed inside -DCMAKE_CXX_FLAGS="..." and would land as an inert clang
+# preprocessor define (-DENABLE_COVERAGE=ON) that never toggles the option.
+# With the option left OFF the build is not instrumented, so coverage produced
+# zero .gcda files and the coverage job's generate_coverage.sh failed with
+# "no .gcda files found".
 %.coverage:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_COVERAGE=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_COVERAGE=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.profile:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_PROFILING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_PROFILING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.fuzz:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_FUZZING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_FUZZING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.debug:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_debug)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=Debug

@@ -296,10 +296,22 @@ jobs:
       - name: Fail on clang-tidy errors
         run: |
           set -euo pipefail
-          # Only fail on errors that reference actual source files (src/ or include/).
-          # awk always exits 0; emits only error: lines that aren't third-party noise.
+          # Only fail on errors that reference actual first-party source files
+          # (src/ or include/). clang-tidy diagnostics have the canonical form
+          #   <path>:<line>:<col>: error: <message> [<check>]
+          # so we anchor on ": error: " (with surrounding spaces) — a bare
+          # /error:/ also matches source-context echo lines such as
+          #   8 |   using std::runtime_error::runtime_error;
+          # because "runtime_error::" contains the substring "error:", which
+          # caused false-positive failures once clang-tidy began analysing the
+          # in-container _deps/ tree (e.g. cista_exception.h). We also restrict
+          # to /src/ and /include/ paths and exclude /_deps/ so third-party
+          # header warnings never gate the job. awk always exits 0; it emits
+          # only genuine first-party error: diagnostics.
           REAL_ERRORS=$(awk '
-            /error:/ &&
+            /: error: / &&
+            /\/(src|include)\// &&
+            !/\/_deps\// &&
             !/no input files/ &&
             !/no such file or directory/ &&
             !/unable to handle compilation/ { print }

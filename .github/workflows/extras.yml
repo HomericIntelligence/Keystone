@@ -202,9 +202,19 @@ jobs:
         run: make test.debug.coverage
 
       - name: Generate coverage report
+        # Must run inside the dev container: the make compile/test.debug.coverage
+        # steps above ran cmake/ninja/ctest in-container (via the Makefile's
+        # CONTAINER_PREFIX), so the build tree's CMakeCache, CTestTestfile and
+        # .gcda paths are all stamped with the in-container /workspace/... root.
+        # Running generate_coverage.sh on the host re-runs ctest against those
+        # /workspace paths (which do not exist on the host) and finds no .gcda
+        # files. Executing in-container keeps lcov/genhtml/ctest consistent with
+        # the build+test steps; the report lands in the bind-mounted build/ dir.
         run: |
           chmod +x scripts/generate_coverage.sh
-          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          '
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
