@@ -107,6 +107,15 @@ runs:
         echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> "$GITHUB_ENV"
       shell: bash
 
+    - name: Configure host for in-container sanitizers
+      run: |
+        # ASan/TSan/LSan abort with "Shadow memory range interleaves with an
+        # existing memory mapping" on the ubuntu-24.04 noble kernel unless the
+        # ASLR entropy is lowered. The sanitizer runs inside the dev container
+        # but shares the host kernel, so this must be set on the runner host.
+        sudo sysctl -w vm.mmap_rnd_bits=28
+      shell: bash
+
     - name: Set container build environment
       run: |
         echo "GIT_COMMIT=${{ github.sha }}" >> "$GITHUB_ENV"
@@ -123,15 +132,26 @@ runs:
       uses: actions/cache@v5
       with:
         path: /tmp/dev-image.tar
+        # Exact-match only: a partial restore-key (e.g. `podman-`) would load a
+        # stale tarball built from a different Containerfile/conanfile, so omit
+        # restore-keys and rebuild on any input change.
         key: podman-${{ hashFiles('Containerfile', 'docker-compose.yml', 'conanfile.py') }}
-        restore-keys: |
-          podman-
 
     - name: Load or build dev container image
       run: |
+        loaded=false
         if [ "${{ steps.image_cache.outputs.cache-hit }}" = "true" ] && podman load -i /tmp/dev-image.tar 2>/dev/null; then
-          echo "Loaded dev image from cache"
-        else
+          # Verify the tarball actually contained the tag compose resolves;
+          # a stale/mistagged tarball would otherwise pass here and fail at
+          # `podman-compose up`.
+          if podman image exists projectkeystone-dev:latest; then
+            echo "Loaded dev image from cache"
+            loaded=true
+          else
+            echo "Cached tarball missing projectkeystone-dev:latest tag; rebuilding" >&2
+          fi
+        fi
+        if [ "$loaded" != "true" ]; then
           DOCKER_HOST="$DOCKER_HOST" podman-compose build dev
           podman save -o /tmp/dev-image.tar projectkeystone-dev:latest
         fi
@@ -157,9 +177,14 @@ runs:
         exit 1
       shell: bash
 
-    - name: Verify Podman works
+    - name: Verify Podman works (rootless)
       run: |
-        podman info --format '{{.Host.Security.Rootless}}'
+        rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
+        echo "Podman rootless: ${rootless}"
+        if [ "${rootless}" != "true" ]; then
+          echo "Expected rootless Podman but got '${rootless}'" >&2
+          exit 1
+        fi
       shell: bash
 
     - name: Verify installation

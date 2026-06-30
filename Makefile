@@ -60,6 +60,7 @@ endif
 deps:
 	@echo "Installing Conan dependencies (Debug + Release)..."
 	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) conan profile detect --exist-ok
 	$(CONTAINER_PREFIX) conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Debug -s compiler.cppstd=20
 	$(CONTAINER_PREFIX) conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Release -s compiler.cppstd=20
 
