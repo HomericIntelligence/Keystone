@@ -94,6 +94,26 @@ runs:
         sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-18 100
       shell: bash
 
+    - name: Install Podman and docker-compose
+      run: |
+        sudo apt-get install -y podman podman-compose
+      shell: bash
+
+    - name: Start Podman rootless socket
+      run: |
+        systemctl --user start podman.socket
+        echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Fix workspace permissions for Podman bind mounts
+      run: chmod -R a+rwX .
+      shell: bash
+
+    - name: Verify Podman works
+      run: |
+        podman info --format '{{.Host.Security.Rootless}}'
+      shell: bash
+
     - name: Verify installation
       run: |
         echo "Clang version:"
