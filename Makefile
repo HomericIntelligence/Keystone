@@ -17,14 +17,9 @@
 # Number of processors for parallel builds
 NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-# Container runtime (Podman) — pass NATIVE=1 to bypass container on CI/host
-ifeq ($(NATIVE),1)
-    CONTAINER_CHECK :=
-    CONTAINER_PREFIX :=
-else
-    CONTAINER_CHECK := podman compose up -d dev >/dev/null 2>&1 || true;
-    CONTAINER_PREFIX := podman compose exec -T dev
-endif
+# Container runtime (Podman)
+CONTAINER_CHECK := podman compose up -d dev >/dev/null 2>&1 || true;
+CONTAINER_PREFIX := podman compose exec -T dev
 
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
@@ -340,11 +335,6 @@ container.shell: container.up
 %.release:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_release)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=Release
 
-# Pattern rule for native variants — matches any target with .native suffix.
-# Bypasses the container and runs the underlying target directly on the host.
-%.native:
-	@$(MAKE) $* NATIVE=1
-
 # ============================================================================
 # Help & Info
 # ============================================================================
@@ -423,6 +413,5 @@ help:
 	@echo "Examples:"
 	@echo "  make compile.debug.asan           # Build debug with ASan (in container)"
 	@echo "  make test.debug.asan              # Run tests with ASan (in container)"
-	@echo "  make compile.debug.asan.native    # Build debug with ASan on host (no container)"
-	@echo "  make test.debug.tsan.native       # Run TSan tests on host (no container)"
-	@echo "  make benchmark.native             # Run benchmarks on host (no container)"
+	@echo "  make test.debug.tsan              # Run TSan tests (in container)"
+	@echo "  make benchmark                    # Run benchmarks (in container)"

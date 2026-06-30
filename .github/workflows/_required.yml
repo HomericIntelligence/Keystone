@@ -240,7 +240,7 @@ jobs:
             fetchcontent-clang-tidy-${{ runner.os }}-
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Configure CMake with clang-tidy
         run: |
@@ -439,10 +439,10 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build debug (C++)
-        run: make compile.debug.native
+        run: make compile.debug
 
       - name: Run C++ unit tests
         run: |
@@ -507,21 +507,21 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build + test (ASan)
-        run: make compile.debug.asan.native && make test.debug.asan.native
+        run: make compile.debug.asan && make test.debug.asan
 
       - name: Build + test (UBSan)
-        run: make compile.debug.ubsan.native && make test.debug.ubsan.native
+        run: make compile.debug.ubsan && make test.debug.ubsan
 
       - name: Build + test (TSan)
-        run: make compile.debug.tsan.native && make test.debug.tsan.native
+        run: make compile.debug.tsan && make test.debug.tsan
         env:
           TSAN_OPTIONS: "suppressions=${{ github.workspace }}/tsan.supp:second_deadlock_stack=1"
 
       - name: Build + test (LSan)
-        run: make compile.debug.lsan.native && make test.debug.lsan.native
+        run: make compile.debug.lsan && make test.debug.lsan
 
       - name: Show sccache stats
         if: always()
@@ -577,10 +577,10 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build release
-        run: make compile.release.native
+        run: make compile.release
 
       - name: Show sccache stats
         if: always()
@@ -1022,17 +1022,17 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build with coverage
-        run: make compile.debug.coverage.native
+        run: make compile.debug.coverage
 
       - name: Show sccache stats
         if: always()
         run: sccache --show-stats
 
       - name: Run tests for coverage
-        run: make test.debug.coverage.native
+        run: make test.debug.coverage
 
       - name: Generate coverage report
         run: |
