@@ -116,14 +116,9 @@ updates:
   # ============================================================================
   # Conan - C++ package manager (Python-based, tracked via pip ecosystem)
   # ============================================================================
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "12:00"
-      timezone: "America/New_York"
-
+  # NOTE: Conan is managed via pyproject.toml and pixi.toml, not pip.
+  # Dependabot pip ecosystem cannot parse optional-dependencies in pyproject.toml.
+  # If conan needs updating, do it manually or via pixi lock.
     # Only update the conan tool itself; C++ library versions are pinned in conanfile.py
     allow:
       - dependency-name: "conan"
@@ -213,20 +208,6 @@ updates:
   #     interval: "weekly"
   #
   # conan example:
-  # - package-ecosystem: "pip"  # Conan uses Python
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #   ignore:
-  #     - dependency-name: "conan"  # Pin conan version
-  #       update-types: ["version-update:semver-major"]
-  #
-  # Consider security-only updates for production:
-  # - schedule:
-  #     interval: "daily"  # For critical security patches
-  #   open-pull-requests-limit: 10
-  #   labels:
-  #     - "security"
-  #     - "priority:high"
-  #
-  # ============================================================================
+  # NOTE: Conan is managed via pyproject.toml and pixi.toml, not pip.
+  # Dependabot pip ecosystem cannot parse optional-dependencies in pyproject.toml.
+  # If conan needs updating, do it manually or via pixi lock.
