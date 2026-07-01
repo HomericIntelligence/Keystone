@@ -11,14 +11,14 @@
  * (Issue #280).
  */
 
+#include <gtest/gtest.h>
+
+#include <memory>
+
 #include "core/message.hpp"
 #include "core/message_bus.hpp"
 #include "core/message_sink.hpp"
 #include "core/subject_validator.hpp"
-
-#include <memory>
-
-#include <gtest/gtest.h>
 
 namespace {
 
@@ -27,7 +27,8 @@ namespace {
 // core::IMessageSink (the agent layer was extracted to ProjectAgamemnon per
 // ADR-015), so these tests no longer need a concrete agent type.
 struct StubSink : public keystone::core::IMessageSink {
-  void receiveMessage(const keystone::core::KeystoneMessage& /*msg*/) override {}
+  void receiveMessage(const keystone::core::KeystoneMessage& /*msg*/) override {
+  }
 };
 
 }  // namespace

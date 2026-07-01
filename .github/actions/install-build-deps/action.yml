@@ -94,6 +94,125 @@ runs:
         sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-18 100
       shell: bash
 
+    - name: Install Podman and docker-compose
+      run: |
+        # shellcheck source=/dev/null
+        source "${GITHUB_ACTION_PATH}/podman-version.env"
+        # Prefer the reproducibility-pinned apt version, but the ubuntu-24.04
+        # runner image periodically rotates the available podman patch revision
+        # out of its apt repo (e.g. 5.0.2+ds1-4ubuntu1 disappeared, turning the
+        # required jobs red with "Version '...' for 'podman' was not found").
+        # Fall back to the newest available podman so an upstream apt rotation
+        # cannot hard-break CI, while still pinning when the exact version is
+        # present.
+        if apt-cache madison podman | grep -qF "${PODMAN_APT_VERSION}"; then
+          echo "Installing pinned podman=${PODMAN_APT_VERSION}"
+          sudo apt-get install -y "podman=${PODMAN_APT_VERSION}" podman-compose
+        else
+          echo "Pinned podman=${PODMAN_APT_VERSION} not available in apt; installing latest available podman" >&2
+          # Dump the candidate versions for debugging apt rotations. Capture the
+          # status in a conditional so a non-zero apt-cache exit is reported as a
+          # diagnostic rather than silently swallowed with `|| true` (which the
+          # forbid-suppressions check rejects) and without aborting the install.
+          if ! apt-cache madison podman >&2; then
+            echo "Note: 'apt-cache madison podman' returned non-zero while listing candidates" >&2
+          fi
+          sudo apt-get install -y podman podman-compose
+        fi
+      shell: bash
+
+    - name: Start Podman rootless socket
+      run: |
+        systemctl --user start podman.socket
+        echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Configure host for in-container sanitizers
+      run: |
+        # ASan/TSan/LSan abort with "Shadow memory range interleaves with an
+        # existing memory mapping" on the ubuntu-24.04 noble kernel unless the
+        # ASLR entropy is lowered. The sanitizer runs inside the dev container
+        # but shares the host kernel, so this must be set on the runner host.
+        sudo sysctl -w vm.mmap_rnd_bits=28
+      shell: bash
+
+    - name: Set container build environment
+      run: |
+        echo "GIT_COMMIT=${{ github.sha }}" >> "$GITHUB_ENV"
+        echo "BUILD_UID=$(id -u)" >> "$GITHUB_ENV"
+        echo "BUILD_GID=$(id -g)" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Fix workspace permissions for Podman bind mounts
+      run: chmod -R a+rwX .
+      shell: bash
+
+    - name: Restore dev container image cache
+      id: image_cache
+      uses: actions/cache@v5
+      with:
+        path: /tmp/dev-image.tar
+        # Exact-match only: a partial restore-key (e.g. `podman-`) would load a
+        # stale tarball built from a different Containerfile/conanfile, so omit
+        # restore-keys and rebuild on any input change.
+        key: podman-${{ hashFiles('Containerfile', 'docker-compose.yml', 'conanfile.py') }}
+
+    - name: Load or build dev container image
+      run: |
+        loaded=false
+        if [ "${{ steps.image_cache.outputs.cache-hit }}" = "true" ] && podman load -i /tmp/dev-image.tar 2>/dev/null; then
+          # Verify the tarball actually contained the tag compose resolves;
+          # a stale/mistagged tarball would otherwise pass here and fail at
+          # `podman-compose up`.
+          if podman image exists projectkeystone-dev:latest; then
+            echo "Loaded dev image from cache"
+            loaded=true
+          else
+            echo "Cached tarball missing projectkeystone-dev:latest tag; rebuilding" >&2
+          fi
+        fi
+        if [ "$loaded" != "true" ]; then
+          DOCKER_HOST="$DOCKER_HOST" podman-compose build dev
+          # podman save with the docker-archive transport refuses to write over
+          # an existing tarball ("docker-archive doesn't support modifying
+          # existing images"), which aborts the job if a stale/partial
+          # /tmp/dev-image.tar is present (e.g. from a failed cache restore).
+          # Remove any prior archive so save always writes a fresh one.
+          rm -f /tmp/dev-image.tar
+          podman save -o /tmp/dev-image.tar projectkeystone-dev:latest
+        fi
+      shell: bash
+
+    - name: Start dev container
+      run: |
+        DOCKER_HOST="$DOCKER_HOST" podman-compose up -d dev
+      shell: bash
+
+    - name: Wait for dev container readiness
+      run: |
+        for i in $(seq 1 10); do
+          if DOCKER_HOST="$DOCKER_HOST" podman-compose exec -T dev true 2>/dev/null; then
+            echo "Container ready"
+            exit 0
+          fi
+          echo "Waiting for container... attempt $i/10"
+          sleep 2
+        done
+        echo "Container failed to become ready" >&2
+        DOCKER_HOST="$DOCKER_HOST" podman-compose logs dev >&2
+        exit 1
+      shell: bash
+
+    - name: Verify Podman works (rootless)
+      run: |
+        rootless="$(podman info --format '{{.Host.Security.Rootless}}')"
+        echo "Podman rootless: ${rootless}"
+        if [ "${rootless}" != "true" ]; then
+          echo "Expected rootless Podman but got '${rootless}'" >&2
+          exit 1
+        fi
+      shell: bash
+
     - name: Verify installation
       run: |
         echo "Clang version:"

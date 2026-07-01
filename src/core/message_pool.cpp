@@ -46,10 +46,9 @@ void MessagePool::release(KeystoneMessage&& msg) {
   msg.sender_id.clear();
   msg.receiver_id.clear();
   _Pragma("GCC diagnostic push")
-  _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
-  msg.command.clear();
-  _Pragma("GCC diagnostic pop")
-  msg.payload.reset();
+      _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
+          msg.command.clear();
+  _Pragma("GCC diagnostic pop") msg.payload.reset();
   msg.priority = Priority::NORMAL;
   msg.deadline.reset();
   // timestamp will be overwritten on next use

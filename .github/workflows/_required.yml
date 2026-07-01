@@ -235,26 +235,47 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.debug.clang-tidy/_deps
-          key: fetchcontent-clang-tidy-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # The -podman-v2 discriminator invalidates pre-migration caches whose
+          # _deps/*-subbuild/CMakeCache.txt were stamped with the host build path
+          # (/home/runner/work/.../build/...). Now that configure runs inside the
+          # dev container (path /workspace/build/...), restoring a host-stamped
+          # subbuild cache makes cmake abort with "The current CMakeCache.txt
+          # directory ... is different than the directory ... where CMakeCache.txt
+          # was created". Bumping the key abandons those caches so the first
+          # in-container run repopulates them with /workspace/... paths.
+          key: fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-clang-tidy-${{ runner.os }}-
+            fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Configure CMake with clang-tidy
+        # `make deps` runs Conan inside the dev container, so the generated
+        # conan_toolchain.cmake references container-internal compiler/library
+        # paths. Configure must therefore run inside the same container or the
+        # toolchain will not resolve — this preserves the environment-parity
+        # goal. We reuse the Makefile's container invocation pattern
+        # (DOCKER_HOST + podman-compose exec -T dev).
         run: |
-          CONAN_TOOLCHAIN=""
-          if [ -f build/conan-deps/conan_toolchain.cmake ]; then
-            CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
-          fi
-          cmake -S . -B build/x86.debug.clang-tidy \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DENABLE_CLANG_TIDY=ON \
-            $CONAN_TOOLCHAIN
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            CONAN_TOOLCHAIN=""
+            if [ -f build/conan-deps/conan_toolchain.cmake ]; then
+              CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
+            fi
+            cmake -S . -B build/x86.debug.clang-tidy \
+              -G Ninja \
+              -DCMAKE_BUILD_TYPE=Debug \
+              -DENABLE_CLANG_TIDY=ON \
+              $CONAN_TOOLCHAIN
+          '
 
       - name: Build with clang-tidy
+        # Must run inside the dev container for the same reason as the configure
+        # step: the build consumes the container-generated Conan toolchain and
+        # uses the container's clang/clang-tidy. clang-tidy-output.txt and
+        # clang-tidy-build.rc are written under /workspace, which is bind-mounted
+        # back to the host so the gating step below can read them.
         run: |
           # clang-tidy build often returns non-zero when diagnostics are found.
           # The next step parses clang-tidy-output.txt and decides whether those
@@ -262,21 +283,35 @@ jobs:
           # We must capture the build output without aborting the job — but we
           # also must record the build rc for the next step to inspect, rather
           # than silently masking it with continue-on-error.
-          set +e
-          set -o pipefail
-          cmake --build build/x86.debug.clang-tidy -j"$(nproc)" 2>&1 | tee clang-tidy-output.txt
-          rc=${PIPESTATUS[0]}
-          set -e
-          echo "$rc" > clang-tidy-build.rc
-          echo "clang-tidy build exited rc=$rc (gating happens in next step)"
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            set +e
+            set -o pipefail
+            cmake --build build/x86.debug.clang-tidy -j"$(nproc)" 2>&1 | tee clang-tidy-output.txt
+            rc=${PIPESTATUS[0]}
+            set -e
+            echo "$rc" > clang-tidy-build.rc
+            echo "clang-tidy build exited rc=$rc (gating happens in next step)"
+          '
 
       - name: Fail on clang-tidy errors
         run: |
           set -euo pipefail
-          # Only fail on errors that reference actual source files (src/ or include/).
-          # awk always exits 0; emits only error: lines that aren't third-party noise.
+          # Only fail on errors that reference actual first-party source files
+          # (src/ or include/). clang-tidy diagnostics have the canonical form
+          #   <path>:<line>:<col>: error: <message> [<check>]
+          # so we anchor on ": error: " (with surrounding spaces) — a bare
+          # /error:/ also matches source-context echo lines such as
+          #   8 |   using std::runtime_error::runtime_error;
+          # because "runtime_error::" contains the substring "error:", which
+          # caused false-positive failures once clang-tidy began analysing the
+          # in-container _deps/ tree (e.g. cista_exception.h). We also restrict
+          # to /src/ and /include/ paths and exclude /_deps/ so third-party
+          # header warnings never gate the job. awk always exits 0; it emits
+          # only genuine first-party error: diagnostics.
           REAL_ERRORS=$(awk '
-            /error:/ &&
+            /: error: / &&
+            /\/(src|include)\// &&
+            !/\/_deps\// &&
             !/no input files/ &&
             !/no such file or directory/ &&
             !/unable to handle compilation/ { print }
@@ -425,9 +460,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.debug/_deps
-          key: fetchcontent-debug-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step above for the full rationale).
+          key: fetchcontent-debug-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-debug-${{ runner.os }}-
+            fetchcontent-debug-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -439,10 +477,10 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build debug (C++)
-        run: make compile.debug.native
+        run: make compile.debug
 
       - name: Run C++ unit tests
         run: |
@@ -507,21 +545,24 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build + test (ASan)
-        run: make compile.debug.asan.native && make test.debug.asan.native
+        run: make compile.debug.asan && make test.debug.asan
 
       - name: Build + test (UBSan)
-        run: make compile.debug.ubsan.native && make test.debug.ubsan.native
+        run: make compile.debug.ubsan && make test.debug.ubsan
 
       - name: Build + test (TSan)
-        run: make compile.debug.tsan.native && make test.debug.tsan.native
-        env:
-          TSAN_OPTIONS: "suppressions=${{ github.workspace }}/tsan.supp:second_deadlock_stack=1"
+        # tsan.supp is loaded INSIDE the dev container by the Makefile's `test`
+        # rule (TSAN_OPTIONS=suppressions=/workspace/tsan.supp...). A host-runner
+        # TSAN_OPTIONS here would NOT reach the in-container ctest, because
+        # `podman-compose exec` does not forward host env into the container, so
+        # it is omitted to avoid implying the suppressions load from the host.
+        run: make compile.debug.tsan && make test.debug.tsan
 
       - name: Build + test (LSan)
-        run: make compile.debug.lsan.native && make test.debug.lsan.native
+        run: make compile.debug.lsan && make test.debug.lsan
 
       - name: Show sccache stats
         if: always()
@@ -581,9 +622,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step in the lint job for the full rationale).
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -595,10 +639,10 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build release
-        run: make compile.release.native
+        run: make compile.release
 
       - name: Show sccache stats
         if: always()
@@ -1121,9 +1165,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.debug.coverage/_deps
-          key: fetchcontent-coverage-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step in the lint job for the full rationale).
+          key: fetchcontent-coverage-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-coverage-${{ runner.os }}-
+            fetchcontent-coverage-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -1135,22 +1182,38 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        run: make deps
 
       - name: Build with coverage
-        run: make compile.debug.coverage.native
+        run: make compile.debug.coverage
 
       - name: Show sccache stats
         if: always()
         run: sccache --show-stats
 
       - name: Run tests for coverage
-        run: make test.debug.coverage.native
+        run: make test.debug.coverage
 
       - name: Generate coverage report
+        # Must run inside the dev container for the same reason as the lint
+        # job's configure/build steps (and the make compile/test.debug.coverage
+        # steps above, which already exec in-container via the Makefile's
+        # CONTAINER_PREFIX): generate_coverage.sh reconfigures CMake against
+        # build/conan-deps/conan_toolchain.cmake and reads ~/.conan2, both of
+        # which were produced *inside* the container by `make deps`. Running it
+        # on the host configures against a host-path CMakeCache and a host
+        # ~/.conan2 that does not match the in-container Conan layout (gmock_main
+        # "not found in package"). Executing in-container keeps every CMakeCache
+        # absolute path under /workspace/build/... consistent with lint and the
+        # make compile/test steps. lcov, genhtml, bc and llvm-cov-18 are all
+        # present in the dev image (Containerfile builder + development stages).
+        # The report files land under the bind-mounted build/ dir, so the host
+        # upload-artifact / codecov steps below still read them.
         run: |
           chmod +x scripts/generate_coverage.sh
-          BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            BUILD_DIR=build/x86.coverage.debug ./scripts/generate_coverage.sh
+          '
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

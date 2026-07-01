@@ -49,10 +49,10 @@ jobs:
         uses: ./.github/actions/install-build-deps
 
       - name: Build release
-        run: make compile.release.native
+        run: make compile.release
 
       - name: Run tests on release build
-        run: make test.release.native
+        run: make test.release
 
       - name: Build CPack packages
         run: |

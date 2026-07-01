@@ -14,12 +14,7 @@
  *   NatsConnection has no JetStream context (not connected)
  */
 
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-#include "core/message_serializer.hpp"
-#include "core/message_sink.hpp"
-#include "transport/nats_connection.hpp"
-#include "transport/transparent_bridge.hpp"
+#include <gtest/gtest.h>
 
 #include <atomic>
 #include <cstddef>
@@ -30,7 +25,12 @@
 #include <string>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+#include "core/message_serializer.hpp"
+#include "core/message_sink.hpp"
+#include "transport/nats_connection.hpp"
+#include "transport/transparent_bridge.hpp"
 
 using namespace keystone::core;
 using namespace keystone::transport;
@@ -67,11 +67,13 @@ TEST(MessageBusOutbound, ForwardsOffHostViaPublisher) {
   std::string captured_subject;
   std::vector<uint8_t> captured_payload;
 
-  bus.setNatsPublisher([&](std::string_view subject, std::span<const std::byte> payload) {
-    captured_subject = std::string(subject);
-    captured_payload.assign(reinterpret_cast<const uint8_t*>(payload.data()),
-                            reinterpret_cast<const uint8_t*>(payload.data()) + payload.size());
-  });
+  bus.setNatsPublisher(
+      [&](std::string_view subject, std::span<const std::byte> payload) {
+        captured_subject = std::string(subject);
+        captured_payload.assign(
+            reinterpret_cast<const uint8_t*>(payload.data()),
+            reinterpret_cast<const uint8_t*>(payload.data()) + payload.size());
+      });
 
   auto msg = KeystoneMessage::create("sender", "off-host-agent", "ping");
   // No local agent registered → should forward via NATS publisher.
@@ -90,19 +92,21 @@ TEST(MessageBusOutbound, OutboundPayloadRoundTrips) {
 
   std::vector<uint8_t> captured_payload;
 
-  bus.setNatsPublisher([&](std::string_view /*subject*/, std::span<const std::byte> payload) {
-    captured_payload.assign(reinterpret_cast<const uint8_t*>(payload.data()),
-                            reinterpret_cast<const uint8_t*>(payload.data()) + payload.size());
-  });
+  bus.setNatsPublisher(
+      [&](std::string_view /*subject*/, std::span<const std::byte> payload) {
+        captured_payload.assign(
+            reinterpret_cast<const uint8_t*>(payload.data()),
+            reinterpret_cast<const uint8_t*>(payload.data()) + payload.size());
+      });
 
-  auto msg = KeystoneMessage::create(
-      "alice", "remote-bob", ActionType::EXECUTE, std::string("hello remote"));
+  auto msg = KeystoneMessage::create("alice", "remote-bob", ActionType::EXECUTE,
+                                     std::string("hello remote"));
   bus.routeMessage(msg);
 
   ASSERT_FALSE(captured_payload.empty());
 
-  KeystoneMessage decoded = MessageSerializer::deserialize(captured_payload.data(),
-                                                           captured_payload.size());
+  KeystoneMessage decoded = MessageSerializer::deserialize(
+      captured_payload.data(), captured_payload.size());
 
   EXPECT_EQ(decoded.sender_id, "alice");
   EXPECT_EQ(decoded.receiver_id, "remote-bob");
@@ -117,9 +121,9 @@ TEST(MessageBusOutbound, LocalDeliveryDoesNotInvokePublisher) {
   MessageBus bus;
 
   std::atomic<int> publish_calls{0};
-  bus.setNatsPublisher([&](std::string_view /*subject*/, std::span<const std::byte> /*payload*/) {
-    ++publish_calls;
-  });
+  bus.setNatsPublisher(
+      [&](std::string_view /*subject*/,
+          std::span<const std::byte> /*payload*/) { ++publish_calls; });
 
   // Register a minimal non-agent message sink. The transport core depends only
   // on core::IMessageSink (the agent layer was extracted to ProjectAgamemnon
@@ -165,7 +169,8 @@ TEST(TransparentBridge, StopClearsNatsPublisher) {
   NatsConnection conn;
 
   // Manually set a publisher to simulate what attach() would do.
-  bus.setNatsPublisher([](std::string_view /*s*/, std::span<const std::byte> /*p*/) {});
+  bus.setNatsPublisher(
+      [](std::string_view /*s*/, std::span<const std::byte> /*p*/) {});
 
   EXPECT_NE(bus.getNatsPublisher(), nullptr);
 
@@ -212,9 +217,10 @@ TEST(TransparentBridge, AttachFailureStillRegistersOutboundPublisher) {
   // We check indirectly: routeMessage should invoke it.
   std::string captured_subject;
   // Replace with our test publisher to verify.
-  bus.setNatsPublisher([&](std::string_view subject, std::span<const std::byte> /*payload*/) {
-    captured_subject = std::string(subject);
-  });
+  bus.setNatsPublisher(
+      [&](std::string_view subject, std::span<const std::byte> /*payload*/) {
+        captured_subject = std::string(subject);
+      });
 
   auto msg = KeystoneMessage::create("a", "remote-x", "cmd");
   bus.routeMessage(msg);

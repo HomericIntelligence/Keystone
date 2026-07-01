@@ -68,9 +68,8 @@ TEST(MessageSerializerTest, DifferentActionTypes) {
 
 // Test: Serialize different content types
 TEST(MessageSerializerTest, DifferentContentTypes) {
-  auto msg1 =
-      KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
-                              "text data", ContentType::TEXT_PLAIN);
+  auto msg1 = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
+                                      "text data", ContentType::TEXT_PLAIN);
 
   auto msg2 = KeystoneMessage::create("agent1", "agent2", ActionType::EXECUTE,
                                       "binary data", ContentType::BINARY_CISTA);
@@ -89,8 +88,8 @@ TEST(MessageSerializerTest, DifferentContentTypes) {
 TEST(MessageSerializerTest, LargePayload) {
   std::string large_payload(10000, 'x');  // 10KB payload
 
-  auto msg = KeystoneMessage::create(
-      "agent1", "agent2", ActionType::RETURN_RESULT, large_payload);
+  auto msg = KeystoneMessage::create("agent1", "agent2",
+                                     ActionType::RETURN_RESULT, large_payload);
 
   auto buffer = MessageSerializer::serialize(msg);
   auto deserialized = MessageSerializer::deserialize(buffer);
@@ -133,9 +132,9 @@ TEST(MessageSerializerTest, TimestampPreservation) {
 
 // Test: Special characters in strings
 TEST(MessageSerializerTest, SpecialCharacters) {
-  auto msg = KeystoneMessage::create(
-      "agent-1.test", "agent@2#special", ActionType::EXECUTE,
-      "payload with\nnewlines\tand\ttabs");
+  auto msg = KeystoneMessage::create("agent-1.test", "agent@2#special",
+                                     ActionType::EXECUTE,
+                                     "payload with\nnewlines\tand\ttabs");
 
   auto buffer = MessageSerializer::serialize(msg);
   auto deserialized = MessageSerializer::deserialize(buffer);

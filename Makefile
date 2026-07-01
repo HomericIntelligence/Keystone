@@ -17,14 +17,21 @@
 # Number of processors for parallel builds
 NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-# Container runtime (Podman) — pass NATIVE=1 to bypass container on CI/host
-ifeq ($(NATIVE),1)
-    CONTAINER_CHECK :=
-    CONTAINER_PREFIX :=
-else
-    CONTAINER_CHECK := podman compose up -d dev >/dev/null 2>&1 || true;
-    CONTAINER_PREFIX := podman compose exec -T dev
-endif
+# Container runtime (Podman)
+# Use podman-compose instead of docker compose CLI plugin (which delegates to snap)
+CONTAINER_CHECK := DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev >/dev/null 2>&1 || true;
+CONTAINER_PREFIX := DOCKER_HOST="$(DOCKER_HOST)" podman-compose exec -T dev
+
+# Sanitizer runtime options that must be set INSIDE the dev container.
+# `podman-compose exec` does NOT forward the host's TSAN_OPTIONS into the
+# container, so a TSAN_OPTIONS set on the CI runner (pointing at a host path
+# like $GITHUB_WORKSPACE/tsan.supp) never reaches ctest, leaving the
+# moodycamel::ConcurrentQueue suppressions in tsan.supp unloaded and failing
+# tests on benign internal queue races (e.g. SimulationCornerCaseTest.MessageFlood).
+# The repo is mounted at /workspace (see docker-compose.yml), so reference the
+# suppression file by its in-container path. second_deadlock_stack=1 mirrors the
+# CI default. Set unconditionally — harmless for non-TSan builds, which ignore it.
+CONTAINER_TSAN_OPTIONS := suppressions=/workspace/tsan.supp:second_deadlock_stack=1
 
 # Compiler flags
 BUILD_FLAGS_debug := -O0 -g -D_DEBUG
@@ -56,6 +63,15 @@ ifneq ($(CONAN_TOOLCHAIN),)
     CMAKE_EXTRA_FLAGS += -DCMAKE_TOOLCHAIN_FILE=$(CONAN_TOOLCHAIN)
 endif
 
+# Feature options (ENABLE_COVERAGE/PROFILING/FUZZING) are CMake option() cache
+# variables — they must reach cmake as -D<opt>=ON args, NOT inside
+# -DCMAKE_CXX_FLAGS (where they would become inert clang preprocessor defines).
+# The feature-flag pattern rules below append to this variable; `compile`
+# forwards it on the cmake configure line. Kept separate from CMAKE_EXTRA_FLAGS
+# so the recursive pattern-rule make does not have to override the Conan
+# toolchain append above.
+CMAKE_FEATURE_FLAGS ?=
+
 # ============================================================================
 # Dependency Management (Conan)
 # ============================================================================
@@ -63,8 +79,10 @@ endif
 .PHONY: deps
 deps:
 	@echo "Installing Conan dependencies (Debug + Release)..."
-	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Debug -s compiler.cppstd=20
-	conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Release -s compiler.cppstd=20
+	$(CONTAINER_CHECK)
+	$(CONTAINER_PREFIX) conan profile detect --exist-ok
+	$(CONTAINER_PREFIX) conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Debug -s compiler.cppstd=20
+	$(CONTAINER_PREFIX) conan install . --output-folder=$(CONAN_OUTPUT_DIR) --build=missing -s build_type=Release -s compiler.cppstd=20
 
 # ============================================================================
 # Default target
@@ -84,7 +102,7 @@ $(BUILD_DIR)/$(BUILD_SUBDIR):
 compile: $(BUILD_DIR)/$(BUILD_SUBDIR)
 	@echo "Building $* mode..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS)"
+	$(CONTAINER_PREFIX) bash -c "cmake -S . -B $(BUILD_DIR)/$(BUILD_SUBDIR) -G Ninja -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) -DCMAKE_CXX_FLAGS=\"$(BUILD_FLAGS)\" $(CMAKE_EXTRA_FLAGS) $(CMAKE_FEATURE_FLAGS)"
 	$(CONTAINER_PREFIX) bash -c "cmake --build $(BUILD_DIR)/$(BUILD_SUBDIR) -j$(NPROC)"
 
 # ============================================================================
@@ -108,7 +126,7 @@ TEST_PROFILING := profiling_tests
 test: compile
 	@echo "Running all tests..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
+	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
 
 # Individual test suites (run specific executable)
 test.unit: compile
@@ -281,25 +299,25 @@ clean:
 
 container.build:
 	@echo "Building container image: dev..."
-	podman compose build dev
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose build dev
 
 container.build.%:
 	@echo "Building container image: $*..."
-	podman compose build $*
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose build $*
 
 container.up:
 	@echo "Starting dev container..."
-	podman compose up -d dev
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev
 	sleep 2
 
 container.clean:
 	@echo "Cleaning container resources..."
-	podman compose down -v
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose down -v
 	podman rmi -f projectkeystone-dev:latest projectkeystone:latest || true
 
 container.down:
 	@echo "Stopping containers..."
-	podman compose down
+	DOCKER_HOST="$(DOCKER_HOST)" podman-compose down
 
 container.shell: container.up
 	$(CONTAINER_PREFIX) /bin/bash
@@ -325,25 +343,28 @@ container.shell: container.up
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_msan)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 # Feature flag patterns
+# ENABLE_COVERAGE/PROFILING/FUZZING are CMake option() cache variables (see
+# CMakeLists.txt), NOT compiler flags. They are forwarded via
+# CMAKE_FEATURE_FLAGS (-D<opt>=ON cmake args) rather than BUILD_FLAGS, which is
+# passed inside -DCMAKE_CXX_FLAGS="..." and would land as an inert clang
+# preprocessor define (-DENABLE_COVERAGE=ON) that never toggles the option.
+# With the option left OFF the build is not instrumented, so coverage produced
+# zero .gcda files and the coverage job's generate_coverage.sh failed with
+# "no .gcda files found".
 %.coverage:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_COVERAGE=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_COVERAGE=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.profile:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_PROFILING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_PROFILING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.fuzz:
-	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) -DENABLE_FUZZING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	@$(MAKE) $* CMAKE_FEATURE_FLAGS="$(CMAKE_FEATURE_FLAGS) -DENABLE_FUZZING=ON" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
 
 %.debug:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_debug)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=Debug
 
 %.release:
 	@$(MAKE) $* BUILD_FLAGS="$(BUILD_FLAGS) $(BUILD_FLAGS_release)" BUILD_SUBDIR="$(BUILD_SUBDIR)$(suffix $@)" CMAKE_BUILD_TYPE=Release
-
-# Pattern rule for native variants — matches any target with .native suffix.
-# Bypasses the container and runs the underlying target directly on the host.
-%.native:
-	@$(MAKE) $* NATIVE=1
 
 # ============================================================================
 # Help & Info
@@ -423,6 +444,5 @@ help:
 	@echo "Examples:"
 	@echo "  make compile.debug.asan           # Build debug with ASan (in container)"
 	@echo "  make test.debug.asan              # Run tests with ASan (in container)"
-	@echo "  make compile.debug.asan.native    # Build debug with ASan on host (no container)"
-	@echo "  make test.debug.tsan.native       # Run TSan tests on host (no container)"
-	@echo "  make benchmark.native             # Run benchmarks on host (no container)"
+	@echo "  make test.debug.tsan              # Run TSan tests (in container)"
+	@echo "  make benchmark                    # Run benchmarks (in container)"

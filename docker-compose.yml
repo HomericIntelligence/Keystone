@@ -41,15 +41,30 @@ services:
       args:
         BUILD_UID: "${BUILD_UID}"
         BUILD_GID: "${BUILD_GID}"
-    image: projectkeystone-dev:${GIT_COMMIT}-dev
-    container_name: projectkeystone-dev-${GIT_COMMIT}
+    image: projectkeystone-dev:latest
+    container_name: projectkeystone-dev
+    # Rootless-Podman bind-mount ownership: without keep-id, the default
+    # rootless userns maps the in-container `user:` uid to a host *subuid*
+    # (e.g. 1001 -> 101000). Anything the container writes under the mounted
+    # workspace (build/conan-deps from `make deps`, etc.) is then owned by that
+    # foreign subuid on the host, so the host runner can no longer create
+    # build/x86.coverage.debug (coverage job, Makefile:79 "Permission denied")
+    # and an in-container cmake configure can no longer recreate build/
+    # (lint job, "Unable to (re)create the private pkgRedirects directory").
+    # keep-id maps the host runner uid 1:1 into the container, giving the host
+    # and the in-container build user shared ownership of the bind mount.
+    userns_mode: "keep-id"
     user: "${BUILD_UID}:${BUILD_GID}"  # Run as host user
     volumes:
-      - .:/workspace
+      - .:/workspace:Z
     working_dir: /workspace
     stdin_open: true
     tty: true
     command: /bin/bash
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
     environment:
       - HOME=/workspace/.docker-home  # Avoid permission issues with $HOME
       - GIT_COMMIT=${GIT_COMMIT}
@@ -63,8 +78,12 @@ services:
       target: builder
     image: projectkeystone-builder:${GIT_COMMIT}-latest
     container_name: projectkeystone-build-${GIT_COMMIT}
+    # See the `dev` service: keep-id maps the host runner uid 1:1 into the
+    # container so bind-mounted build artifacts stay writable from both sides
+    # under rootless Podman.
+    userns_mode: "keep-id"
     volumes:
-      - .:/workspace
+      - .:/workspace:Z
     environment:
       - GIT_COMMIT=${GIT_COMMIT}
       - BUILD_UID=${BUILD_UID}
