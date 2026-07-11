@@ -2,12 +2,12 @@
 
 **Status**: Accepted
 **Date**: 2025-11-21
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, concurrency, scheduler, phase-c
 
 ## Context
 
-ProjectKeystone required a high-performance scheduler to manage concurrent agent execution
+Keystone required a high-performance scheduler to manage concurrent agent execution
 across multiple worker threads during early development. Scaling to 100+ agents with
 coroutine-based execution demanded a sophisticated approach.
 
@@ -308,7 +308,7 @@ WorkItem item = remote_scheduler->stealWork(remote_worker_id);
 - [Cilk Work-Stealing Scheduler](http://supertech.csail.mit.edu/papers/steal.pdf) - Original algorithm
 - [Java Fork/Join Framework](https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html) - Similar design
 - [moodycamel::ConcurrentQueue](https://github.com/cameron314/concurrentqueue) - Lock-free queue used
-- [TDD_FOUR_LAYER_ROADMAP.md](../TDD_FOUR_LAYER_ROADMAP.md) - ProjectKeystone phases
+- [TDD_FOUR_LAYER_ROADMAP.md](../TDD_FOUR_LAYER_ROADMAP.md) - Keystone phases
 - [ADR-004: Coroutine Integration](./ADR-004-coroutine-integration-with-scheduler.md) - Task<T> design
 
 ## Acceptance Criteria
@@ -326,4 +326,4 @@ WorkItem item = remote_scheduler->stealWork(remote_worker_id);
 
 **Last Updated**: 2025-11-21
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

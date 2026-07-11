@@ -1,6 +1,6 @@
 version: '3.8'
 
-# ProjectKeystone - Distributed Multi-Node HMAS Deployment
+# Keystone - Distributed Multi-Node HMAS Deployment
 # Phase 8: Distributed agent hierarchy across Docker containers
 
 services:
@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-chief
     command: /app/build/chief_node_main
     environment:
@@ -38,7 +38,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-component-1
     command: /app/build/component_node_main
     environment:
@@ -72,7 +72,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-module-1
     command: /app/build/module_node_main
     environment:
@@ -108,7 +108,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-module-2
     command: /app/build/module_node_main
     environment:
@@ -144,7 +144,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-task-1
     command: /app/build/task_node_main
     environment:
@@ -181,7 +181,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-task-2
     command: /app/build/task_node_main
     environment:
@@ -218,7 +218,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: test
-    image: projectkeystone:latest
+    image: keystone:latest
     container_name: keystone-task-3
     command: /app/build/task_node_main
     environment:

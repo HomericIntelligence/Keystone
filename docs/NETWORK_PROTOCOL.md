@@ -1,8 +1,8 @@
-# ProjectKeystone HMAS Network Protocol
+# Keystone HMAS Network Protocol
 
 ## Overview
 
-ProjectKeystone uses **gRPC** (gRPC Remote Procedure Call) with **Protocol Buffers** for distributed agent
+Keystone uses **gRPC** (gRPC Remote Procedure Call) with **Protocol Buffers** for distributed agent
 communication. This document describes the network protocol, RPC methods, error handling, and best practices.
 
 **Protocol Version**: v1alpha1
@@ -25,7 +25,7 @@ communication. This document describes the network protocol, RPC methods, error 
 
 ## Services
 
-ProjectKeystone defines two gRPC services:
+Keystone defines two gRPC services:
 
 ### 1. ServiceRegistry
 
@@ -918,7 +918,7 @@ stub->SubmitTask(&context, request, &response);
 
 **Implementation Date**: 2025-11-26
 
-ProjectKeystone now supports TLS/SSL for secure gRPC communication using environment variable configuration.
+Keystone now supports TLS/SSL for secure gRPC communication using environment variable configuration.
 
 #### Environment Variables
 
@@ -1002,7 +1002,7 @@ For local testing, generate self-signed certificates:
 ```bash
 # Generate CA key and certificate
 openssl genrsa -out ca.key 4096
-openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=ProjectKeystone CA"
+openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/CN=Keystone CA"
 
 # Generate server key and certificate
 openssl genrsa -out server.key 4096

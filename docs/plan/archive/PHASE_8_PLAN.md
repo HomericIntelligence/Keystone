@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 8 transforms ProjectKeystone from a **single-node multi-threaded system** into a **distributed multi-node
+Phase 8 transforms Keystone from a **single-node multi-threaded system** into a **distributed multi-node
 cluster** with real network communication, distributed work-stealing, fault tolerance, and consensus algorithms. This
 enables horizontal scalability beyond a single machine's limits.
 

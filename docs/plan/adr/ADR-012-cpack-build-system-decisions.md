@@ -7,12 +7,12 @@
 ## Summary
 
 This document records key build system decisions made to enable CPack packaging and cross-platform distribution of
-ProjectKeystone HMAS libraries. These decisions address critical packaging issues (C1, C2) and document architectural
+Keystone HMAS libraries. These decisions address critical packaging issues (C1, C2) and document architectural
 trade-offs.
 
 ## Background
 
-ProjectKeystone requires distributable packages for external consumers. The CPack packaging review identified two
+Keystone requires distributable packages for external consumers. The CPack packaging review identified two
 critical issues preventing proper package functionality:
 
 1. **C1**: Missing include directories prevented consumers from finding agent headers after installation
@@ -99,7 +99,7 @@ FetchContent_Declare(
 
 - Applied before `FetchContent_Declare` ensures spdlog inherits the setting
 - Global setting is acceptable because:
-  - All ProjectKeystone libraries are compiled with `-fPIC` anyway (shared library compatibility)
+  - All Keystone libraries are compiled with `-fPIC` anyway (shared library compatibility)
   - Minimal performance overhead on modern systems
   - Simplifies build configuration
 
@@ -221,7 +221,7 @@ target_include_directories(
 - `BUILD_INTERFACE`: Headers available at build time from source tree
 - `INSTALL_INTERFACE`: Headers available after installation in `include/keystone/`
 - `PRIVATE` spdlog: Implementation detail, not exposed to consumers
-- Matches pattern used by all other ProjectKeystone libraries (consistency)
+- Matches pattern used by all other Keystone libraries (consistency)
 
 **Trade-offs**:
 
@@ -244,11 +244,11 @@ All decisions validated through:
 **Package Output**:
 
 ```
-2.2M ProjectKeystone-0.1.0-Linux-Development.deb    - Static libraries + headers
-259K ProjectKeystone-0.1.0-Linux-Documentation.deb  - README, LICENSE, docs
- 12K ProjectKeystone-0.1.0-Linux-Runtime.deb         - Runtime files
-4.8M ProjectKeystone-0.1.0-Linux-Testing.deb         - Test executables
-1.3M ProjectKeystone-0.1.0-Linux-Tools.deb           - Build tools
+2.2M Keystone-0.1.0-Linux-Development.deb    - Static libraries + headers
+259K Keystone-0.1.0-Linux-Documentation.deb  - README, LICENSE, docs
+ 12K Keystone-0.1.0-Linux-Runtime.deb         - Runtime files
+4.8M Keystone-0.1.0-Linux-Testing.deb         - Test executables
+1.3M Keystone-0.1.0-Linux-Tools.deb           - Build tools
 ```
 
 ---
@@ -266,7 +266,7 @@ target_link_libraries(my_agent PRIVATE Keystone::keystone_agents)
 # Headers automatically available, no manual include_directories() needed
 ```
 
-### For ProjectKeystone Developers
+### For Keystone Developers
 
 - Static library builds work correctly on all platforms
 - No linker errors with spdlog
@@ -302,7 +302,7 @@ target_link_libraries(my_agent PRIVATE Keystone::keystone_agents)
 **Cons**:
 
 - More verbose CMake code
-- All ProjectKeystone libraries need `-fPIC` anyway (shared library compatibility)
+- All Keystone libraries need `-fPIC` anyway (shared library compatibility)
 - Minimal performance benefit
 
 **Decision**: Rejected - global setting simpler with no practical downside
@@ -331,6 +331,6 @@ would require extracting Logger into a separate library to break the cycle.
 ---
 
 **Last Updated**: 2025-11-25
-**Author**: ProjectKeystone Development Team
+**Author**: Keystone Development Team
 **Reviewers**: Code Review Orchestrator (Architecture, Implementation, Security, Safety, Test, Dependency,
 Documentation, Performance specialists)

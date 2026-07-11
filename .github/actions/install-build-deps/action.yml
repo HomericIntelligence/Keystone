@@ -1,5 +1,5 @@
 name: Install Build Dependencies
-description: Install C++20 build tools (clang-18, cmake, ninja) for ProjectKeystone
+description: Install C++20 build tools (clang-18, cmake, ninja) for Keystone
 
 inputs:
   include-coverage:
@@ -164,11 +164,11 @@ runs:
           # Verify the tarball actually contained the tag compose resolves;
           # a stale/mistagged tarball would otherwise pass here and fail at
           # `podman-compose up`.
-          if podman image exists projectkeystone-dev:latest; then
+          if podman image exists keystone-dev:latest; then
             echo "Loaded dev image from cache"
             loaded=true
           else
-            echo "Cached tarball missing projectkeystone-dev:latest tag; rebuilding" >&2
+            echo "Cached tarball missing keystone-dev:latest tag; rebuilding" >&2
           fi
         fi
         if [ "$loaded" != "true" ]; then
@@ -179,7 +179,7 @@ runs:
           # /tmp/dev-image.tar is present (e.g. from a failed cache restore).
           # Remove any prior archive so save always writes a fresh one.
           rm -f /tmp/dev-image.tar
-          podman save -o /tmp/dev-image.tar projectkeystone-dev:latest
+          podman save -o /tmp/dev-image.tar keystone-dev:latest
         fi
       shell: bash
 

@@ -1,10 +1,10 @@
-# ProjectKeystone Monitoring Guide
+# Keystone Monitoring Guide
 
 **Prometheus Integration for HMAS Metrics**
 
 ## Overview
 
-ProjectKeystone HMAS exports metrics in Prometheus format via an HTTP endpoint on port 9090. This
+Keystone HMAS exports metrics in Prometheus format via an HTTP endpoint on port 9090. This
 document describes the available metrics, how to deploy Prometheus, and how to query metrics.
 
 ---
@@ -64,10 +64,10 @@ Deploy Prometheus using the provided Kubernetes manifests:
 kubectl apply -f k8s/prometheus.yaml
 
 # Verify deployment
-kubectl get pods -n projectkeystone -l app=prometheus
+kubectl get pods -n keystone -l app=prometheus
 
 # Port-forward to access Prometheus UI
-kubectl port-forward -n projectkeystone svc/prometheus 9091:9090
+kubectl port-forward -n keystone svc/prometheus 9091:9090
 
 # Open in browser
 open http://localhost:9091
@@ -102,7 +102,7 @@ If running Prometheus outside Kubernetes, add this scrape config to `/etc/promet
 
 ```yaml
 scrape_configs:
-  - job_name: 'projectkeystone-hmas'
+  - job_name: 'keystone-hmas'
     static_configs:
       - targets: ['<hmas-service-ip>:9090']
         labels:
@@ -119,7 +119,7 @@ Test metrics endpoint directly:
 
 ```bash
 # Port-forward HMAS metrics port
-kubectl port-forward -n projectkeystone svc/hmas 9090:9090
+kubectl port-forward -n keystone svc/hmas 9090:9090
 
 # Fetch metrics
 curl http://localhost:9090/metrics
@@ -151,7 +151,7 @@ Access Prometheus UI to query and visualize metrics:
 
 ```bash
 # Port-forward Prometheus UI
-kubectl port-forward -n projectkeystone svc/prometheus 9091:9090
+kubectl port-forward -n keystone svc/prometheus 9091:9090
 
 # Open in browser
 open http://localhost:9091
@@ -325,7 +325,7 @@ groups:
 # Add rules to Prometheus ConfigMap
 kubectl create configmap prometheus-rules \
   --from-file=alerts.yml \
-  --namespace=projectkeystone
+  --namespace=keystone
 
 # Update Prometheus to load rules
 # (Requires restart or reload)
@@ -335,7 +335,7 @@ kubectl create configmap prometheus-rules \
 
 ## Grafana Dashboards
 
-ProjectKeystone includes three pre-built Grafana dashboards for comprehensive HMAS monitoring:
+Keystone includes three pre-built Grafana dashboards for comprehensive HMAS monitoring:
 
 1. **HMAS Overview** - System-wide metrics and KPIs
 2. **HMAS Agent Details** - Detailed agent performance analysis
@@ -355,10 +355,10 @@ kubectl apply -f k8s/grafana.yaml
 kubectl apply -f k8s/grafana-dashboards-configmap.yaml
 
 # Wait for Grafana to be ready
-kubectl wait --for=condition=ready pod -l app=grafana -n projectkeystone --timeout=120s
+kubectl wait --for=condition=ready pod -l app=grafana -n keystone --timeout=120s
 
 # Port-forward to access Grafana UI
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 
 # Open in browser
 open http://localhost:3000
@@ -390,13 +390,13 @@ helm repo update
 
 # Install Grafana via Helm
 helm install grafana grafana/grafana \
-  --namespace projectkeystone \
+  --namespace keystone \
   --set adminPassword=admin \
   --set persistence.enabled=true \
   --set persistence.size=10Gi
 
 # Port-forward to access
-kubectl port-forward -n projectkeystone svc/grafana 3000:80
+kubectl port-forward -n keystone svc/grafana 3000:80
 
 # Open in browser
 open http://localhost:3000
@@ -501,7 +501,7 @@ If dashboards are not auto-provisioned:
 
 ```bash
 # Get dashboard JSON files
-kubectl cp projectkeystone/<hmas-pod>:/var/lib/grafana/dashboards/hmas-overview.json ./hmas-overview.json
+kubectl cp keystone/<hmas-pod>:/var/lib/grafana/dashboards/hmas-overview.json ./hmas-overview.json
 
 # Or use local files
 ls grafana/dashboards/
@@ -579,7 +579,7 @@ rate(hmas_deadline_misses_total[5m])
 
 ## Centralized Logging with Loki
 
-ProjectKeystone uses **Loki** for centralized log aggregation, providing a unified view of logs
+Keystone uses **Loki** for centralized log aggregation, providing a unified view of logs
 from all HMAS pods alongside metrics in Grafana.
 
 ### Architecture
@@ -605,10 +605,10 @@ HMAS Pods → Promtail (collects) → Loki (aggregates) → Grafana (visualizes)
 kubectl apply -f k8s/loki.yaml
 
 # Wait for Loki to be ready
-kubectl wait --for=condition=ready pod -l app=loki -n projectkeystone --timeout=120s
+kubectl wait --for=condition=ready pod -l app=loki -n keystone --timeout=120s
 
 # Verify Loki is running
-kubectl logs -n projectkeystone -l app=loki --tail=20
+kubectl logs -n keystone -l app=loki --tail=20
 ```
 
 **What This Creates**:
@@ -626,11 +626,11 @@ kubectl logs -n projectkeystone -l app=loki --tail=20
 kubectl apply -f k8s/promtail.yaml
 
 # Verify Promtail is running on all nodes
-kubectl get daemonset -n projectkeystone promtail
-kubectl get pods -n projectkeystone -l app=promtail
+kubectl get daemonset -n keystone promtail
+kubectl get pods -n keystone -l app=promtail
 
 # Check Promtail logs
-kubectl logs -n projectkeystone -l app=promtail --tail=20
+kubectl logs -n keystone -l app=promtail --tail=20
 ```
 
 **What This Creates**:
@@ -642,7 +642,7 @@ kubectl logs -n projectkeystone -l app=promtail --tail=20
 
 **Promtail Features**:
 
-- Auto-discovers all pods in `projectkeystone` namespace
+- Auto-discovers all pods in `keystone` namespace
 - Parses log levels (ERROR, WARN, INFO)
 - Adds labels: namespace, pod, container, app, component
 - Ships logs to Loki in real-time
@@ -653,10 +653,10 @@ The Loki datasource is auto-configured in Grafana (k8s/grafana.yaml):
 
 ```bash
 # If Grafana is already running, restart to pick up new datasource
-kubectl rollout restart deployment/grafana -n projectkeystone
+kubectl rollout restart deployment/grafana -n keystone
 
 # Verify Grafana has Loki datasource
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 # Open http://localhost:3000
 # Navigate to Configuration → Data Sources
 # Loki should be listed
@@ -693,19 +693,19 @@ LogQL is Loki's query language (similar to PromQL).
 **All logs from HMAS**:
 
 ```logql
-{namespace="projectkeystone"}
+{namespace="keystone"}
 ```
 
 **Logs from specific pod**:
 
 ```logql
-{namespace="projectkeystone", pod="hmas-deployment-abc123"}
+{namespace="keystone", pod="hmas-deployment-abc123"}
 ```
 
 **Logs from specific container**:
 
 ```logql
-{namespace="projectkeystone", container="hmas"}
+{namespace="keystone", container="hmas"}
 ```
 
 #### Filtering
@@ -713,31 +713,31 @@ LogQL is Loki's query language (similar to PromQL).
 **Error logs only**:
 
 ```logql
-{namespace="projectkeystone"} |~ "ERROR"
+{namespace="keystone"} |~ "ERROR"
 ```
 
 **Warnings and errors**:
 
 ```logql
-{namespace="projectkeystone"} |~ "ERROR|WARN"
+{namespace="keystone"} |~ "ERROR|WARN"
 ```
 
 **Exclude INFO logs**:
 
 ```logql
-{namespace="projectkeystone"} != "INFO"
+{namespace="keystone"} != "INFO"
 ```
 
 **Search for specific text**:
 
 ```logql
-{namespace="projectkeystone"} |~ "deadline miss"
+{namespace="keystone"} |~ "deadline miss"
 ```
 
 **Case-insensitive search**:
 
 ```logql
-{namespace="projectkeystone"} |~ "(?i)error"
+{namespace="keystone"} |~ "(?i)error"
 ```
 
 #### Aggregations
@@ -745,25 +745,25 @@ LogQL is Loki's query language (similar to PromQL).
 **Log rate (logs per second)**:
 
 ```logql
-rate({namespace="projectkeystone"}[5m])
+rate({namespace="keystone"}[5m])
 ```
 
 **Log count over time**:
 
 ```logql
-count_over_time({namespace="projectkeystone"}[5m])
+count_over_time({namespace="keystone"}[5m])
 ```
 
 **Error rate by pod**:
 
 ```logql
-sum by (pod) (rate({namespace="projectkeystone"} |~ "ERROR" [5m]))
+sum by (pod) (rate({namespace="keystone"} |~ "ERROR" [5m]))
 ```
 
 **Top 10 pods by log volume**:
 
 ```logql
-topk(10, sum by (pod) (count_over_time({namespace="projectkeystone"}[1h])))
+topk(10, sum by (pod) (count_over_time({namespace="keystone"}[1h])))
 ```
 
 #### Advanced Queries
@@ -771,19 +771,19 @@ topk(10, sum by (pod) (count_over_time({namespace="projectkeystone"}[1h])))
 **Parse JSON logs**:
 
 ```logql
-{namespace="projectkeystone"} | json | level="ERROR"
+{namespace="keystone"} | json | level="ERROR"
 ```
 
 **Extract specific field**:
 
 ```logql
-{namespace="projectkeystone"} | json | latency_us > 1000
+{namespace="keystone"} | json | latency_us > 1000
 ```
 
 **Line format (custom output)**:
 
 ```logql
-{namespace="projectkeystone"} | line_format "{{.pod}} - {{.level}} - {{.msg}}"
+{namespace="keystone"} | line_format "{{.pod}} - {{.level}} - {{.msg}}"
 ```
 
 ### Log Retention
@@ -813,7 +813,7 @@ Correlate logs with metrics using Grafana's **Explore** view:
 
 1. Open **Explore** in Grafana
 2. Select **Loki** datasource
-3. Run log query: `{namespace="projectkeystone"} |~ "ERROR"`
+3. Run log query: `{namespace="keystone"} |~ "ERROR"`
 4. Click **Split** and select **Prometheus** datasource
 5. Run metric query: `rate(hmas_deadline_misses_total[5m])`
 6. Synchronized time ranges show logs and metrics side-by-side
@@ -831,24 +831,24 @@ Correlate logs with metrics using Grafana's **Explore** view:
 
 ```bash
 # Check if HMAS pods are running
-kubectl get pods -n projectkeystone -l app=hmas
+kubectl get pods -n keystone -l app=hmas
 
 # Check pod logs
-kubectl logs -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
 
 # Test metrics endpoint directly
-kubectl exec -n projectkeystone <pod-name> -- curl localhost:9090/metrics
+kubectl exec -n keystone <pod-name> -- curl localhost:9090/metrics
 ```
 
 ### Prometheus Not Scraping HMAS
 
 ```bash
 # Check Prometheus targets
-kubectl port-forward -n projectkeystone svc/prometheus 9091:9090
+kubectl port-forward -n keystone svc/prometheus 9091:9090
 open http://localhost:9091/targets
 
 # Check if HMAS service is accessible from Prometheus pod
-kubectl exec -n projectkeystone <prometheus-pod> -- wget -O- http://hmas:9090/metrics
+kubectl exec -n keystone <prometheus-pod> -- wget -O- http://hmas:9090/metrics
 ```
 
 **Common Issues**:
@@ -866,7 +866,7 @@ kubectl exec -n projectkeystone <prometheus-pod> -- wget -O- http://hmas:9090/me
 # "Prometheus exporter started on port 9090"
 
 # Test metrics generation
-kubectl exec -n projectkeystone <pod-name> -- curl localhost:9090/metrics
+kubectl exec -n keystone <pod-name> -- curl localhost:9090/metrics
 ```
 
 ### High Cardinality Warnings
@@ -916,7 +916,7 @@ kubectl apply -f k8s/grafana.yaml
 kubectl apply -f k8s/grafana-dashboards-configmap.yaml
 
 # Access Grafana
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 open http://localhost:3000  # Login: admin/admin
 ```
 

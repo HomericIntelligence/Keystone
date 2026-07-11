@@ -1,4 +1,4 @@
-# ProjectKeystone - Pure C++20 Message Transport Library
+# Keystone - Pure C++20 Message Transport Library
 
 **C++20 message transport: lock-free local message bus + transparent NATS cross-host bridge**
 
@@ -10,16 +10,16 @@
 > ✅ **All installation, build, and test steps are validated in CI/CD.**
 > See [CI/CD Coverage Matrix](docs/CICD_COVERAGE.md) for complete documentation.
 
-[![Required Checks](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/_required.yml)
-[![Extras](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/extras.yml)
-[![Profiling Tests (Weekly)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/profiling-weekly.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/profiling-weekly.yml)
-[![Release Please](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/release-please.yml/badge.svg)](https://github.com/HomericIntelligence/ProjectKeystone/actions/workflows/release-please.yml)
+[![Required Checks](https://github.com/HomericIntelligence/Keystone/actions/workflows/_required.yml/badge.svg)](https://github.com/HomericIntelligence/Keystone/actions/workflows/_required.yml)
+[![Extras](https://github.com/HomericIntelligence/Keystone/actions/workflows/extras.yml/badge.svg)](https://github.com/HomericIntelligence/Keystone/actions/workflows/extras.yml)
+[![Profiling Tests (Weekly)](https://github.com/HomericIntelligence/Keystone/actions/workflows/profiling-weekly.yml/badge.svg)](https://github.com/HomericIntelligence/Keystone/actions/workflows/profiling-weekly.yml)
+[![Release Please](https://github.com/HomericIntelligence/Keystone/actions/workflows/release-please.yml/badge.svg)](https://github.com/HomericIntelligence/Keystone/actions/workflows/release-please.yml)
 [![C++ Standard](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 
 ## Overview
 
-ProjectKeystone is a high-performance message **transport** library built with
+Keystone is a high-performance message **transport** library built with
 modern C++20. It moves bytes from publisher to subscriber reliably and
 transparently: a lock-free intra-host message bus plus a transparent NATS
 JetStream bridge for cross-host delivery. Agent runtime and orchestration logic
@@ -70,8 +70,8 @@ All libraries are **automatically downloaded** via CMake FetchContent - no manua
 
 ```bash
 # Clone the repository
-git clone https://github.com/HomericIntelligence/ProjectKeystone.git
-cd ProjectKeystone
+git clone https://github.com/HomericIntelligence/Keystone.git
+cd Keystone
 
 # Setup environment variables (required for Docker)
 ./scripts/setup-env.sh
@@ -196,7 +196,7 @@ cmake -S . -B build/fuzz -G Ninja \
 ## Project Structure
 
 ```
-ProjectKeystone/
+Keystone/
 ├── include/            # Public headers
 │   ├── core/           # Message bus, IMessageSink, serialization, resilience
 │   ├── transport/      # NATS connection + transparent bridge
@@ -343,7 +343,7 @@ cat build/static_analysis/cppcheck-report.txt
 
 ## CI/CD Quality Gates
 
-ProjectKeystone enforces 5 quality gates in CI/CD:
+Keystone enforces 5 quality gates in CI/CD:
 
 1. **Code Coverage** (≥95%)
 2. **Static Analysis** (0 critical errors)
@@ -355,7 +355,7 @@ See [CI/CD Quality Gates](docs/CICD_QUALITY_GATES.md) for complete documentation
 
 ## Development Phases
 
-ProjectKeystone follows a phased TDD approach:
+Keystone follows a phased TDD approach:
 
 - **Phase 1** ✅: Basic delegation (L0 → L3)
 - **Phase 2** ✅: Module coordination (L0 → L2 → L3)

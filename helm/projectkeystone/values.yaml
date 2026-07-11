@@ -1,11 +1,11 @@
-# Default values for projectkeystone
+# Default values for keystone
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 # Namespace configuration
 namespace:
   create: true
-  name: projectkeystone
+  name: keystone
   resourceQuota:
     enabled: true
     hard:
@@ -20,7 +20,7 @@ namespace:
 replicaCount: 2
 
 image:
-  repository: projectkeystone
+  repository: keystone
   pullPolicy: IfNotPresent
   # Default to the chart's appVersion (Chart.yaml: appVersion: "1.0.0") so
   # deployments are reproducible and rollbacks are deterministic. Override at
@@ -150,7 +150,7 @@ affinity:
               - key: app.kubernetes.io/name
                 operator: In
                 values:
-                  - projectkeystone
+                  - keystone
           topologyKey: kubernetes.io/hostname
 
 # Termination grace period

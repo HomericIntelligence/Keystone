@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{include "projectkeystone.fullname" .}}
-  namespace: {{include "projectkeystone.namespace" .}}
+  name: {{include "keystone.fullname" .}}
+  namespace: {{include "keystone.namespace" .}}
   labels:
-    {{- include "projectkeystone.labels" . | nindent 4}}
+    {{- include "keystone.labels" . | nindent 4}}
 spec:
   {{- if not .Values.autoscaling.enabled}}
   replicas: {{.Values.replicaCount}}
@@ -13,7 +13,7 @@ spec:
     {{- toYaml .Values.updateStrategy | nindent 4}}
   selector:
     matchLabels:
-      {{- include "projectkeystone.selectorLabels" . | nindent 6}}
+      {{- include "keystone.selectorLabels" . | nindent 6}}
   template:
     metadata:
       annotations:
@@ -21,7 +21,7 @@ spec:
         {{- toYaml . | nindent 8}}
         {{- end}}
       labels:
-        {{- include "projectkeystone.selectorLabels" . | nindent 8}}
+        {{- include "keystone.selectorLabels" . | nindent 8}}
         {{- with .Values.podLabels}}
         {{- toYaml . | nindent 8}}
         {{- end}}
@@ -31,7 +31,7 @@ spec:
         {{- toYaml . | nindent 8}}
       {{- end}}
       {{- if .Values.serviceAccount.create}}
-      serviceAccountName: {{include "projectkeystone.serviceAccountName" .}}
+      serviceAccountName: {{include "keystone.serviceAccountName" .}}
       {{- end}}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8}}
@@ -39,7 +39,7 @@ spec:
       - name: hmas
         securityContext:
           {{- toYaml .Values.securityContext | nindent 12}}
-        image: {{include "projectkeystone.image" .}}
+        image: {{include "keystone.image" .}}
         imagePullPolicy: {{.Values.image.pullPolicy}}
         ports:
         - name: health
@@ -53,7 +53,7 @@ spec:
           protocol: TCP
         envFrom:
         - configMapRef:
-            name: {{include "projectkeystone.fullname" .}}-config
+            name: {{include "keystone.fullname" .}}-config
         env:
         - name: POD_NAME
           valueFrom:

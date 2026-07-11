@@ -4,35 +4,35 @@ Your release is named {{ .Release.Name }}.
 
 To learn more about the release, try:
 
-  $ helm status {{ .Release.Name }} --namespace {{ include "projectkeystone.namespace" . }}
-  $ helm get all {{ .Release.Name }} --namespace {{ include "projectkeystone.namespace" . }}
+  $ helm status {{ .Release.Name }} --namespace {{ include "keystone.namespace" . }}
+  $ helm get all {{ .Release.Name }} --namespace {{ include "keystone.namespace" . }}
 
 ---
 
-ProjectKeystone HMAS has been deployed!
+Keystone HMAS has been deployed!
 
 1. Check the deployment status:
 
-  kubectl get pods --namespace {{ include "projectkeystone.namespace" . }} -l "app.kubernetes.io/name={{ include "projectkeystone.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
+  kubectl get pods --namespace {{ include "keystone.namespace" . }} -l "app.kubernetes.io/name={{ include "keystone.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
 
 2. Access the health check endpoint:
 
 {{- if .Values.service.type | eq "ClusterIP" }}
 
-  kubectl port-forward --namespace {{ include "projectkeystone.namespace" . }} svc/{{ include "projectkeystone.fullname" . }} 8080:{{ .Values.service.ports.health.port }}
+  kubectl port-forward --namespace {{ include "keystone.namespace" . }} svc/{{ include "keystone.fullname" . }} 8080:{{ .Values.service.ports.health.port }}
 
   Then visit http://127.0.0.1:8080/healthz in your browser.
 
 {{- else if .Values.service.type | eq "NodePort" }}
 
-  export NODE_PORT=$(kubectl get --namespace {{ include "projectkeystone.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "projectkeystone.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ include "projectkeystone.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  export NODE_PORT=$(kubectl get --namespace {{ include "keystone.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "keystone.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ include "keystone.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
 
   echo "Health endpoint: http://$NODE_IP:$NODE_PORT/healthz"
 
 {{- else if .Values.service.type | eq "LoadBalancer" }}
 
-  export SERVICE_IP=$(kubectl get svc --namespace {{ include "projectkeystone.namespace" . }} {{ include "projectkeystone.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  export SERVICE_IP=$(kubectl get svc --namespace {{ include "keystone.namespace" . }} {{ include "keystone.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
 
   echo "Health endpoint: http://$SERVICE_IP:{{ .Values.service.ports.health.port }}/healthz"
 
@@ -40,11 +40,11 @@ ProjectKeystone HMAS has been deployed!
 
 3. View the logs:
 
-  kubectl logs --namespace {{ include "projectkeystone.namespace" . }} -f deployment/{{ include "projectkeystone.fullname" . }}
+  kubectl logs --namespace {{ include "keystone.namespace" . }} -f deployment/{{ include "keystone.fullname" . }}
 
 4. Access the Prometheus metrics endpoint:
 
-  kubectl port-forward --namespace {{ include "projectkeystone.namespace" . }} svc/{{ include "projectkeystone.fullname" . }} 9090:{{ .Values.service.ports.metrics.port }}
+  kubectl port-forward --namespace {{ include "keystone.namespace" . }} svc/{{ include "keystone.fullname" . }} 9090:{{ .Values.service.ports.metrics.port }}
 
   Then visit http://127.0.0.1:9090/metrics in your browser.
 
@@ -55,7 +55,7 @@ Configuration:
   Replicas: {{ .Values.replicaCount }}
   Worker Count: {{ .Values.config.workerCount }}
   Log Level: {{ .Values.config.logLevel }}
-  Image: {{ include "projectkeystone.image" . }}
+  Image: {{ include "keystone.image" . }}
 
 For more information on using {{ .Chart.Name }}, visit:
   {{ .Chart.Home }}
@@ -68,7 +68,7 @@ NOTE: Autoscaling is enabled. The pod count will adjust automatically based on r
 
 {{- if not .Values.namespace.create }}
 
-WARNING: Namespace {{ include "projectkeystone.namespace" . }} was not created by this chart.
+WARNING: Namespace {{ include "keystone.namespace" . }} was not created by this chart.
 Make sure it exists before deploying!
 
 {{- end }}

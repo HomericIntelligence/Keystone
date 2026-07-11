@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_benchmarks.sh
-# Run all ProjectKeystone benchmarks and detect performance regressions
+# Run all Keystone benchmarks and detect performance regressions
 #
 # Usage:
 #   ./scripts/run_benchmarks.sh [--baseline] [--compare <baseline.json>]
@@ -76,7 +76,7 @@ done
 # Create results directory
 mkdir -p "$RESULTS_DIR"
 
-echo -e "${BLUE}=== ProjectKeystone Performance Benchmarks ===${NC}"
+echo -e "${BLUE}=== Keystone Performance Benchmarks ===${NC}"
 echo ""
 
 # Check if build exists

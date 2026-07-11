@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hmas
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
     component: agent-system
@@ -33,7 +33,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: hmas-headless
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
     component: agent-system

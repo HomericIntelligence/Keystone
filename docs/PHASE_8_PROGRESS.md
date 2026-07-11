@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 8 adds distributed multi-node capability to ProjectKeystone HMAS, allowing agents to run on separate
+Phase 8 adds distributed multi-node capability to Keystone HMAS, allowing agents to run on separate
 physical/virtual machines and communicate via gRPC with YAML-based task specifications.
 
 ## Completed Components
@@ -356,7 +356,7 @@ sudo make install
 ### Build
 
 ```bash
-cd /home/mvillmow/ProjectKeystone
+cd /home/mvillmow/Keystone
 mkdir -p build
 cd build
 

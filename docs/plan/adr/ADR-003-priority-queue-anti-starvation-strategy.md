@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Date**: 2025-11-21
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, priority, fairness, phase-c
 
 ## Context
@@ -394,4 +394,4 @@ check_lower_priority_agents_every(100ms);
 
 **Last Updated**: 2025-11-21 (Issue #23: Per-agent configurable intervals)
 **Version**: 1.1
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

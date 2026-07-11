@@ -1,4 +1,4 @@
-# ProjectKeystone Makefile
+# Keystone Makefile
 # Simple build system with debug, release, and asan modes
 # Artifacts stored in build/debug, build/release, build/debug.asan, build/release.asan
 #
@@ -313,7 +313,7 @@ container.up:
 container.clean:
 	@echo "Cleaning container resources..."
 	DOCKER_HOST="$(DOCKER_HOST)" podman-compose down -v
-	podman rmi -f projectkeystone-dev:latest projectkeystone:latest || true
+	podman rmi -f keystone-dev:latest keystone:latest || true
 
 container.down:
 	@echo "Stopping containers..."
@@ -373,7 +373,7 @@ container.shell: container.up
 .PHONY: help
 
 help:
-	@echo "ProjectKeystone Makefile"
+	@echo "Keystone Makefile"
 	@echo "Unified build system with debug, release, sanitizer modes, and testing"
 	@echo ""
 	@echo "Usage: make <target>[.modifier]"

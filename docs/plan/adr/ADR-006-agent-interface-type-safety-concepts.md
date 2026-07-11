@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Date**: 2025-11-21
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: type-safety, concepts, c++20, interface-verification, issue-24
 
 ## Context
@@ -462,5 +462,5 @@ Negative tests (intentionally commented out to show compile errors):
 
 **Last Updated**: 2025-11-21
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)
 **Issue**: #24 - Agent Interface Type Safety Enhancement

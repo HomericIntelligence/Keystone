@@ -168,7 +168,7 @@ create_milestone_if_needed() {
 }
 
 # Main script
-echo -e "${BLUE}=== ProjectKeystone Phase Issues Creator ===${NC}"
+echo -e "${BLUE}=== Keystone Phase Issues Creator ===${NC}"
 echo ""
 
 # Create milestones (optional - comment out if not needed)

@@ -2,12 +2,12 @@
 
 **Status**: Accepted
 **Date**: 2025-11-21
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, coroutines, async, phase-b
 
 ## Context
 
-ProjectKeystone agents require asynchronous message processing to avoid blocking worker threads while waiting for
+Keystone agents require asynchronous message processing to avoid blocking worker threads while waiting for
 responses. C++20 coroutines provide `co_await` syntax for async operations, but integrating them with a custom
 work-stealing scheduler requires careful design decisions around suspension, resumption, and lifecycle management.
 
@@ -317,7 +317,7 @@ std::future<Response> processAsync(KeystoneMessage msg) {
 - **Integration Complexity**: May not fit work-stealing scheduler
 - **Learning Curve**: Team must learn library API
 
-**Prefer**: Minimal custom Task<T> tailored to ProjectKeystone needs.
+**Prefer**: Minimal custom Task<T> tailored to Keystone needs.
 
 ## Implementation Details
 
@@ -436,4 +436,4 @@ Generator<int> range(int start, int end) {
 
 **Last Updated**: 2025-11-21
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

@@ -1,4 +1,4 @@
-# ProjectKeystone cppcheck suppressions
+# Keystone cppcheck suppressions
 # Phase 9.3: Static Analysis
 
 # Suppress missing include system headers (we don't control these)

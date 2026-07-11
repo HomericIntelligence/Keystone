@@ -2,12 +2,12 @@
 
 **Status**: Implemented
 **Date**: 2026-03-28
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, extraction, agent-hierarchy, transport, projectagamemnon, decoupling
 
 ## Context
 
-ProjectKeystone originally contained the full 4-layer HMAS (Homeric Multi-Agent System)
+Keystone originally contained the full 4-layer HMAS (Homeric Multi-Agent System)
 agent hierarchy alongside its transport primitives:
 
 - **L0** — `ChiefArchitectAgent`: Top-level orchestrator
@@ -39,7 +39,7 @@ to evolve independently.
 
 ## Decision
 
-Extract all agent hierarchy code from ProjectKeystone into a dedicated repository,
+Extract all agent hierarchy code from Keystone into a dedicated repository,
 **ProjectAgamemnon**, which owns orchestration, delegation, escalation, and scheduling:
 
 - `ChiefArchitectAgent` (L0)
@@ -49,7 +49,7 @@ Extract all agent hierarchy code from ProjectKeystone into a dedicated repositor
 - Delegation and escalation logic
 - Work-stealing scheduler
 
-ProjectKeystone retains only transport primitives:
+Keystone retains only transport primitives:
 
 - `MessageBus` — local intra-host routing via BlazingMQ and concurrentqueue
 - `NATSListener` — NATS JetStream consumer abstraction
@@ -89,10 +89,10 @@ architectural decision. The CLAUDE.md reference has been updated from "ADR-006" 
 ### Negative / Trade-offs
 
 - **Two repositories to update**: Cross-cutting changes that touch both transport
-  protocol and agent behavior require coordinated PRs in both ProjectKeystone and
+  protocol and agent behavior require coordinated PRs in both Keystone and
   ProjectAgamemnon.
 - **Version coordination**: ProjectAgamemnon must pin or track a compatible version of
-  ProjectKeystone's transport primitives.
+  Keystone's transport primitives.
 
 ### Neutral
 

@@ -1,10 +1,10 @@
 # Kubernetes Deployment Guide
 
-**ProjectKeystone HMAS - Production Deployment on Kubernetes**
+**Keystone HMAS - Production Deployment on Kubernetes**
 
 ## Overview
 
-This guide covers deploying ProjectKeystone HMAS to Kubernetes with production-ready configurations, health checks, and
+This guide covers deploying Keystone HMAS to Kubernetes with production-ready configurations, health checks, and
 monitoring readiness.
 
 ---
@@ -41,10 +41,10 @@ kubectl cluster-info
 
 ```bash
 # Build the production Docker image
-docker build --target production -t projectkeystone:latest .
+docker build --target production -t keystone:latest .
 
 # Verify image
-docker images | grep projectkeystone
+docker images | grep keystone
 ```
 
 ### 2. Deploy to Kubernetes
@@ -54,20 +54,20 @@ docker images | grep projectkeystone
 kubectl apply -f k8s/
 
 # Verify deployment
-kubectl get all -n projectkeystone
+kubectl get all -n keystone
 
 # Check pod status
-kubectl get pods -n projectkeystone -w
+kubectl get pods -n keystone -w
 ```
 
 ### 3. Verify Health
 
 ```bash
 # Get service endpoints
-kubectl get svc -n projectkeystone
+kubectl get svc -n keystone
 
 # Port-forward to access health check
-kubectl port-forward -n projectkeystone svc/hmas 8080:8080
+kubectl port-forward -n keystone svc/hmas 8080:8080
 
 # Test health endpoint (in another terminal)
 curl http://localhost:8080/healthz
@@ -77,7 +77,7 @@ curl http://localhost:8080/ready
 # Expected: {"status":"ready"}
 
 # Test metrics endpoint
-kubectl port-forward -n projectkeystone svc/hmas 9090:9090
+kubectl port-forward -n keystone svc/hmas 9090:9090
 curl http://localhost:9090/metrics
 ```
 
@@ -88,7 +88,7 @@ curl http://localhost:9090/metrics
 ### Deployment Structure
 
 ```
-projectkeystone namespace
+keystone namespace
 ├── hmas Deployment (2 replicas)
 │   ├── Pod 1 (hmas-xxxxxxxx-xxxxx)
 │   └── Pod 2 (hmas-xxxxxxxx-xxxxx)
@@ -101,7 +101,7 @@ projectkeystone namespace
 
 ### Container Specifications
 
-**Image**: `projectkeystone:latest` (production stage)
+**Image**: `keystone:latest` (production stage)
 
 **Ports**:
 
@@ -126,7 +126,7 @@ projectkeystone namespace
 
 ### 1. Namespace (`k8s/namespace.yaml`)
 
-Creates `projectkeystone` namespace with resource quotas:
+Creates `keystone` namespace with resource quotas:
 
 - Max 8 CPU cores (requests)
 - Max 16 CPU cores (limits)
@@ -252,10 +252,10 @@ All configuration is via ConfigMap. To customize:
 
 ```bash
 # Edit ConfigMap
-kubectl edit configmap hmas-config -n projectkeystone
+kubectl edit configmap hmas-config -n keystone
 
 # Restart pods to pick up changes
-kubectl rollout restart deployment/hmas -n projectkeystone
+kubectl rollout restart deployment/hmas -n keystone
 ```
 
 ### Common Configurations
@@ -287,10 +287,10 @@ HEARTBEAT_TIMEOUT_MS: "2000"
 
 ```bash
 # Scale to 5 replicas
-kubectl scale deployment/hmas -n projectkeystone --replicas=5
+kubectl scale deployment/hmas -n keystone --replicas=5
 
 # Verify scaling
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 ```
 
 ### Vertical Scaling (More Resources)
@@ -311,7 +311,7 @@ Apply changes:
 
 ```bash
 kubectl apply -f k8s/deployment.yaml
-kubectl rollout restart deployment/hmas -n projectkeystone
+kubectl rollout restart deployment/hmas -n keystone
 ```
 
 ---
@@ -322,13 +322,13 @@ kubectl rollout restart deployment/hmas -n projectkeystone
 
 ```bash
 # Check pod events
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 
 # Check pod logs
-kubectl logs -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
 
 # Check recent logs
-kubectl logs -n projectkeystone <pod-name> --tail=50
+kubectl logs -n keystone <pod-name> --tail=50
 ```
 
 **Common Issues**:
@@ -341,30 +341,30 @@ kubectl logs -n projectkeystone <pod-name> --tail=50
 
 ```bash
 # Check liveness/readiness probes
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 
 # Manually test health endpoint
-kubectl exec -n projectkeystone <pod-name> -- curl localhost:8080/healthz
+kubectl exec -n keystone <pod-name> -- curl localhost:8080/healthz
 ```
 
 ### View Logs
 
 ```bash
 # Follow logs (live tail)
-kubectl logs -n projectkeystone -f deployment/hmas
+kubectl logs -n keystone -f deployment/hmas
 
 # Logs from all replicas
-kubectl logs -n projectkeystone -l app=hmas --all-containers=true
+kubectl logs -n keystone -l app=hmas --all-containers=true
 
 # Logs from specific pod
-kubectl logs -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
 ```
 
 ### Access Shell
 
 ```bash
 # Get a shell in a running pod
-kubectl exec -it -n projectkeystone <pod-name> -- /bin/bash
+kubectl exec -it -n keystone <pod-name> -- /bin/bash
 
 # Note: Container runs as non-root user (hmas)
 ```
@@ -373,13 +373,13 @@ kubectl exec -it -n projectkeystone <pod-name> -- /bin/bash
 
 ```bash
 # Check resource usage
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 
 # Check node capacity
 kubectl top nodes
 
 # Describe resource quotas
-kubectl describe resourcequota -n projectkeystone
+kubectl describe resourcequota -n keystone
 ```
 
 ---
@@ -394,29 +394,29 @@ minikube start --cpus=4 --memory=8192
 
 # Build image inside Minikube
 eval $(minikube docker-env)
-docker build --target production -t projectkeystone:latest .
+docker build --target production -t keystone:latest .
 
 # Deploy
 kubectl apply -f k8s/
 
 # Access service
-minikube service hmas -n projectkeystone
+minikube service hmas -n keystone
 ```
 
 ### Option 2: kind (Kubernetes IN Docker)
 
 ```bash
 # Create kind cluster
-kind create cluster --name projectkeystone
+kind create cluster --name keystone
 
 # Load image into kind
-kind load docker-image projectkeystone:latest --name projectkeystone
+kind load docker-image keystone:latest --name keystone
 
 # Deploy
 kubectl apply -f k8s/
 
 # Port-forward to access
-kubectl port-forward -n projectkeystone svc/hmas 8080:8080
+kubectl port-forward -n keystone svc/hmas 8080:8080
 ```
 
 ### Option 3: Docker Desktop Kubernetes
@@ -425,13 +425,13 @@ kubectl port-forward -n projectkeystone svc/hmas 8080:8080
 # Enable Kubernetes in Docker Desktop settings
 
 # Build image
-docker build --target production -t projectkeystone:latest .
+docker build --target production -t keystone:latest .
 
 # Deploy
 kubectl apply -f k8s/
 
 # Port-forward
-kubectl port-forward -n projectkeystone svc/hmas 8080:8080 9090:9090
+kubectl port-forward -n keystone svc/hmas 8080:8080 9090:9090
 ```
 
 ---
@@ -441,18 +441,18 @@ kubectl port-forward -n projectkeystone svc/hmas 8080:8080 9090:9090
 ### Delete Deployment
 
 ```bash
-# Delete all resources in projectkeystone namespace
+# Delete all resources in keystone namespace
 kubectl delete -f k8s/
 
 # Verify deletion
-kubectl get all -n projectkeystone
+kubectl get all -n keystone
 ```
 
 ### Delete Namespace
 
 ```bash
 # Delete entire namespace (WARNING: deletes all resources)
-kubectl delete namespace projectkeystone
+kubectl delete namespace keystone
 ```
 
 ---
@@ -463,26 +463,26 @@ kubectl delete namespace projectkeystone
 
 ```bash
 # Update image tag
-kubectl set image deployment/hmas hmas=projectkeystone:v2 -n projectkeystone
+kubectl set image deployment/hmas hmas=keystone:v2 -n keystone
 
 # Watch rollout
-kubectl rollout status deployment/hmas -n projectkeystone
+kubectl rollout status deployment/hmas -n keystone
 
 # Check rollout history
-kubectl rollout history deployment/hmas -n projectkeystone
+kubectl rollout history deployment/hmas -n keystone
 ```
 
 ### Rollback
 
 ```bash
 # Rollback to previous version
-kubectl rollout undo deployment/hmas -n projectkeystone
+kubectl rollout undo deployment/hmas -n keystone
 
 # Rollback to specific revision
-kubectl rollout undo deployment/hmas -n projectkeystone --to-revision=2
+kubectl rollout undo deployment/hmas -n keystone --to-revision=2
 
 # Verify rollback
-kubectl rollout status deployment/hmas -n projectkeystone
+kubectl rollout status deployment/hmas -n keystone
 ```
 
 ---
@@ -504,14 +504,14 @@ kubectl apply -f k8s/prometheus-alerts.yaml
 kubectl apply -f k8s/alertmanager.yaml
 
 # Verify deployments
-kubectl get pods -n projectkeystone | grep -E 'prometheus|alertmanager'
+kubectl get pods -n keystone | grep -E 'prometheus|alertmanager'
 ```
 
 **Access Prometheus**:
 
 ```bash
 # Port-forward Prometheus UI
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 
 # Access UI: http://localhost:9090
 # View alerts: http://localhost:9090/alerts
@@ -522,7 +522,7 @@ kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
 
 ```bash
 # Port-forward Alertmanager UI
-kubectl port-forward -n projectkeystone svc/alertmanager 9093:9093
+kubectl port-forward -n keystone svc/alertmanager 9093:9093
 
 # Access UI: http://localhost:9093
 # View active alerts: http://localhost:9093/#/alerts
@@ -562,7 +562,7 @@ See `k8s/prometheus-alerts.yaml` for complete list.
 
 ### Metrics Security
 
-ProjectKeystone implements comprehensive security for metrics endpoints including authentication, encryption, and
+Keystone implements comprehensive security for metrics endpoints including authentication, encryption, and
 access control.
 
 **Security Layers**:
@@ -582,20 +582,20 @@ htpasswd -nBc auth prometheus
 # Generate TLS certificate (development)
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
-  -subj "/CN=hmas-metrics.projectkeystone.svc.cluster.local"
+  -subj "/CN=hmas-metrics.keystone.svc.cluster.local"
 
 # Create secrets
 kubectl create secret generic prometheus-scrape-credentials \
-  --from-file=htpasswd=auth -n projectkeystone
+  --from-file=htpasswd=auth -n keystone
 
 kubectl create secret tls metrics-tls \
-  --cert=tls.crt --key=tls.key -n projectkeystone
+  --cert=tls.crt --key=tls.key -n keystone
 
 # Deploy security configuration
 kubectl apply -f k8s/metrics-security.yaml
 
 # Restart Prometheus to pick up changes
-kubectl rollout restart deployment/prometheus -n projectkeystone
+kubectl rollout restart deployment/prometheus -n keystone
 ```
 
 **Access Secured Metrics**:
@@ -664,8 +664,8 @@ For detailed security configuration, see [METRICS_SECURITY.md](METRICS_SECURITY.
 
 For issues or questions:
 
-- Check logs: `kubectl logs -n projectkeystone deployment/hmas`
-- Check events: `kubectl get events -n projectkeystone`
+- Check logs: `kubectl logs -n keystone deployment/hmas`
+- Check events: `kubectl get events -n keystone`
 - Refer to Phase 6 plan: `docs/plan/PHASE_6_PLAN.md`
 
 ---

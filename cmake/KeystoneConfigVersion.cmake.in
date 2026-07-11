@@ -1,4 +1,4 @@
-# KeystoneConfigVersion.cmake - Version file for ProjectKeystone package
+# KeystoneConfigVersion.cmake - Version file for Keystone package
 
 set(PACKAGE_VERSION "@CPACK_PACKAGE_VERSION@")
 

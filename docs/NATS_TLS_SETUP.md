@@ -2,7 +2,7 @@
 
 ## Overview
 
-NATS connections in ProjectKeystone support optional TLS encryption. While the
+NATS connections in Keystone support optional TLS encryption. While the
 primary security layer is **Tailscale WireGuard mesh** (`tail8906b5.ts.net`),
 per-connection TLS provides additional encryption and certificate verification
 when needed.

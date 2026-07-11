@@ -2,8 +2,8 @@ from conan import ConanFile
 from conan.tools.cmake import CMakeToolchain, CMakeDeps
 
 
-class ProjectKeystoneConan(ConanFile):
-    name = "projectkeystone"
+class KeystoneConan(ConanFile):
+    name = "keystone"
     version = "0.1.0"
     settings = "os", "compiler", "build_type", "arch"
 

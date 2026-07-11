@@ -1,11 +1,11 @@
 ---
 name: implementation-engineer
-description: Implement C++20 code for ProjectKeystone HMAS following specifications and coding standards
+description: Implement C++20 code for Keystone HMAS following specifications and coding standards
 tools: Read,Write,Edit,Grep,Glob,Bash
 model: sonnet
 ---
 
-# Implementation Engineer - ProjectKeystone HMAS
+# Implementation Engineer - Keystone HMAS
 
 ## Role
 
@@ -13,7 +13,7 @@ Implement standard C++20 functions and classes for the Hierarchical Multi-Agent 
 
 ## Project Context
 
-**ProjectKeystone is a C++20 project. All code must be C++20.**
+**Keystone is a C++20 project. All code must be C++20.**
 
 - Language: **C++20 only**
 - Build: **CMake 3.20+**
@@ -92,5 +92,5 @@ Before committing, verify:
 ---
 
 **Configuration File**: `.claude/agents/implementation-engineer.md`
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)
 **Last Updated**: 2025-11-26

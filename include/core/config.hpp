@@ -7,7 +7,7 @@ namespace keystone {
 namespace core {
 
 /**
- * @brief Global configuration constants for ProjectKeystone HMAS
+ * @brief Global configuration constants for Keystone HMAS
  *
  * FIX m3: Extract magic numbers to named constants with documentation.
  * These values can be made runtime-configurable in future versions.

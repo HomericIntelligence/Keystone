@@ -2,13 +2,13 @@
 
 **Status**: Implemented
 **Date**: 2026-04-25
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, extraction, orchestration, python, projectagamemnon, decoupling
 **Related**: ADR-015
 
 ## Context
 
-ProjectKeystone originally contained Python orchestration modules alongside its C++ transport layer:
+Keystone originally contained Python orchestration modules alongside its C++ transport layer:
 
 - `dag_walker.py` — DAGWalker (task ready-set computation, cycle detection)
 - `task_claimer.py` — TaskClaimer (per-team concurrency guard, drain)
@@ -23,7 +23,7 @@ advanced the DAG through AI Maestro.
 
 ### Problems with Co-location
 
-1. **Language mixing**: ProjectKeystone's CLAUDE.md mandates C++20 only for implementation.
+1. **Language mixing**: Keystone's CLAUDE.md mandates C++20 only for implementation.
    Python orchestration modules violated this principle.
 2. **Scope creep**: Keystone's mandate is invisible, zero-configuration message routing.
    Task scheduling, DAG advancement, and Maestro integration are orchestration concerns
@@ -39,11 +39,11 @@ advanced the DAG through AI Maestro.
 
 ADR-015 documented the extraction of the C++ agent hierarchy (HMAS 4-layer agents).
 This ADR documents the parallel extraction of Python orchestration modules. Together,
-they complete the decoupling of ProjectKeystone from all non-transport concerns.
+they complete the decoupling of Keystone from all non-transport concerns.
 
 ## Decision
 
-Extract all Python orchestration modules from ProjectKeystone into **ProjectAgamemnon**'s
+Extract all Python orchestration modules from Keystone into **ProjectAgamemnon**'s
 `agamemnon.orchestration` package:
 
 - Move `dag_walker.py` to `agamemnon/orchestration/dag_walker.py`
@@ -54,7 +54,7 @@ Extract all Python orchestration modules from ProjectKeystone into **ProjectAgam
 - Move `daemon.py` to `agamemnon/orchestration/daemon.py`
 - Move supporting modules (`config.py`, `logging.py`, `validation.py`) to `agamemnon/orchestration/`
 
-ProjectKeystone retains sole ownership of:
+Keystone retains sole ownership of:
 
 - NATS subject schema (`homeric-research`, `homeric-myrmidon`, `homeric-pipeline`,
   `homeric-agents`, `homeric-tasks`, `homeric-logs`)
@@ -72,7 +72,7 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 
 ### Positive
 
-- **Pure C++20 mandate**: ProjectKeystone is now exclusively C++20. All transport
+- **Pure C++20 mandate**: Keystone is now exclusively C++20. All transport
   primitives are implemented in C++ with modern language features and strong type safety.
 - **Clear language boundaries**: ProjectAgamemnon is now the exclusive home for both
   C++ agent coordination logic and Python orchestration logic.
@@ -83,7 +83,7 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 - **Single responsibility**: Each system owns its complete domain:
   - Keystone: message routing and delivery
   - Agamemnon: task scheduling and DAG advancement
-- **CLAUDE.md alignment**: The project description now correctly reflects ProjectKeystone
+- **CLAUDE.md alignment**: The project description now correctly reflects Keystone
   as a pure C++20 transport library with no Python components.
 
 ### Negative / Trade-offs
@@ -117,12 +117,12 @@ ProjectAgamemnon now owns the complete orchestration stack, including:
 
 - ADR-015: Agent Layer Extraction to ProjectAgamemnon
 - HomericIntelligence/Odysseus#143: Move Python orchestration layer from Keystone to ProjectAgamemnon
-- HomericIntelligence/ProjectKeystone: NATS Subject Schema (owner: Keystone)
+- HomericIntelligence/Keystone: NATS Subject Schema (owner: Keystone)
 - HomericIntelligence/ProjectAgamemnon: agamemnon.orchestration package
 
 ---
 
 **Last Updated**: 2026-04-25
 **Version**: 1.0
-**Project**: ProjectKeystone
+**Project**: Keystone
 **Status**: Implemented (2026-04-25)

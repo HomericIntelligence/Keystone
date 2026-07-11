@@ -1,7 +1,7 @@
 # ADR-011: Architecture Review Fixes - Phase 6.6
 
 **Date**: 2025-11-20
-**Review**: ProjectKeystone Kubernetes Architecture Review
+**Review**: Keystone Kubernetes Architecture Review
 
 ## Summary
 
@@ -27,16 +27,16 @@ This document tracks fixes applied to address critical issues identified in the 
 kubectl create secret generic grafana-admin-credentials \
   --from-literal=admin-user=admin \
   --from-literal=admin-password=$(openssl rand -base64 32) \
-  -n projectkeystone
+  -n keystone
 
 # Generate TLS certificates
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
-  -subj "/CN=hmas.projectkeystone.svc.cluster.local"
+  -subj "/CN=hmas.keystone.svc.cluster.local"
 
 kubectl create secret tls hmas-tls \
   --cert=tls.crt --key=tls.key \
-  -n projectkeystone
+  -n keystone
 ```
 
 **Files Changed**:
@@ -180,16 +180,16 @@ work. **GitHub issues have been filed** for tracking:
 kubectl create secret generic grafana-admin-credentials \
   --from-literal=admin-user=admin \
   --from-literal=admin-password=$(openssl rand -base64 32) \
-  -n projectkeystone
+  -n keystone
 
 # TLS certificates
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
-  -subj "/CN=hmas.projectkeystone.svc.cluster.local"
+  -subj "/CN=hmas.keystone.svc.cluster.local"
 
 kubectl create secret tls hmas-tls \
   --cert=tls.crt --key=tls.key \
-  -n projectkeystone
+  -n keystone
 ```
 
 1. **Configure Storage Class** (optional):
@@ -232,14 +232,14 @@ kubectl apply -f k8s/grafana-dashboards-configmap.yaml
 kubectl apply --dry-run=server -f k8s/
 
 # Check Prometheus has persistent storage
-kubectl get pvc -n projectkeystone
+kubectl get pvc -n keystone
 # Should show: prometheus-data  Bound  100Gi
 
 # Verify network policies
-kubectl get networkpolicies -n projectkeystone
+kubectl get networkpolicies -n keystone
 
 # Test alert rules syntax
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 # Open http://localhost:9090/alerts
 ```
 

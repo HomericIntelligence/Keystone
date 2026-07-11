@@ -51,7 +51,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{namespace=\"projectkeystone\"}",
+          "expr": "{namespace=\"keystone\"}",
           "refId": "A"
         }
       ],
@@ -138,7 +138,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (pod) (count_over_time({namespace=\"projectkeystone\"}[1m]))",
+          "expr": "sum by (pod) (count_over_time({namespace=\"keystone\"}[1m]))",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -240,7 +240,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (level) (count_over_time({namespace=\"projectkeystone\"} |~ \"ERROR|WARN|INFO\" [1h]))",
+          "expr": "sum by (level) (count_over_time({namespace=\"keystone\"} |~ \"ERROR|WARN|INFO\" [1h]))",
           "legendFormat": "{{level}}",
           "refId": "A"
         }
@@ -277,7 +277,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{namespace=\"projectkeystone\"} |~ \"ERROR\"",
+          "expr": "{namespace=\"keystone\"} |~ \"ERROR\"",
           "refId": "A"
         }
       ],
@@ -313,7 +313,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{namespace=\"projectkeystone\"} |~ \"WARN\"",
+          "expr": "{namespace=\"keystone\"} |~ \"WARN\"",
           "refId": "A"
         }
       ],
@@ -435,7 +435,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (level) (rate({namespace=\"projectkeystone\"} |~ \"ERROR|WARN\" [5m]))",
+          "expr": "sum by (level) (rate({namespace=\"keystone\"} |~ \"ERROR|WARN\" [5m]))",
           "legendFormat": "{{level}}",
           "refId": "A"
         }
@@ -523,7 +523,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (container) (count_over_time({namespace=\"projectkeystone\"}[5m]))",
+          "expr": "sum by (container) (count_over_time({namespace=\"keystone\"}[5m]))",
           "legendFormat": "{{container}}",
           "refId": "A"
         }
@@ -582,7 +582,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({namespace=\"projectkeystone\"}[1h]))",
+          "expr": "sum(count_over_time({namespace=\"keystone\"}[1h]))",
           "legendFormat": "Total Logs (Last Hour)",
           "refId": "A"
         }
@@ -600,8 +600,8 @@
       {
         "current": {
           "selected": false,
-          "text": "projectkeystone",
-          "value": "projectkeystone"
+          "text": "keystone",
+          "value": "keystone"
         },
         "hide": 0,
         "includeAll": false,
@@ -611,11 +611,11 @@
         "options": [
           {
             "selected": true,
-            "text": "projectkeystone",
-            "value": "projectkeystone"
+            "text": "keystone",
+            "value": "keystone"
           }
         ],
-        "query": "projectkeystone",
+        "query": "keystone",
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"

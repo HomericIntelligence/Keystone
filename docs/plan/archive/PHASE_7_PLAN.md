@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 7 transforms ProjectKeystone from a traditional hierarchical multi-agent system
+Phase 7 transforms Keystone from a traditional hierarchical multi-agent system
 into an **AI-powered autonomous development platform**. This phase integrates Large
 Language Models (LLMs) to enable natural language goal processing, intelligent code
 generation, automated debugging, and adaptive task decomposition.

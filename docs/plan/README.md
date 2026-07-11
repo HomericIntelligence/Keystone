@@ -1,4 +1,4 @@
-# ProjectKeystone Implementation Plan
+# Keystone Implementation Plan
 
 > **Status**: Superseded by ADR-006 — this document has been updated to reflect the
 > current project scope. The original HMAS agent orchestration plan was migrated to
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-ProjectKeystone is a C++20 **transport infrastructure library** providing invisible,
+Keystone is a C++20 **transport infrastructure library** providing invisible,
 zero-configuration message routing for all HomericIntelligence components. It is not
 an agent system, pipeline stage, or orchestrator — it is the invisible plumbing
 beneath every other component.
@@ -39,7 +39,7 @@ The `adr/` subdirectory contains all architectural decisions:
 ## Project Directory Structure
 
 ```
-ProjectKeystone/
+Keystone/
 ├── include/                         # Public headers
 │   ├── agents/
 │   ├── concurrency/

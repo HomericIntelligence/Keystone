@@ -1,9 +1,9 @@
 @PACKAGE_INIT@
 
-# KeystoneConfig.cmake - CMake package configuration for ProjectKeystone HMAS
+# KeystoneConfig.cmake - CMake package configuration for Keystone HMAS
 #
 # This file is used by find_package(Keystone) to locate and configure
-# ProjectKeystone libraries and dependencies.
+# Keystone libraries and dependencies.
 
 include(CMakeFindDependencyMacro)
 

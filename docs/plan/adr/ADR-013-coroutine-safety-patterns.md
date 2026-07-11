@@ -7,7 +7,7 @@
 
 ## Context and Problem Statement
 
-ProjectKeystone extensively uses C++20 coroutines for asynchronous operations. Coroutines introduce unique safety
+Keystone extensively uses C++20 coroutines for asynchronous operations. Coroutines introduce unique safety
 challenges compared to traditional synchronous code:
 
 - **Lifetime Management**: Coroutine handles must be carefully managed to avoid use-after-free

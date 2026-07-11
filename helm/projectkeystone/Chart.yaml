@@ -1,6 +1,6 @@
 apiVersion: v2
-name: projectkeystone
-description: ProjectKeystone HMAS - Hierarchical Multi-Agent System
+name: keystone
+description: Keystone HMAS - Hierarchical Multi-Agent System
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
@@ -10,10 +10,10 @@ keywords:
   - hierarchical
   - multi-agent
   - c++20
-home: https://github.com/user/ProjectKeystone
+home: https://github.com/user/Keystone
 sources:
-  - https://github.com/user/ProjectKeystone
+  - https://github.com/user/Keystone
 maintainers:
-  - name: ProjectKeystone Team
-    email: team@projectkeystone.dev
-icon: https://example.com/projectkeystone-icon.png
+  - name: Keystone Team
+    email: team@keystone.dev
+icon: https://example.com/keystone-icon.png

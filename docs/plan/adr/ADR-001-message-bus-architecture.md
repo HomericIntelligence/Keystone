@@ -2,19 +2,19 @@
 
 **Status**: Accepted
 **Date**: 2025-11-18
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, messaging, phase1
 
 ## Context
 
-Phase 1 of ProjectKeystone initially implemented direct agent-to-agent communication via
+Phase 1 of Keystone initially implemented direct agent-to-agent communication via
 raw pointers (`sendMessage(msg, BaseAgent* target)`). Code review identified this as a
 critical architectural debt that would not scale to the 4-layer hierarchy (L0→L1→L2→L3)
 and 100+ agent deployments planned for Phases 2-5.
 
 > **Note (ADR-015)**: The 4-layer HMAS hierarchy (L0 `ChiefArchitectAgent`,
 > L1 `ComponentLeadAgent`, L2 `ModuleLeadAgent`, L3 `TaskAgent`) has since been
-> extracted from ProjectKeystone into **ProjectAgamemnon** (see ADR-015). This ADR
+> extracted from Keystone into **ProjectAgamemnon** (see ADR-015). This ADR
 > documents the original MessageBus design decision, which still applies to
 > Keystone's transport primitives. References to agent types below are historical.
 
@@ -261,4 +261,4 @@ public:
 
 **Last Updated**: 2025-11-18
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

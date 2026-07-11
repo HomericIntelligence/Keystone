@@ -2,7 +2,7 @@
 
 ## Overview
 
-ProjectKeystone uses a **4-layer hierarchical architecture** that mirrors the agent development structure used to build
+Keystone uses a **4-layer hierarchical architecture** that mirrors the agent development structure used to build
 it. This creates a self-similar, fractal-like organization where the system's structure reflects its development
 process.
 

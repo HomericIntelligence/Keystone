@@ -4,7 +4,7 @@
 
 **Phase 8 Implementation: 71% Complete (10/14 core components)**
 
-ProjectKeystone HMAS now has a production-ready foundation for distributed multi-node operation. The system can
+Keystone HMAS now has a production-ready foundation for distributed multi-node operation. The system can
 coordinate agents across multiple Docker containers using gRPC and YAML-based task specifications.
 
 ---
@@ -765,7 +765,7 @@ brew install grpc protobuf
 ### Build Commands
 
 ```bash
-cd /home/mvillmow/ProjectKeystone
+cd /home/mvillmow/Keystone
 
 # Create build directory
 mkdir -p build && cd build

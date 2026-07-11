@@ -6,7 +6,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: hmas
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
     component: agent-system
@@ -14,7 +14,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: projectkeystone
+      app.kubernetes.io/name: keystone
       app.kubernetes.io/component: agent-system
   endpoints:
     - port: metrics
@@ -24,4 +24,4 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - projectkeystone
+      - keystone

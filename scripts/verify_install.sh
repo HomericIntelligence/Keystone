@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installation Verification Script for ProjectKeystone HMAS
+# Installation Verification Script for Keystone HMAS
 # Verifies all build/test/install steps from README.md
 
 set -e  # Exit on error
@@ -274,7 +274,7 @@ main() {
     # Save project root
     PROJECT_ROOT="$(pwd)"
 
-    print_header "ProjectKeystone HMAS - Installation Verification"
+    print_header "Keystone HMAS - Installation Verification"
     print_info "Verifying all installation and build steps from README.md..."
 
     # Trap cleanup on exit
@@ -300,7 +300,7 @@ main() {
 
     if [[ $TESTS_FAILED -eq 0 ]]; then
         print_success "All installation verification checks passed!"
-        print_info "ProjectKeystone HMAS is ready to use."
+        print_info "Keystone HMAS is ready to use."
         exit 0
     else
         print_error "Some verification checks failed."

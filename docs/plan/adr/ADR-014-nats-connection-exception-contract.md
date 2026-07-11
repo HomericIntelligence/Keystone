@@ -2,12 +2,12 @@
 
 **Status**: Accepted
 **Date**: 2026-04-24
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, error-handling, nats, transport
 
 ## Context
 
-ProjectKeystone uses NATS JetStream for cross-host message delivery. The
+Keystone uses NATS JetStream for cross-host message delivery. The
 `INatsConnection` interface abstracts the nats.c client library and serves as the
 foundation for all NATS operations, including stream subscription, message
 publishing, and consumer management.
@@ -267,7 +267,7 @@ TEST(NatsListenerTest, TransientErrorIsRetried) {
 - [cppreference: std::system_error](https://en.cppreference.com/w/cpp/error/system_error)
 - [cppreference: std::runtime_error](https://en.cppreference.com/w/cpp/error/runtime_error)
 - NATS C Client Documentation: <https://github.com/nats-io/nats.c>
-- ProjectKeystone CLAUDE.md: NATS Subject Schema and Rate Limiting sections
+- Keystone CLAUDE.md: NATS Subject Schema and Rate Limiting sections
 
 ## Revision History
 

@@ -1,10 +1,10 @@
-# CI/CD Quality Gates for ProjectKeystone
+# CI/CD Quality Gates for Keystone
 
-This document describes the automated quality gates enforced in ProjectKeystone's CI/CD pipeline.
+This document describes the automated quality gates enforced in Keystone's CI/CD pipeline.
 
 ## Overview
 
-ProjectKeystone implements **5 quality gates** that must pass before code can be merged:
+Keystone implements **5 quality gates** that must pass before code can be merged:
 
 1. **Code Coverage** - ≥95% line coverage required
 2. **Static Analysis** - Zero critical errors from clang-tidy and cppcheck

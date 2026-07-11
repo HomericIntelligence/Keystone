@@ -10,7 +10,7 @@
 > `ModuleLeadAgent`, `ComponentLeadAgent`) described in this ADR has been extracted
 > into **ProjectAgamemnon**. This ADR is preserved as the historical record of the
 > unification decision; the `BaseAgent` class hierarchy it documents now lives in
-> ProjectAgamemnon, not in ProjectKeystone.
+> ProjectAgamemnon, not in Keystone.
 
 The codebase had a dual hierarchy with both synchronous (`BaseAgent`) and asynchronous (`AsyncBaseAgent`) agent
 classes. This created:

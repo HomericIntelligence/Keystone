@@ -1,4 +1,4 @@
-# RBAC policies for ProjectKeystone HMAS
+# RBAC policies for Keystone HMAS
 # Fine-grained access control for service accounts and users
 
 ---
@@ -7,7 +7,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: hmas
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
 automountServiceAccountToken: true
@@ -18,7 +18,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: hmas-pod
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
 rules:
@@ -44,7 +44,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: hmas-pod
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
 roleRef:
@@ -54,7 +54,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: hmas
-    namespace: projectkeystone
+    namespace: keystone
 
 ---
 # Role: Monitoring read-only access (for Prometheus/Grafana)
@@ -62,7 +62,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: monitoring-reader
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     component: monitoring
 rules:
@@ -82,7 +82,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: prometheus-monitoring
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 roleRef:
@@ -92,14 +92,14 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: prometheus
-    namespace: projectkeystone
+    namespace: keystone
 
 ---
 # ClusterRole: Read-only cluster metrics (for Prometheus node exporter)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: projectkeystone-metrics-reader
+  name: keystone-metrics-reader
   labels:
     app: prometheus
 rules:
@@ -118,17 +118,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: projectkeystone-prometheus-metrics
+  name: keystone-prometheus-metrics
   labels:
     app: prometheus
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: projectkeystone-metrics-reader
+  name: keystone-metrics-reader
 subjects:
   - kind: ServiceAccount
     name: prometheus
-    namespace: projectkeystone
+    namespace: keystone
 
 ---
 # Role: Grafana read-only access
@@ -136,7 +136,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: grafana-reader
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: grafana
 rules:
@@ -151,7 +151,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: grafana-reader
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: grafana
 roleRef:
@@ -161,7 +161,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: grafana
-    namespace: projectkeystone
+    namespace: keystone
 
 ---
 # Production: User RBAC (example for operations team)
@@ -170,7 +170,7 @@ subjects:
 # kind: Role
 # metadata:
 #   name: hmas-operator
-#   namespace: projectkeystone
+#   namespace: keystone
 # rules:
 #   # Full access to HMAS resources
 #   - apiGroups: ["", "apps", "batch"]
@@ -182,7 +182,7 @@ subjects:
 # kind: RoleBinding
 # metadata:
 #   name: ops-team-hmas
-#   namespace: projectkeystone
+#   namespace: keystone
 # roleRef:
 #   apiGroup: rbac.authorization.k8s.io
 #   kind: Role

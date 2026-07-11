@@ -257,14 +257,14 @@ kubectl apply -f k8s/
 **Check Pod Status**:
 
 ```bash
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 # Pods should show Ready: 1/1
 ```
 
 **Check Probe Status**:
 
 ```bash
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 # Look for "Liveness" and "Readiness" probe events
 ```
 
@@ -272,7 +272,7 @@ kubectl describe pod -n projectkeystone <pod-name>
 
 ```bash
 # Port-forward to pod
-kubectl port-forward -n projectkeystone <pod-name> 8080:8080
+kubectl port-forward -n keystone <pod-name> 8080:8080
 
 # Test endpoints
 curl http://localhost:8080/healthz
@@ -346,8 +346,8 @@ namespace Config {
 **Diagnosis**:
 
 ```bash
-kubectl logs -n projectkeystone <pod-name>
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 ```
 
 **Common Causes**:
@@ -369,10 +369,10 @@ kubectl describe pod -n projectkeystone <pod-name>
 **Diagnosis**:
 
 ```bash
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 # Check "Readiness" events
 
-kubectl get endpoints -n projectkeystone
+kubectl get endpoints -n keystone
 # Check if pod IP is in endpoints list
 ```
 
@@ -394,7 +394,7 @@ kubectl get endpoints -n projectkeystone
 **Diagnosis**:
 
 ```bash
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 # Look for "Liveness probe failed: Get...: context deadline exceeded"
 ```
 

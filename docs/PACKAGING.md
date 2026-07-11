@@ -1,10 +1,10 @@
-# ProjectKeystone Packaging Guide
+# Keystone Packaging Guide
 
-This document describes the CPack-based packaging system for ProjectKeystone HMAS.
+This document describes the CPack-based packaging system for Keystone HMAS.
 
 ## Package Overview
 
-ProjectKeystone is distributed as five separate packages to support different use cases:
+Keystone is distributed as five separate packages to support different use cases:
 
 ### 1. keystone (Runtime Package)
 
@@ -12,14 +12,14 @@ ProjectKeystone is distributed as five separate packages to support different us
 
 - DEB: `libkeystone0`
 - RPM: `keystone`
-- Archive: `ProjectKeystone-<version>-Linux-keystone.tar.gz`
+- Archive: `Keystone-<version>-Linux-keystone.tar.gz`
 
 **Contents:**
 
 - Runtime shared libraries (`.so` files)
 - Core documentation (README.md, LICENSE, CLAUDE.md)
 
-**Target Users:** End users running applications built with ProjectKeystone
+**Target Users:** End users running applications built with Keystone
 
 **Dependencies:**
 
@@ -32,7 +32,7 @@ ProjectKeystone is distributed as five separate packages to support different us
 
 - DEB: `libkeystone-dev`
 - RPM: `keystone-devel`
-- Archive: `ProjectKeystone-<version>-Linux-keystone-dev.tar.gz`
+- Archive: `Keystone-<version>-Linux-keystone-dev.tar.gz`
 
 **Contents:**
 
@@ -45,7 +45,7 @@ ProjectKeystone is distributed as five separate packages to support different us
 - Proto files (if gRPC enabled)
 - Build documentation (Dockerfile, docker-compose.yaml)
 
-**Target Users:** Developers building applications with ProjectKeystone
+**Target Users:** Developers building applications with Keystone
 
 **Dependencies:**
 
@@ -71,7 +71,7 @@ target_link_libraries(my_app
 
 - DEB: `keystone-doc`
 - RPM: `keystone-doc`
-- Archive: `ProjectKeystone-<version>-Linux-keystone-doc.tar.gz`
+- Archive: `Keystone-<version>-Linux-keystone-doc.tar.gz`
 
 **Contents:**
 
@@ -91,7 +91,7 @@ target_link_libraries(my_app
 
 - DEB: `keystone-test`
 - RPM: `keystone-test`
-- Archive: `ProjectKeystone-<version>-Linux-keystone-test.tar.gz`
+- Archive: `Keystone-<version>-Linux-keystone-test.tar.gz`
 
 **Contents:**
 
@@ -132,7 +132,7 @@ sudo apt install keystone-test
 
 - DEB: `keystone-tools`
 - RPM: `keystone-tools`
-- Archive: `ProjectKeystone-<version>-Linux-keystone-misc.tar.gz`
+- Archive: `Keystone-<version>-Linux-keystone-misc.tar.gz`
 
 **Contents:**
 
@@ -187,11 +187,11 @@ cpack
 
 This generates:
 
-- `ProjectKeystone-0.1.0-Linux-keystone.tar.gz`
-- `ProjectKeystone-0.1.0-Linux-keystone-dev.tar.gz`
-- `ProjectKeystone-0.1.0-Linux-keystone-doc.tar.gz`
-- `ProjectKeystone-0.1.0-Linux-keystone-test.tar.gz`
-- `ProjectKeystone-0.1.0-Linux-keystone-misc.tar.gz`
+- `Keystone-0.1.0-Linux-keystone.tar.gz`
+- `Keystone-0.1.0-Linux-keystone-dev.tar.gz`
+- `Keystone-0.1.0-Linux-keystone-doc.tar.gz`
+- `Keystone-0.1.0-Linux-keystone-test.tar.gz`
+- `Keystone-0.1.0-Linux-keystone-misc.tar.gz`
 - `libkeystone0_0.1.0_amd64.deb` (and 4 more .deb files)
 - `keystone-0.1.0-1.x86_64.rpm` (and 4 more .rpm files)
 
@@ -280,13 +280,13 @@ sudo yum localinstall keystone-0.1.0-1.x86_64.rpm
 
 ```bash
 # Extract runtime package
-tar -xzf ProjectKeystone-0.1.0-Linux-keystone.tar.gz -C /opt/keystone
+tar -xzf Keystone-0.1.0-Linux-keystone.tar.gz -C /opt/keystone
 
 # Set library path
 export LD_LIBRARY_PATH=/opt/keystone/lib:$LD_LIBRARY_PATH
 
 # Or install to system directories
-sudo tar -xzf ProjectKeystone-0.1.0-Linux-keystone.tar.gz -C /usr/local
+sudo tar -xzf Keystone-0.1.0-Linux-keystone.tar.gz -C /usr/local
 sudo ldconfig
 ```
 
@@ -364,7 +364,7 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 ├── libkeystone_concurrency.so
 └── libkeystone_simulation.so
 
-/usr/share/doc/ProjectKeystone/
+/usr/share/doc/Keystone/
 ├── README.md
 ├── CLAUDE.md
 └── LICENSE
@@ -395,7 +395,7 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 ├── KeystoneConfigVersion.cmake
 └── KeystoneTargets.cmake
 
-/usr/share/doc/ProjectKeystone/build/
+/usr/share/doc/Keystone/build/
 ├── Dockerfile
 └── docker-compose.yaml
 ```
@@ -403,7 +403,7 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 ### keystone-doc Documentation Package
 
 ```
-/usr/share/doc/ProjectKeystone/
+/usr/share/doc/Keystone/
 ├── MONITORING.md
 ├── KUBERNETES_DEPLOYMENT.md
 ├── PHASE_8_COMPLETE.md
@@ -518,8 +518,8 @@ cpack --config CPackSourceConfig.cmake
 
 This generates:
 
-- `ProjectKeystone-0.1.0-Source.tar.gz`
-- `ProjectKeystone-0.1.0-Source.zip`
+- `Keystone-0.1.0-Source.tar.gz`
+- `Keystone-0.1.0-Source.zip`
 
 Source packages exclude build artifacts and version control files.
 
@@ -580,5 +580,5 @@ docker run --rm -v $(pwd):/workspace -w /workspace ubuntu:22.04 bash -c \
 ## References
 
 - [CPack Documentation](https://cmake.org/cmake/help/latest/module/CPack.html)
-- [ProjectKeystone Architecture](docs/plan/FOUR_LAYER_ARCHITECTURE.md)
+- [Keystone Architecture](docs/plan/FOUR_LAYER_ARCHITECTURE.md)
 - [Build System Guide](docs/plan/build-system.md)

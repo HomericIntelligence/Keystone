@@ -11,7 +11,7 @@ namespace core {
 /**
  * @brief Agent hierarchy levels in the 4-layer HMAS architecture
  *
- * ProjectKeystone implements a 4-layer hierarchy:
+ * Keystone implements a 4-layer hierarchy:
  * - L0 (Chief Architect): Strategic decisions, system-wide coordination
  * - L1 (Component Lead): Component architecture, module coordination
  * - L2 (Module Lead): Module design, task decomposition

@@ -1,4 +1,4 @@
-title = "ProjectKeystone Gitleaks Configuration"
+title = "Keystone Gitleaks Configuration"
 
 [extend]
 # Use the default Gitleaks ruleset as the base

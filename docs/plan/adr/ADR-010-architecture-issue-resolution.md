@@ -3,7 +3,7 @@
 > **Note (ADR-015)**: Agent types referenced in code examples below
 > (`ChiefArchitectAgent`, `TaskAgent`, etc.) have been extracted into
 > **ProjectAgamemnon**. The transport-layer fixes documented here (MessageBus
-> lifetime safety, scheduler thread safety) remain part of ProjectKeystone.
+> lifetime safety, scheduler thread safety) remain part of Keystone.
 
 ## Overview
 

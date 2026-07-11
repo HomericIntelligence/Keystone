@@ -2,12 +2,12 @@
 
 **Status**: Accepted
 **Date**: 2025-11-21
-**Deciders**: ProjectKeystone Development Team
+**Deciders**: Keystone Development Team
 **Tags**: architecture, performance, memory, phase-d
 
 ## Context
 
-ProjectKeystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load.
+Keystone's hierarchical agent system generates thousands of `KeystoneMessage` objects per second under load.
 Each message allocation/deallocation incurs overhead from the system allocator (malloc/free), causing performance
 degradation and memory fragmentation at scale.
 
@@ -466,4 +466,4 @@ strategies
 
 **Last Updated**: 2025-11-21
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

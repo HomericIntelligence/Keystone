@@ -1,9 +1,9 @@
-# ProjectKeystone Message Protocol Extensions
+# Keystone Message Protocol Extensions
 
 ## Overview
 
 This document describes extensions to the core Keystone Interchange Message (KIM) protocol implemented in
-ProjectKeystone HMAS. These extensions add new capabilities while maintaining backward compatibility with the base
+Keystone HMAS. These extensions add new capabilities while maintaining backward compatibility with the base
 protocol.
 
 **Base Protocol**: Keystone Interchange Message (KIM)

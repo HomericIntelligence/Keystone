@@ -1,5 +1,5 @@
-# Clang-Format configuration for ProjectKeystone HMAS
-# Based on Google C++ Style Guide with ProjectKeystone-specific customizations
+# Clang-Format configuration for Keystone HMAS
+# Based on Google C++ Style Guide with Keystone-specific customizations
 # See https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 
 BasedOnStyle: Google

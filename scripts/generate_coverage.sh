@@ -1,6 +1,6 @@
 #!/bin/bash
 # generate_coverage.sh
-# Generates code coverage reports for ProjectKeystone
+# Generates code coverage reports for Keystone
 #
 # Usage: ./scripts/generate_coverage.sh [--html-only]
 #
@@ -54,7 +54,7 @@ if ! command -v genhtml &> /dev/null; then
     exit 1
 fi
 
-echo -e "${BLUE}=== ProjectKeystone Code Coverage Generator ===${NC}"
+echo -e "${BLUE}=== Keystone Code Coverage Generator ===${NC}"
 echo ""
 
 # Resolve gcov tool: Clang-compiled .gcda files need llvm-cov gcov, not system gcov.

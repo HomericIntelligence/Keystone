@@ -1,7 +1,7 @@
-# ProjectKeystone CI/CD Workflows
+# Keystone CI/CD Workflows
 
 This directory contains GitHub Actions workflows for automated testing, building, and
-security scanning of the ProjectKeystone HMAS (Hierarchical Multi-Agent System) codebase.
+security scanning of the Keystone HMAS (Hierarchical Multi-Agent System) codebase.
 
 ## Workflow Overview
 
@@ -406,9 +406,9 @@ cd build && ctest --output-on-failure
 
 ```bash
 # Build specific Containerfile target
-podman build --target builder -t projectkeystone:builder .
-podman build --target runtime -t projectkeystone:runtime .
-podman build --target development -t projectkeystone:dev .
+podman build --target builder -t keystone:builder .
+podman build --target runtime -t keystone:runtime .
+podman build --target development -t keystone:dev .
 ```
 
 ### Running Security Scans Locally
@@ -430,14 +430,14 @@ cppcheck --enable=all --suppress=missingIncludeSystem -I include src/
 # ASan + UBSan
 docker build \
   --build-arg CMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
-  -t projectkeystone:asan .
-docker run --rm projectkeystone:asan
+  -t keystone:asan .
+docker run --rm keystone:asan
 
 # TSan
 docker build \
   --build-arg CMAKE_CXX_FLAGS="-fsanitize=thread -g" \
-  -t projectkeystone:tsan .
-docker run --rm projectkeystone:tsan
+  -t keystone:tsan .
+docker run --rm keystone:tsan
 
 # Native build with sanitizers
 mkdir -p build-asan && cd build-asan
@@ -527,4 +527,4 @@ For workflow issues:
 
 **Last Updated**: 2025-11-18
 **Workflow Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)
