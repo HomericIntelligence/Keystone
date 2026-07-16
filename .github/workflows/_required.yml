@@ -483,10 +483,18 @@ jobs:
         run: make compile.debug
 
       - name: Run C++ unit tests
+        # Must run inside the dev container: `make compile.debug` configures the
+        # build tree in-container (CONTAINER_PREFIX), so the generated
+        # CTestTestfile.cmake references *_include.cmake files by their
+        # in-container /workspace/build/x86.debug paths. Running ctest on the
+        # host fails every include with "include could not find requested file:
+        # /workspace/build/x86.debug/..." (#568 migration gap).
         run: |
-          cd build/x86.debug
-          ctest --output-on-failure -L unit -j$(nproc) || \
-          ctest --output-on-failure -E 'integration|sample|example|application' -j$(nproc)
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            cd build/x86.debug
+            ctest --output-on-failure -L unit -j"$(nproc)" || \
+            ctest --output-on-failure -E "integration|sample|example|application" -j"$(nproc)"
+          '
 
       - name: Show sccache stats
         if: always()
@@ -686,9 +694,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step above for the full rationale). Matches the `build` job's
+          # key so both jobs share the same warm release _deps cache.
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -700,19 +712,30 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        # The %.native Makefile targets were removed by the Podman migration
+        # (#501/#568); this job was left on the deleted deps.native /
+        # compile.release.native paths, failing with "No rule to make target".
+        run: make deps
 
       - name: Build release
-        run: make compile.release.native
+        run: make compile.release
 
       - name: Build CPack packages (DEB, RPM, TGZ, ZIP)
+        # Must run inside the dev container: the release tree was configured
+        # in-container, so CPackConfig.cmake and the CMake cache reference the
+        # in-container /workspace/build/x86.release root. The dev image ships
+        # rpmbuild (Containerfile development stage) for the RPM generator; the
+        # produced packages land in the bind-mounted build/ dir for the host
+        # steps below.
         run: |
-          set -euo pipefail
-          cd build/x86.release
-          cpack -G DEB
-          cpack -G RPM
-          cpack -G TGZ
-          cpack -G ZIP
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            set -euo pipefail
+            cd build/x86.release
+            cpack -G DEB
+            cpack -G RPM
+            cpack -G TGZ
+            cpack -G ZIP
+          '
 
       - name: List produced packages
         run: |

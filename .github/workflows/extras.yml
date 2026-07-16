@@ -42,9 +42,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches. `make compile.release` configures inside the dev container
+          # (/workspace/build/...), so restoring a host-stamped _deps cache
+          # makes cmake abort with "The current CMakeCache.txt directory ... is
+          # different than the directory ... where CMakeCache.txt was created"
+          # (#568 migration gap). Matches _required.yml's `build` job key so the
+          # warm release _deps cache is shared.
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -79,7 +86,11 @@ jobs:
   nats-integration:
     name: NATS integration tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 20 (was 15): leave headroom for a cold dev-image rebuild — any
+    # Containerfile/conanfile.py change misses the exact-match image cache in
+    # install-build-deps and rebuilds the image in-job (~7-10 min) before
+    # deps/compile even start.
+    timeout-minutes: 20
 
     services:
       nats:
@@ -107,9 +118,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: see the benchmarks job's cache step above — restoring a
+          # pre-migration host-path-stamped _deps cache breaks the in-container
+          # cmake configure (#568 migration gap).
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
