@@ -148,7 +148,11 @@ CMD ["/usr/local/bin/keystone-server"]
 # Stage 4: Development environment (for iterative development)
 FROM builder AS development
 
-# Install additional development tools
+# Install additional development tools.
+# rpm provides rpmbuild, required by CPack's RPM generator: the CI `package`
+# job runs `cpack -G RPM` inside this container (the release tree is
+# configured in-container, so cpack must run here too — see
+# .github/workflows/_required.yml).
 RUN apt-get update && apt-get install -y \
     gdb \
     valgrind \
@@ -157,6 +161,7 @@ RUN apt-get update && apt-get install -y \
     cppcheck \
     lcov \
     bc \
+    rpm \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace

@@ -483,10 +483,18 @@ jobs:
         run: make compile.debug
 
       - name: Run C++ unit tests
+        # Must run inside the dev container: `make compile.debug` configures the
+        # build tree in-container (CONTAINER_PREFIX), so the generated
+        # CTestTestfile.cmake references *_include.cmake files by their
+        # in-container /workspace/build/x86.debug paths. Running ctest on the
+        # host fails every include with "include could not find requested file:
+        # /workspace/build/x86.debug/..." (#568 migration gap).
         run: |
-          cd build/x86.debug
-          ctest --output-on-failure -L unit -j$(nproc) || \
-          ctest --output-on-failure -E 'integration|sample|example|application' -j$(nproc)
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            cd build/x86.debug
+            ctest --output-on-failure -L unit -j"$(nproc)" || \
+            ctest --output-on-failure -E "integration|sample|example|application" -j"$(nproc)"
+          '
 
       - name: Show sccache stats
         if: always()
@@ -686,9 +694,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
           path: build/x86.release/_deps
-          key: fetchcontent-release-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
+          # caches; in-container builds use /workspace/build/... (see clang-tidy
+          # cache step above for the full rationale). Matches the `build` job's
+          # key so both jobs share the same warm release _deps cache.
+          key: fetchcontent-release-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            fetchcontent-release-${{ runner.os }}-
+            fetchcontent-release-podman-v2-${{ runner.os }}-
 
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696  # v0.0.10
@@ -700,19 +712,30 @@ jobs:
           echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
-        run: make deps.native
+        # The %.native Makefile targets were removed by the Podman migration
+        # (#501/#568); this job was left on the deleted deps.native /
+        # compile.release.native paths, failing with "No rule to make target".
+        run: make deps
 
       - name: Build release
-        run: make compile.release.native
+        run: make compile.release
 
       - name: Build CPack packages (DEB, RPM, TGZ, ZIP)
+        # Must run inside the dev container: the release tree was configured
+        # in-container, so CPackConfig.cmake and the CMake cache reference the
+        # in-container /workspace/build/x86.release root. The dev image ships
+        # rpmbuild (Containerfile development stage) for the RPM generator; the
+        # produced packages land in the bind-mounted build/ dir for the host
+        # steps below.
         run: |
-          set -euo pipefail
-          cd build/x86.release
-          cpack -G DEB
-          cpack -G RPM
-          cpack -G TGZ
-          cpack -G ZIP
+          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
+            set -euo pipefail
+            cd build/x86.release
+            cpack -G DEB
+            cpack -G RPM
+            cpack -G TGZ
+            cpack -G ZIP
+          '
 
       - name: List produced packages
         run: |
@@ -833,6 +856,189 @@ jobs:
               sys.exit(1)
 
           print(f"\nAll versions agree: {unique.pop()}")
+          PYEOF
+
+  # ============================================================
+  # 7a. release  (canonical)
+  #    PR-time release validation. The homeric-main-baseline ruleset
+  #    requires a `release` status context on every PR, but the only
+  #    job that used to carry that name was the tag-gated publish job
+  #    in release-please.yml (now `publish-release`), which is guarded
+  #    by `release_created == 'true'` and therefore can never post a
+  #    check on a pull request. This job is the real PR-time gate: it
+  #    dry-validates everything the release pipeline depends on
+  #    (release-please config/manifest, version consistency across
+  #    release surfaces, CHANGELOG preconditions, CPack packaging
+  #    metadata) without a second compile, so a broken release setup
+  #    fails the PR instead of the eventual tagged release.
+  # ============================================================
+  release:
+    name: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        with:
+          python-version: "3.11"
+
+      - name: Validate release-please config and manifest
+        run: |
+          python3 - <<'PYEOF'
+          import json, re, pathlib, sys
+
+          root = pathlib.Path(".")
+          failures = []
+
+          # 1. Both files must parse as JSON.
+          config = json.loads((root / "release-please-config.json").read_text())
+          manifest = json.loads((root / ".release-please-manifest.json").read_text())
+          print("release-please-config.json  : parses")
+          print(".release-please-manifest.json: parses")
+
+          # 2. Manifest must carry a semver version for the root package.
+          version = manifest.get(".")
+          if not version or not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              failures.append(f"manifest '.' entry is not X.Y.Z semver: {version!r}")
+          else:
+              print(f"manifest version             : {version}")
+
+          # 3. Every extra-files search regex must still match its target
+          #    file. If a refactor renames the version line, release-please
+          #    silently stops bumping that file — catch the drift here.
+          for extra in config.get("extra-files", []):
+              path = extra.get("path", "")
+              target = root / path
+              if not target.is_file():
+                  failures.append(f"extra-files target missing: {path}")
+                  continue
+              text = target.read_text()
+              for rule in extra.get("data", []):
+                  pattern = rule.get("search", "")
+                  if not re.search(pattern, text, re.MULTILINE):
+                      failures.append(
+                          f"extra-files regex no longer matches {path}: {pattern!r}"
+                      )
+                  else:
+                      print(f"extra-files regex matches    : {path} ~ {pattern!r}")
+
+          if failures:
+              print("\nrelease-please validation FAILED:")
+              for f in failures:
+                  print(f"  - {f}")
+              sys.exit(1)
+          print("\nrelease-please config and manifest are release-ready")
+          PYEOF
+
+      - name: Verify version consistency across release surfaces
+        run: |
+          python3 - <<'PYEOF'
+          import json, re, pathlib, sys, tomllib
+
+          root = pathlib.Path(".")
+
+          manifest_ver = json.loads(
+              (root / ".release-please-manifest.json").read_text()
+          ).get(".")
+
+          cmake_text = (root / "CMakeLists.txt").read_text()
+          cmake_m = re.search(r"project\s*\([^)]*VERSION\s+([\d.]+)", cmake_text, re.DOTALL)
+          cmake_ver = cmake_m.group(1) if cmake_m else None
+
+          conan_m = re.search(
+              r'version\s*=\s*["\']([^"\']+)["\']',
+              (root / "conanfile.py").read_text(),
+          )
+          conan_ver = conan_m.group(1) if conan_m else None
+
+          with open(root / "pixi.toml", "rb") as fh:
+              pixi_ver = tomllib.load(fh).get("project", {}).get("version")
+
+          versions = {
+              ".release-please-manifest.json": manifest_ver,
+              "CMakeLists.txt":                cmake_ver,
+              "conanfile.py":                  conan_ver,
+              "pixi.toml":                     pixi_ver,
+          }
+          for k, v in versions.items():
+              print(f"{k:32s}: {v}")
+
+          missing = [k for k, v in versions.items() if v is None]
+          if missing:
+              print(f"\nVersion not found in: {', '.join(missing)}")
+              sys.exit(1)
+          if len(set(versions.values())) != 1:
+              print("\nRelease surfaces disagree on version")
+              sys.exit(1)
+          print(f"\nAll release surfaces agree: {manifest_ver}")
+          PYEOF
+
+      - name: Verify CHANGELOG preconditions
+        run: |
+          python3 - <<'PYEOF'
+          import pathlib, sys
+
+          text = pathlib.Path("CHANGELOG.md").read_text()
+          failures = []
+          if not text.strip():
+              failures.append("CHANGELOG.md is empty")
+          if not text.lstrip().startswith("# Changelog"):
+              failures.append("CHANGELOG.md must start with '# Changelog' heading")
+          if "## " not in text:
+              failures.append("CHANGELOG.md has no '## ' release/Unreleased section")
+          if failures:
+              for f in failures:
+                  print(f"FAIL: {f}")
+              sys.exit(1)
+          print("CHANGELOG.md present with heading and at least one section")
+          PYEOF
+
+      - name: Dry-validate CPack packaging metadata
+        # Static validation of the CPack setup the tagged publish-release
+        # job depends on — no configure/compile, so it stays fast. Checks
+        # that CPack is actually included, the package identity fields are
+        # set, and every resource file CPack will embed exists in the tree.
+        run: |
+          python3 - <<'PYEOF'
+          import pathlib, re, sys
+
+          root = pathlib.Path(".")
+          text = (root / "CMakeLists.txt").read_text()
+          failures = []
+
+          if not re.search(r"^\s*include\s*\(\s*CPack\s*\)", text, re.MULTILINE):
+              failures.append("CMakeLists.txt never include(CPack)s")
+
+          for var in (
+              "CPACK_PACKAGE_NAME",
+              "CPACK_PACKAGE_VERSION",
+              "CPACK_PACKAGE_CONTACT",
+          ):
+              if not re.search(rf"set\s*\(\s*{var}\b", text):
+                  failures.append(f"{var} is not set")
+
+          # Resource files CPack embeds into DEB/RPM/archive metadata.
+          for var in ("CPACK_RESOURCE_FILE_LICENSE", "CPACK_RESOURCE_FILE_README"):
+              m = re.search(
+                  rf'set\s*\(\s*{var}\s+"?\$\{{PROJECT_SOURCE_DIR\}}/([^")\s]+)', text
+              )
+              if not m:
+                  failures.append(f"{var} is not set to a PROJECT_SOURCE_DIR path")
+              elif not (root / m.group(1)).is_file():
+                  failures.append(f"{var} points at missing file: {m.group(1)}")
+              else:
+                  print(f"{var:28s}: {m.group(1)} exists")
+
+          if failures:
+              print("\nCPack dry-validation FAILED:")
+              for f in failures:
+                  print(f"  - {f}")
+              sys.exit(1)
+          print("\nCPack packaging metadata is release-ready")
           PYEOF
 
   # ============================================================
