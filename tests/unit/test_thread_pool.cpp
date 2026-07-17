@@ -25,9 +25,10 @@ using namespace keystone::concurrency;
 // Under sanitizer builds (asan/tsan/ubsan/lsan), thread startup/join
 // instrumentation makes ThreadPool(4) + ~ThreadPool() exceed CTest's timeout,
 // so the test skips itself at runtime when compiled with
-// -DKEYSTONE_SANITIZER_BUILD=1 (injected by the Makefile %.asan/%.ubsan/%.lsan/%.tsan
-// rules and by the asan/ubsan/tsan CMake presets). The non-sanitizer
-// `unit-tests` CI job runs it normally. See issues #511 and #586.
+// -DKEYSTONE_SANITIZER_BUILD=1 (injected by the Makefile
+// %.asan/%.ubsan/%.lsan/%.tsan rules and by the asan/ubsan/tsan CMake presets).
+// The non-sanitizer `unit-tests` CI job runs it normally. See issues #511 and
+// #586.
 TEST(ThreadPoolTest, CreateAndDestroy) {
 #ifdef KEYSTONE_SANITIZER_BUILD
   GTEST_SKIP() << "Disabled under sanitizers (#586): construction+destruction "
