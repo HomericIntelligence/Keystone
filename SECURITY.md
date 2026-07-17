@@ -8,14 +8,14 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in ProjectKeystone, please report it responsibly.
+If you discover a security vulnerability in Keystone, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
 ### Reporting via GitHub Security Advisories (Recommended)
 
 Private vulnerability reporting via [GitHub Security
-Advisories](https://github.com/HomericIntelligence/ProjectKeystone/security/advisories/new) is **enabled** for this
+Advisories](https://github.com/HomericIntelligence/Keystone/security/advisories/new) is **enabled** for this
 repository. This is the preferred method for reporting vulnerabilities as it provides a private communication channel
 between you and the maintainers.
 
@@ -24,7 +24,7 @@ between you and the maintainers.
 When reporting a vulnerability, please provide:
 
 - **Component**: Which component is affected (e.g., `MessageBus`, `NATS client`, `Docker container`)
-- **Version**: The affected version of ProjectKeystone (e.g., 0.1.x)
+- **Version**: The affected version of Keystone (e.g., 0.1.x)
 - **Description**: A clear description of the vulnerability
 - **Steps to reproduce**: Detailed steps to reproduce the issue
 - **Potential impact**: The security impact and severity (e.g., privilege escalation, data leak, DoS)
@@ -53,9 +53,9 @@ The following items are explicitly **NOT** covered by this security policy:
 - Social engineering attacks against maintainers or users
 - Vulnerabilities in third-party dependencies already tracked and monitored by Dependabot
 - Physical security issues requiring direct access to the host machine or network infrastructure
-- Issues in external services or platforms that ProjectKeystone depends on (NATS, BlazingMQ)
+- Issues in external services or platforms that Keystone depends on (NATS, BlazingMQ)
 - Attacks involving compromised or untrusted dependencies at build time
-- Security issues in user code or applications that use ProjectKeystone
+- Security issues in user code or applications that use Keystone
 - Vulnerabilities in the Tailscale mesh network itself
 
 ### Credit policy

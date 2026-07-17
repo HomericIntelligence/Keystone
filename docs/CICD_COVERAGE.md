@@ -39,7 +39,7 @@ This document maps README.md instructions to CI/CD workflow validation.
 | `make docker.up` | `docker-tests.yml` | `docker-tests: Test 4 - Dev Environment` | ✅ Covered |
 | `make docker.shell` | N/A | - | ⚠️ Interactive only |
 | `docker build --target runtime` | `docker-tests.yml` | `docker-tests: Test 1 - Build Runtime Image` | ✅ Covered |
-| `docker run --rm projectkeystone:latest` | `docker-tests.yml` | `docker-tests: Test 2 - Run Tests in Container` | ✅ Covered |
+| `docker run --rm keystone:latest` | `docker-tests.yml` | `docker-tests: Test 2 - Run Tests in Container` | ✅ Covered |
 | `docker-compose up test` | `docker-tests.yml` | `docker-tests: Test 3 - Docker Compose Test Service` | ✅ Covered |
 | `docker-compose up -d dev` | `docker-tests.yml` | `docker-tests: Test 4 - Dev Environment` | ✅ Covered |
 | `docker-compose exec dev bash` | `docker-tests.yml` | `docker-tests: Test 4 - Dev Environment` | ✅ Covered |
@@ -208,7 +208,7 @@ All CI workflows are triggered on:
 ### How to Verify CI Coverage
 
 1. **Check workflow files**: `.github/workflows/*.yml`
-2. **Review GitHub Actions**: [Actions Tab](https://github.com/mvillmow/ProjectKeystone/actions)
+2. **Review GitHub Actions**: [Actions Tab](https://github.com/mvillmow/Keystone/actions)
 3. **Inspect job outputs**: Artifacts, logs, and reports
 4. **Read workflow summaries**: Step summaries show pass/fail status
 

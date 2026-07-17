@@ -1,12 +1,12 @@
-# ProjectKeystone Helm Chart
+# Keystone Helm Chart
 
-Helm chart for deploying ProjectKeystone HMAS (Hierarchical Multi-Agent System) to Kubernetes.
+Helm chart for deploying Keystone HMAS (Hierarchical Multi-Agent System) to Kubernetes.
 
 ## Prerequisites
 
 - Kubernetes 1.24+
 - Helm 3.8+
-- Docker image `projectkeystone:latest` available
+- Docker image `keystone:latest` available
 
 ## Installing the Chart
 
@@ -14,36 +14,36 @@ Helm chart for deploying ProjectKeystone HMAS (Hierarchical Multi-Agent System) 
 
 ```bash
 # Install with default values
-helm install projectkeystone ./helm/projectkeystone
+helm install keystone ./helm/keystone
 
 # Install with custom namespace
-helm install projectkeystone ./helm/projectkeystone --namespace projectkeystone --create-namespace
+helm install keystone ./helm/keystone --namespace keystone --create-namespace
 
 # Install with custom values
-helm install projectkeystone ./helm/projectkeystone --values custom-values.yaml
+helm install keystone ./helm/keystone --values custom-values.yaml
 ```
 
 ### Verify Installation
 
 ```bash
 # Check deployment status
-helm status projectkeystone
+helm status keystone
 
 # Check pods
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 
 # Check logs
-kubectl logs -n projectkeystone -l app.kubernetes.io/name=projectkeystone
+kubectl logs -n keystone -l app.kubernetes.io/name=keystone
 ```
 
 ## Uninstalling the Chart
 
 ```bash
 # Uninstall the release
-helm uninstall projectkeystone --namespace projectkeystone
+helm uninstall keystone --namespace keystone
 
 # Delete namespace (optional)
-kubectl delete namespace projectkeystone
+kubectl delete namespace keystone
 ```
 
 ## Configuration
@@ -53,28 +53,28 @@ kubectl delete namespace projectkeystone
 #### Change Replica Count
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set replicaCount=5
 ```
 
 #### Change Worker Count
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set config.workerCount=8
 ```
 
 #### Enable Debug Logging
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set config.logLevel=debug
 ```
 
 #### Adjust Resource Limits
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set resources.requests.cpu=1000m \
   --set resources.requests.memory=1Gi \
   --set resources.limits.cpu=4000m \
@@ -84,27 +84,27 @@ helm install projectkeystone ./helm/projectkeystone \
 #### Use Different Image Tag
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set image.tag=v1.2.3
 ```
 
 ### Configuration Parameters
 
-The following table lists the configurable parameters of the ProjectKeystone chart and their default values.
+The following table lists the configurable parameters of the Keystone chart and their default values.
 
 #### Global Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `namespace.create` | Create the namespace | `true` |
-| `namespace.name` | Namespace name | `projectkeystone` |
+| `namespace.name` | Namespace name | `keystone` |
 | `namespace.resourceQuota.enabled` | Enable resource quotas | `true` |
 
 #### Image Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `image.repository` | Image repository | `projectkeystone` |
+| `image.repository` | Image repository | `keystone` |
 | `image.tag` | Image tag | `latest` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 
@@ -206,15 +206,15 @@ affinity:
         - key: app.kubernetes.io/name
           operator: In
           values:
-          - projectkeystone
+          - keystone
       topologyKey: kubernetes.io/hostname
 ```
 
 Install:
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
-  --namespace projectkeystone \
+helm install keystone ./helm/keystone \
+  --namespace keystone \
   --create-namespace \
   --values production-values.yaml
 ```
@@ -243,8 +243,8 @@ config:
 Install:
 
 ```bash
-helm install projectkeystone-dev ./helm/projectkeystone \
-  --namespace projectkeystone-dev \
+helm install keystone-dev ./helm/keystone \
+  --namespace keystone-dev \
   --create-namespace \
   --values dev-values.yaml
 ```
@@ -255,31 +255,31 @@ helm install projectkeystone-dev ./helm/projectkeystone \
 
 ```bash
 # Upgrade with new image tag
-helm upgrade projectkeystone ./helm/projectkeystone \
+helm upgrade keystone ./helm/keystone \
   --set image.tag=v2.0.0
 
 # Upgrade with new values
-helm upgrade projectkeystone ./helm/projectkeystone \
+helm upgrade keystone ./helm/keystone \
   --values updated-values.yaml
 
 # Check upgrade status
-helm status projectkeystone
+helm status keystone
 
 # View upgrade history
-helm history projectkeystone
+helm history keystone
 ```
 
 ### Rollback
 
 ```bash
 # Rollback to previous version
-helm rollback projectkeystone
+helm rollback keystone
 
 # Rollback to specific revision
-helm rollback projectkeystone 2
+helm rollback keystone 2
 
 # Verify rollback
-helm status projectkeystone
+helm status keystone
 ```
 
 ## Testing
@@ -288,14 +288,14 @@ helm status projectkeystone
 
 ```bash
 # Run Helm tests
-helm test projectkeystone
+helm test keystone
 ```
 
 ### Manual Testing
 
 ```bash
 # Port-forward health check
-kubectl port-forward -n projectkeystone svc/projectkeystone 8080:8080
+kubectl port-forward -n keystone svc/keystone 8080:8080
 
 # Test health endpoint
 curl http://localhost:8080/healthz
@@ -304,7 +304,7 @@ curl http://localhost:8080/healthz
 curl http://localhost:8080/ready
 
 # Port-forward metrics
-kubectl port-forward -n projectkeystone svc/projectkeystone 9090:9090
+kubectl port-forward -n keystone svc/keystone 9090:9090
 
 # Test metrics endpoint
 curl http://localhost:9090/metrics
@@ -316,33 +316,33 @@ curl http://localhost:9090/metrics
 
 ```bash
 # All pods
-kubectl logs -n projectkeystone -l app.kubernetes.io/name=projectkeystone --all-containers=true
+kubectl logs -n keystone -l app.kubernetes.io/name=keystone --all-containers=true
 
 # Specific pod
-kubectl logs -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
 
 # Follow logs
-kubectl logs -n projectkeystone -f deployment/projectkeystone
+kubectl logs -n keystone -f deployment/keystone
 ```
 
 ### Describe Resources
 
 ```bash
 # Describe deployment
-kubectl describe deployment -n projectkeystone projectkeystone
+kubectl describe deployment -n keystone keystone
 
 # Describe pods
-kubectl describe pods -n projectkeystone
+kubectl describe pods -n keystone
 
 # Check events
-kubectl get events -n projectkeystone --sort-by='.lastTimestamp'
+kubectl get events -n keystone --sort-by='.lastTimestamp'
 ```
 
 ### Shell Access
 
 ```bash
 # Get a shell in a pod
-kubectl exec -it -n projectkeystone <pod-name> -- /bin/bash
+kubectl exec -it -n keystone <pod-name> -- /bin/bash
 ```
 
 ## Monitoring Integration
@@ -372,7 +372,7 @@ serviceMonitor:
 Then install:
 
 ```bash
-helm install projectkeystone ./helm/projectkeystone \
+helm install keystone ./helm/keystone \
   --set serviceMonitor.enabled=true
 ```
 
@@ -382,16 +382,16 @@ helm install projectkeystone ./helm/projectkeystone \
 
 If you see `ImagePullBackOff`:
 
-1. Check image exists: `docker images | grep projectkeystone`
+1. Check image exists: `docker images | grep keystone`
 2. For local testing with Minikube: `eval $(minikube docker-env)`
-3. For kind: `kind load docker-image projectkeystone:latest`
+3. For kind: `kind load docker-image keystone:latest`
 
 ### Pods Not Starting
 
 Check pod events:
 
 ```bash
-kubectl describe pod -n projectkeystone <pod-name>
+kubectl describe pod -n keystone <pod-name>
 ```
 
 Common causes:
@@ -406,7 +406,7 @@ Common causes:
 Check container logs:
 
 ```bash
-kubectl logs -n projectkeystone <pod-name>
+kubectl logs -n keystone <pod-name>
 ```
 
 Adjust probe timings if needed:
@@ -426,7 +426,7 @@ For issues or improvements, please contribute to the main repository.
 
 ## License
 
-See the main ProjectKeystone repository for license information.
+See the main Keystone repository for license information.
 
 ---
 

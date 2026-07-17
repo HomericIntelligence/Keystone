@@ -4,7 +4,7 @@
 
 ## Overview
 
-ProjectKeystone now supports asynchronous message routing through a work-stealing scheduler, enabling parallel agent
+Keystone now supports asynchronous message routing through a work-stealing scheduler, enabling parallel agent
 execution across multiple worker threads. This architecture maintains 100% backward compatibility with synchronous mode
 while providing a high-performance async execution model.
 

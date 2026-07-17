@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Script to file GitHub issues for ProjectKeystone codebase analysis findings
+# Script to file GitHub issues for Keystone codebase analysis findings
 # Generated from comprehensive code review on 2025-11-21
 #
 # Usage: ./scripts/file_code_review_issues.sh

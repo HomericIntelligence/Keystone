@@ -1,4 +1,4 @@
-# CMake lint configuration for ProjectKeystone
+# CMake lint configuration for Keystone
 # Disable line length check (C0301) as CMake files often have long paths
 
 set('filter', '-line-length')

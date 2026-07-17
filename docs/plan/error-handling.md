@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the error handling strategy for ProjectKeystone HMAS. Consistent error handling ensures
+This document defines the error handling strategy for Keystone HMAS. Consistent error handling ensures
 reliability, debuggability, and maintainability across all 4 layers of the agent hierarchy.
 
 ## Exceptions vs Return Values
@@ -277,4 +277,4 @@ unrecoverable, throw an exception.
 
 **Last Updated**: 2025-11-18
 **Version**: 1.0
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)

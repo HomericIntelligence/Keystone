@@ -1,10 +1,10 @@
 # Operational Runbooks
 
-**ProjectKeystone HMAS - Production Incident Response Procedures**
+**Keystone HMAS - Production Incident Response Procedures**
 
 ## Overview
 
-This directory contains operational runbooks for responding to alerts and incidents in ProjectKeystone HMAS production deployments.
+This directory contains operational runbooks for responding to alerts and incidents in Keystone HMAS production deployments.
 
 **Phase 6.8 N1**: Comprehensive runbooks for production operations
 
@@ -61,7 +61,7 @@ Alert: HighErrorRate
 Severity: critical
 Instance: hmas-5d8f7c9b6-xk2lm
 Description: Deadline miss rate is 12.5/sec over the last 5 minutes.
-Runbook: https://github.com/projectkeystone/runbooks/high-error-rate.md
+Runbook: https://github.com/keystone/runbooks/high-error-rate.md
 ```
 
 ### 2. Open Runbook
@@ -91,23 +91,23 @@ Record actions taken in incident ticket or postmortem document.
 
 ```bash
 # List all pods
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 
 # Describe specific pod
-kubectl describe pod <pod-name> -n projectkeystone
+kubectl describe pod <pod-name> -n keystone
 
 # View pod logs
-kubectl logs <pod-name> -n projectkeystone --tail=100
+kubectl logs <pod-name> -n keystone --tail=100
 
 # Follow logs
-kubectl logs -f <pod-name> -n projectkeystone
+kubectl logs -f <pod-name> -n keystone
 ```
 
 ### Check Metrics
 
 ```bash
 # Port-forward Prometheus
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 
 # Access Prometheus UI
 open http://localhost:9090
@@ -120,46 +120,46 @@ curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
 
 ```bash
 # Pod resource usage
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 
 # Node resource usage
 kubectl top nodes
 
 # Check resource quotas
-kubectl describe resourcequota -n projectkeystone
+kubectl describe resourcequota -n keystone
 ```
 
 ### Restart Services
 
 ```bash
 # Restart HMAS deployment
-kubectl rollout restart deployment/hmas -n projectkeystone
+kubectl rollout restart deployment/hmas -n keystone
 
 # Restart Prometheus
-kubectl rollout restart deployment/prometheus -n projectkeystone
+kubectl rollout restart deployment/prometheus -n keystone
 
 # Scale deployment
-kubectl scale deployment/hmas --replicas=3 -n projectkeystone
+kubectl scale deployment/hmas --replicas=3 -n keystone
 ```
 
 ### Access Logs
 
 ```bash
 # HMAS logs (all replicas)
-kubectl logs -n projectkeystone -l app=hmas --tail=100
+kubectl logs -n keystone -l app=hmas --tail=100
 
 # Prometheus logs
-kubectl logs -n projectkeystone -l app=prometheus --tail=50
+kubectl logs -n keystone -l app=prometheus --tail=50
 
 # Alertmanager logs
-kubectl logs -n projectkeystone -l app=alertmanager --tail=50
+kubectl logs -n keystone -l app=alertmanager --tail=50
 ```
 
 ### Silence Alerts
 
 ```bash
 # Port-forward Alertmanager
-kubectl port-forward -n projectkeystone svc/alertmanager 9093:9093
+kubectl port-forward -n keystone svc/alertmanager 9093:9093
 
 # Access Alertmanager UI
 open http://localhost:9093
@@ -347,4 +347,4 @@ To add a new runbook:
 
 **Last Updated**: 2025-11-21
 **Maintained By**: SRE Team
-**Contact**: <sre@projectkeystone.io>
+**Contact**: <sre@keystone.io>

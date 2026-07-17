@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 8 (Distributed Multi-Node Communication) has been made **optional** to allow building and running ProjectKeystone
+Phase 8 (Distributed Multi-Node Communication) has been made **optional** to allow building and running Keystone
 without requiring gRPC and Protobuf dependencies.
 
 ## Build Options
@@ -15,7 +15,7 @@ This is the default build mode. No gRPC or Protobuf dependencies are required.
 
 ```bash
 docker-compose build production
-docker run --rm projectkeystone:production
+docker run --rm keystone:production
 ```
 
 **Local Build:**
@@ -240,7 +240,7 @@ RUN apt-get update && apt-get install -y \
 Then build with:
 
 ```bash
-docker build -t projectkeystone:grpc --build-arg ENABLE_GRPC=ON .
+docker build -t keystone:grpc --build-arg ENABLE_GRPC=ON .
 ```
 
 **Option B: Use docker-compose-distributed.yaml**

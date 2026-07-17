@@ -1,4 +1,4 @@
-# Prometheus configuration for ProjectKeystone HMAS
+# Prometheus configuration for Keystone HMAS
 # Place this in /etc/prometheus/prometheus.yml or use via ConfigMap in Kubernetes
 
 global:
@@ -8,7 +8,7 @@ global:
 
   # Labels to add to all metrics
   external_labels:
-    cluster: 'projectkeystone'
+    cluster: 'keystone'
     environment: 'production'
 
 # Alertmanager configuration (optional)
@@ -23,8 +23,8 @@ global:
 
 # Scrape configurations
 scrape_configs:
-  # ProjectKeystone HMAS metrics
-  - job_name: 'projectkeystone-hmas'
+  # Keystone HMAS metrics
+  - job_name: 'keystone-hmas'
     static_configs:
       - targets: ['hmas:9090']  # Kubernetes service name and port
         labels:
@@ -37,7 +37,7 @@ scrape_configs:
       - role: pod
         namespaces:
           names:
-            - projectkeystone
+            - keystone
 
     # Relabel configs to scrape only pods with prometheus annotations
     relabel_configs:

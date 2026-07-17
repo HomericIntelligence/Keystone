@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 6 transforms ProjectKeystone from a development prototype to a **production-ready deployment** with
+Phase 6 transforms Keystone from a development prototype to a **production-ready deployment** with
 containerization, orchestration, monitoring, and operational tooling. This phase builds on the robust foundation of
 Phases 1-5 and Phase D performance optimizations.
 
@@ -96,7 +96,7 @@ Phases 1-5 and Phase D performance optimizations.
    - Feature flags
 
 4. **Create Namespace** (`k8s/namespace.yaml`) - 1 hour
-   - `projectkeystone` namespace for isolation
+   - `keystone` namespace for isolation
    - Resource quotas
 
 5. **Test local Kubernetes deployment** (kind or minikube) - 3 hours
@@ -122,7 +122,7 @@ Phases 1-5 and Phase D performance optimizations.
 
 **Tasks**:
 
-1. **Initialize Helm chart structure** (`helm/projectkeystone/`) - 2 hours
+1. **Initialize Helm chart structure** (`helm/keystone/`) - 2 hours
    - `Chart.yaml` - Chart metadata
    - `values.yaml` - Default configuration
    - `templates/` - Templated manifests
@@ -143,17 +143,17 @@ Phases 1-5 and Phase D performance optimizations.
    - Release notes template
 
 4. **Test Helm deployment** - 3 hours
-   - `helm install projectkeystone ./helm/projectkeystone`
+   - `helm install keystone ./helm/keystone`
    - Verify templating with different values
    - Test upgrade and rollback
    - `helm test` for validation
 
 **Deliverables**:
 
-- ✅ Helm chart in `helm/projectkeystone/`
+- ✅ Helm chart in `helm/keystone/`
 - ✅ Templated deployments with configurable values
 - ✅ Helm tests for validation
-- ✅ Documentation: `helm/projectkeystone/README.md`
+- ✅ Documentation: `helm/keystone/README.md`
 
 **Estimated Time**: 12 hours
 
@@ -274,7 +274,7 @@ Phases 1-5 and Phase D performance optimizations.
    - Retention period: 7 days
 
 3. **Deploy Promtail as DaemonSet** - 2 hours
-   - Scrape logs from all pods in `projectkeystone` namespace
+   - Scrape logs from all pods in `keystone` namespace
    - Parse JSON log format from spdlog
    - Add labels: `pod`, `container`, `namespace`
 
@@ -415,7 +415,7 @@ Phases 1-5 and Phase D performance optimizations.
 - [ ] Create `values.yaml`
 - [ ] Templatize manifests in `templates/`
 - [ ] Add Helm tests
-- [ ] Document: `helm/projectkeystone/README.md`
+- [ ] Document: `helm/keystone/README.md`
 
 ### Phase 6.3: Prometheus Monitoring ✅
 

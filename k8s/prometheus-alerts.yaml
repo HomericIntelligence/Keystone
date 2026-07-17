@@ -1,4 +1,4 @@
-# Prometheus Alerting Rules for ProjectKeystone HMAS
+# Prometheus Alerting Rules for Keystone HMAS
 # Production alerting configuration
 
 ---
@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-alerts
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 data:
@@ -26,7 +26,7 @@ data:
             annotations:
               summary: "HMAS pod {{ $labels.instance }} is down"
               description: "HMAS pod {{ $labels.instance }} has been down for more than 1 minute."
-              runbook_url: "https://github.com/projectkeystone/runbooks/hmas-pod-down.md"
+              runbook_url: "https://github.com/keystone/runbooks/hmas-pod-down.md"
 
           # Critical: High error rate
           - alert: HighErrorRate
@@ -38,7 +38,7 @@ data:
             annotations:
               summary: "High deadline miss rate detected"
               description: "Deadline miss rate is {{ $value }}/sec over the last 5 minutes."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-error-rate.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-error-rate.md"
 
           # Warning: High latency
           - alert: HighMessageLatency
@@ -50,7 +50,7 @@ data:
             annotations:
               summary: "High message processing latency"
               description: "Message latency is {{ $value }}µs (threshold: 5000µs)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-latency.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-latency.md"
 
           # Warning: Queue depth high
           - alert: HighQueueDepth
@@ -62,7 +62,7 @@ data:
             annotations:
               summary: "Message queue depth is high"
               description: "Queue depth is {{ $value }} messages (threshold: 1000)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-queue-depth.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-queue-depth.md"
 
           # Critical: Worker utilization very high
           - alert: CriticalWorkerUtilization
@@ -74,7 +74,7 @@ data:
             annotations:
               summary: "Worker utilization critically high"
               description: "Worker utilization is {{ $value }}% (threshold: 95%)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-worker-utilization.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-worker-utilization.md"
 
           # Warning: Worker utilization high
           - alert: HighWorkerUtilization
@@ -86,7 +86,7 @@ data:
             annotations:
               summary: "Worker utilization high"
               description: "Worker utilization is {{ $value }}% (threshold: 80%)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-worker-utilization.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-worker-utilization.md"
 
       # Infrastructure Alerts
       - name: hmas_infrastructure
@@ -94,7 +94,7 @@ data:
         rules:
           # Critical: Pod restart loop
           - alert: PodRestartLoop
-            expr: rate(kube_pod_container_status_restarts_total{namespace="projectkeystone"}[15m]) > 0
+            expr: rate(kube_pod_container_status_restarts_total{namespace="keystone"}[15m]) > 0
             for: 5m
             labels:
               severity: warning
@@ -102,11 +102,11 @@ data:
             annotations:
               summary: "Pod {{ $labels.pod }} is restarting frequently"
               description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes."
-              runbook_url: "https://github.com/projectkeystone/runbooks/pod-restart-loop.md"
+              runbook_url: "https://github.com/keystone/runbooks/pod-restart-loop.md"
 
           # Critical: Pod OOMKilled
           - alert: PodOOMKilled
-            expr: kube_pod_container_status_terminated_reason{reason="OOMKilled", namespace="projectkeystone"} > 0
+            expr: kube_pod_container_status_terminated_reason{reason="OOMKilled", namespace="keystone"} > 0
             for: 1m
             labels:
               severity: critical
@@ -114,11 +114,11 @@ data:
             annotations:
               summary: "Pod {{ $labels.pod }} was OOMKilled"
               description: "Container {{ $labels.container }} in pod {{ $labels.pod }} was killed due to out-of-memory."
-              runbook_url: "https://github.com/projectkeystone/runbooks/pod-oomkilled.md"
+              runbook_url: "https://github.com/keystone/runbooks/pod-oomkilled.md"
 
           # Warning: High CPU usage
           - alert: HighCPUUsage
-            expr: rate(container_cpu_usage_seconds_total{namespace="projectkeystone"}[5m]) > 0.9
+            expr: rate(container_cpu_usage_seconds_total{namespace="keystone"}[5m]) > 0.9
             for: 10m
             labels:
               severity: warning
@@ -126,11 +126,11 @@ data:
             annotations:
               summary: "High CPU usage in pod {{ $labels.pod }}"
               description: "CPU usage is {{ $value | humanizePercentage }} in container {{ $labels.container }}."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-cpu-usage.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-cpu-usage.md"
 
           # Warning: High memory usage
           - alert: HighMemoryUsage
-            expr: container_memory_usage_bytes{namespace="projectkeystone"} / container_spec_memory_limit_bytes{namespace="projectkeystone"} > 0.9
+            expr: container_memory_usage_bytes{namespace="keystone"} / container_spec_memory_limit_bytes{namespace="keystone"} > 0.9
             for: 10m
             labels:
               severity: warning
@@ -138,11 +138,11 @@ data:
             annotations:
               summary: "High memory usage in pod {{ $labels.pod }}"
               description: "Memory usage is {{ $value | humanizePercentage }} in container {{ $labels.container }}."
-              runbook_url: "https://github.com/projectkeystone/runbooks/high-memory-usage.md"
+              runbook_url: "https://github.com/keystone/runbooks/high-memory-usage.md"
 
           # Critical: PVC almost full
           - alert: PVCAlmostFull
-            expr: kubelet_volume_stats_used_bytes{namespace="projectkeystone"} / kubelet_volume_stats_capacity_bytes{namespace="projectkeystone"} > 0.9
+            expr: kubelet_volume_stats_used_bytes{namespace="keystone"} / kubelet_volume_stats_capacity_bytes{namespace="keystone"} > 0.9
             for: 5m
             labels:
               severity: critical
@@ -150,7 +150,7 @@ data:
             annotations:
               summary: "PVC {{ $labels.persistentvolumeclaim }} is almost full"
               description: "PVC {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full."
-              runbook_url: "https://github.com/projectkeystone/runbooks/pvc-almost-full.md"
+              runbook_url: "https://github.com/keystone/runbooks/pvc-almost-full.md"
 
       # Monitoring Stack Alerts
       - name: monitoring_stack
@@ -166,7 +166,7 @@ data:
             annotations:
               summary: "Prometheus is down"
               description: "Prometheus has been down for more than 1 minute."
-              runbook_url: "https://github.com/projectkeystone/runbooks/prometheus-down.md"
+              runbook_url: "https://github.com/keystone/runbooks/prometheus-down.md"
 
           # Critical: Loki down
           - alert: LokiDown
@@ -178,7 +178,7 @@ data:
             annotations:
               summary: "Loki is down"
               description: "Loki has been down for more than 1 minute. Logs are not being collected."
-              runbook_url: "https://github.com/projectkeystone/runbooks/loki-down.md"
+              runbook_url: "https://github.com/keystone/runbooks/loki-down.md"
 
           # Warning: Promtail not running on all nodes
           - alert: PromtailNotRunningOnAllNodes
@@ -190,7 +190,7 @@ data:
             annotations:
               summary: "Promtail is not running on all nodes"
               description: "Promtail is running on {{ $value }} nodes, but should be running on all nodes."
-              runbook_url: "https://github.com/projectkeystone/runbooks/promtail-not-all-nodes.md"
+              runbook_url: "https://github.com/keystone/runbooks/promtail-not-all-nodes.md"
 
           # Warning: Grafana down
           - alert: GrafanaDown
@@ -202,7 +202,7 @@ data:
             annotations:
               summary: "Grafana is down"
               description: "Grafana has been down for more than 1 minute. Dashboards are unavailable."
-              runbook_url: "https://github.com/projectkeystone/runbooks/grafana-down.md"
+              runbook_url: "https://github.com/keystone/runbooks/grafana-down.md"
 
       # SLO/SLA Alerts
       - name: slo_sla
@@ -218,7 +218,7 @@ data:
             annotations:
               summary: "SLO availability violation"
               description: "HMAS availability is {{ $value | humanizePercentage }} over the last 30 days (SLO: 99.9%)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/slo-availability-violation.md"
+              runbook_url: "https://github.com/keystone/runbooks/slo-availability-violation.md"
 
           # SLO: Average latency < 1ms (gauge metric)
           # NOTE: This uses average latency (gauge). For P95 monitoring, implement histogram metrics.
@@ -231,7 +231,7 @@ data:
             annotations:
               summary: "SLO latency violation"
               description: "Average message latency is {{ $value }}µs (SLO: < 1000µs). Note: This monitors average, not P95. See issue for histogram implementation."
-              runbook_url: "https://github.com/projectkeystone/runbooks/slo-latency-violation.md"
+              runbook_url: "https://github.com/keystone/runbooks/slo-latency-violation.md"
 
           # SLO: Error rate < 0.1%
           - alert: SLOErrorRateViolation
@@ -243,4 +243,4 @@ data:
             annotations:
               summary: "SLO error rate violation"
               description: "Error rate is {{ $value | humanizePercentage }} (SLO: < 0.1%)."
-              runbook_url: "https://github.com/projectkeystone/runbooks/slo-error-rate-violation.md"
+              runbook_url: "https://github.com/keystone/runbooks/slo-error-rate-violation.md"

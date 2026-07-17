@@ -1,6 +1,6 @@
-# ProjectKeystone HMAS - Glossary
+# Keystone HMAS - Glossary
 
-**Comprehensive reference of terms, concepts, and acronyms used throughout ProjectKeystone**
+**Comprehensive reference of terms, concepts, and acronyms used throughout Keystone**
 
 ---
 
@@ -9,12 +9,12 @@
 ### HMAS
 
 **Hierarchical Multi-Agent System** - A distributed computing architecture where agents are organized in multiple
-hierarchical layers, communicating via message passing. ProjectKeystone implements a 4-layer HMAS with strategic
+hierarchical layers, communicating via message passing. Keystone implements a 4-layer HMAS with strategic
 coordination at the top (Level 0) down to task execution at the bottom (Level 3).
 
 ### KIM
 
-**Keystone Interchange Message** - The standard message format for inter-agent communication in ProjectKeystone. Each
+**Keystone Interchange Message** - The standard message format for inter-agent communication in Keystone. Each
 KIM contains:
 
 - `msg_id`: Unique message identifier
@@ -160,7 +160,7 @@ worker threads without using locks or mutex primitives. Key characteristics:
 
 ### ThreadPool
 
-**Fixed-Size Thread Executor** - A pool of worker threads that execute tasks concurrently. ProjectKeystone uses
+**Fixed-Size Thread Executor** - A pool of worker threads that execute tasks concurrently. Keystone uses
 ThreadPool for:
 
 - Parallel agent execution
@@ -171,7 +171,7 @@ ThreadPool for:
 ### Coroutine
 
 **C++20 Asynchronous Function** - A function that can be suspended and resumed using C++20 coroutine primitives
-(`co_await`, `co_return`). ProjectKeystone uses coroutines for:
+(`co_await`, `co_return`). Keystone uses coroutines for:
 
 - Non-blocking message processing
 - Asynchronous task coordination
@@ -188,7 +188,7 @@ ThreadPool for:
 
 ### Coroutine Safety
 
-**Practices for Correct Coroutine Usage** - Guidelines for using C++20 coroutines safely in ProjectKeystone:
+**Practices for Correct Coroutine Usage** - Guidelines for using C++20 coroutines safely in Keystone:
 
 - **Lifetime Management**: Always use `Task<T>` wrapper; never manually manage `std::coroutine_handle`
 - **Suspension Points**: Only use `co_await` inside coroutine functions
@@ -255,12 +255,12 @@ asynchronous operation. Usage:
 3. **REFACTOR**: Improve code while keeping tests green
 4. **COMMIT**: Submit changes when tests pass
 
-ProjectKeystone strictly follows TDD throughout all phases.
+Keystone strictly follows TDD throughout all phases.
 
 ### E2E Tests
 
 **End-to-End Integration Tests** - Comprehensive tests that verify system behavior across multiple layers.
-ProjectKeystone E2E tests:
+Keystone E2E tests:
 
 - Test full message flows from L0 down to L3
 - Verify agent coordination and delegation
@@ -314,7 +314,7 @@ Typical chaos tests:
 - **Consequences**: Positive and negative outcomes
 - **Status**: PROPOSED, ACCEPTED, SUPERSEDED, etc.
 
-ProjectKeystone ADRs are stored in `docs/plan/adr/` with naming convention `ADR-###-title.md`
+Keystone ADRs are stored in `docs/plan/adr/` with naming convention `ADR-###-title.md`
 
 Examples:
 
@@ -324,7 +324,7 @@ Examples:
 
 ### Phase
 
-**Development Iteration** - ProjectKeystone is built through phases following TDD principles:
+**Development Iteration** - Keystone is built through phases following TDD principles:
 
 - **Phase 1** (Weeks 1-3): L0 ↔ L3 basic delegation (2 agents)
 - **Phase 2** (Weeks 4-6): L0 ↔ L2 ↔ L3 module coordination (3 layers)
@@ -341,7 +341,7 @@ Each phase adds new agent levels or features while maintaining all previous func
 
 ### C++20
 
-**Modern C++ Standard** - ProjectKeystone is implemented exclusively in C++20, utilizing:
+**Modern C++ Standard** - Keystone is implemented exclusively in C++20, utilizing:
 
 - Coroutines (`std::coroutine_handle`)
 - Concepts (template constraints)
@@ -447,7 +447,7 @@ agent operations).
 
 ### State Machine
 
-ProjectKeystone agents use finite state machines for coordinated workflows:
+Keystone agents use finite state machines for coordinated workflows:
 
 **ModuleLeadAgent States**:
 
@@ -471,7 +471,7 @@ ProjectKeystone agents use finite state machines for coordinated workflows:
 
 ### Kubernetes (K8s)
 
-**Container Orchestration Platform** - ProjectKeystone supports K8s deployment with:
+**Container Orchestration Platform** - Keystone supports K8s deployment with:
 
 - Deployment manifests with health checks
 - Service definitions (ClusterIP, Headless)

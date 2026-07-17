@@ -1,6 +1,6 @@
-# ProjectKeystone Scripts
+# Keystone Scripts
 
-This directory contains utility scripts for ProjectKeystone HMAS development and automation.
+This directory contains utility scripts for Keystone HMAS development and automation.
 
 ---
 
@@ -41,16 +41,16 @@ Creates GitHub issues for future implementation phases (7, 8, and 10) based on t
 **Example output**:
 
 ```
-=== ProjectKeystone Phase Issues Creator ===
+=== Keystone Phase Issues Creator ===
 
 Creating Phase 7 issues...
-✓ Created: https://github.com/user/ProjectKeystone/issues/123
+✓ Created: https://github.com/user/Keystone/issues/123
 
 Creating Phase 8 issues...
-✓ Created: https://github.com/user/ProjectKeystone/issues/124
+✓ Created: https://github.com/user/Keystone/issues/124
 
 Creating Phase 10 issues...
-✓ Created: https://github.com/user/ProjectKeystone/issues/125
+✓ Created: https://github.com/user/Keystone/issues/125
 
 === Done! ===
 ```

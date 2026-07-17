@@ -3,7 +3,7 @@
 ## Current Status: 7/15 Core Components Complete (47%)
 
 This document summarizes the implementation progress for Phase 8, which adds distributed multi-node capability to
-ProjectKeystone HMAS.
+Keystone HMAS.
 
 ---
 
@@ -543,7 +543,7 @@ public:
 version: '3.8'
 services:
   chief-node:
-    image: projectkeystone:latest
+    image: keystone:latest
     command: /app/chief_node_main
     ports:
       - "50051:50051"
@@ -552,7 +552,7 @@ services:
         ipv4_address: 192.168.1.100
 
   component-node-1:
-    image: projectkeystone:latest
+    image: keystone:latest
     command: /app/component_node_main
     environment:
       - REGISTRY_ADDRESS=192.168.1.100:50051
@@ -562,7 +562,7 @@ services:
         ipv4_address: 192.168.1.101
 
   module-node-1:
-    image: projectkeystone:latest
+    image: keystone:latest
     command: /app/module_node_main
     environment:
       - REGISTRY_ADDRESS=192.168.1.100:50051
@@ -572,7 +572,7 @@ services:
         ipv4_address: 192.168.1.105
 
   task-node-1:
-    image: projectkeystone:latest
+    image: keystone:latest
     command: /app/task_node_main
     environment:
       - REGISTRY_ADDRESS=192.168.1.100:50051
@@ -712,7 +712,7 @@ brew install grpc protobuf
 ### Build Commands
 
 ```bash
-cd /home/mvillmow/ProjectKeystone
+cd /home/mvillmow/Keystone
 mkdir -p build && cd build
 
 # Configure

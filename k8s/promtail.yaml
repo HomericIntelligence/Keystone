@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: promtail-config
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: promtail
 data:
@@ -35,7 +35,7 @@ data:
           - role: pod
             namespaces:
               names:
-                - projectkeystone
+                - keystone
 
         pipeline_stages:
           # Extract log level from logs (if present)
@@ -52,11 +52,11 @@ data:
               level:
 
         relabel_configs:
-          # Only scrape pods in projectkeystone namespace
+          # Only scrape pods in keystone namespace
           - source_labels:
               - __meta_kubernetes_namespace
             action: keep
-            regex: projectkeystone
+            regex: keystone
 
           # Add namespace as label
           - source_labels:
@@ -107,7 +107,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: promtail
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: promtail
 
@@ -146,14 +146,14 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: promtail
-    namespace: projectkeystone
+    namespace: keystone
 
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: promtail
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: promtail
     component: logging
@@ -265,7 +265,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: promtail
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: promtail
     component: logging

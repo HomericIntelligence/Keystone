@@ -1,5 +1,5 @@
 name: Run Tests
-description: Run ProjectKeystone tests with standardized output and JUnit support
+description: Run Keystone tests with standardized output and JUnit support
 
 inputs:
   build-dir:

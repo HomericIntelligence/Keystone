@@ -1,4 +1,4 @@
-# YAML Lint configuration for ProjectKeystone
+# YAML Lint configuration for Keystone
 # See https://yamllint.readthedocs.io/en/stable/configuration.html
 
 extends: default

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hmas
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
     component: agent-system
@@ -35,7 +35,7 @@ spec:
 
       containers:
         - name: hmas
-          image: projectkeystone:latest
+          image: keystone:latest
           imagePullPolicy: IfNotPresent
 
           # Container security hardening (issue #526)

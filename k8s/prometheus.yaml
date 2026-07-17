@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 data:
@@ -12,7 +12,7 @@ data:
       evaluation_interval: 30s
       scrape_timeout: 10s
       external_labels:
-        cluster: 'projectkeystone'
+        cluster: 'keystone'
         environment: 'production'
 
     # Alerting configuration
@@ -27,8 +27,8 @@ data:
       - '/etc/prometheus/alerts/*.yml'
 
     scrape_configs:
-      # ProjectKeystone HMAS metrics
-      - job_name: 'projectkeystone-hmas'
+      # Keystone HMAS metrics
+      - job_name: 'keystone-hmas'
         static_configs:
           - targets: ['hmas:9090']
             labels:
@@ -41,7 +41,7 @@ data:
           - role: pod
             namespaces:
               names:
-                - projectkeystone
+                - keystone
 
         relabel_configs:
           # Only scrape pods with prometheus.io/scrape annotation
@@ -81,7 +81,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus
-  namespace: projectkeystone
+  namespace: keystone
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -114,13 +114,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: prometheus
-    namespace: projectkeystone
+    namespace: keystone
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 spec:
@@ -191,7 +191,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: prometheus-data
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 spec:
@@ -206,7 +206,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: prometheus
 spec:

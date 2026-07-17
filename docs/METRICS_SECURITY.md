@@ -1,10 +1,10 @@
 # Metrics Security Guide
 
-**ProjectKeystone HMAS - Secure Metrics Collection and Access Control**
+**Keystone HMAS - Secure Metrics Collection and Access Control**
 
 ## Overview
 
-This guide covers security best practices for metrics endpoints in ProjectKeystone HMAS, including authentication,
+This guide covers security best practices for metrics endpoints in Keystone HMAS, including authentication,
 authorization, encryption, and access control.
 
 **Phase 6.8 M4**: Comprehensive metrics security implementation
@@ -65,17 +65,17 @@ htpasswd -nBc auth prometheus
 # Create secret
 kubectl create secret generic prometheus-scrape-credentials \
   --from-file=htpasswd=auth \
-  -n projectkeystone
+  -n keystone
 
 # Verify secret
-kubectl get secret prometheus-scrape-credentials -n projectkeystone
+kubectl get secret prometheus-scrape-credentials -n keystone
 ```
 
 **Prometheus Configuration**:
 
 ```yaml
 scrape_configs:
-  - job_name: 'projectkeystone-hmas-secure'
+  - job_name: 'keystone-hmas-secure'
     scheme: https
     basic_auth:
       username: prometheus
@@ -108,16 +108,16 @@ scrape_configs:
 # Generate private key and certificate
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
-  -subj "/CN=hmas-metrics.projectkeystone.svc.cluster.local/O=projectkeystone"
+  -subj "/CN=hmas-metrics.keystone.svc.cluster.local/O=keystone"
 
 # Create TLS secret
 kubectl create secret tls metrics-tls \
   --cert=tls.crt \
   --key=tls.key \
-  -n projectkeystone
+  -n keystone
 
 # Verify secret
-kubectl describe secret metrics-tls -n projectkeystone
+kubectl describe secret metrics-tls -n keystone
 ```
 
 **Production Certificate** (cert-manager):
@@ -130,14 +130,14 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: metrics-tls
-  namespace: projectkeystone
+  namespace: keystone
 spec:
   secretName: metrics-tls
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - hmas-metrics.projectkeystone.svc.cluster.local
+    - hmas-metrics.keystone.svc.cluster.local
   duration: 2160h  # 90 days
   renewBefore: 360h  # 15 days
 ```
@@ -193,13 +193,13 @@ kubectl apply -f k8s/metrics-security.yaml
 
 # Verify permissions
 kubectl auth can-i list pods \
-  --as=system:serviceaccount:projectkeystone:prometheus-metrics \
-  -n projectkeystone
+  --as=system:serviceaccount:keystone:prometheus-metrics \
+  -n keystone
 # Output: yes
 
 kubectl auth can-i delete pods \
-  --as=system:serviceaccount:projectkeystone:prometheus-metrics \
-  -n projectkeystone
+  --as=system:serviceaccount:keystone:prometheus-metrics \
+  -n keystone
 # Output: no (good!)
 ```
 
@@ -263,7 +263,7 @@ kubectl auth can-i delete pods \
      --dry-run=client -o yaml | kubectl apply -f -
 
    # Restart Prometheus to pick up new secret
-   kubectl rollout restart deployment/prometheus -n projectkeystone
+   kubectl rollout restart deployment/prometheus -n keystone
    ```
 
 **Security Considerations**:
@@ -350,7 +350,7 @@ scrape_configs:
     tls_config:
       ca_file: /etc/prometheus/certs/ca.crt
       insecure_skip_verify: false
-      server_name: hmas-metrics.projectkeystone.svc.cluster.local
+      server_name: hmas-metrics.keystone.svc.cluster.local
     static_configs:
       - targets: ['hmas:9443']
 ```
@@ -374,7 +374,7 @@ spec:
       containers:
         # Main HMAS container
         - name: hmas
-          image: projectkeystone:latest
+          image: keystone:latest
           ports:
             - containerPort: 9090  # Insecure metrics (localhost only)
 
@@ -452,7 +452,7 @@ rules:
     resources:
       - group: ""
         resources: ["secrets"]
-    namespaces: ["projectkeystone"]
+    namespaces: ["keystone"]
 
   # Log metrics endpoint access
   - level: Metadata
@@ -486,14 +486,14 @@ htpasswd -nBc auth prometheus
 # 2. Generate TLS certificate
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout tls.key -out tls.crt \
-  -subj "/CN=hmas-metrics.projectkeystone.svc.cluster.local"
+  -subj "/CN=hmas-metrics.keystone.svc.cluster.local"
 
 # 3. Create secrets
 kubectl create secret generic prometheus-scrape-credentials \
-  --from-file=htpasswd=auth -n projectkeystone
+  --from-file=htpasswd=auth -n keystone
 
 kubectl create secret tls metrics-tls \
-  --cert=tls.crt --key=tls.key -n projectkeystone
+  --cert=tls.crt --key=tls.key -n keystone
 
 # 4. Deploy security configuration
 kubectl apply -f k8s/metrics-security.yaml
@@ -502,7 +502,7 @@ kubectl apply -f k8s/metrics-security.yaml
 kubectl apply -f k8s/prometheus.yaml
 
 # 6. Restart Prometheus
-kubectl rollout restart deployment/prometheus -n projectkeystone
+kubectl rollout restart deployment/prometheus -n keystone
 ```
 
 ### Test Secure Metrics
@@ -517,7 +517,7 @@ curl -k -u prometheus:PASSWORD https://hmas:9443/metrics
 # Expected: Prometheus metrics output
 
 # Verify TLS
-openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc.cluster.local
+openssl s_client -connect hmas:9443 -servername hmas-metrics.keystone.svc.cluster.local
 ```
 
 ---
@@ -560,7 +560,7 @@ openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc
 1. Verify credentials: `kubectl get secret prometheus-scrape-credentials -o yaml`
 2. Check password hash: `htpasswd -v auth prometheus`
 3. Ensure Prometheus has secret mounted
-4. Check nginx logs: `kubectl logs -n projectkeystone <pod> -c metrics-proxy`
+4. Check nginx logs: `kubectl logs -n keystone <pod> -c metrics-proxy`
 
 ### Certificate Errors
 
@@ -580,7 +580,7 @@ openssl s_client -connect hmas:9443 -servername hmas-metrics.projectkeystone.svc
 **Solutions**:
 
 1. Check NetworkPolicy: `kubectl describe networkpolicy hmas-metrics-access`
-2. Verify pod labels: `kubectl get pods -n projectkeystone --show-labels`
+2. Verify pod labels: `kubectl get pods -n keystone --show-labels`
 3. Test connectivity: `kubectl exec -it prometheus-xxx -- wget -O- http://hmas:9090/metrics`
 4. Temporarily remove NetworkPolicy for testing
 

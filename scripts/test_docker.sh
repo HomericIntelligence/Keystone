@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Docker Testing Script for ProjectKeystone HMAS
+# Docker Testing Script for Keystone HMAS
 # Automated version of DOCKER_TESTING.md test scenarios
 
 set -e  # Exit on error
@@ -55,14 +55,14 @@ run_test() {
 test_build_runtime() {
     print_info "Building runtime image..."
 
-    docker build --target runtime -t projectkeystone:latest .
+    docker build --target runtime -t keystone:latest .
 
     # Check image size
-    local image_size=$(docker images projectkeystone:latest --format "{{.Size}}")
+    local image_size=$(docker images keystone:latest --format "{{.Size}}")
     print_info "Image size: $image_size"
 
     # Verify image exists
-    if docker images | grep -q "projectkeystone.*latest"; then
+    if docker images | grep -q "keystone.*latest"; then
         print_success "Runtime image built successfully"
         return 0
     else
@@ -76,7 +76,7 @@ test_run_tests() {
     print_info "Running tests in container..."
 
     # Run tests and capture output
-    if docker run --rm projectkeystone:latest; then
+    if docker run --rm keystone:latest; then
         print_success "Tests passed in container"
         return 0
     else
@@ -150,7 +150,7 @@ cleanup() {
 
 # Main execution
 main() {
-    print_header "ProjectKeystone HMAS - Docker Testing Suite"
+    print_header "Keystone HMAS - Docker Testing Suite"
     print_info "Running automated Docker tests..."
 
     # Check prerequisites

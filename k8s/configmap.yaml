@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hmas-config
-  namespace: projectkeystone
+  namespace: keystone
   labels:
     app: hmas
 data:

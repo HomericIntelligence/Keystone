@@ -6,8 +6,8 @@ services:
     build:
       context: .
       target: test
-    image: projectkeystone:${GIT_COMMIT}-test
-    container_name: projectkeystone-test-${GIT_COMMIT}
+    image: keystone:${GIT_COMMIT}-test
+    container_name: keystone-test-${GIT_COMMIT}
     environment:
       - GIT_COMMIT=${GIT_COMMIT}
       - BUILD_UID=${BUILD_UID}
@@ -18,8 +18,8 @@ services:
     build:
       context: .
       target: production
-    image: projectkeystone:${GIT_COMMIT}-production
-    container_name: projectkeystone-prod-${GIT_COMMIT}
+    image: keystone:${GIT_COMMIT}-production
+    container_name: keystone-prod-${GIT_COMMIT}
     ports:
       - "8080:8080"  # Health check
       - "9090:9090"  # Metrics
@@ -41,8 +41,8 @@ services:
       args:
         BUILD_UID: "${BUILD_UID}"
         BUILD_GID: "${BUILD_GID}"
-    image: projectkeystone-dev:latest
-    container_name: projectkeystone-dev
+    image: keystone-dev:latest
+    container_name: keystone-dev
     # Rootless-Podman bind-mount ownership: without keep-id, the default
     # rootless userns maps the in-container `user:` uid to a host *subuid*
     # (e.g. 1001 -> 101000). Anything the container writes under the mounted
@@ -76,8 +76,8 @@ services:
     build:
       context: .
       target: builder
-    image: projectkeystone-builder:${GIT_COMMIT}-latest
-    container_name: projectkeystone-build-${GIT_COMMIT}
+    image: keystone-builder:${GIT_COMMIT}-latest
+    container_name: keystone-build-${GIT_COMMIT}
     # See the `dev` service: keep-id maps the host runner uid 1:1 into the
     # container so bind-mounted build artifacts stay writable from both sides
     # under rootless Podman.

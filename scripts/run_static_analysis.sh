@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_static_analysis.sh
-# Runs static analysis on ProjectKeystone codebase
+# Runs static analysis on Keystone codebase
 #
 # Usage: ./scripts/run_static_analysis.sh [--clang-tidy-only|--cppcheck-only]
 #
@@ -42,7 +42,7 @@ for arg in "$@"; do
     esac
 done
 
-echo -e "${BLUE}=== ProjectKeystone Static Analysis ===${NC}"
+echo -e "${BLUE}=== Keystone Static Analysis ===${NC}"
 echo ""
 
 # Create analysis directory

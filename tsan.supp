@@ -1,4 +1,4 @@
-# ThreadSanitizer suppressions for ProjectKeystone
+# ThreadSanitizer suppressions for Keystone
 #
 # moodycamel::ConcurrentQueue uses relaxed atomics internally that are
 # correct but trigger TSan false positives on WorkItem moves. The queue

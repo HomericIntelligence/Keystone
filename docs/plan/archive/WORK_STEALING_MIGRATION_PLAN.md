@@ -1,8 +1,8 @@
-# ProjectKeystone: Work-Stealing Architecture Migration Plan
+# Keystone: Work-Stealing Architecture Migration Plan
 
 ## Executive Summary
 
-**Migration Goal**: Transform ProjectKeystone from synchronous MessageBus to high-performance Work-Stealing concurrent
+**Migration Goal**: Transform Keystone from synchronous MessageBus to high-performance Work-Stealing concurrent
 architecture while maintaining the 4-layer hierarchy and all existing test coverage.
 
 **Key Architectural Decisions** (Confirmed):
@@ -2144,7 +2144,7 @@ simplicity?
 
 ## Conclusion
 
-This migration plan transforms ProjectKeystone from a synchronous MessageBus architecture to a high-performance
+This migration plan transforms Keystone from a synchronous MessageBus architecture to a high-performance
 Work-Stealing concurrent system using:
 
 - **concurrentqueue** for lock-free queues

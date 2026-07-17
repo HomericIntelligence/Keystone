@@ -1,8 +1,8 @@
-# ProjectKeystone Testing Strategy
+# Keystone Testing Strategy
 
 ## Overview
 
-ProjectKeystone adopts a comprehensive, multi-tiered testing approach to ensure correctness,
+Keystone adopts a comprehensive, multi-tiered testing approach to ensure correctness,
 performance, and reliability of the hierarchical multi-agent system. The testing strategy emphasizes
 test-driven development (TDD), continuous integration, and automated validation.
 
@@ -570,8 +570,8 @@ docker-compose up test-asan
 docker-compose up test-tsan
 
 # Or manually with Docker
-docker build --build-arg SANITIZER=address -t projectkeystone:asan .
-docker run --rm projectkeystone:asan
+docker build --build-arg SANITIZER=address -t keystone:asan .
+docker run --rm keystone:asan
 ```
 
 ### Sanitizer Options
