@@ -1334,6 +1334,7 @@ jobs:
           languages: c-cpp
           build-mode: manual
           queries: security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Install C++ build deps for CodeQL
         id: codeql_deps
@@ -1393,6 +1394,7 @@ jobs:
           languages: python
           build-mode: none
           queries: security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis (python)
         uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
