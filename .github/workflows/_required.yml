@@ -10,6 +10,8 @@ on:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
@@ -18,8 +20,6 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: write
-  security-events: write
   actions: read
 
 jobs:
@@ -867,6 +867,9 @@ jobs:
           done
           [ -z "${FAILED}" ] || exit 1
 
+      - name: Validate merge-queue readiness contract
+        run: ./scripts/check-merge-queue-readiness.sh
+
   # ============================================================
   # 7. deps/version-sync
   # ============================================================
@@ -1121,6 +1124,9 @@ jobs:
     name: security/dependency-scan
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code
@@ -1263,6 +1269,9 @@ jobs:
     name: security/secrets-scan
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code (full history)

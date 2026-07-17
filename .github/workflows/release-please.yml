@@ -3,6 +3,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +14,7 @@ permissions:
 jobs:
   release-please:
     name: Release Please
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
 
     outputs:
@@ -91,3 +94,45 @@ jobs:
             build/x86.release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-gate:
+    name: release
+    runs-on: ubuntu-24.04
+    needs: [release-please, publish]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout merge-group release metadata
+        if: github.event_name == 'merge_group'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Validate release metadata for the merge group
+        if: github.event_name == 'merge_group'
+        run: jq -e . release-please-config.json .release-please-manifest.json >/dev/null
+
+      - name: Check release workflow result
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_PLEASE_RESULT: ${{ needs.release-please.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "merge_group" ]; then
+            echo "Release metadata is valid; mutating release jobs were skipped for the merge group."
+            exit 0
+          fi
+
+          if [ "$RELEASE_PLEASE_RESULT" != "success" ]; then
+            echo "::error::release-please failed ($RELEASE_PLEASE_RESULT)"
+            exit 1
+          fi
+
+          case "$PUBLISH_RESULT" in
+            success|skipped) ;;
+            *)
+              echo "::error::release artifact publication failed ($PUBLISH_RESULT)"
+              exit 1
+              ;;
+          esac

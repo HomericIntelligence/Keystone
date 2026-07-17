@@ -44,6 +44,10 @@ lint:
 check-extraction:
   ./scripts/check-extraction.sh
 
+# Validate that required workflows and activation docs remain merge-queue ready.
+check-merge-queue-readiness:
+  ./scripts/check-merge-queue-readiness.sh
+
 format:
   make format
 

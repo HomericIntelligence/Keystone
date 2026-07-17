@@ -5,62 +5,21 @@ security scanning of the Keystone HMAS (Hierarchical Multi-Agent System) codebas
 
 ## Workflow Overview
 
-### Tier 1: Fast Checks (2-5 minutes)
+### Current Workflows
 
-These workflows run on every PR and provide quick feedback:
+- **`_required.yml`** emits the baseline required contexts, including lint,
+  build, test, package, security, schema, and dependency-version checks.
+- **`extras.yml`** emits the separately required `coverage` context and advisory
+  benchmark/NATS checks. Only coverage runs for merge-group events.
+- **`release-please.yml`** manages releases after pushes to `main`. For a
+  merge-group event, mutating release jobs are skipped and the required `release`
+  gate validates repository release metadata instead.
+- **`profiling-weekly.yml`** is scheduled/manual and is not a merge gate.
 
-- **pre-commit.yml** - Code formatting and linting
-  - Runs pre-commit hooks (clang-format, cmake-format)
-  - C++ formatting validation with clang-format-14
-  - Static analysis with clang-tidy and cppcheck
-  - **Triggers**: PR, push to main, manual
-  - **Timeout**: 10-15 minutes
-
-- **unit-tests.yml** - Unit test execution
-  - Builds test environment in Docker
-  - Runs Google Test (GTest) unit tests
-  - Generates coverage reports with gcovr
-  - **Triggers**: PR, push to main, manual
-  - **Timeout**: 15 minutes
-  - **Artifacts**: Test results, coverage reports
-
-### Tier 2: Comprehensive Checks (5-15 minutes)
-
-These workflows provide deeper validation:
-
-- **build-validation.yml** - Docker build verification
-  - Builds all Docker stages (builder, runtime, development)
-  - Validates native CMake builds
-  - Runs smoke tests
-  - **Triggers**: PR, push to main, manual
-  - **Timeout**: 20 minutes
-  - **Artifacts**: Build manifests, build reports
-
-- **integration-tests.yml** - E2E test suites
-  - Runs phase-specific E2E tests (Phase 1-4)
-  - Tests full agent hierarchy delegation
-  - Matrix strategy for parallel execution
-  - **Triggers**: PR, push to main, manual
-  - **Timeout**: 20 minutes
-  - **Artifacts**: Test results, integration reports
-
-- **security-scan.yml** - Security vulnerability scanning
-  - Secret detection with Gitleaks
-  - SAST scanning with Semgrep
-  - CodeQL analysis for C++
-  - Dependency and supply chain scanning
-  - **Triggers**: PR, push to main, weekly schedule, manual
-  - **Timeout**: 15-20 minutes
-  - **Artifacts**: Security reports, SARIF files
-
-- **sanitizers.yml** - Runtime error detection
-  - AddressSanitizer (ASan) for memory errors
-  - UndefinedBehaviorSanitizer (UBSan) for undefined behavior
-  - ThreadSanitizer (TSan) for data races
-  - MemorySanitizer (MSan) on manual trigger
-  - **Triggers**: PR, push to main, manual
-  - **Timeout**: 20-30 minutes
-  - **Artifacts**: Sanitizer logs and reports
+The first three workflows support `merge_group` with only the
+`checks_requested` activity type because they supply contexts required by the
+live `main` rulesets. The event is additive: existing push, pull-request, manual,
+and scheduled behavior remains unchanged.
 
 ## Workflow Details
 
@@ -245,9 +204,21 @@ All workflows run on:
 - PR synchronized (new commits)
 - PR reopened
 
+### Merge Queue
+
+Required-context workflows also run for `merge_group/checks_requested`. GitHub
+creates that event against the speculative group ref, allowing all required
+checks to validate the exact commit group that would reach `main`.
+
+The repository-owned workflows are queue-ready, but queue activation is a
+separate post-merge administration step. See
+[CI/CD Quality Gates](../../docs/CICD_QUALITY_GATES.md#merge-queue-activation)
+for the preserved required-context baseline and approved queue policy.
+
 ### Push Events
 
-All workflows run on pushes to `main` branch
+The required, extras, and release workflows run on pushes to `main`; required
+and extras retain their existing `develop` and `claude/**` push behavior.
 
 ### Scheduled
 
@@ -255,7 +226,7 @@ All workflows run on pushes to `main` branch
 
 ### Manual
 
-All workflows support `workflow_dispatch` for manual triggering
+All workflows support `workflow_dispatch` for manual triggering.
 
 ## Artifacts and Retention
 
