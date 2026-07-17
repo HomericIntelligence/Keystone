@@ -31,10 +31,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   # Build and publish release artifacts when a new release is created.
-  # Emits the canonical `release` check-run for the Odysseus ecosystem
-  # board (renamed from "Publish Release Artifacts").
+  # Named `publish-release`, NOT `release`: the canonical required
+  # `release` context is emitted by the PR-time validation job in
+  # _required.yml. This job is gated on release_created and only ever
+  # runs on release-please merge commits to main, so it could never
+  # satisfy the ruleset on pull requests — and two jobs sharing the
+  # `release` check name would collide on those main pushes.
   publish:
-    name: release
+    name: publish-release
     runs-on: ubuntu-24.04
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
