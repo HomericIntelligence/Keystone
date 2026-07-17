@@ -1162,7 +1162,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy FS results to Security tab
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         if: always() && hashFiles('dep-scan.sarif') != ''
         with:
           sarif_file: "dep-scan.sarif"
@@ -1223,7 +1223,7 @@ jobs:
 
       - name: Upload Trivy container results to Security tab
         if: steps.docker_build.outputs.built == 'true' && hashFiles('container-scan.sarif') != ''
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           sarif_file: "container-scan.sarif"
           category: "trivy-container"
@@ -1331,14 +1331,14 @@ jobs:
 
       - name: Upload Semgrep SARIF
         if: always() && hashFiles('semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           sarif_file: semgrep.sarif
           category: "semgrep"
 
       # ---------- CodeQL C/C++ ----------
       - name: Initialize CodeQL (c-cpp)
-        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           languages: c-cpp
           build-mode: manual
@@ -1392,13 +1392,13 @@ jobs:
           fi
 
       - name: Perform CodeQL Analysis (c-cpp)
-        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           category: "/language:c-cpp"
 
       # ---------- CodeQL Python ----------
       - name: Initialize CodeQL (python)
-        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           languages: python
           build-mode: none
@@ -1406,7 +1406,7 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis (python)
-        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9  # v4
+        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
         with:
           category: "/language:python"
 
