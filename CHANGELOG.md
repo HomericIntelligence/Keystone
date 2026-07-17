@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ProjectKeystone are documented here.
+All notable changes to Keystone are documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -150,5 +150,5 @@ bridge, BlazingMQ integration, and full sanitizer CI.
 - `P1/P2`: Resolve profiling deadlock and fairness race condition ([72fc39d](../../commit/72fc39d))
 - `P0`: Resolve critical safety issues — HealthCheckServer hang and coroutine UAF ([ffcc528](../../commit/ffcc528))
 
-[Unreleased]: https://github.com/HomericIntelligence/ProjectKeystone/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/HomericIntelligence/ProjectKeystone/releases/tag/v0.1.0
+[Unreleased]: https://github.com/HomericIntelligence/Keystone/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/HomericIntelligence/Keystone/releases/tag/v0.1.0

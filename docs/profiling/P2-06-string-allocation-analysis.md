@@ -1,6 +1,6 @@
 # P2-06: String Allocation Profiling Analysis
 
-**Issue**: [#22](https://github.com/mvillmow/ProjectKeystone/issues/22)
+**Issue**: [#22](https://github.com/mvillmow/Keystone/issues/22)
 **Date**: 2025-11-23
 **Status**: Phase 1 Complete - Measurement & Analysis
 

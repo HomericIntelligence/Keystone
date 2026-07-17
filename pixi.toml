@@ -1,5 +1,5 @@
 [project]
-name = "projectkeystone"
+name = "keystone"
 version = "0.1.0"
 description = "Pure C++20 message transport library (NATS bridge, message bus)"
 channels = ["conda-forge"]

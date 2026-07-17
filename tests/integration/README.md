@@ -84,7 +84,7 @@ Environment variables used by the test suite:
 
 ## NATS subject schema
 
-The integration tests follow the ProjectKeystone subject schema:
+The integration tests follow the Keystone subject schema:
 
 | Subject | Direction | Tested by |
 |---------|-----------|-----------|

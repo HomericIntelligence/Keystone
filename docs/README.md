@@ -1,6 +1,6 @@
-# ProjectKeystone Documentation
+# Keystone Documentation
 
-Welcome to the ProjectKeystone Hierarchical Multi-Agent System (HMAS) documentation.
+Welcome to the Keystone Hierarchical Multi-Agent System (HMAS) documentation.
 
 ## Quick Navigation
 
@@ -16,9 +16,9 @@ Welcome to the ProjectKeystone Hierarchical Multi-Agent System (HMAS) documentat
 
 ## Getting Started
 
-### New to ProjectKeystone?
+### New to Keystone?
 
-Start here to understand what ProjectKeystone is and how to build it.
+Start here to understand what Keystone is and how to build it.
 
 - **[Main README](../README.md)** - Project overview, quick start, and build instructions
 - **[CLAUDE.md](../CLAUDE.md)** - Comprehensive project guide for Claude Code AI
@@ -229,7 +229,7 @@ Automation scripts for common development tasks (see `../scripts/`):
 
 ### Completed Phases
 
-ProjectKeystone follows a phased TDD approach. Each phase builds incrementally on the previous.
+Keystone follows a phased TDD approach. Each phase builds incrementally on the previous.
 
 #### Core System (Phases 1-5)
 
@@ -304,7 +304,7 @@ ProjectKeystone follows a phased TDD approach. Each phase builds incrementally o
 
 ### External Links
 
-- **[GitHub Repository](https://github.com/mvillmow/ProjectKeystone)**
+- **[GitHub Repository](https://github.com/mvillmow/Keystone)**
 - **[CI/CD Workflows](../.github/workflows/)** - GitHub Actions workflows
 
 ### Technology Stack
@@ -381,4 +381,4 @@ If you find missing or incorrect documentation:
 
 ---
 
-**Welcome to ProjectKeystone!** 🚀
+**Welcome to Keystone!** 🚀

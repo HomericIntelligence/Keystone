@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{include "projectkeystone.fullname" .}}
-  namespace: {{include "projectkeystone.namespace" .}}
+  name: {{include "keystone.fullname" .}}
+  namespace: {{include "keystone.namespace" .}}
   labels:
-    {{- include "projectkeystone.labels" . | nindent 4}}
+    {{- include "keystone.labels" . | nindent 4}}
   {{- with .Values.service.annotations}}
   annotations:
     {{- toYaml . | nindent 4}}
@@ -12,7 +12,7 @@ metadata:
 spec:
   type: {{.Values.service.type}}
   selector:
-    {{- include "projectkeystone.selectorLabels" . | nindent 4}}
+    {{- include "keystone.selectorLabels" . | nindent 4}}
   ports:
   - name: health
     port: {{.Values.service.ports.health.port}}
@@ -32,15 +32,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{include "projectkeystone.fullname" .}}-headless
-  namespace: {{include "projectkeystone.namespace" .}}
+  name: {{include "keystone.fullname" .}}-headless
+  namespace: {{include "keystone.namespace" .}}
   labels:
-    {{- include "projectkeystone.labels" . | nindent 4}}
+    {{- include "keystone.labels" . | nindent 4}}
 spec:
   type: ClusterIP
   clusterIP: None  # Headless service for direct pod access
   selector:
-    {{- include "projectkeystone.selectorLabels" . | nindent 4}}
+    {{- include "keystone.selectorLabels" . | nindent 4}}
   ports:
   - name: grpc
     port: 50051

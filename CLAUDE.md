@@ -1,8 +1,8 @@
-# ProjectKeystone — Pure Invisible Transport Layer
+# Keystone — Pure Invisible Transport Layer
 
 ## Project Overview
 
-**ProjectKeystone** is a C++20 transport infrastructure library providing invisible,
+**Keystone** is a C++20 transport infrastructure library providing invisible,
 zero-configuration message routing for all HomericIntelligence components.
 Components never address Keystone directly — they publish and subscribe to logical
 NATS subjects, and Keystone handles all routing transparently.
@@ -189,7 +189,7 @@ transparently.
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
-project(ProjectKeystone CXX)
+project(Keystone CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -373,4 +373,4 @@ Before opening a PR:
 
 **Last Updated**: 2026-04-25
 **Version**: 3.0 (Pure Transport — HMAS and Python orchestration extracted to ProjectAgamemnon per ADR-015)
-**Project**: ProjectKeystone
+**Project**: Keystone

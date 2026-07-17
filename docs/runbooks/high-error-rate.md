@@ -29,7 +29,7 @@
 
 ```bash
 # Port-forward Prometheus
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 
 # Query current deadline miss rate
 curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])'
@@ -43,7 +43,7 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5
 
 ```bash
 # Pod status and resource usage
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 
 # Worker utilization
 curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
@@ -59,10 +59,10 @@ curl 'http://localhost:9090/api/v1/query?query=hmas_message_latency_microseconds
 
 ```bash
 # View recent logs
-kubectl logs -n projectkeystone -l app=hmas --tail=200 | grep -i "deadline\|timeout\|error"
+kubectl logs -n keystone -l app=hmas --tail=200 | grep -i "deadline\|timeout\|error"
 
 # Check for specific error patterns
-kubectl logs -n projectkeystone -l app=hmas --tail=500 | grep "Deadline miss"
+kubectl logs -n keystone -l app=hmas --tail=500 | grep "Deadline miss"
 ```
 
 ---
@@ -117,10 +117,10 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_messages_received_total
 
 ```bash
 # Increase HMAS replicas
-kubectl scale deployment/hmas --replicas=5 -n projectkeystone
+kubectl scale deployment/hmas --replicas=5 -n keystone
 
 # Watch rollout
-kubectl get pods -n projectkeystone -l app=hmas -w
+kubectl get pods -n keystone -l app=hmas -w
 
 # Verify scaling helped (wait 2-3 minutes)
 curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])'
@@ -130,7 +130,7 @@ curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5
 
 ```bash
 # CPU throttling
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 # If CPU at limit, increase CPU resources
 
 # Memory pressure
@@ -138,7 +138,7 @@ kubectl top nodes
 # If memory high, check for memory leaks
 
 # Disk I/O (if using persistent storage)
-kubectl exec -n projectkeystone <pod-name> -- iostat -x 1 5
+kubectl exec -n keystone <pod-name> -- iostat -x 1 5
 ```
 
 ---
@@ -191,10 +191,10 @@ curl 'http://localhost:9090/api/v1/query_range?query=rate(hmas_messages_received
 **Diagnosis**:
 
 ```bash
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 
 # Check CPU throttling
-kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Limits\|Requests"
+kubectl describe pod <pod-name> -n keystone | grep -A 10 "Limits\|Requests"
 ```
 
 **Resolution**:
@@ -202,7 +202,7 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Limits\|Request
 - Increase resource limits:
 
   ```bash
-  kubectl patch deployment hmas -n projectkeystone -p '
+  kubectl patch deployment hmas -n keystone -p '
   {
     "spec": {
       "template": {
@@ -231,7 +231,7 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Limits\|Request
 curl 'http://localhost:9090/api/v1/query?query=hmas_message_latency_microseconds'
 
 # Check logs for slow operations
-kubectl logs -n projectkeystone -l app=hmas --tail=100 | grep -i "slow\|timeout"
+kubectl logs -n keystone -l app=hmas --tail=100 | grep -i "slow\|timeout"
 ```
 
 **Resolution**:
@@ -278,9 +278,9 @@ curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
 - Increase worker count via ConfigMap:
 
   ```bash
-  kubectl edit configmap hmas-config -n projectkeystone
+  kubectl edit configmap hmas-config -n keystone
   # Change WORKER_COUNT from 4 to 8
-  kubectl rollout restart deployment/hmas -n projectkeystone
+  kubectl rollout restart deployment/hmas -n keystone
   ```
 
 ---
@@ -291,7 +291,7 @@ curl 'http://localhost:9090/api/v1/query?query=hmas_worker_utilization_percent'
 
 ```bash
 # Scale up to handle load
-kubectl scale deployment/hmas --replicas=5 -n projectkeystone
+kubectl scale deployment/hmas --replicas=5 -n keystone
 
 # Monitor for improvement (2-3 minutes)
 watch 'curl -s "http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])" | jq
@@ -363,7 +363,7 @@ kubectl autoscale deployment hmas \
   --cpu-percent=70 \
   --min=2 \
   --max=10 \
-  -n projectkeystone
+  -n keystone
 ```
 
 ---

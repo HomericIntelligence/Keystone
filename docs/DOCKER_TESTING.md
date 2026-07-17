@@ -1,6 +1,6 @@
 # Docker Testing Guide
 
-This document provides instructions for testing the Docker setup for ProjectKeystone HMAS.
+This document provides instructions for testing the Docker setup for Keystone HMAS.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ docker-compose --version  # Should be 1.29+
 
 ```bash
 # Build the runtime image (includes build stage)
-docker build --target runtime -t projectkeystone:latest .
+docker build --target runtime -t keystone:latest .
 
 # Expected output:
 # - Successfully builds builder stage
@@ -29,7 +29,7 @@ docker build --target runtime -t projectkeystone:latest .
 
 ```bash
 # Run the tests
-docker run --rm projectkeystone:latest
+docker run --rm keystone:latest
 
 # Expected output:
 # [==========] Running 3 tests from 1 test suite.
@@ -142,7 +142,7 @@ docker-compose down
 docker-compose down -v
 
 # Remove images
-docker rmi projectkeystone:latest projectkeystone-dev:latest
+docker rmi keystone:latest keystone-dev:latest
 
 # Remove dangling images
 docker image prune -f

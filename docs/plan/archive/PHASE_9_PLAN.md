@@ -7,7 +7,7 @@
 
 ## Overview
 
-Phase 9 elevates the ProjectKeystone HMAS to **production-grade quality** through
+Phase 9 elevates the Keystone HMAS to **production-grade quality** through
 comprehensive testing, code coverage analysis, fuzz testing, static analysis, and
 performance benchmarking. The goal is to achieve 95%+ code coverage and establish
 continuous quality assurance practices.
@@ -415,9 +415,9 @@ continuous quality assurance practices.
 
    ```markdown
    # README.md
-   ![Coverage](https://codecov.io/gh/user/ProjectKeystone/branch/main/graph/badge.svg)
-   ![Quality](https://sonarcloud.io/api/project_badges/measure?project=ProjectKeystone&metric=alert_status)
-   ![Build](https://github.com/user/ProjectKeystone/workflows/CI/badge.svg)
+   ![Coverage](https://codecov.io/gh/user/Keystone/branch/main/graph/badge.svg)
+   ![Quality](https://sonarcloud.io/api/project_badges/measure?project=Keystone&metric=alert_status)
+   ![Build](https://github.com/user/Keystone/workflows/CI/badge.svg)
    ```
 
 **Deliverables**:

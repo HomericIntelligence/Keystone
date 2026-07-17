@@ -1,8 +1,8 @@
-# Load Testing Strategy - ProjectKeystone HMAS
+# Load Testing Strategy - Keystone HMAS
 
 ## Overview
 
-This document outlines the load testing strategy for ProjectKeystone's Hierarchical Multi-Agent System (HMAS) to ensure
+This document outlines the load testing strategy for Keystone's Hierarchical Multi-Agent System (HMAS) to ensure
 production readiness at Phase 6.7 milestone M1 (P1).
 
 ## Objectives

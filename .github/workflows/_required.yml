@@ -1180,7 +1180,7 @@ jobs:
         # so downstream steps can gate explicitly, without continue-on-error.
         run: |
           set -euo pipefail
-          if docker build --target production -t projectkeystone:scan .; then
+          if docker build --target production -t keystone:scan .; then
             echo "built=true" >> "$GITHUB_OUTPUT"
           else
             echo "built=false" >> "$GITHUB_OUTPUT"
@@ -1197,7 +1197,7 @@ jobs:
         if: steps.docker_build.outputs.built == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: "projectkeystone:scan"
+          image-ref: "keystone:scan"
           format: "sarif"
           output: "container-scan.sarif"
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
@@ -1208,7 +1208,7 @@ jobs:
         if: steps.docker_build.outputs.built == 'true'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
-          image-ref: "projectkeystone:scan"
+          image-ref: "keystone:scan"
           format: "json"
           output: "container-scan.json"
           severity: "CRITICAL,HIGH,MEDIUM,LOW"

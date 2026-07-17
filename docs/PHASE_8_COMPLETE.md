@@ -4,7 +4,7 @@
 
 **Status**: **93% Complete (13/14 components)** - Production Ready
 
-ProjectKeystone HMAS now has a **fully implemented distributed multi-node agent system**. All agents can communicate
+Keystone HMAS now has a **fully implemented distributed multi-node agent system**. All agents can communicate
 across Docker containers using gRPC and YAML-based task specifications.
 
 **Achievement**: **8,500+ lines of production-ready code** across 41 files
@@ -398,7 +398,7 @@ brew install grpc protobuf
 ### Build
 
 ```bash
-cd /home/mvillmow/ProjectKeystone
+cd /home/mvillmow/Keystone
 
 # Configure
 mkdir -p build && cd build

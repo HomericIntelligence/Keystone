@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document is the canonical reference for all NATS subjects owned by ProjectKeystone
+This document is the canonical reference for all NATS subjects owned by Keystone
 and the payload envelope contract that all publishers (e.g., ProjectHermes) and
 subscribers (e.g., Odysseus, myrmidons) must adhere to.
 

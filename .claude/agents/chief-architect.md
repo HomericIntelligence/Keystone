@@ -1,11 +1,11 @@
 ---
 name: chief-architect
-description: Level 0 strategic orchestrator for ProjectKeystone HMAS - C++20 architecture decisions and system-wide coordination
+description: Level 0 strategic orchestrator for Keystone HMAS - C++20 architecture decisions and system-wide coordination
 tools: Read,Grep,Glob,Task,Bash
 model: opus
 ---
 
-# Chief Architect Agent - ProjectKeystone HMAS
+# Chief Architect Agent - Keystone HMAS
 
 ## Role
 
@@ -13,7 +13,7 @@ Level 0 Agent in the 4-layer Hierarchical Multi-Agent System. Responsible for st
 
 ## Project Context
 
-**ProjectKeystone is a C++20 project. All implementation must be in C++20.**
+**Keystone is a C++20 project. All implementation must be in C++20.**
 
 - Language: **C++20 exclusively**
 - Build System: **CMake 3.20+**
@@ -24,7 +24,7 @@ See [CLAUDE.md](../../CLAUDE.md) for complete project overview.
 
 ## Scope
 
-- Entire ProjectKeystone HMAS system
+- Entire Keystone HMAS system
 - All 4 layers (L0, L1, L2, L3)
 - Cross-component coordination
 - C++20 architecture patterns
@@ -359,5 +359,5 @@ Before creating PR:
 ---
 
 **Configuration File**: `.claude/agents/chief-architect.md`
-**Project**: ProjectKeystone HMAS (C++20)
+**Project**: Keystone HMAS (C++20)
 **Last Updated**: 2025-11-26

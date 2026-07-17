@@ -1,11 +1,11 @@
-# Fuzz Testing for ProjectKeystone
+# Fuzz Testing for Keystone
 
-This directory contains fuzz tests for ProjectKeystone HMAS using libFuzzer.
+This directory contains fuzz tests for Keystone HMAS using libFuzzer.
 
 ## Overview
 
 Fuzz testing uses automated random input generation to discover bugs, crashes,
-and undefined behavior. ProjectKeystone includes 4 fuzz test targets:
+and undefined behavior. Keystone includes 4 fuzz test targets:
 
 1. **fuzz_message_serialization** - Tests KeystoneMessage parsing and serialization
 2. **fuzz_message_bus_routing** - Tests MessageBus routing logic

@@ -1,6 +1,6 @@
-# Contributing to ProjectKeystone
+# Contributing to Keystone
 
-Thank you for contributing to ProjectKeystone — the invisible transport layer of the
+Thank you for contributing to Keystone — the invisible transport layer of the
 HomericIntelligence ecosystem. This guide covers everything you need to get started.
 
 ## Prerequisites
@@ -60,7 +60,7 @@ Branch names should be lowercase, hyphenated, and describe the change.
 
 ## Development Workflow
 
-ProjectKeystone follows **Test-Driven Development (TDD)**:
+Keystone follows **Test-Driven Development (TDD)**:
 
 1. **RED** — write a failing test for the behaviour you're adding
 2. **GREEN** — write the minimum code to make it pass
@@ -247,7 +247,7 @@ Before opening a PR:
 ## Project Structure
 
 ```
-ProjectKeystone/
+Keystone/
 ├── CMakeLists.txt        # Root build configuration
 ├── CMakePresets.json     # Preset-based build config (v8 schema)
 ├── conanfile.py          # Conan 2 dependency manifest

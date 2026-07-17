@@ -2,7 +2,7 @@
 
 ## Overview
 
-ProjectKeystone HMAS uses YAML task specifications to coordinate work across the 4-layer agent hierarchy. The format is
+Keystone HMAS uses YAML task specifications to coordinate work across the 4-layer agent hierarchy. The format is
 inspired by Argo Workflows and follows Kubernetes-style conventions.
 
 **API Version**: `keystone.hmas.io/v1alpha1`

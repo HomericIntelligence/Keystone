@@ -1,8 +1,8 @@
-# ProjectKeystone Component Architecture
+# Keystone Component Architecture
 
 ## Overview
 
-ProjectKeystone is a **pure invisible transport layer** for HomericIntelligence. It provides transparent,
+Keystone is a **pure invisible transport layer** for HomericIntelligence. It provides transparent,
 zero-configuration message routing using two complementary transports:
 
 1. **Local Transport** (intra-host): BlazingMQ + lock-free concurrent queue via `concurrentqueue`
@@ -19,7 +19,7 @@ primitives.
 
 ## Source Layout
 
-ProjectKeystone is organized by transport and infrastructure concerns:
+Keystone is organized by transport and infrastructure concerns:
 
 ```
 src/
@@ -180,11 +180,11 @@ Keystone enforces pull-based, rate-limited delivery:
 
 ## Build Configuration
 
-ProjectKeystone uses **CMake 3.20+** with traditional C++ header-based organization (not C++20 modules):
+Keystone uses **CMake 3.20+** with traditional C++ header-based organization (not C++20 modules):
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
-project(ProjectKeystone CXX)
+project(Keystone CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_EXTENSIONS OFF)
@@ -1016,7 +1016,7 @@ Keystone.Core
 
 ```cmake
 cmake_minimum_required(VERSION 3.28)
-project(ProjectKeystone CXX)
+project(Keystone CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

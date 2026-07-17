@@ -13,7 +13,7 @@ namespace core {
  * before sending to external systems or logs.
  *
  * Removes:
- * - File paths (e.g., /home/user/ProjectKeystone/src/core/message_bus.cpp:85)
+ * - File paths (e.g., /home/user/Keystone/src/core/message_bus.cpp:85)
  * - Memory addresses (e.g., 0x7fff5fbff710)
  * - Internal namespaces (e.g., keystone::core::)
  *

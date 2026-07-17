@@ -6,7 +6,7 @@
 
 set -e
 
-echo "Setting up ProjectKeystone environment..."
+echo "Setting up Keystone environment..."
 
 # Get current user's UID and GID
 CURRENT_UID=$(id -u)

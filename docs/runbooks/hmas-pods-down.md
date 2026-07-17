@@ -29,7 +29,7 @@
 
 ```bash
 # Check all HMAS pods
-kubectl get pods -n projectkeystone -l app=hmas
+kubectl get pods -n keystone -l app=hmas
 
 # Look for:
 # - Pending (not scheduled)
@@ -50,20 +50,20 @@ hmas-5d8f7c9b6-def34    1/1     Running   0          10m
 
 ```bash
 # Get recent events for failed pods
-kubectl describe pod <pod-name> -n projectkeystone | tail -20
+kubectl describe pod <pod-name> -n keystone | tail -20
 
 # Check namespace events
-kubectl get events -n projectkeystone --sort-by='.lastTimestamp' | tail -20
+kubectl get events -n keystone --sort-by='.lastTimestamp' | tail -20
 ```
 
 ### 3. Check Logs
 
 ```bash
 # View logs from crashed pod
-kubectl logs <pod-name> -n projectkeystone --tail=50
+kubectl logs <pod-name> -n keystone --tail=50
 
 # View previous container logs if pod restarted
-kubectl logs <pod-name> -n projectkeystone --previous
+kubectl logs <pod-name> -n keystone --previous
 ```
 
 ---
@@ -106,24 +106,24 @@ kubectl logs <pod-name> -n projectkeystone --previous
 2. **Check Resource Quotas**:
 
    ```bash
-   kubectl describe resourcequota -n projectkeystone
+   kubectl describe resourcequota -n keystone
    ```
 
 3. **Attempt Pod Recreation**:
 
    ```bash
    # Force recreate pods
-   kubectl rollout restart deployment/hmas -n projectkeystone
+   kubectl rollout restart deployment/hmas -n keystone
 
    # Watch rollout status
-   kubectl rollout status deployment/hmas -n projectkeystone
+   kubectl rollout status deployment/hmas -n keystone
    ```
 
 4. **Scale Down if Resources Exhausted**:
 
    ```bash
    # Temporarily reduce replicas
-   kubectl scale deployment/hmas --replicas=1 -n projectkeystone
+   kubectl scale deployment/hmas --replicas=1 -n keystone
    ```
 
 ### If Single Pod Down (SEV-2)
@@ -131,13 +131,13 @@ kubectl logs <pod-name> -n projectkeystone --previous
 1. **Delete Failed Pod** (Kubernetes will recreate):
 
    ```bash
-   kubectl delete pod <pod-name> -n projectkeystone
+   kubectl delete pod <pod-name> -n keystone
    ```
 
 2. **Monitor Recreation**:
 
    ```bash
-   kubectl get pods -n projectkeystone -l app=hmas -w
+   kubectl get pods -n keystone -l app=hmas -w
    ```
 
 ---
@@ -153,13 +153,13 @@ kubectl logs <pod-name> -n projectkeystone --previous
 **Diagnosis**:
 
 ```bash
-kubectl describe pod <pod-name> -n projectkeystone | grep -A 5 "Failed"
+kubectl describe pod <pod-name> -n keystone | grep -A 5 "Failed"
 ```
 
 **Resolution**:
 
-- Verify image exists: `docker pull projectkeystone:latest`
-- Check image pull secrets: `kubectl get secrets -n projectkeystone`
+- Verify image exists: `docker pull keystone:latest`
+- Check image pull secrets: `kubectl get secrets -n keystone`
 - Fix image tag in deployment
 
 #### 2. Resource Exhaustion
@@ -186,14 +186,14 @@ kubectl describe nodes | grep -A 5 "Allocated resources"
 **Diagnosis**:
 
 ```bash
-kubectl logs <pod-name> -n projectkeystone --previous
+kubectl logs <pod-name> -n keystone --previous
 ```
 
 **Resolution**:
 
 - Check for segmentation faults, exceptions, or panics
 - Verify configuration: `kubectl get configmap hmas-config -o yaml`
-- Check secrets: `kubectl get secrets -n projectkeystone`
+- Check secrets: `kubectl get secrets -n keystone`
 - Rollback if recent deployment: `kubectl rollout undo deployment/hmas`
 
 #### 4. Health Check Failure
@@ -203,7 +203,7 @@ kubectl logs <pod-name> -n projectkeystone --previous
 **Diagnosis**:
 
 ```bash
-kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Liveness\|Readiness"
+kubectl describe pod <pod-name> -n keystone | grep -A 10 "Liveness\|Readiness"
 ```
 
 **Resolution**:
@@ -211,7 +211,7 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Liveness\|Readi
 - Manually test health endpoint:
 
   ```bash
-  kubectl exec <pod-name> -n projectkeystone -- curl -v localhost:8080/healthz
+  kubectl exec <pod-name> -n keystone -- curl -v localhost:8080/healthz
   ```
 
 - Increase `initialDelaySeconds` if slow startup
@@ -224,7 +224,7 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 10 "Liveness\|Readi
 **Diagnosis**:
 
 ```bash
-kubectl describe pod <pod-name> -n projectkeystone | grep -i oom
+kubectl describe pod <pod-name> -n keystone | grep -i oom
 ```
 
 **Resolution**:
@@ -255,10 +255,10 @@ Based on root cause:
 
 ```bash
 # Check pod status
-kubectl get pods -n projectkeystone -l app=hmas
+kubectl get pods -n keystone -l app=hmas
 
 # Check metrics endpoint
-kubectl port-forward -n projectkeystone svc/hmas 9090:9090
+kubectl port-forward -n keystone svc/hmas 9090:9090
 curl http://localhost:9090/metrics
 
 # Check Prometheus targets
@@ -269,7 +269,7 @@ curl http://localhost:9090/metrics
 
 ```bash
 # Watch metrics for 15 minutes
-kubectl logs -f deployment/hmas -n projectkeystone
+kubectl logs -f deployment/hmas -n keystone
 
 # Check error rate
 curl 'http://localhost:9090/api/v1/query?query=rate(hmas_deadline_misses_total[5m])'
@@ -283,16 +283,16 @@ If new deployment caused the issue:
 
 ```bash
 # View rollout history
-kubectl rollout history deployment/hmas -n projectkeystone
+kubectl rollout history deployment/hmas -n keystone
 
 # Rollback to previous version
-kubectl rollout undo deployment/hmas -n projectkeystone
+kubectl rollout undo deployment/hmas -n keystone
 
 # Rollback to specific revision
-kubectl rollout undo deployment/hmas --to-revision=2 -n projectkeystone
+kubectl rollout undo deployment/hmas --to-revision=2 -n keystone
 
 # Verify rollback
-kubectl rollout status deployment/hmas -n projectkeystone
+kubectl rollout status deployment/hmas -n keystone
 ```
 
 ---

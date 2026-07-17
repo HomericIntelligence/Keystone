@@ -1,8 +1,8 @@
-# ProjectKeystone Build System
+# Keystone Build System
 
 ## Overview
 
-ProjectKeystone uses **CMake 3.20+** with **Conan 2** for dependency management and **CMakePresets.json** (v8) for
+Keystone uses **CMake 3.20+** with **Conan 2** for dependency management and **CMakePresets.json** (v8) for
 preset-based builds. Traditional C++ headers are used (not C++20 modules). This document outlines the build
 configuration, toolchain requirements, and development workflows.
 
@@ -31,7 +31,7 @@ All compilers must support C++20 (e.g., `std::latch`, `std::barrier`, `std::atom
 
 ### Package Manager: Conan 2
 
-ProjectKeystone uses **Conan 2** for C++ dependency management:
+Keystone uses **Conan 2** for C++ dependency management:
 
 ```bash
 # Install Conan 2
@@ -57,7 +57,7 @@ conan install . --build=missing
 ## Project Structure
 
 ```
-ProjectKeystone/
+Keystone/
 ├── CMakeLists.txt              # Root CMake configuration
 ├── CMakePresets.json           # Build presets (v8 schema)
 ├── conanfile.py                # Conan 2 dependency manifest
@@ -102,7 +102,7 @@ ProjectKeystone/
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 
-project(ProjectKeystone
+project(Keystone
     VERSION 0.1.0
     DESCRIPTION "Pure Invisible Transport Layer for HomericIntelligence"
     LANGUAGES CXX
@@ -185,7 +185,7 @@ install(EXPORT KeystoneTargets
 
 ## CMake Presets (CMakePresets.json)
 
-ProjectKeystone uses **CMakePresets.json v8** for preset-based builds with parallel build output directories:
+Keystone uses **CMakePresets.json v8** for preset-based builds with parallel build output directories:
 
 ```json
 {
@@ -309,7 +309,7 @@ build/
 
 ### Using Justfile (Recommended)
 
-ProjectKeystone uses `just` for unified build commands:
+Keystone uses `just` for unified build commands:
 
 ```bash
 # Show all available commands

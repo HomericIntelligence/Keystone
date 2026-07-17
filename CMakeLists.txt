@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(
-  ProjectKeystone
+  Keystone
   VERSION 0.1.0
   LANGUAGES CXX)
 
@@ -472,7 +472,7 @@ add_custom_target(
           # Agent-delegation, registry, and NATS-agent integration test targets
           # were removed: the agent hierarchy was extracted to ProjectAgamemnon
           # (ADR-015).
-  COMMENT "Running all ProjectKeystone tests with failure output")
+  COMMENT "Running all Keystone tests with failure output")
 
 # Agent hierarchy / message-bus / registry benchmarks removed: they exercised
 # the agent hierarchy extracted to ProjectAgamemnon per ADR-015.
@@ -651,15 +651,15 @@ install(
 # =====================================================================# CPack
 # Configuration
 # =====================================================================
-set(CPACK_PACKAGE_NAME "ProjectKeystone")
-set(CPACK_PACKAGE_VENDOR "ProjectKeystone Development Team")
+set(CPACK_PACKAGE_NAME "Keystone")
+set(CPACK_PACKAGE_VENDOR "Keystone Development Team")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
     "Pure C++20 message transport library (NATS bridge, message bus)")
 # Version already defined earlier for CMake package config
 set(CPACK_PACKAGE_CONTACT
-    "ProjectKeystone Maintainers <noreply@homericintelligence.dev>")
+    "Keystone Maintainers <noreply@homericintelligence.dev>")
 set(CPACK_PACKAGE_HOMEPAGE_URL
-    "https://github.com/HomericIntelligence/ProjectKeystone")
+    "https://github.com/HomericIntelligence/Keystone")
 
 # Resource files
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
@@ -672,21 +672,21 @@ set(CPACK_COMPONENTS_ALL keystone keystone-dev keystone-doc keystone-test
 # Component descriptions
 set(CPACK_COMPONENT_KEYSTONE_DISPLAY_NAME "Keystone Runtime Libraries")
 set(CPACK_COMPONENT_KEYSTONE_DESCRIPTION
-    "Core runtime libraries for ProjectKeystone transport. Includes message bus, NATS transport, concurrency, and simulation libraries."
+    "Core runtime libraries for Keystone transport. Includes message bus, NATS transport, concurrency, and simulation libraries."
 )
 set(CPACK_COMPONENT_KEYSTONE_REQUIRED ON)
 set(CPACK_COMPONENT_KEYSTONE_GROUP "Runtime")
 
 set(CPACK_COMPONENT_KEYSTONE-DEV_DISPLAY_NAME "Keystone Development Files")
 set(CPACK_COMPONENT_KEYSTONE-DEV_DESCRIPTION
-    "Development files for building applications with ProjectKeystone. Includes headers, static libraries, CMake targets, and build documentation."
+    "Development files for building applications with Keystone. Includes headers, static libraries, CMake targets, and build documentation."
 )
 set(CPACK_COMPONENT_KEYSTONE-DEV_GROUP "Development")
 set(CPACK_COMPONENT_KEYSTONE-DEV_DEPENDS keystone)
 
 set(CPACK_COMPONENT_KEYSTONE-DOC_DISPLAY_NAME "Keystone Documentation")
 set(CPACK_COMPONENT_KEYSTONE-DOC_DESCRIPTION
-    "Complete documentation for ProjectKeystone including architecture guides, API references, phase plans, and deployment guides."
+    "Complete documentation for Keystone including architecture guides, API references, phase plans, and deployment guides."
 )
 set(CPACK_COMPONENT_KEYSTONE-DOC_GROUP "Documentation")
 

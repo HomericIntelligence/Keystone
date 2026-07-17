@@ -1,10 +1,10 @@
-# Performance Benchmarks for ProjectKeystone
+# Performance Benchmarks for Keystone
 
-This directory contains comprehensive performance benchmarks for the ProjectKeystone HMAS using Google Benchmark.
+This directory contains comprehensive performance benchmarks for the Keystone HMAS using Google Benchmark.
 
 ## Overview
 
-ProjectKeystone includes **45+ benchmark tests** across 5 benchmark suites:
+Keystone includes **45+ benchmark tests** across 5 benchmark suites:
 
 1. **hierarchy_benchmarks** (5 benchmarks) - Sync vs async agent hierarchies
 2. **message_pool_benchmarks** (10 benchmarks) - Message pooling performance
@@ -225,7 +225,7 @@ Measures retry policy, circuit breaker, and heartbeat monitor performance:
 
 ### Expected Performance Targets
 
-Based on initial benchmarks, ProjectKeystone targets:
+Based on initial benchmarks, Keystone targets:
 
 | Component | Metric | Target | Notes |
 |-----------|--------|--------|-------|

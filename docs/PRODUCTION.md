@@ -1,11 +1,11 @@
-# ProjectKeystone HMAS - Production Deployment Guide
+# Keystone HMAS - Production Deployment Guide
 
 **Version**: 1.0
 **Last Updated**: 2025-11-19
 **Status**: Production Ready ✅
 
 This document provides comprehensive production deployment procedures, operational
-runbooks, and incident response playbooks for ProjectKeystone HMAS.
+runbooks, and incident response playbooks for Keystone HMAS.
 
 ---
 
@@ -31,7 +31,7 @@ Use this checklist before deploying to production:
 ### Infrastructure
 
 - [ ] **Kubernetes cluster** is running and accessible (kubectl context set)
-- [ ] **Namespace** `projectkeystone` created
+- [ ] **Namespace** `keystone` created
 - [ ] **Resource quotas** configured (CPU: 8-16, Memory: 16-32GB)
 - [ ] **StorageClass** configured for PersistentVolumes
 - [ ] **Load balancer** or Ingress controller configured (if exposing externally)
@@ -115,7 +115,7 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/secrets.yaml
 
 # Verify secrets created
-kubectl get secrets -n projectkeystone
+kubectl get secrets -n keystone
 ```
 
 **Step 2: Apply Security Policies**
@@ -128,8 +128,8 @@ kubectl apply -f k8s/rbac.yaml
 kubectl apply -f k8s/networkpolicy.yaml
 
 # Verify policies
-kubectl get networkpolicies -n projectkeystone
-kubectl get roles,rolebindings -n projectkeystone
+kubectl get networkpolicies -n keystone
+kubectl get roles,rolebindings -n keystone
 ```
 
 **Step 3: Deploy Application**
@@ -141,11 +141,11 @@ kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 
 # Wait for deployment to be ready
-kubectl wait --for=condition=available --timeout=300s deployment/hmas -n projectkeystone
+kubectl wait --for=condition=available --timeout=300s deployment/hmas -n keystone
 
 # Verify deployment
-kubectl get pods -n projectkeystone -l app=hmas
-kubectl logs -n projectkeystone -l app=hmas --tail=50
+kubectl get pods -n keystone -l app=hmas
+kubectl logs -n keystone -l app=hmas --tail=50
 ```
 
 **Step 4: Deploy Monitoring Stack**
@@ -164,22 +164,22 @@ kubectl apply -f k8s/grafana.yaml
 kubectl apply -f k8s/grafana-dashboards-configmap.yaml
 
 # Wait for all monitoring components
-kubectl wait --for=condition=ready pod -l app=prometheus -n projectkeystone --timeout=120s
-kubectl wait --for=condition=ready pod -l app=loki -n projectkeystone --timeout=120s
-kubectl wait --for=condition=ready pod -l app=grafana -n projectkeystone --timeout=120s
+kubectl wait --for=condition=ready pod -l app=prometheus -n keystone --timeout=120s
+kubectl wait --for=condition=ready pod -l app=loki -n keystone --timeout=120s
+kubectl wait --for=condition=ready pod -l app=grafana -n keystone --timeout=120s
 
 # Verify monitoring stack
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 ```
 
 **Step 5: Validate Deployment**
 
 ```bash
 # Run smoke tests
-kubectl exec -n projectkeystone deployment/hmas -- /usr/local/bin/hmas-smoke-test
+kubectl exec -n keystone deployment/hmas -- /usr/local/bin/hmas-smoke-test
 
 # Check health endpoints
-kubectl port-forward -n projectkeystone svc/hmas 8080:8080 &
+kubectl port-forward -n keystone svc/hmas 8080:8080 &
 curl http://localhost:8080/healthz
 curl http://localhost:8080/ready
 
@@ -187,7 +187,7 @@ curl http://localhost:8080/ready
 curl http://localhost:9090/metrics | grep hmas_
 
 # Access Grafana
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 open http://localhost:3000  # Login: admin/admin (change password!)
 ```
 
@@ -198,39 +198,39 @@ open http://localhost:3000  # Login: admin/admin (change password!)
 kubectl apply -f k8s/ingress.yaml
 
 # Verify ingress
-kubectl get ingress -n projectkeystone
+kubectl get ingress -n keystone
 ```
 
 ### Helm Deployment (Alternative)
 
 ```bash
 # Install via Helm
-helm install projectkeystone ./helm/projectkeystone \
-  --namespace projectkeystone \
+helm install keystone ./helm/keystone \
+  --namespace keystone \
   --create-namespace \
   --set image.tag=v1.0.0 \
   --set replicaCount=2 \
-  --values helm/projectkeystone/values-production.yaml
+  --values helm/keystone/values-production.yaml
 
 # Verify installation
-helm status projectkeystone -n projectkeystone
-helm test projectkeystone -n projectkeystone
+helm status keystone -n keystone
+helm test keystone -n keystone
 ```
 
 ### Upgrade Deployment
 
 ```bash
 # Update image tag or configuration
-kubectl set image deployment/hmas hmas=projectkeystone:v1.1.0 -n projectkeystone
+kubectl set image deployment/hmas hmas=keystone:v1.1.0 -n keystone
 
 # Or apply updated manifests
 kubectl apply -f k8s/deployment.yaml
 
 # Monitor rollout status
-kubectl rollout status deployment/hmas -n projectkeystone
+kubectl rollout status deployment/hmas -n keystone
 
 # Verify new version
-kubectl get pods -n projectkeystone -l app=hmas -o jsonpath='{.items[0].spec.containers[0].image}'
+kubectl get pods -n keystone -l app=hmas -o jsonpath='{.items[0].spec.containers[0].image}'
 ```
 
 ---
@@ -245,36 +245,36 @@ kubectl get pods -n projectkeystone -l app=hmas -o jsonpath='{.items[0].spec.con
 
 ```bash
 # Check rollout history
-kubectl rollout history deployment/hmas -n projectkeystone
+kubectl rollout history deployment/hmas -n keystone
 
 # Rollback to previous version
-kubectl rollout undo deployment/hmas -n projectkeystone
+kubectl rollout undo deployment/hmas -n keystone
 
 # Rollback to specific revision
-kubectl rollout undo deployment/hmas -n projectkeystone --to-revision=3
+kubectl rollout undo deployment/hmas -n keystone --to-revision=3
 
 # Monitor rollback
-kubectl rollout status deployment/hmas -n projectkeystone
+kubectl rollout status deployment/hmas -n keystone
 
 # Verify rollback
-kubectl get pods -n projectkeystone -l app=hmas
-kubectl logs -n projectkeystone -l app=hmas --tail=50
+kubectl get pods -n keystone -l app=hmas
+kubectl logs -n keystone -l app=hmas --tail=50
 ```
 
 **Method 2: Helm Rollback**
 
 ```bash
 # Check release history
-helm history projectkeystone -n projectkeystone
+helm history keystone -n keystone
 
 # Rollback to previous release
-helm rollback projectkeystone -n projectkeystone
+helm rollback keystone -n keystone
 
 # Rollback to specific revision
-helm rollback projectkeystone 3 -n projectkeystone
+helm rollback keystone 3 -n keystone
 
 # Verify rollback
-helm status projectkeystone -n projectkeystone
+helm status keystone -n keystone
 ```
 
 **Method 3: GitOps Rollback**
@@ -286,7 +286,7 @@ git push origin main
 
 # ArgoCD/Flux will automatically sync and rollback
 # Verify sync status
-argocd app get projectkeystone
+argocd app get keystone
 ```
 
 ### Rollback Verification Checklist
@@ -323,7 +323,7 @@ apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
 metadata:
   name: vault-backend
-  namespace: projectkeystone
+  namespace: keystone
 spec:
   provider:
     vault:
@@ -333,7 +333,7 @@ spec:
       auth:
         kubernetes:
           mountPath: "kubernetes"
-          role: "projectkeystone"
+          role: "keystone"
 EOF
 
 # Create ExternalSecret
@@ -342,7 +342,7 @@ apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
   name: hmas-credentials
-  namespace: projectkeystone
+  namespace: keystone
 spec:
   refreshInterval: 1h
   secretStoreRef:
@@ -354,7 +354,7 @@ spec:
   data:
   - secretKey: admin-password
     remoteRef:
-      key: projectkeystone/grafana
+      key: keystone/grafana
       property: admin-password
 EOF
 ```
@@ -378,7 +378,7 @@ All RBAC policies are defined in `k8s/rbac.yaml`:
 
 - **Principle of Least Privilege**: Each service account has minimal required permissions
 - **Read-only access**: Monitoring components have read-only cluster access
-- **Namespace isolation**: Roles scoped to projectkeystone namespace
+- **Namespace isolation**: Roles scoped to keystone namespace
 
 ### Network Policies
 
@@ -392,11 +392,11 @@ All network policies are defined in `k8s/networkpolicy.yaml`:
 
 ```bash
 # Check applied policies
-kubectl get networkpolicies -n projectkeystone
+kubectl get networkpolicies -n keystone
 
 # Test network connectivity
-kubectl run test-pod --image=busybox -n projectkeystone -- sleep 3600
-kubectl exec -n projectkeystone test-pod -- wget -O- http://hmas:8080/healthz
+kubectl run test-pod --image=busybox -n keystone -- sleep 3600
+kubectl exec -n keystone test-pod -- wget -O- http://hmas:8080/healthz
 ```
 
 ### Pod Security Standards
@@ -405,7 +405,7 @@ kubectl exec -n projectkeystone test-pod -- wget -O- http://hmas:8080/healthz
 
 ```bash
 # Label namespace with pod security standard
-kubectl label namespace projectkeystone \
+kubectl label namespace keystone \
   pod-security.kubernetes.io/enforce=restricted \
   pod-security.kubernetes.io/audit=restricted \
   pod-security.kubernetes.io/warn=restricted
@@ -425,10 +425,10 @@ kubectl label namespace projectkeystone \
 
 ```bash
 # Scan images for vulnerabilities (using Trivy)
-trivy image projectkeystone:latest
+trivy image keystone:latest
 
 # Sign images (using Cosign)
-cosign sign projectkeystone:latest
+cosign sign keystone:latest
 
 # Verify image signatures in admission controller
 # Configure OPA Gatekeeper or Kyverno policy
@@ -473,7 +473,7 @@ cosign sign projectkeystone:latest
 
 ```bash
 # Port-forward to Prometheus
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 
 # Open in browser
 open http://localhost:9090/alerts
@@ -547,20 +547,20 @@ receivers:
 
 ```bash
 # Check pod status
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 
 # Check recent events
-kubectl get events -n projectkeystone --sort-by='.lastTimestamp'
+kubectl get events -n keystone --sort-by='.lastTimestamp'
 
 # Check logs
-kubectl logs -n projectkeystone -l app=hmas --tail=100 --since=10m
+kubectl logs -n keystone -l app=hmas --tail=100 --since=10m
 
 # Check metrics
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 # Open dashboards
 
 # Check resource usage
-kubectl top pods -n projectkeystone
+kubectl top pods -n keystone
 kubectl top nodes
 ```
 
@@ -572,38 +572,38 @@ kubectl top nodes
 
 ```bash
 # Check alert: HighErrorRate
-# Runbook: https://github.com/projectkeystone/runbooks/high-error-rate.md
+# Runbook: https://github.com/keystone/runbooks/high-error-rate.md
 
 # 1. Check logs for errors
-kubectl logs -n projectkeystone -l app=hmas | grep ERROR
+kubectl logs -n keystone -l app=hmas | grep ERROR
 
 # 2. Check if related to recent deployment
-kubectl rollout history deployment/hmas -n projectkeystone
+kubectl rollout history deployment/hmas -n keystone
 
 # 3. If recent deployment, consider rollback
-kubectl rollout undo deployment/hmas -n projectkeystone
+kubectl rollout undo deployment/hmas -n keystone
 
 # 4. Scale down if load-related
-kubectl scale deployment/hmas --replicas=4 -n projectkeystone
+kubectl scale deployment/hmas --replicas=4 -n keystone
 
 # 5. Monitor recovery
-watch kubectl get pods -n projectkeystone
+watch kubectl get pods -n keystone
 ```
 
 **Scenario: Pod Crashing**
 
 ```bash
 # Check pod status
-kubectl get pods -n projectkeystone
+kubectl get pods -n keystone
 
 # Describe pod
-kubectl describe pod <pod-name> -n projectkeystone
+kubectl describe pod <pod-name> -n keystone
 
 # Check logs
-kubectl logs <pod-name> -n projectkeystone --previous
+kubectl logs <pod-name> -n keystone --previous
 
 # Check events
-kubectl get events -n projectkeystone | grep <pod-name>
+kubectl get events -n keystone | grep <pod-name>
 
 # Common fixes:
 # - OOMKilled: Increase memory limits
@@ -615,17 +615,17 @@ kubectl get events -n projectkeystone | grep <pod-name>
 
 ```bash
 # Check metrics
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 # Open Agent Details dashboard
 
 # Check worker utilization
 # If >90%, scale horizontally
 
 # Scale deployment
-kubectl scale deployment/hmas --replicas=4 -n projectkeystone
+kubectl scale deployment/hmas --replicas=4 -n keystone
 
 # Or enable HPA
-kubectl autoscale deployment hmas --min=2 --max=10 --cpu-percent=70 -n projectkeystone
+kubectl autoscale deployment hmas --min=2 --max=10 --cpu-percent=70 -n keystone
 
 # Monitor latency improvement
 # Check Grafana dashboard
@@ -734,7 +734,7 @@ rate(hmas_messages_processed_total[5m]) >= 1000
 
 ```bash
 # Check SLO dashboard in Grafana
-kubectl port-forward -n projectkeystone svc/grafana 3000:3000
+kubectl port-forward -n keystone svc/grafana 3000:3000
 # Navigate to: /d/hmas-slo
 ```
 
@@ -804,15 +804,15 @@ kubectl run k6 --image=grafana/k6 -it --rm -- run - < tests/load/hmas-load-test.
 
 ```bash
 # Kill random pods (chaos testing)
-kubectl delete pod -n projectkeystone -l app=hmas \
+kubectl delete pod -n keystone -l app=hmas \
   --field-selector status.phase=Running --dry-run=client -o name | \
   shuf | head -1 | xargs kubectl delete
 
 # Limit CPU
-kubectl set resources deployment/hmas -n projectkeystone --limits=cpu=100m
+kubectl set resources deployment/hmas -n keystone --limits=cpu=100m
 
 # Fill disk (test PVC limits)
-kubectl exec -n projectkeystone deployment/hmas -- dd if=/dev/zero of=/tmp/testfile bs=1M count=1000
+kubectl exec -n keystone deployment/hmas -- dd if=/dev/zero of=/tmp/testfile bs=1M count=1000
 
 # Network partition (with chaos engineering tools)
 # Use Chaos Mesh or Litmus
@@ -836,22 +836,22 @@ kubectl exec -n projectkeystone deployment/hmas -- dd if=/dev/zero of=/tmp/testf
 # Install Velero
 velero install \
   --provider aws \
-  --bucket projectkeystone-backups \
+  --bucket keystone-backups \
   --secret-file ./credentials-velero
 
 # Create backup schedule (daily backups, 30-day retention)
-velero schedule create projectkeystone-daily \
+velero schedule create keystone-daily \
   --schedule="0 2 * * *" \
-  --include-namespaces projectkeystone \
+  --include-namespaces keystone \
   --ttl 720h
 
 # Manual backup
-velero backup create projectkeystone-manual \
-  --include-namespaces projectkeystone
+velero backup create keystone-manual \
+  --include-namespaces keystone
 
 # Check backup status
 velero backup get
-velero backup describe projectkeystone-manual
+velero backup describe keystone-manual
 ```
 
 ### Restore Procedures
@@ -863,14 +863,14 @@ velero backup describe projectkeystone-manual
 velero backup get
 
 # Restore from specific backup
-velero restore create --from-backup projectkeystone-daily-20251119
+velero restore create --from-backup keystone-daily-20251119
 
 # Monitor restore
 velero restore describe <restore-name>
 
 # Verify restore
-kubectl get all -n projectkeystone
-kubectl get pvc -n projectkeystone
+kubectl get all -n keystone
+kubectl get pvc -n keystone
 ```
 
 ### Disaster Scenarios
@@ -881,27 +881,27 @@ kubectl get pvc -n projectkeystone
 # 1. Provision new cluster
 # 2. Install Velero with same backup location
 # 3. Restore from latest backup
-velero restore create --from-backup projectkeystone-daily-latest
+velero restore create --from-backup keystone-daily-latest
 
 # 4. Verify all resources
-kubectl get all -n projectkeystone
+kubectl get all -n keystone
 
 # 5. Run smoke tests
-kubectl exec -n projectkeystone deployment/hmas -- /usr/local/bin/hmas-smoke-test
+kubectl exec -n keystone deployment/hmas -- /usr/local/bin/hmas-smoke-test
 ```
 
 **Scenario 2: Data Corruption**
 
 ```bash
 # 1. Stop application (scale to 0)
-kubectl scale deployment/hmas --replicas=0 -n projectkeystone
+kubectl scale deployment/hmas --replicas=0 -n keystone
 
 # 2. Restore PVC from backup
-velero restore create --from-backup projectkeystone-daily-20251118 \
+velero restore create --from-backup keystone-daily-20251118 \
   --include-resources pvc
 
 # 3. Restart application
-kubectl scale deployment/hmas --replicas=2 -n projectkeystone
+kubectl scale deployment/hmas --replicas=2 -n keystone
 
 # 4. Verify data integrity
 # Run application-specific data validation
@@ -923,9 +923,9 @@ kubectl scale deployment/hmas --replicas=2 -n projectkeystone
 **Diagnosis**:
 
 ```bash
-kubectl get pods -n projectkeystone
-kubectl describe pod <pod-name> -n projectkeystone
-kubectl logs <pod-name> -n projectkeystone --previous
+kubectl get pods -n keystone
+kubectl describe pod <pod-name> -n keystone
+kubectl logs <pod-name> -n keystone --previous
 ```
 
 **Common Causes & Fixes**:
@@ -942,8 +942,8 @@ kubectl logs <pod-name> -n projectkeystone --previous
 **Diagnosis**:
 
 ```bash
-kubectl top pods -n projectkeystone
-kubectl describe pod <pod-name> -n projectkeystone | grep -A 5 "Limits"
+kubectl top pods -n keystone
+kubectl describe pod <pod-name> -n keystone | grep -A 5 "Limits"
 ```
 
 **Fixes**:
@@ -959,12 +959,12 @@ kubectl describe pod <pod-name> -n projectkeystone | grep -A 5 "Limits"
 **Diagnosis**:
 
 ```bash
-kubectl get networkpolicies -n projectkeystone
-kubectl describe networkpolicy <policy-name> -n projectkeystone
+kubectl get networkpolicies -n keystone
+kubectl describe networkpolicy <policy-name> -n keystone
 
 # Test connectivity
-kubectl run test-pod --image=busybox -n projectkeystone -- sleep 3600
-kubectl exec -n projectkeystone test-pod -- wget -O- http://hmas:8080/healthz
+kubectl run test-pod --image=busybox -n keystone -- sleep 3600
+kubectl exec -n keystone test-pod -- wget -O- http://hmas:8080/healthz
 ```
 
 **Fixes**:
@@ -980,14 +980,14 @@ kubectl exec -n projectkeystone test-pod -- wget -O- http://hmas:8080/healthz
 
 ```bash
 # Check Prometheus targets
-kubectl port-forward -n projectkeystone svc/prometheus 9090:9090
+kubectl port-forward -n keystone svc/prometheus 9090:9090
 open http://localhost:9090/targets
 
 # Check service endpoints
-kubectl get endpoints hmas -n projectkeystone
+kubectl get endpoints hmas -n keystone
 
 # Test metrics endpoint directly
-kubectl exec -n projectkeystone deployment/hmas -- curl localhost:9090/metrics
+kubectl exec -n keystone deployment/hmas -- curl localhost:9090/metrics
 ```
 
 **Fixes**:
@@ -1006,8 +1006,8 @@ kubectl exec -n projectkeystone deployment/hmas -- curl localhost:9090/metrics
 
 **Communication Channels**:
 
-- Slack: #projectkeystone-incidents
-- PagerDuty: ProjectKeystone service
+- Slack: #keystone-incidents
+- PagerDuty: Keystone service
 - War room: Zoom link in PagerDuty alert
 
 ---

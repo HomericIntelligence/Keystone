@@ -1,4 +1,4 @@
-# ProjectKeystone HMAS - C++20 Build Environment
+# Keystone HMAS - C++20 Build Environment
 # Multi-stage build for efficient image size
 
 # Stage 1: Build environment
