@@ -10,6 +10,8 @@ on:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
@@ -866,6 +868,9 @@ jobs:
               "$f" && echo "  OK" || { echo "  FAIL"; FAILED=1; }
           done
           [ -z "${FAILED}" ] || exit 1
+
+      - name: Validate merge-queue readiness contract
+        run: ./scripts/check-merge-queue-readiness.sh
 
   # ============================================================
   # 7. deps/version-sync

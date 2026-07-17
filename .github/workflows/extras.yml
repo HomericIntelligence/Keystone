@@ -8,6 +8,8 @@ on:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
@@ -20,6 +22,7 @@ permissions:
 jobs:
   benchmarks:
     name: benchmarks
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -85,6 +88,7 @@ jobs:
 
   nats-integration:
     name: NATS integration tests
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     # 20 (was 15): leave headroom for a cold dev-image rebuild — any
     # Containerfile/conanfile.py change misses the exact-match image cache in

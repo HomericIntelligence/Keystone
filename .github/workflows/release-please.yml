@@ -3,6 +3,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +14,7 @@ permissions:
 jobs:
   release-please:
     name: Release Please
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
 
     outputs:
@@ -33,10 +36,10 @@ jobs:
   # Build and publish release artifacts when a new release is created.
   # Named `publish-release`, NOT `release`: the canonical required
   # `release` context is emitted by the PR-time validation job in
-  # _required.yml. This job is gated on release_created and only ever
-  # runs on release-please merge commits to main, so it could never
-  # satisfy the ruleset on pull requests — and two jobs sharing the
-  # `release` check name would collide on those main pushes.
+  # _required.yml (which already triggers on merge_group), so a separate
+  # release-gate job here would collide with it on the `release` check name.
+  # This job is gated on release_created and only ever runs on release-please
+  # merge commits to main.
   publish:
     name: publish-release
     runs-on: ubuntu-24.04
