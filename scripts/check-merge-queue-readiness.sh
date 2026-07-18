@@ -77,12 +77,15 @@ done
 require_line .github/workflows/release-please.yml \
     "^    if: github\.event_name != 'merge_group'$" \
     'merge-group guard on release-please'
-require_line .github/workflows/release-please.yml \
+# The canonical `release` required-check is emitted by the PR-time validation
+# job in _required.yml (which triggers on push/pull_request/merge_group), NOT by
+# release-please.yml — a second release-please.yml job named `release` would
+# collide with it on the `release` check name. The generic required_contexts
+# loop above already confirms the `release` context is emitted by a
+# queue-enabled workflow; assert here that its sole producer is _required.yml.
+require_line .github/workflows/_required.yml \
     '^    name: release$' \
-    'stable release required-check gate'
-require_line .github/workflows/release-please.yml \
-    "github\.event_name == 'merge_group'" \
-    'merge-group release validation path'
+    'canonical release required-check gate in _required.yml'
 require_line .github/workflows/_required.yml \
     '^        run: \./scripts/check-merge-queue-readiness\.sh$' \
     'required schema-validation invocation of this contract'
