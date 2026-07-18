@@ -40,7 +40,19 @@ if [[ -n "$uses" ]]; then
 fi
 
 # --- ADR-016: Python orchestration package must not exist ----------------
-[[ -f pyproject.toml ]] && report "top-level pyproject.toml exists (ADR-016: Keystone ships no Python)"
+# ADR-016 forbids re-introducing the extracted Python *orchestration package*.
+# A tooling-only pyproject.toml that merely locks the uv-managed build toolchain
+# (cmake/ninja/conan/gcovr — ADR-018) ships NO Python package and is allowed: it
+# must have `package = false` and declare no shipped modules/scripts. Fail only
+# if pyproject.toml actually ships Python (a real package/scripts, or omits the
+# `package = false` marker). The orchestration modules themselves are still
+# banned unconditionally by the src/keystone/*.py checks below.
+if [[ -f pyproject.toml ]]; then
+  if ! grep -Eq '^\s*package\s*=\s*false' pyproject.toml \
+     || grep -Eq '^\s*\[project\.scripts\]|^\s*packages\s*=|^\s*\[tool\.(setuptools|hatch)\.packages' pyproject.toml; then
+    report "top-level pyproject.toml ships Python (ADR-016: Keystone ships no Python; only a package=false build-tooling pyproject is allowed per ADR-018)"
+  fi
+fi
 for f in daemon.py dag_walker.py task_claimer.py nats_listener.py \
          models.py config.py logging.py validation.py maestro_client.py \
          __init__.py __main__.py; do
