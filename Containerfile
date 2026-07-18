@@ -51,6 +51,27 @@ RUN apt-get update && apt-get install -y \
 # uv binary (manages cmake/ninja/conan/gcovr as locked PyPI wheels).
 COPY --from=uv /uv /uvx /usr/local/bin/
 
+# uv toolchain environment configuration.
+#
+# The venv MUST live OUTSIDE /workspace: the `dev`/`build` compose services
+# bind-mount the host repo over `.:/workspace:Z` at run time, which masks any
+# `/workspace/.venv` baked into the image — so a default in-tree venv vanishes
+# the moment the container starts. Installing it at /opt/venv keeps the locked
+# build toolchain (conan/cmake/ninja/gcovr) present at run time regardless of
+# the bind mount.
+#
+# Putting /opt/venv/bin on PATH makes the tools resolvable by their BARE names
+# (`conan`, `cmake`, `ninja`, `gcovr`) — which is exactly how the Makefile's
+# container recipes invoke them (`$(CONTAINER_PREFIX) conan ...`, Makefile:83).
+# Before ADR-018 these came from apt (`cmake`) and a system pip `conan`, so
+# they were on PATH; uv-managing them without this PATH entry is what broke
+# `make deps` in the lint/coverage jobs with "conan: executable file not found"
+# (exit 127). UV_PYTHON_INSTALL_DIR keeps uv's downloaded CPython out of
+# /root/.local (mode 0700) so the non-root compose `user:` can reach it.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    PATH="/opt/venv/bin:$PATH"
+
 # Create workspace directory with proper permissions
 RUN mkdir -p /workspace && \
     chmod 755 /workspace
@@ -59,21 +80,25 @@ RUN mkdir -p /workspace && \
 WORKDIR /workspace
 
 # Sync the locked build toolchain first so it caches independently of sources.
+# Installs into /opt/venv (UV_PROJECT_ENVIRONMENT). world-readable/executable so
+# the non-root compose `user:` (keep-id) can run the tools off PATH; the
+# downloaded interpreter under /opt/uv-python likewise.
 COPY pyproject.toml uv.lock .python-version ./
-RUN uv sync --locked
+RUN uv sync --locked \
+    && chmod -R a+rX /opt/venv /opt/uv-python
 
 # Detect Conan profile and install dependencies
 # Use Release build type to match Docker production build
-RUN uv run conan profile detect --force
+RUN conan profile detect --force
 
-# Verify C++20 support
-RUN clang++ --version && uv run cmake --version
+# Verify C++20 support and that the uv-managed toolchain is on PATH by bare name.
+RUN clang++ --version && cmake --version && conan --version
 
 # Copy conanfile first for dependency layer caching
 COPY conanfile.py ./
 
 # Install Conan dependencies (cached layer — only rebuilds if conanfile.py changes)
-RUN uv run conan install . --output-folder=build/conan-deps --build=missing \
+RUN conan install . --output-folder=build/conan-deps --build=missing \
     -s build_type=Release -s compiler.cppstd=20
 
 # Copy project files
@@ -88,11 +113,11 @@ COPY benchmarks/ ./benchmarks/
 COPY fuzz/ ./fuzz/
 
 # Build the project using Conan toolchain
-RUN uv run cmake -S . -B build/release -G Ninja \
+RUN cmake -S . -B build/release -G Ninja \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" \
         -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake \
-    && uv run cmake --build build/release
+    && cmake --build build/release
 
 # Stage 2: Test runner (runs the built test suites)
 FROM ubuntu:24.04 AS test
