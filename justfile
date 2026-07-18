@@ -8,11 +8,15 @@ default:
 setup-notes:
   ./scripts/setup-notes.sh
 
+# The C++ build toolchain (cmake/ninja/conan/gcovr) is provided by uv-locked
+# PyPI wheels (Odysseus ADR-018); `uv run` puts them on PATH for the whole
+# recipe, including tools invoked transitively by `make`. Run `uv sync` once
+# first. The compiler (gcc/g++), clang tools, and lcov come from the system.
 build:
-  make compile
+  uv run make compile
 
 test:
-  make test
+  uv run make test
 
 # Install Conan dependencies (tsan profile).
 # The tsan Conan profile sets user.keystone.sanitizer=tsan and
@@ -21,23 +25,23 @@ test:
 # duplicate-preset collision with the plain debug build in CMakeUserPresets.json
 # regardless of whether conan install is invoked via just or directly.
 deps-tsan:
-    conan install . \
+    uv run conan install . \
         --output-folder=build/tsan \
         --profile=conan/profiles/tsan \
         --build=missing
 
 # Build with ThreadSanitizer
 build-tsan: deps-tsan
-    cmake --preset tsan
-    cmake --build --preset tsan
+    uv run cmake --preset tsan
+    uv run cmake --build --preset tsan
 
 # Run tests under ThreadSanitizer
 test-tsan: build-tsan
-    ctest --preset tsan --output-on-failure
+    uv run ctest --preset tsan --output-on-failure
 
 
 lint:
-  make lint
+  uv run make lint
 
 # Enforces ADR-015 (agent layer) + ADR-016 (Python orchestration) extraction.
 # Fails if any extracted artifact reappears in the tree.
@@ -49,10 +53,10 @@ check-merge-queue-readiness:
   ./scripts/check-merge-queue-readiness.sh
 
 format:
-  make format
+  uv run make format
 
 format-check:
-  make format.check
+  uv run make format.check
 
 # Run NATS integration tests (requires NATS server at NATS_URL)
 # Starts a NATS server via Docker Compose, runs the nats_integration_tests
@@ -60,8 +64,8 @@ format-check:
 integration-test:
     #!/usr/bin/env bash
     set -euo pipefail
-    cmake --preset debug
-    cmake --build --preset debug --target nats_integration_tests
+    uv run cmake --preset debug
+    uv run cmake --build --preset debug --target nats_integration_tests
     echo "--- Starting NATS test server ---"
     podman compose -f docker-compose.test.yml up -d nats
     trap 'echo "--- Stopping NATS test server ---"; podman compose -f docker-compose.test.yml down' EXIT
@@ -75,22 +79,22 @@ integration-test:
         sleep 1
     done
     KEYSTONE_INTEGRATION_TESTS=1 NATS_URL="${NATS_URL:-nats://localhost:4222}" \
-        ctest --preset debug --tests-regex nats_integration --output-on-failure
+        uv run ctest --preset debug --tests-regex nats_integration --output-on-failure
 
 # Build with coverage instrumentation
 coverage:
-    cmake --preset coverage
-    cmake --build --preset coverage
+    uv run cmake --preset coverage
+    uv run cmake --build --preset coverage
 
 # Full CI build (release + warnings-as-errors)
 ci:
-    cmake --preset ci
-    cmake --build --preset ci
-    ctest --preset ci
+    uv run cmake --preset ci
+    uv run cmake --build --preset ci
+    uv run ctest --preset ci
 
 # Type-check Python files (conanfile.py) with mypy
 typecheck:
-    mypy conanfile.py
+    uv run mypy conanfile.py
 
 
 # Check that the tests/ directory structure matches what is documented in AGENTS.md
@@ -110,7 +114,7 @@ check-docs-tree:
 
 # Regenerate conan.lock from conanfile.py
 update-conan-lock:
-    conan lock create conanfile.py --lockfile-out conan.lock
+    uv run conan lock create conanfile.py --lockfile-out conan.lock
 
 clean:
   make clean
@@ -122,7 +126,7 @@ status:
   podman compose ps
 
 benchmark:
-  make benchmark
+  uv run make benchmark
 
 # Validate CPack package generation without producing real packages (issue #370).
 # Builds the release preset, then runs cpack --debug -G TGZ so packaging errors
@@ -130,8 +134,8 @@ benchmark:
 pack-dry-run:
     #!/usr/bin/env bash
     set -euo pipefail
-    cmake --preset release
-    cmake --build --preset release
+    uv run cmake --preset release
+    uv run cmake --build --preset release
     echo "--- CPack dry-run (TGZ, no output) ---"
     cd build/release && cpack --debug -G TGZ 2>&1 | grep -v "^CPack: -"
     echo "--- CPack dry-run complete ---"

@@ -30,11 +30,11 @@
     },
     {
       "type": "generic",
-      "path": "pixi.toml",
+      "path": "conanfile.py",
       "search-by-regex": true,
       "data": [
         {
-          "search": "^version = \"[0-9]+\\.[0-9]+\\.[0-9]+\"",
+          "search": "version = \"[0-9]+\\.[0-9]+\\.[0-9]+\"",
           "replace": "version = \"${version}\""
         }
       ]

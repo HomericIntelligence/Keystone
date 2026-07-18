@@ -1,6 +1,15 @@
 # Keystone HMAS - C++20 Build Environment
 # Multi-stage build for efficient image size
 
+# ── uv binary source ──────────────────────────────────────────────────────────
+# Pulled as a named stage so `COPY --from=uv` resolves identically under both
+# podman/buildah and docker. A bare `COPY --from=ghcr.io/astral-sh/uv:<tag>@<digest>`
+# (tag AND digest together) is rejected by buildah with "no stage or image found
+# with that name", so we alias the digest-pinned image to a stage name here and
+# COPY from the alias. Keep this pin in sync with astral-sh/setup-uv in
+# .github/workflows/*.yml when bumping (Odysseus ADR-018).
+FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
+
 # Stage 1: Build environment
 FROM ubuntu:24.04 AS builder
 
@@ -19,34 +28,28 @@ ARG MSAN_OPTIONS=""
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
+# Install build dependencies. The C++ compiler (clang-18), libc++ dev headers,
+# OpenSSL headers, lcov, and git come from apt; the CMake/Ninja/Conan/gcovr
+# build toolchain is uv-managed as locked PyPI wheels (Odysseus ADR-018), not
+# apt/pip. build-essential is retained for the system linker/headers.
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake \
     clang-18 \
     clang++-18 \
     libc++-18-dev \
     libc++abi-18-dev \
     git \
-    ninja-build \
     lcov \
     bc \
-    gcovr \
-    python3-pip \
     libssl-dev \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100 \
     && update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 \
-    && pip install --no-cache-dir "conan>=2.0,<3" --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
-# Detect Conan profile and install dependencies
-# Use Release build type to match Docker production build
-RUN conan profile detect --force
-
-# Verify C++20 support
-RUN clang++ --version && cmake --version
+# uv binary (manages cmake/ninja/conan/gcovr as locked PyPI wheels).
+COPY --from=uv /uv /uvx /usr/local/bin/
 
 # Create workspace directory with proper permissions
 RUN mkdir -p /workspace && \
@@ -55,11 +58,22 @@ RUN mkdir -p /workspace && \
 # Set working directory
 WORKDIR /workspace
 
+# Sync the locked build toolchain first so it caches independently of sources.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked
+
+# Detect Conan profile and install dependencies
+# Use Release build type to match Docker production build
+RUN uv run conan profile detect --force
+
+# Verify C++20 support
+RUN clang++ --version && uv run cmake --version
+
 # Copy conanfile first for dependency layer caching
 COPY conanfile.py ./
 
 # Install Conan dependencies (cached layer — only rebuilds if conanfile.py changes)
-RUN conan install . --output-folder=build/conan-deps --build=missing \
+RUN uv run conan install . --output-folder=build/conan-deps --build=missing \
     -s build_type=Release -s compiler.cppstd=20
 
 # Copy project files
@@ -74,11 +88,11 @@ COPY benchmarks/ ./benchmarks/
 COPY fuzz/ ./fuzz/
 
 # Build the project using Conan toolchain
-RUN cmake -S . -B build/release -G Ninja \
+RUN uv run cmake -S . -B build/release -G Ninja \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" \
         -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake \
-    && cmake --build build/release
+    && uv run cmake --build build/release
 
 # Stage 2: Test runner (runs the built test suites)
 FROM ubuntu:24.04 AS test

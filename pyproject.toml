@@ -1,0 +1,43 @@
+# Keystone build-toolchain manifest (Odysseus ADR-018).
+#
+# Keystone is a pure C++20 transport library (ADR-015/016: the agent layer and
+# Python orchestration were extracted to ProjectAgamemnon). It ships NO Python
+# package — the only Python in the tree is conanfile.py (the C++ Conan recipe),
+# typechecked with mypy. This manifest therefore exists solely to pin the
+# host build/dev toolchain as locked PyPI wheels (replacing pixi/conda per
+# ADR-018): CMake, Ninja, Conan, gcovr, pre-commit, plus mypy for the recipe.
+#
+# The C++ compiler (gcc/g++), clang-tidy/clang-format, pkg-config, lcov, and
+# the OpenSSL/libc++ dev headers come from the system package manager (apt) —
+# they have no maintained self-contained PyPI wheels. gtest is provided by
+# Conan (test_requires("gtest/1.14.0") in conanfile.py; find_package(GTest) in
+# CMakeLists.txt), NOT by this manifest.
+#
+# Mirrors HomericIntelligence/Nestor #133 and Agamemnon #457.
+
+[project]
+name = "keystone-buildtools"
+version = "0.1.0"
+description = "Build-toolchain lock for the Keystone C++20 transport library (no Python package; ADR-018)"
+requires-python = ">=3.11"
+
+[dependency-groups]
+dev = [
+    # C++ build toolchain (formerly conda deps in pixi.toml).
+    "cmake>=3.20",
+    "ninja>=1.10",
+    "conan>=2.0",
+    # Coverage report generator (gcovr wheel; the CI `coverage` job uses the
+    # system lcov/genhtml via scripts/generate_coverage.sh, but gcovr is pinned
+    # here for local/ad-hoc coverage and ADR-018 parity with Agamemnon/Nestor).
+    "gcovr>=7.0",
+    # Git hooks manager (clang-format / conventional-commit / trailing-ws).
+    "pre-commit>=3.0",
+    # Typechecks conanfile.py (the C++ Conan recipe — the only Python here).
+    "mypy>=1.8.0,<2",
+]
+
+# Tooling-only manifest: there is no importable `keystone` Python package to
+# build, so uv must not attempt to build/install this project into the venv.
+[tool.uv]
+package = false

@@ -46,7 +46,8 @@ orchestration modules under `src/keystone/`) reappears in the tree.
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | C++20 | — | Implementation language |
-| CMake | 3.20+ | Build system |
+| uv | 0.4+ | Pins the CMake/Ninja/Conan/gcovr/pre-commit build toolchain as locked PyPI wheels (Odysseus ADR-018) |
+| CMake | 3.20+ | Build system (provided by uv) |
 | CMakePresets.json | v8 | Preset-based build configuration |
 | BlazingMQ | latest | Local queue management |
 | concurrentqueue | latest | Lock-free intra-host message queuing |
@@ -184,6 +185,16 @@ transparently.
 ---
 
 ## Build System
+
+### Toolchain (uv, ADR-018)
+
+The build toolchain — CMake, Ninja, Conan, gcovr, pre-commit — is pinned as
+locked PyPI wheels in `pyproject.toml` / `uv.lock` and installed with `uv sync`
+(Odysseus ADR-018, replacing the former pixi/conda environment). The C++
+compiler, clang-format/clang-tidy, lcov, pkg-config, and OpenSSL dev headers
+come from the system package manager; gtest is provided by Conan. Prefix the
+`cmake`/`conan`/`ctest` commands below with `uv run` (or run them inside
+`uv run just <recipe>`) so the uv-managed tools are on `PATH`.
 
 ### CMake Configuration
 

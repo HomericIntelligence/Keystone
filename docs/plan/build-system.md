@@ -62,7 +62,7 @@ Keystone/
 ├── CMakePresets.json           # Build presets (v8 schema)
 ├── conanfile.py                # Conan 2 dependency manifest
 ├── conanfile.lock              # Locked dependency versions
-├── pixi.toml                   # Pixi environment (optional)
+├── pyproject.toml              # uv build-toolchain lock (ADR-018)
 ├── justfile                    # Build command shortcuts (optional)
 ├── .clang-format               # Code formatting rules
 ├── .clang-tidy                 # Static analysis rules

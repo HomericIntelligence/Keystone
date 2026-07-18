@@ -8,8 +8,8 @@ HomericIntelligence ecosystem. This guide covers everything you need to get star
 Before you begin, ensure you have:
 
 - **C++20 compiler** (Clang 17+ or GCC 13+)
-- **CMake** 3.20+
-- **Conan** 2.x (dependency management)
+- **[uv](https://docs.astral.sh/uv/)** — manages the pinned build toolchain
+  (CMake, Ninja, Conan, gcovr, pre-commit) as locked PyPI wheels (Odysseus ADR-018)
 - **just** (task runner — `cargo install just` or see [just releases](https://github.com/casey/just/releases))
 - **Git** 2.30+
 - **clang-format** and **clang-tidy** (matching the project's `.clang-format` / `.clang-tidy` config)
@@ -18,17 +18,22 @@ For the full technology stack, see [AGENTS.md](AGENTS.md#language-and-technology
 
 ### Installing Prerequisites
 
+`uv sync` installs the locked CMake/Ninja/Conan/gcovr/pre-commit toolchain; the
+C++ compiler, clang-format/clang-tidy, lcov, and the OpenSSL dev headers come
+from your system package manager. gtest is provided by Conan (see `conanfile.py`).
+
 **Ubuntu/Debian:**
 
 ```bash
-sudo apt-get install -y cmake ninja-build clang-18 clang++-18 libc++-18-dev
-pip install conan>=2.0.0
+sudo apt-get install -y clang-18 clang++-18 libc++-18-dev clang-format-18 clang-tidy-18 lcov libssl-dev
+uv sync            # installs the locked CMake/Ninja/Conan/gcovr toolchain
 ```
 
 **macOS (Homebrew):**
 
 ```bash
-brew install cmake ninja llvm conan
+brew install llvm lcov
+uv sync            # installs the locked CMake/Ninja/Conan/gcovr toolchain
 ```
 
 **`just` (all platforms):**
@@ -124,14 +129,17 @@ For comprehensive style guidelines, see [AGENTS.md - Coding Standards](AGENTS.md
 Use CMakePresets for all builds:
 
 ```bash
-# Install dependencies (first time / after conanfile.py changes)
-conan install . --build=missing -pr default
+# Install the locked build toolchain (first time)
+uv sync
 
-# Configure and build
-cmake --preset debug
-cmake --build --preset debug
+# Install C++ dependencies (first time / after conanfile.py changes)
+uv run conan install . --build=missing -pr default
 
-# Or use the justfile shortcuts
+# Configure and build (uv run puts the toolchain on PATH)
+uv run cmake --preset debug
+uv run cmake --build --preset debug
+
+# Or use the justfile shortcuts (they wrap the toolchain in `uv run`)
 just build          # debug build
 just build-release  # release build
 ```
@@ -149,8 +157,8 @@ Tests must pass under **both ASan and TSan** before a PR can be merged.
 To run a specific preset manually:
 
 ```bash
-cmake --preset asan && cmake --build --preset asan && ctest --preset asan --output-on-failure
-cmake --preset tsan && cmake --build --preset tsan && ctest --preset tsan --output-on-failure
+uv run cmake --preset asan && uv run cmake --build --preset asan && uv run ctest --preset asan --output-on-failure
+uv run cmake --preset tsan && uv run cmake --build --preset tsan && uv run ctest --preset tsan --output-on-failure
 ```
 
 ## Code Standards

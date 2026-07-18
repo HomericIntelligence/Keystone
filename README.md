@@ -45,11 +45,12 @@ depends only on the one-method `core::IMessageSink` interface.
 
 | Requirement | Minimum | Recommended | Notes |
 | :--- | :--- | :--- | :--- |
-| **C++20 Compiler** | GCC 13 / Clang 15 | GCC 14 / Clang 18 | C++20 coroutines required |
-| **CMake** | 3.20 | 3.28+ | FetchContent support |
-| **Ninja** | 1.10 | 1.11+ | Fast parallel builds |
+| **C++20 Compiler** | GCC 13 / Clang 15 | GCC 14 / Clang 18 | C++20 coroutines required; from your system package manager |
+| **[uv](https://docs.astral.sh/uv/)** | 0.4+ | latest | Installs the pinned CMake/Ninja/Conan/gcovr/pre-commit toolchain as locked PyPI wheels (Odysseus ADR-018). Run `uv sync`. |
+| **CMake** | 3.20 | 3.28+ | Provided by uv (`uv sync`); FetchContent support |
+| **Ninja** | 1.10 | 1.11+ | Provided by uv (`uv sync`); fast parallel builds |
 | **GNU Make** | - | - | Standard on Linux/macOS |
-| **Python** | 3.11+ | 3.12+ | Optional — only to run/typecheck `conanfile.py` (the C++ Conan recipe). Keystone ships no Python runtime. |
+| **Python** | 3.11+ | 3.12+ | Managed by uv (`.python-version`); only to run/typecheck `conanfile.py` (the C++ Conan recipe). Keystone ships no Python runtime. |
 | **Docker** | 20.10 | 24.0+ | Optional, for containerized builds |
 
 ### Auto-Fetched Dependencies
@@ -93,9 +94,10 @@ make test.debug.asan
 ### Native Setup
 
 ```bash
-# Ensure you have GCC 13+/Clang 15+ and CMake 3.20+
-make compile.debug.asan.native
-make test.debug.asan.native
+# Ensure you have GCC 13+/Clang 15+; `uv sync` provides CMake/Ninja/Conan.
+uv sync
+uv run make compile.debug.asan.native
+uv run make test.debug.asan.native
 ```
 
 ## Quick Start
@@ -134,14 +136,15 @@ make test.debug.asan.native
 ### Manual Build (without Makefile)
 
 ```bash
+# uv run puts the uv-managed CMake/Ninja/Conan on PATH (run `uv sync` first).
 # Build with ASan
-cmake -S . -B build/asan -G Ninja \
+uv run cmake -S . -B build/asan -G Ninja \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined"
-cmake --build build/asan
+uv run cmake --build build/asan
 
 # Run tests
-cd build/asan && ctest --output-on-failure
+cd build/asan && uv run ctest --output-on-failure
 ```
 
 ### Docker Commands
