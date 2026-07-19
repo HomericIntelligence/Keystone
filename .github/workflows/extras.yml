@@ -8,8 +8,13 @@ on:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
-  merge_group:
-    types: [checks_requested]
+  # Deliberately NOT triggered on merge_group. The merge queue uses the
+  # ALLGREEN grouping strategy, which requires EVERY check on the temporary
+  # merge commit to be green — including non-required ones. The `coverage`
+  # job here exits 1 when line coverage dips below its 75% target, so running
+  # this "(non-blocking)" workflow in the queue would eject otherwise-green
+  # PRs whenever coverage regresses by a fraction of a percent. Keeping it off
+  # merge_group makes its informational-only intent actually hold in the queue.
   workflow_dispatch:
 
 concurrency:
