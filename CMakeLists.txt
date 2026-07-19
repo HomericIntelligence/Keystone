@@ -298,6 +298,8 @@ add_executable(
   # hierarchy was extracted to ProjectAgamemnon per ADR-015. Transport
   # decoupling is covered by test_message_sink (non-agent IMessageSink routing).
   tests/unit/test_message_sink.cpp # Part A: transport decoupled from agents
+  tests/unit/test_message.cpp # Coverage: KeystoneMessage/Response factories
+  tests/unit/test_message_bus.cpp # Coverage: MessageBus routing/NATS/scheduler
   tests/unit/test_message_serializer.cpp
   tests/unit/test_agent_id_interning.cpp # Phase A2: Agent ID interning tests
   tests/unit/test_metrics.cpp
