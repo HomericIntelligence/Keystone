@@ -599,7 +599,7 @@ install(
 # Install documentation (keystone + keystone-doc packages) Core documentation
 # goes to keystone package
 install(
-  FILES ${PROJECT_SOURCE_DIR}/README.md ${PROJECT_SOURCE_DIR}/CLAUDE.md
+  FILES ${PROJECT_SOURCE_DIR}/README.md ${PROJECT_SOURCE_DIR}/AGENTS.md
         ${PROJECT_SOURCE_DIR}/LICENSE
   DESTINATION ${CMAKE_INSTALL_DOCDIR}
   COMPONENT keystone

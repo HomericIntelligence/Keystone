@@ -21,7 +21,7 @@ Welcome to the Keystone Hierarchical Multi-Agent System (HMAS) documentation.
 Start here to understand what Keystone is and how to build it.
 
 - **[Main README](../README.md)** - Project overview, quick start, and build instructions
-- **[CLAUDE.md](../CLAUDE.md)** - Comprehensive project guide for Claude Code AI
+- **[AGENTS.md](../AGENTS.md)** - Comprehensive project guide for Claude Code AI
 - **[Installation Verification](verify-installation.md)** - Step-by-step installation guide
 
 ### Quick Start
@@ -317,7 +317,7 @@ Keystone follows a phased TDD approach. Each phase builds incrementally on the p
 
 ### Contributing
 
-See [CLAUDE.md](../CLAUDE.md#development-workflow) for:
+See [AGENTS.md](../AGENTS.md#development-workflow) for:
 
 - Development workflow
 - TDD approach
@@ -374,7 +374,7 @@ If you find missing or incorrect documentation:
 
 ### Development Questions
 
-- Review [CLAUDE.md](../CLAUDE.md) for comprehensive project context
+- Review [AGENTS.md](../AGENTS.md) for comprehensive project context
 - Check [Testing Strategy](plan/testing-strategy.md) for testing questions
 - See [Build System](plan/build-system.md) for build issues
 - Review [CI/CD Quality Gates](CICD_QUALITY_GATES.md) for quality standards

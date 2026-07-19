@@ -20,7 +20,7 @@ Level 0 Agent in the 4-layer Hierarchical Multi-Agent System. Responsible for st
 - Testing: **Google Test (gtest)**
 - Concurrency: **C++20 Coroutines, ThreadPool**
 
-See [CLAUDE.md](../../CLAUDE.md) for complete project overview.
+See [AGENTS.md](../../AGENTS.md) for complete project overview.
 
 ## Scope
 
@@ -236,7 +236,7 @@ Task<void> processMessage(const KeystoneMessage& msg);
 
 ### Project Documentation
 
-- [CLAUDE.md](../../CLAUDE.md) - Project overview
+- [AGENTS.md](../../AGENTS.md) - Project overview
 - [FOUR_LAYER_ARCHITECTURE.md](../../docs/plan/FOUR_LAYER_ARCHITECTURE.md) - Architecture details
 - [TDD_FOUR_LAYER_ROADMAP.md](../../docs/plan/TDD_FOUR_LAYER_ROADMAP.md) - Phase-by-phase plan
 

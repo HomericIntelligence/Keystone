@@ -396,7 +396,7 @@ Publisher → MessageBus.routeMessage(msg)
 
 ## Documentation
 
-- [CLAUDE.md](CLAUDE.md) - Project overview for Claude Code
+- [AGENTS.md](AGENTS.md) - Project overview for Claude Code
 - [Glossary](docs/GLOSSARY.md) - Terminology and definitions
 - [Four-Layer Architecture](docs/plan/FOUR_LAYER_ARCHITECTURE.md)
 - [TDD Roadmap](docs/plan/TDD_FOUR_LAYER_ROADMAP.md)
@@ -424,7 +424,7 @@ Run benchmarks to establish baselines: `./scripts/run_benchmarks.sh --baseline`
 3. Pass all quality gates
 4. Update documentation
 
-See [CLAUDE.md](CLAUDE.md) for development guidelines.
+See [AGENTS.md](AGENTS.md) for development guidelines.
 
 ## License
 

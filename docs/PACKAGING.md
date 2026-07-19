@@ -17,7 +17,7 @@ Keystone is distributed as five separate packages to support different use cases
 **Contents:**
 
 - Runtime shared libraries (`.so` files)
-- Core documentation (README.md, LICENSE, CLAUDE.md)
+- Core documentation (README.md, LICENSE, AGENTS.md)
 
 **Target Users:** End users running applications built with Keystone
 
@@ -366,7 +366,7 @@ sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keyston
 
 /usr/share/doc/Keystone/
 ├── README.md
-├── CLAUDE.md
+├── AGENTS.md
 └── LICENSE
 ```
 

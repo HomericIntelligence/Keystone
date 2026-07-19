@@ -15,7 +15,7 @@ namespace network {
 struct NATSListenerConfig {
   std::string subject;       ///< NATS subject pattern, e.g. "hi.tasks.>"
   std::string durable_name;  ///< Durable consumer name for JetStream
-  int max_ack_pending{1};    ///< Max unacked messages per CLAUDE.md rate-limit
+  int max_ack_pending{1};    ///< Max unacked messages per AGENTS.md rate-limit
   int max_attempts{
       3};  ///< Maximum subscribe attempts before giving up (issue #331)
 };
@@ -42,7 +42,7 @@ struct SubjectClassification {
 };
 
 /// NATSListener subscribes to a JetStream durable consumer using a pull-based
-/// fetch loop that honors MaxAckPending = 1 rate-limiting per CLAUDE.md spec.
+/// fetch loop that honors MaxAckPending = 1 rate-limiting per AGENTS.md spec.
 /// Every message is explicitly acked or nacked before the next fetch.
 /// The listener runs on its own thread and can be cleanly stopped via stop().
 class NATSListener {

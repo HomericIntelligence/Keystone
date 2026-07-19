@@ -51,7 +51,7 @@ struct BridgeConfig {
   /// Durable JetStream consumer name.
   std::string durable_name{"keystone-bridge"};
 
-  /// MaxAckPending per CLAUDE.md rate-limiting spec.
+  /// MaxAckPending per AGENTS.md rate-limiting spec.
   int max_ack_pending{1};
 
   /// Maximum subscribe attempts before giving up (mirrors NATSListener).
@@ -130,7 +130,7 @@ class TransparentBridge {
  * @brief Derive the NATS subject for a given agent receiver ID.
  *
  * Maps receiver_id → "hi.agents.<receiver_id>".
- * The pattern is consistent with the NATS subject schema in CLAUDE.md
+ * The pattern is consistent with the NATS subject schema in AGENTS.md
  * (homeric-agents stream: hi.agents.>).
  *
  * @param receiver_id Agent identifier (must be a safe NATS token).

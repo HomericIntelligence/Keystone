@@ -6,7 +6,7 @@ Keystone uses **CMake 3.20+** with **Conan 2** for dependency management and **C
 preset-based builds. Traditional C++ headers are used (not C++20 modules). This document outlines the build
 configuration, toolchain requirements, and development workflows.
 
-See also: `/CLAUDE.md` for project scope and architecture.
+See also: `/AGENTS.md` for project scope and architecture.
 
 ---
 

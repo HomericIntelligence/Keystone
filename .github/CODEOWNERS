@@ -36,6 +36,7 @@ Containerfile @mvillmow
 # Core project documentation
 README.md @mvillmow
 CLAUDE.md @mvillmow
+AGENTS.md @mvillmow
 LICENSE @mvillmow
 
 # Architecture and planning documentation

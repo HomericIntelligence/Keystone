@@ -77,7 +77,7 @@ without overlap.
 - ❌ Do NOT duplicate comprehensive documentation from other locations
 - ❌ Do NOT start work without a GitHub issue number
 
-See [CLAUDE.md](../../CLAUDE.md#documentation-rules) for complete documentation organization.
+See [AGENTS.md](../../AGENTS.md#documentation-rules) for complete documentation organization.
 
 
 ## GitHub Issue Workflow
@@ -182,7 +182,7 @@ gh issue view 1234
 **Comprehensive Docs** (link, don't duplicate):
 - `/notes/review/` - General review patterns
 - `docs/plan/` - Architecture and planning
-- `CLAUDE.md` - Project guidelines
+- `AGENTS.md` - Project guidelines
 
 ### Issue-Driven Development Checklist
 
@@ -341,7 +341,7 @@ As the Code Review Orchestrator:
 3. **Track unresolved comments** - Follow up on comments without replies
 4. **Consolidate feedback** - If multiple specialists flag the same issue, consolidate into one comment
 
-See [CLAUDE.md](../../CLAUDE.md#handling-pr-review-comments) for complete review comment guidelines.
+See [AGENTS.md](../../AGENTS.md#handling-pr-review-comments) for complete review comment guidelines.
 
 ## Routing Rules (Prevents Overlap)
 
@@ -627,7 +627,7 @@ Escalate to Chief Architect if architectural philosophy conflict.
 
 ## Pull Request Creation
 
-See [CLAUDE.md](../../CLAUDE.md#git-workflow) for complete PR creation instructions including linking to issues,
+See [AGENTS.md](../../AGENTS.md#git-workflow) for complete PR creation instructions including linking to issues,
 verification steps, and requirements.
 
 **Quick Summary**: Commit changes, push branch, create PR with `gh pr create --issue `issue-number``, verify issue is
