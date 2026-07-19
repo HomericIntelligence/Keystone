@@ -8,13 +8,14 @@ on:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
-  # Deliberately NOT triggered on merge_group. The merge queue uses the
-  # ALLGREEN grouping strategy, which requires EVERY check on the temporary
-  # merge commit to be green — including non-required ones. The `coverage`
-  # job here exits 1 when line coverage dips below its 75% target, so running
-  # this "(non-blocking)" workflow in the queue would eject otherwise-green
-  # PRs whenever coverage regresses by a fraction of a percent. Keeping it off
-  # merge_group makes its informational-only intent actually hold in the queue.
+  # The `coverage` context is required by the live main ruleset, so this
+  # workflow must keep triggering on merge_group to emit it. Every job below
+  # skips merge-queue builds (`if: github.event_name != 'merge_group'`): the
+  # skipped conclusion satisfies the required context, while under ALLGREEN
+  # grouping an actually-run sub-threshold `coverage` reading (it exits 1
+  # below its 75% target) would eject otherwise-green PRs from the queue.
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
@@ -174,6 +175,7 @@ jobs:
 
   coverage:
     name: coverage
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
 

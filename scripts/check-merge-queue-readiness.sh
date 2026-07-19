@@ -91,8 +91,11 @@ require_line .github/workflows/_required.yml \
     'required schema-validation invocation of this contract'
 
 # extras.yml supplies the required coverage context. Its advisory heavy jobs stay
-# available on push/PR, but do not consume merge-queue build capacity.
-for job in benchmarks nats-integration; do
+# available on push/PR, but do not consume merge-queue build capacity. The
+# coverage job must also skip merge_group: its skipped conclusion still
+# satisfies the required context, whereas a run that exits 1 below the
+# advisory threshold would eject otherwise-green PRs under ALLGREEN grouping.
+for job in benchmarks nats-integration coverage; do
     if ! awk -v job="$job" '
         $0 == "  " job ":" { in_job=1; next }
         in_job && /^  [[:alnum:]_-]+:/ { exit }
