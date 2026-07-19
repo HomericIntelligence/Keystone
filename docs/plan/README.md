@@ -102,7 +102,7 @@ The following are **no longer part of Keystone**:
 - Delegation and escalation logic
 - Work-stealing scheduler (agent-level)
 
-See CLAUDE.md at the repository root for the authoritative description of the
+See AGENTS.md at the repository root for the authoritative description of the
 current project scope.
 
 ---

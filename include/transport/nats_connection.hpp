@@ -264,13 +264,13 @@ class NatsConnection {
 
   // =========================================================================
   // Pull-based fetch for durable consumers (rate-limiting pattern per
-  // CLAUDE.md)
+  // AGENTS.md)
   // =========================================================================
 
   /**
    * @brief Fetch a single message from a durable consumer (pull pattern).
    *
-   * Implements the rate-limiting pull pattern described in CLAUDE.md:
+   * Implements the rate-limiting pull pattern described in AGENTS.md:
    * - Myrmidon pulls exactly one message when ready for more work
    * - Provides backpressure: slow consumer simply stops fetching
    * - Timeout allows periodic wakeup for graceful shutdown checks

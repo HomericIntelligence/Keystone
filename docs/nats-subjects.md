@@ -173,7 +173,7 @@ events like `task.updated` where the verb itself conveys the action.
 This contract applies to **downstream consumers** that subscribe to Keystone-owned
 NATS subjects (e.g., ProjectAgamemnon's orchestration daemon, Argus, pipeline
 myrmidons). It does **not** apply to Keystone itself: Keystone is a pure byte
-transport (see CLAUDE.md) and does not inspect the `status` field.
+transport (see AGENTS.md) and does not inspect the `status` field.
 
 Consumers reading from Keystone subjects **must** implement the following status
 resolution priority (issue #107):
@@ -233,7 +233,7 @@ Keystone enforces pull-based delivery:
 
 ## Cross-References
 
-- `CLAUDE.md` — Architecture overview and transport design.
+- `AGENTS.md` — Architecture overview and transport design.
 - `docs/MESSAGE_PROTOCOL_EXTENSIONS.md` — KIM protocol extensions.
 - `docs/NETWORK_PROTOCOL.md` — gRPC/network layer protocol.
 - GitHub issue #107 — NATS payload schema mismatch (status nested in `data`, not top-level).

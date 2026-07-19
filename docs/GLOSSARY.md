@@ -521,7 +521,7 @@ Keystone agents use finite state machines for coordinated workflows:
 
 ## References
 
-- [CLAUDE.md](../CLAUDE.md) - Project configuration and overview
+- [AGENTS.md](../AGENTS.md) - Project configuration and overview
 - [TDD_FOUR_LAYER_ROADMAP.md](./plan/TDD_FOUR_LAYER_ROADMAP.md) - Phase-by-phase development plan
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architecture documentation
 - [NETWORK_PROTOCOL.md](./NETWORK_PROTOCOL.md) - Message protocol specifications

@@ -470,7 +470,7 @@ NatsMsgPtr NatsConnection::fetch(std::string_view subject,
   jsSubOptions sub_opts;
   jsSubOptions_Init(&sub_opts);
   sub_opts.Config.Durable = const_cast<char*>(consumer_name.data());
-  sub_opts.Config.MaxAckPending = 1;  // Rate-limiting per CLAUDE.md
+  sub_opts.Config.MaxAckPending = 1;  // Rate-limiting per AGENTS.md
 
   natsSubscription* sub = nullptr;
   natsStatus s = js_Subscribe(&sub, js, std::string(subject).c_str(), nullptr,

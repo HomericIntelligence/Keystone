@@ -20,7 +20,7 @@ Implement standard C++20 functions and classes for the Hierarchical Multi-Agent 
 - Testing: **Google Test**
 - Style: **camelBack functions, lower_case variables/members/parameters, PascalCase types/classes**
 
-See [CLAUDE.md](../../CLAUDE.md) for complete overview.
+See [AGENTS.md](../../AGENTS.md) for complete overview.
 
 ---
 

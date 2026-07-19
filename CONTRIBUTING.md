@@ -14,7 +14,7 @@ Before you begin, ensure you have:
 - **Git** 2.30+
 - **clang-format** and **clang-tidy** (matching the project's `.clang-format` / `.clang-tidy` config)
 
-For the full technology stack, see [CLAUDE.md](CLAUDE.md#language-and-technology-stack).
+For the full technology stack, see [AGENTS.md](AGENTS.md#language-and-technology-stack).
 
 ### Installing Prerequisites
 
@@ -77,7 +77,7 @@ Keystone follows **Test-Driven Development (TDD)**:
    - Use conventional commit format (see below)
    - Push to feature branch
 
-For more details, see [CLAUDE.md - Development Workflow](CLAUDE.md#development-workflow).
+For more details, see [AGENTS.md - Development Workflow](AGENTS.md#development-workflow).
 
 ## C++20 Code Standards
 
@@ -113,7 +113,7 @@ auto agent = std::make_unique<TaskAgent>("task1");
 void updateAgent(const AgentBase& agent);
 ```
 
-For comprehensive style guidelines, see [CLAUDE.md - Coding Standards](CLAUDE.md#coding-standards).
+For comprehensive style guidelines, see [AGENTS.md - Coding Standards](AGENTS.md#coding-standards).
 
 ## Testing Requirements
 
@@ -261,17 +261,17 @@ Keystone/
 ├── benchmarks/           # Google Benchmark suites
 ├── docs/                 # Architecture docs and ADRs
 │   └── plan/adr/
-└── CLAUDE.md             # Full project guidelines
+└── AGENTS.md             # Full project guidelines
 ```
 
 ## Getting Help
 
-- **Project overview and architecture**: [CLAUDE.md](CLAUDE.md)
+- **Project overview and architecture**: [AGENTS.md](AGENTS.md)
 - **Architecture Decision Records**: [docs/plan/adr/](docs/plan/adr/)
 - **Quality gate details**: [docs/CICD_QUALITY_GATES.md](docs/CICD_QUALITY_GATES.md)
 - **CI workflow documentation**: [.github/workflows/README.md](.github/workflows/README.md)
 
 ---
 
-**Questions or concerns?** Open a GitHub Discussion or check [CLAUDE.md](CLAUDE.md) for
+**Questions or concerns?** Open a GitHub Discussion or check [AGENTS.md](AGENTS.md) for
 comprehensive project guidelines.
