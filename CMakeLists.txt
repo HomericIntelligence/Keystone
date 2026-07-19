@@ -320,6 +320,7 @@ add_executable(
   tests/unit/test_nats_connection.cpp # Issue #88: NATS reconnection callbacks
   tests/unit/test_subject_validator.cpp # Issue #280: NATS wildcard-aware token
                                         # validation
+  tests/unit/test_nats_status.cpp # Issue #88: NATS connection status tracker
 )
 
 # The gRPC test fixture (grpc_test_fixture.cpp) and TLS test (test_grpc_tls.cpp)
