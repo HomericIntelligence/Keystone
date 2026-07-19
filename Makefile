@@ -127,7 +127,7 @@ TEST_PROFILING := profiling_tests
 test: compile
 	@echo "Running all tests..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
+	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && KEYSTONE_PROFILE=1 TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
 
 # Individual test suites (run specific executable)
 test.unit: compile
