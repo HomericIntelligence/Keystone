@@ -312,3 +312,102 @@ TEST_F(SimulatedNetworkTest, PendingMessageCount) {
 
   EXPECT_EQ(network.getPendingMessages(), 0);
 }
+
+// ===========================================================================
+// Coverage extension tests (test/coverage-scheduler-sim-network)
+// Target uncovered regions: default constructor, network partition
+// (create/heal/isPartitioned/canCommunicate branches) and the partition-drop
+// path in send().
+// ===========================================================================
+
+// Test: default constructor delegates to Config{} and starts clean
+TEST_F(SimulatedNetworkTest, DefaultConstructor) {
+  SimulatedNetwork network;  // SimulatedNetwork() -> SimulatedNetwork(Config{})
+
+  EXPECT_FALSE(network.isPartitioned());
+  EXPECT_EQ(network.getTotalMessages(), 0);
+  EXPECT_EQ(network.getPartitionDroppedMessages(), 0);
+
+  // Default config has zero packet loss, so a message is queued (not dropped).
+  network.send(0, 1, []() {});
+  EXPECT_EQ(network.getTotalMessages(), 1);
+  EXPECT_EQ(network.getDroppedMessages(), 0);
+  EXPECT_EQ(network.getPendingMessages(), 1);
+}
+
+// Test: no partition -> canCommunicate always true (early-return branch)
+TEST_F(SimulatedNetworkTest, CanCommunicateNoPartition) {
+  SimulatedNetwork network;
+  EXPECT_FALSE(network.isPartitioned());
+  EXPECT_TRUE(network.canCommunicate(0, 1));
+  EXPECT_TRUE(network.canCommunicate(5, 5));
+}
+
+// Test: createPartition sets state and isPartitioned reports true
+TEST_F(SimulatedNetworkTest, CreatePartitionSetsState) {
+  SimulatedNetwork network;
+  EXPECT_FALSE(network.isPartitioned());
+
+  network.createPartition({0, 1}, {2, 3});
+  EXPECT_TRUE(network.isPartitioned());
+}
+
+// Test: canCommunicate honours partition membership on every branch
+TEST_F(SimulatedNetworkTest, CanCommunicateAcrossPartition) {
+  SimulatedNetwork network;
+  network.createPartition({0, 1}, {2, 3});
+
+  // Both in A
+  EXPECT_TRUE(network.canCommunicate(0, 1));
+  // Both in B
+  EXPECT_TRUE(network.canCommunicate(2, 3));
+  // A -> B (different partitions)
+  EXPECT_FALSE(network.canCommunicate(0, 2));
+  // B -> A (different partitions)
+  EXPECT_FALSE(network.canCommunicate(3, 1));
+  // from in A, to in neither -> different partitions
+  EXPECT_FALSE(network.canCommunicate(0, 9));
+  // from in B, to in neither -> different partitions
+  EXPECT_FALSE(network.canCommunicate(2, 9));
+  // neither node in any partition -> cannot communicate
+  EXPECT_FALSE(network.canCommunicate(8, 9));
+}
+
+// Test: send across a partition is dropped and counted separately
+TEST_F(SimulatedNetworkTest, SendDroppedByPartition) {
+  SimulatedNetwork::Config config{.min_latency = 10us, .max_latency = 20us};
+  SimulatedNetwork network(config);
+  network.createPartition({0, 1}, {2, 3});
+
+  // Cross-partition send -> dropped by partition.
+  network.send(0, 2, []() {});
+  EXPECT_EQ(network.getTotalMessages(), 1);
+  EXPECT_EQ(network.getPartitionDroppedMessages(), 1);
+  EXPECT_EQ(network.getDroppedMessages(), 0);  // not a packet-loss drop
+  EXPECT_EQ(network.getPendingMessages(), 0);
+
+  // Same-partition send -> delivered normally.
+  network.send(0, 1, []() {});
+  EXPECT_EQ(network.getTotalMessages(), 2);
+  EXPECT_EQ(network.getPartitionDroppedMessages(), 1);
+  EXPECT_EQ(network.getPendingMessages(), 1);
+}
+
+// Test: healPartition restores full connectivity
+TEST_F(SimulatedNetworkTest, HealPartitionRestoresConnectivity) {
+  SimulatedNetwork::Config config{.min_latency = 10us, .max_latency = 20us};
+  SimulatedNetwork network(config);
+
+  network.createPartition({0}, {1});
+  EXPECT_TRUE(network.isPartitioned());
+  EXPECT_FALSE(network.canCommunicate(0, 1));
+
+  network.healPartition();
+  EXPECT_FALSE(network.isPartitioned());
+  EXPECT_TRUE(network.canCommunicate(0, 1));
+
+  // After healing, a previously-blocked send now goes through.
+  network.send(0, 1, []() {});
+  EXPECT_EQ(network.getPartitionDroppedMessages(), 0);
+  EXPECT_EQ(network.getPendingMessages(), 1);
+}

@@ -303,3 +303,175 @@ TEST(WorkStealingSchedulerTest, HeavyLoad) {
 
   scheduler.shutdown();
 }
+
+// ===========================================================================
+// Coverage extension tests (test/coverage-scheduler-sim-network)
+// Target uncovered regions: MAX_WORKER_THREADS guard, coroutine submitTo,
+// tryStealWork() (NUMA steal, done/valid coroutine handling), CPU affinity.
+// ===========================================================================
+
+#include <coroutine>
+
+namespace {
+
+// Minimal manually-driven coroutine used ONLY to obtain a raw
+// std::coroutine_handle<> for exercising the scheduler's coroutine paths.
+// The handle is owned by the test (via CoroTask) and destroyed at scope exit,
+// so there is no lifetime race with worker threads (work executes inline here).
+struct CoroTask {
+  struct promise_type {
+    CoroTask get_return_object() {
+      return CoroTask{
+          std::coroutine_handle<promise_type>::from_promise(*this)};
+    }
+    std::suspend_always initial_suspend() noexcept { return {}; }
+    std::suspend_always final_suspend() noexcept { return {}; }
+    void return_void() noexcept {}
+    void unhandled_exception() noexcept {}
+  };
+
+  // Type-erased handle so passing it to submitTo() unambiguously selects the
+  // coroutine_handle<> overload (a typed handle<promise_type> is convertible to
+  // both submitTo overloads and would be ambiguous).
+  std::coroutine_handle<> handle;
+
+  explicit CoroTask(std::coroutine_handle<> h) : handle(h) {}
+  CoroTask(const CoroTask&) = delete;
+  CoroTask& operator=(const CoroTask&) = delete;
+  ~CoroTask() {
+    if (handle) {
+      handle.destroy();
+    }
+  }
+};
+
+CoroTask makeCounterCoro(std::shared_ptr<std::atomic<int32_t>> counter) {
+  counter->fetch_add(1);
+  co_return;
+}
+
+}  // namespace
+
+// Test: Requesting more than MAX_WORKER_THREADS throws (DoS guard, FIX P2-10)
+TEST(WorkStealingSchedulerTest, TooManyWorkersThrows) {
+  // MAX_WORKER_THREADS is 256; request well above it.
+  EXPECT_THROW(WorkStealingScheduler(100000), std::invalid_argument);
+}
+
+// Test: submitTo coroutine overload runs the coroutine on a worker
+TEST(WorkStealingSchedulerTest, SubmitToCoroutine) {
+  WorkStealingScheduler scheduler(2);
+  scheduler.start();
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  CoroTask task = makeCounterCoro(counter);
+
+  scheduler.submitTo(1, task.handle);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  EXPECT_EQ(counter->load(), 1);
+  EXPECT_TRUE(task.handle.done());
+
+  scheduler.shutdown();
+}
+
+// Test: submitTo coroutine overload with invalid index is a safe no-op
+TEST(WorkStealingSchedulerTest, SubmitToCoroutineInvalidIndex) {
+  WorkStealingScheduler scheduler(2);
+  scheduler.start();
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  CoroTask task = makeCounterCoro(counter);
+
+  scheduler.submitTo(42, task.handle);  // out of range
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+  EXPECT_EQ(counter->load(), 0);  // never scheduled
+  EXPECT_FALSE(task.handle.done());
+
+  scheduler.shutdown();
+}
+
+// Test: tryStealWork returns nullopt when all queues are empty
+TEST(WorkStealingSchedulerTest, TryStealWorkEmpty) {
+  WorkStealingScheduler scheduler(3);
+  // Not started: no workers draining, queues empty.
+  auto stolen = scheduler.tryStealWork();
+  EXPECT_FALSE(stolen.has_value());
+}
+
+// Test: tryStealWork steals a submitted function work item (NUMA path)
+TEST(WorkStealingSchedulerTest, TryStealWorkFunction) {
+  // Single worker so the random victim is deterministic (index 0).
+  WorkStealingScheduler scheduler(1);
+  // Do NOT start(): keep the item in the queue so tryStealWork can grab it.
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  scheduler.submitTo(0, [counter]() { counter->fetch_add(1); });
+
+  auto stolen = scheduler.tryStealWork();
+  ASSERT_TRUE(stolen.has_value());
+  (*stolen)();
+  EXPECT_EQ(counter->load(), 1);
+
+  // Queue should now be drained; a second steal yields nothing.
+  auto again = scheduler.tryStealWork();
+  EXPECT_FALSE(again.has_value());
+}
+
+// Test: tryStealWork on a valid coroutine handle wraps + resumes it
+TEST(WorkStealingSchedulerTest, TryStealWorkValidCoroutine) {
+  WorkStealingScheduler scheduler(1);
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  CoroTask task = makeCounterCoro(counter);
+  ASSERT_FALSE(task.handle.done());
+
+  scheduler.submitTo(0, task.handle);
+
+  auto stolen = scheduler.tryStealWork();
+  ASSERT_TRUE(stolen.has_value());
+  (*stolen)();  // resumes the coroutine
+
+  EXPECT_EQ(counter->load(), 1);
+  EXPECT_TRUE(task.handle.done());
+}
+
+// Test: tryStealWork on an already-completed coroutine handle returns nullopt
+TEST(WorkStealingSchedulerTest, TryStealWorkDoneCoroutine) {
+  WorkStealingScheduler scheduler(1);
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  CoroTask task = makeCounterCoro(counter);
+
+  // Drive the coroutine to completion before submitting the handle.
+  task.handle.resume();
+  ASSERT_TRUE(task.handle.done());
+  EXPECT_EQ(counter->load(), 1);
+
+  scheduler.submitTo(0, task.handle);
+
+  // The victim queue holds a done handle; tryStealWork must detect it,
+  // warn, and return nullopt rather than resuming a finished coroutine.
+  auto stolen = scheduler.tryStealWork();
+  EXPECT_FALSE(stolen.has_value());
+  EXPECT_EQ(counter->load(), 1);  // not resumed again
+}
+
+// Test: CPU affinity enabled path executes work without error
+TEST(WorkStealingSchedulerTest, CpuAffinityEnabled) {
+  WorkStealingScheduler scheduler(2, /*enable_cpu_affinity=*/true);
+  scheduler.start();
+
+  auto counter = std::make_shared<std::atomic<int32_t>>(0);
+  for (int32_t i = 0; i < 10; ++i) {
+    scheduler.submit([counter]() { counter->fetch_add(1); });
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  EXPECT_EQ(counter->load(), 10);
+
+  scheduler.shutdown();
+}
