@@ -119,6 +119,7 @@ TEST_ASYNC := async_delegation_tests
 TEST_DISTRIBUTED := distributed_hierarchy_tests
 TEST_UNIT := unit_tests
 TEST_CONCURRENCY := concurrency_unit_tests
+TEST_SCHEDULER_BACKOFF := scheduler_backoff_tests
 TEST_SIMULATION := simulation_unit_tests
 TEST_PROFILING := profiling_tests
 
@@ -163,6 +164,7 @@ test.concurrency: compile
 	@echo "Running concurrency unit tests..."
 	$(CONTAINER_CHECK)
 	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_CONCURRENCY)
+	$(CONTAINER_PREFIX) ./$(BUILD_DIR)/$(BUILD_SUBDIR)/$(TEST_SCHEDULER_BACKOFF)
 
 test.simulation: compile
 	@echo "Running simulation unit tests..."
