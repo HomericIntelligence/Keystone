@@ -359,13 +359,23 @@ add_executable(
   tests/unit/test_pull_or_steal.cpp
   tests/unit/test_work_stealing_scheduler.cpp
   tests/unit/test_cpu_affinity.cpp # Phase D.2: CPU affinity tests
-  tests/unit/test_scheduler_backoff.cpp # Stream C1: 3-phase backoff tests
 )
 
 target_link_libraries(concurrency_unit_tests keystone_concurrency keystone_core
                       GTest::gtest_main)
 
 gtest_discover_tests(concurrency_unit_tests)
+
+# Stream C1: 3-phase backoff tests. Kept in their own binary and marked
+# RUN_SERIAL because they assert wall-clock latency bounds: under `ctest -jN`
+# the other scheduler suites saturate the runner's cores and inflate the
+# measured SPIN/SLEEP wake-up latencies past their assertions.
+add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp)
+
+target_link_libraries(scheduler_backoff_tests keystone_concurrency
+                      keystone_core GTest::gtest_main)
+
+gtest_discover_tests(scheduler_backoff_tests PROPERTIES RUN_SERIAL TRUE)
 
 # Unit Tests - Simulation (Phase D.3)
 add_executable(
