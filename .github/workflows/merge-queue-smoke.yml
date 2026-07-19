@@ -1,0 +1,82 @@
+name: Merge Queue Smoke
+
+# Sole merge_group workflow. Full CI (up to 16 jobs re-queued per merge group,
+# 70-90 min under runner-slot starvation) already ran on the pull_request; the
+# queue only needs a fast real sanity gate. One job = one runner slot, < 5 min.
+# PR-side CI is untouched: this workflow emits the single `merge-queue-smoke`
+# context that the branch rulesets gate the queue on after rollout.
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mq-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  merge-queue-smoke:
+    name: merge-queue-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Run symlink check
+        run: bash scripts/check-symlinks.sh
+
+      - name: Validate merge-queue readiness contract
+        run: ./scripts/check-merge-queue-readiness.sh
+
+      - name: Validate GitHub Actions workflow YAML files
+        run: |
+          pip install --quiet check-jsonschema
+          find .github/workflows -name "*.yml" | sort | \
+            xargs check-jsonschema \
+              --schemafile https://json.schemastore.org/github-workflow
+
+      - name: Verify version consistency across release surfaces
+        run: |
+          python3 - <<'PYEOF'
+          import json, re, pathlib, sys, tomllib
+
+          root = pathlib.Path(".")
+
+          manifest_ver = json.loads(
+              (root / ".release-please-manifest.json").read_text()
+          ).get(".")
+
+          cmake_text = (root / "CMakeLists.txt").read_text()
+          cmake_m = re.search(r"project\s*\([^)]*VERSION\s+([\d.]+)", cmake_text, re.DOTALL)
+          cmake_ver = cmake_m.group(1) if cmake_m else None
+
+          conan_m = re.search(
+              r'version\s*=\s*["\']([^"\']+)["\']',
+              (root / "conanfile.py").read_text(),
+          )
+          conan_ver = conan_m.group(1) if conan_m else None
+
+          with open(root / "pixi.toml", "rb") as fh:
+              pixi_ver = tomllib.load(fh).get("project", {}).get("version")
+
+          versions = {
+              ".release-please-manifest.json": manifest_ver,
+              "CMakeLists.txt":                cmake_ver,
+              "conanfile.py":                  conan_ver,
+              "pixi.toml":                     pixi_ver,
+          }
+          for k, v in versions.items():
+              print(f"{k:32s}: {v}")
+
+          missing = [k for k, v in versions.items() if v is None]
+          if missing:
+              print(f"\nVersion not found in: {', '.join(missing)}")
+              sys.exit(1)
+          if len(set(versions.values())) != 1:
+              print("\nRelease surfaces disagree on version")
+              sys.exit(1)
+          print(f"\nAll release surfaces agree: {manifest_ver}")
+          PYEOF
