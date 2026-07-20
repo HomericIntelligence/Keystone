@@ -1,0 +1,7 @@
+name: runner-smoke-test
+on: workflow_dispatch
+jobs:
+  smoke:
+    runs-on: [self-hosted, self-hosted-aeolus]
+    steps:
+      - run: echo "hello from self-hosted-aeolus"
