@@ -11,6 +11,21 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ## [Unreleased]
 
+### Changed
+
+- `build`: migrate the build toolchain from pixi/conda to uv (Odysseus ADR-018,
+  mirroring Nestor #133 and Agamemnon #457). CMake, Ninja, Conan, gcovr, and
+  pre-commit are now uv-managed locked PyPI wheels (`pyproject.toml` + `uv.lock`
+  + `.python-version`); the C++ compiler, clang-format/clang-tidy, lcov, and the
+  OpenSSL dev headers come from the system (apt). gtest continues to be provided
+  by Conan (`conanfile.py`). CI swaps `prefix-dev/setup-pixi` for
+  `astral-sh/setup-uv` and the `pixi-check` job becomes `uv-check`; every
+  required check-run name (`lint`, `unit-tests`, `integration-tests`, `build`,
+  `test`, `package`, `install`, `coverage`, `release`, `schema-validation`,
+  `deps/version-sync`, `security/*`) is preserved, and the canonical `release`
+  gate + `publish-release` naming are untouched (no release-check collision).
+  The Containerfile builder pulls uv via a pinned `COPY --from` named stage.
+
 ### Added
 
 - Integration test `SchedulerSigtermTest` verifying SIGTERM mid-flight causes graceful drain: all submitted tasks

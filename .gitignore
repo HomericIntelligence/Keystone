@@ -131,8 +131,11 @@ credentials*
 # CMake user-specific preset overrides (generated, not shared)
 CMakeUserPresets.json
 
-# Pixi
-.pixi/
+# uv (Odysseus ADR-018): uv.lock IS committed; only the virtualenv is ignored.
+.venv/
+
+# Conan output folder used by the justfile build tasks
+build-native/
 
 # Conan package manager cache and generated files
 .conan/

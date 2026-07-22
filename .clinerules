@@ -100,8 +100,8 @@ python3 scripts/create_issues.py --dry-run
 # Run hooks manually
 pre-commit run --all-files
 
-# Mojo format issues
-pixi run mojo format path/to/file.mojo
+# C++ format issues (clang-format)
+just format          # or: uv run make format
 
 # Markdown linting issues
 npx markdownlint-cli2 path/to/file.md
@@ -122,11 +122,11 @@ git commit --no-verify
 - Use relative paths: `../plan.md` not absolute
 - Verify parent/child files exist
 
-**"Mojo format fails"**:
+**"clang-format fails"**:
 
-- Ensure Pixi environment is active
-- Run: `pixi run mojo format file.mojo`
-- Check syntax errors in Mojo code
+- Ensure the uv build toolchain is synced (`uv sync`) and clang-format is on PATH
+- Run: `just format` (or `uv run make format`)
+- Check syntax errors in the C++ source
 
 **"GitHub issue creation fails"**:
 

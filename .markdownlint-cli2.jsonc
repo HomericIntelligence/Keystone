@@ -3,6 +3,6 @@
   // .claude/ is also excluded via the workflow globs.
   "ignorePatterns": [
     "CHANGELOG.md",
-    ".pixi/**"
+    ".venv/**"
   ]
 }

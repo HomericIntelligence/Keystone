@@ -1,6 +1,15 @@
 # Keystone HMAS - C++20 Build Environment
 # Multi-stage build for efficient image size
 
+# ── uv binary source ──────────────────────────────────────────────────────────
+# Pulled as a named stage so `COPY --from=uv` resolves identically under both
+# podman/buildah and docker. A bare `COPY --from=ghcr.io/astral-sh/uv:<tag>@<digest>`
+# (tag AND digest together) is rejected by buildah with "no stage or image found
+# with that name", so we alias the digest-pinned image to a stage name here and
+# COPY from the alias. Keep this pin in sync with astral-sh/setup-uv in
+# .github/workflows/*.yml when bumping (Odysseus ADR-018).
+FROM ghcr.io/astral-sh/uv:0.11.21@sha256:ff07b86af50d4d9391d9daf4ff89ce427bc544f9aae87057e69a1cc0aa369946 AS uv
+
 # Stage 1: Build environment
 FROM ubuntu:24.04 AS builder
 
@@ -19,34 +28,49 @@ ARG MSAN_OPTIONS=""
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
+# Install build dependencies. The C++ compiler (clang-18), libc++ dev headers,
+# OpenSSL headers, lcov, and git come from apt; the CMake/Ninja/Conan/gcovr
+# build toolchain is uv-managed as locked PyPI wheels (Odysseus ADR-018), not
+# apt/pip. build-essential is retained for the system linker/headers.
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake \
     clang-18 \
     clang++-18 \
     libc++-18-dev \
     libc++abi-18-dev \
     git \
-    ninja-build \
     lcov \
     bc \
-    gcovr \
-    python3-pip \
     libssl-dev \
     && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-18 100 \
     && update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 \
     && update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 \
-    && pip install --no-cache-dir "conan>=2.0,<3" --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
-# Detect Conan profile and install dependencies
-# Use Release build type to match Docker production build
-RUN conan profile detect --force
+# uv binary (manages cmake/ninja/conan/gcovr as locked PyPI wheels).
+COPY --from=uv /uv /uvx /usr/local/bin/
 
-# Verify C++20 support
-RUN clang++ --version && cmake --version
+# uv toolchain environment configuration.
+#
+# The venv MUST live OUTSIDE /workspace: the `dev`/`build` compose services
+# bind-mount the host repo over `.:/workspace:Z` at run time, which masks any
+# `/workspace/.venv` baked into the image — so a default in-tree venv vanishes
+# the moment the container starts. Installing it at /opt/venv keeps the locked
+# build toolchain (conan/cmake/ninja/gcovr) present at run time regardless of
+# the bind mount.
+#
+# Putting /opt/venv/bin on PATH makes the tools resolvable by their BARE names
+# (`conan`, `cmake`, `ninja`, `gcovr`) — which is exactly how the Makefile's
+# container recipes invoke them (`$(CONTAINER_PREFIX) conan ...`, Makefile:83).
+# Before ADR-018 these came from apt (`cmake`) and a system pip `conan`, so
+# they were on PATH; uv-managing them without this PATH entry is what broke
+# `make deps` in the lint/coverage jobs with "conan: executable file not found"
+# (exit 127). UV_PYTHON_INSTALL_DIR keeps uv's downloaded CPython out of
+# /root/.local (mode 0700) so the non-root compose `user:` can reach it.
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    PATH="/opt/venv/bin:$PATH"
 
 # Create workspace directory with proper permissions
 RUN mkdir -p /workspace && \
@@ -54,6 +78,21 @@ RUN mkdir -p /workspace && \
 
 # Set working directory
 WORKDIR /workspace
+
+# Sync the locked build toolchain first so it caches independently of sources.
+# Installs into /opt/venv (UV_PROJECT_ENVIRONMENT). world-readable/executable so
+# the non-root compose `user:` (keep-id) can run the tools off PATH; the
+# downloaded interpreter under /opt/uv-python likewise.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked \
+    && chmod -R a+rX /opt/venv /opt/uv-python
+
+# Detect Conan profile and install dependencies
+# Use Release build type to match Docker production build
+RUN conan profile detect --force
+
+# Verify C++20 support and that the uv-managed toolchain is on PATH by bare name.
+RUN clang++ --version && cmake --version && conan --version
 
 # Copy conanfile first for dependency layer caching
 COPY conanfile.py ./

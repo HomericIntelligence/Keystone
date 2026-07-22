@@ -116,9 +116,9 @@ updates:
   # ============================================================================
   # Conan - C++ package manager (Python-based, tracked via pip ecosystem)
   # ============================================================================
-  # NOTE: Conan is managed via pyproject.toml and pixi.toml, not pip.
-  # Dependabot pip ecosystem cannot parse optional-dependencies in pyproject.toml.
-  # If conan needs updating, do it manually or via pixi lock.
+  # NOTE: Conan is managed via pyproject.toml (uv dependency-groups.dev), not pip.
+  # Dependabot pip ecosystem cannot parse dependency-groups in pyproject.toml.
+  # If conan needs updating, do it manually or via `uv lock`.
     # Only update the conan tool itself; C++ library versions are pinned in conanfile.py
     allow:
       - dependency-name: "conan"
@@ -208,6 +208,6 @@ updates:
   #     interval: "weekly"
   #
   # conan example:
-  # NOTE: Conan is managed via pyproject.toml and pixi.toml, not pip.
-  # Dependabot pip ecosystem cannot parse optional-dependencies in pyproject.toml.
-  # If conan needs updating, do it manually or via pixi lock.
+  # NOTE: Conan is managed via pyproject.toml (uv dependency-groups.dev), not pip.
+  # Dependabot pip ecosystem cannot parse dependency-groups in pyproject.toml.
+  # If conan needs updating, do it manually or via `uv lock`.
