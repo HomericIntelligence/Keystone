@@ -32,12 +32,33 @@ require_merge_group_trigger() {
     fi
 }
 
+forbid_merge_group_trigger() {
+    local file=$1
+    local trigger_block
+
+    trigger_block=$(sed -n '/^on:/,/^[^[:space:]]/p' "$file")
+    if grep -Eq '^  merge_group:$' <<<"$trigger_block"; then
+        fail "$file: must not trigger on merge_group — queue builds run only merge-queue-smoke.yml (single fast runner slot)"
+    fi
+}
+
+# merge_group is carried EXCLUSIVELY by the dedicated smoke workflow so a
+# merge group consumes one runner slot for < 5 minutes instead of re-running
+# the full 16-job suite (70-90 min under runner-slot starvation).
+require_merge_group_trigger .github/workflows/merge-queue-smoke.yml
+
 for workflow in \
     .github/workflows/_required.yml \
     .github/workflows/extras.yml \
     .github/workflows/release-please.yml; do
-    require_merge_group_trigger "$workflow"
+    forbid_merge_group_trigger "$workflow"
 done
+
+# The smoke workflow must emit exactly the merge-queue-smoke context the
+# queue gates on; PR-side workflows are left untouched.
+require_line .github/workflows/merge-queue-smoke.yml \
+    '^    name: merge-queue-smoke$' \
+    'merge-queue-smoke context in the smoke workflow'
 
 required_contexts=(
     lint

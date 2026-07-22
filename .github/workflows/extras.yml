@@ -9,7 +9,9 @@ on:
   pull_request:
     branches: [main, develop]
   # The `coverage` context is required by the live main ruleset, so this
-  # workflow must keep triggering on merge_group to emit it. Every job below
+  # workflow must keep triggering on merge_group to emit it until the
+  # ruleset is flipped to require only merge-queue-smoke (tracked
+  # separately; needs org-admin credentials to execute). Every job below
   # skips merge-queue builds (`if: github.event_name != 'merge_group'`): the
   # skipped conclusion satisfies the required context, while under ALLGREEN
   # grouping an actually-run sub-threshold `coverage` reading (it exits 1

@@ -10,16 +10,15 @@ security scanning of the Keystone HMAS (Hierarchical Multi-Agent System) codebas
 - **`_required.yml`** emits the baseline required contexts, including lint,
   build, test, package, security, schema, and dependency-version checks.
 - **`extras.yml`** emits the separately required `coverage` context and advisory
-  benchmark/NATS checks. Only coverage runs for merge-group events.
-- **`release-please.yml`** manages releases after pushes to `main`. For a
-  merge-group event, mutating release jobs are skipped and the required `release`
-  gate validates repository release metadata instead.
-- **`profiling-weekly.yml`** is scheduled/manual and is not a merge gate.
+  benchmark/NATS checks.
+- **`release-please.yml`** manages releases after pushes to `main`.
+- **`merge-queue-smoke.yml`** is the ONLY workflow that runs for
+  `merge_group/checks_requested`. It runs a single fast `merge-queue-smoke`
+  job (< 5 minutes, one runner slot) of real validation steps. Full CI
+  validates every commit at pull-request time and is left untouched.
 
-The first three workflows support `merge_group` with only the
-`checks_requested` activity type because they supply contexts required by the
-live `main` rulesets. The event is additive: existing push, pull-request, manual,
-and scheduled behavior remains unchanged.
+Existing push, pull-request, manual, and scheduled behavior is unchanged; only
+the merge-queue surface moved to the dedicated smoke workflow.
 
 ## Workflow Details
 
@@ -206,12 +205,13 @@ All workflows run on:
 
 ### Merge Queue
 
-Required-context workflows also run for `merge_group/checks_requested`. GitHub
-creates that event against the speculative group ref, allowing all required
-checks to validate the exact commit group that would reach `main`.
+Only `merge-queue-smoke.yml` runs for `merge_group/checks_requested`. GitHub
+creates that event against the speculative group ref; the `merge-queue-smoke`
+job re-validates fast repository invariants there, while the exhaustive suites
+run at pull-request time (each queued commit already passed them on its PR).
 
-The repository-owned workflows are queue-ready, but queue activation is a
-separate post-merge administration step. See
+Queue activation is a separate post-merge administration step (every ruleset's
+required contexts must first be replaced with `merge-queue-smoke`). See
 [CI/CD Quality Gates](../../docs/CICD_QUALITY_GATES.md#merge-queue-activation)
 for the preserved required-context baseline and approved queue policy.
 
