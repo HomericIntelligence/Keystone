@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: "Reject silent-failure workaround in shell/YAML/Dockerfile/justfile/HCL"
         run: |
@@ -123,7 +123,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies (just + linters)
         uses: ./.github/actions/install-build-deps
@@ -137,7 +137,7 @@ jobs:
       # install mypy (to typecheck it) and conan, but no longer ruff. Per
       # Odysseus ADR-018 these come from uv-locked wheels, not `pip install`.
       - name: Setup uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: true
       - name: Install Python tooling (conan + mypy for conanfile.py)
@@ -343,9 +343,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Run markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@8de2aa07cae85fd17c0b35642db70cf5495f1d25  # v24.0.0
+        uses: DavidAnson/markdownlint-cli2-action@6bf21b07787794f89a243495939cd651942aeabe  # v24.1.0
         with:
           globs: |
             **/*.md
@@ -361,9 +361,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Setup uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
           enable-cache: true
       # Assert the committed uv.lock is in sync with pyproject.toml (ADR-018:
@@ -386,7 +386,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Skip if no justfile
         id: detect
         run: |
@@ -415,7 +415,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Run symlink check
         run: bash scripts/check-symlinks.sh
 
@@ -431,7 +431,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -518,7 +518,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -601,7 +601,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -661,7 +661,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -736,7 +736,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
@@ -835,10 +835,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.11"
 
@@ -868,10 +868,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.11"
 
@@ -938,10 +938,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.11"
 
@@ -1114,7 +1114,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       # pip-audit removed: Keystone has no Python runtime dependencies after the
       # ADR-016 Python orchestration extraction to ProjectAgamemnon (pyproject
@@ -1146,7 +1146,7 @@ jobs:
           exit-code: "0"
 
       - name: Upload Trivy FS results to Security tab
-        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/upload-sarif@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         if: always() && hashFiles('dep-scan.sarif') != ''
         with:
           sarif_file: "dep-scan.sarif"
@@ -1207,7 +1207,7 @@ jobs:
 
       - name: Upload Trivy container results to Security tab
         if: steps.docker_build.outputs.built == 'true' && hashFiles('container-scan.sarif') != ''
-        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/upload-sarif@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           sarif_file: "container-scan.sarif"
           category: "trivy-container"
@@ -1259,7 +1259,7 @@ jobs:
 
     steps:
       - name: Checkout code (full history)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
 
@@ -1315,14 +1315,14 @@ jobs:
 
       - name: Upload Semgrep SARIF
         if: always() && hashFiles('semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/upload-sarif@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           sarif_file: semgrep.sarif
           category: "semgrep"
 
       # ---------- CodeQL C/C++ ----------
       - name: Initialize CodeQL (c-cpp)
-        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/init@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           languages: c-cpp
           build-mode: manual
@@ -1376,13 +1376,13 @@ jobs:
           fi
 
       - name: Perform CodeQL Analysis (c-cpp)
-        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/analyze@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           category: "/language:c-cpp"
 
       # ---------- CodeQL Python ----------
       - name: Initialize CodeQL (python)
-        uses: github/codeql-action/init@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/init@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           languages: python
           build-mode: none
@@ -1390,7 +1390,7 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
 
       - name: Perform CodeQL Analysis (python)
-        uses: github/codeql-action/analyze@7188fc363630916deb702c7fdcf4e481b751f97a  # v4
+        uses: github/codeql-action/analyze@e0647621c2984b5ed2f768cb892365bf2a616ad1  # v4
         with:
           category: "/language:python"
 
@@ -1418,7 +1418,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install build dependencies
         uses: ./.github/actions/install-build-deps
