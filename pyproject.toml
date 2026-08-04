@@ -19,7 +19,7 @@
 name = "keystone-buildtools"
 version = "0.1.0"
 description = "Build-toolchain lock for the Keystone C++20 transport library (no Python package; ADR-018)"
-requires-python = ">=3.11"
+requires-python = ">=3.13,<3.14"
 
 [dependency-groups]
 dev = [
