@@ -8,8 +8,10 @@ name: Required Checks
 on:
   push:
     branches: [main, develop, "claude/**"]
+
   pull_request:
     branches: [main, develop]
+
   workflow_dispatch:
 
 concurrency:
@@ -28,6 +30,7 @@ jobs:
   #    the tree. The corresponding pygrep hooks in .pre-commit-config.yaml
   #    catch these locally before commit; this job is the CI backstop.
   # ============================================================
+
   forbid-suppressions:
     name: forbid-suppressions
     runs-on: ubuntu-latest
@@ -114,471 +117,175 @@ jobs:
   #    clang-format, pre-commit, CMake cycle check,
   #    cppcheck, clang-tidy, mypy (conanfile.py)
   # ============================================================
+
   lint:
     name: lint
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Install build dependencies (just + linters)
-        uses: ./.github/actions/install-build-deps
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          include-just: "true"
-          install-conan: "false"
+          fetch-depth: 1
 
-      # Keystone is a pure C++20 transport library (ADR-015/016): the agent
-      # layer and Python orchestration were extracted to ProjectAgamemnon.
-      # The only remaining Python is conanfile.py (C++ Conan recipe), so we
-      # install mypy (to typecheck it) and conan, but no longer ruff. Per
-      # Odysseus ADR-018 these come from uv-locked wheels, not `pip install`.
-      - name: Setup uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with:
-          enable-cache: true
-      - name: Install Python tooling (conan + mypy for conanfile.py)
-        run: uv sync --locked
-
-      - name: Run pre-commit hooks
-        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
-        with:
-          extra_args: --show-diff-on-failure
-
-      - name: Check CMake dependency graph for cycles
-        run: |
-          set -euo pipefail
-          # Graphviz configure can fail (missing optional deps, partial config); the
-          # cycle detector below is gated on the dot file existing, so we only need
-          # to log a warning if configure errored — not silently mask it.
-          if ! cmake -S . -B build/graphviz -G Ninja --graphviz=build/graphviz/deps.dot \
-              -DCMAKE_BUILD_TYPE=Debug 2>/dev/null; then
-            echo "::warning::cmake graphviz configure failed; cycle check skipped if deps.dot missing"
-          fi
-          if [ -f build/graphviz/deps.dot ]; then
-            python3 << 'EOF'
-          import re, sys
-          content = open("build/graphviz/deps.dot").read()
-          edges = re.findall(r'"([^"]+)" -> "([^"]+)"', content)
-          adj = {}
-          for src, dst in edges:
-              adj.setdefault(src, []).append(dst)
-          visited, in_stack = set(), set()
-          def has_cycle(node):
-              if node in in_stack: return True
-              if node in visited: return False
-              visited.add(node); in_stack.add(node)
-              if any(has_cycle(n) for n in adj.get(node, [])): return True
-              in_stack.discard(node); return False
-          if any(has_cycle(n) for n in list(adj)):
-              print("CYCLE DETECTED in CMake dependency graph!"); sys.exit(1)
-          print("No cycles detected in CMake dependency graph")
-          EOF
-          fi
-
-      - name: Install cppcheck
-        run: sudo apt-get update && sudo apt-get install -y cppcheck
-
-      - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=all \
-            --xml \
-            --xml-version=2 \
-            --suppress=missingIncludeSystem \
-            --suppress=syntaxError \
-            --inline-suppr \
-            -I include \
-            src/ tests/ 2> cppcheck-report.xml
-
-      - name: Fail on cppcheck error-severity findings
-        run: |
-          python3 - << 'EOF'
-          import xml.etree.ElementTree as ET, sys
-          tree = ET.parse("cppcheck-report.xml")
-          errors = [e for e in tree.getroot().find("errors")
-                    if e.get("severity") == "error"]
-          if errors:
-              for e in errors:
-                  loc = e.find("location")
-                  f = loc.get("file", "?") if loc is not None else "?"
-                  l = loc.get("line", "?") if loc is not None else "?"
-                  print(f"CPPCHECK ERROR: {e.get('id')} at {f}:{l} — {e.get('msg')}")
-              sys.exit(1)
-          EOF
-
-      - name: Upload cppcheck results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: cppcheck-report
-          path: cppcheck-report.xml
-          retention-days: 30
-
-      - name: Install build dependencies (with static analysis)
-        uses: ./.github/actions/install-build-deps
-        with:
-          include-static-analysis: "true"
-
-      - name: Cache Conan packages (clang-tidy)
+      - name: Cache podman container storage
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            conan-${{ runner.os }}-
+            podman-keystone-${{ runner.os }}-
 
-      - name: Cache FetchContent (clang-tidy)
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: build/x86.debug.clang-tidy/_deps
-          # The -podman-v2 discriminator invalidates pre-migration caches whose
-          # _deps/*-subbuild/CMakeCache.txt were stamped with the host build path
-          # (/home/runner/work/.../build/...). Now that configure runs inside the
-          # dev container (path /workspace/build/...), restoring a host-stamped
-          # subbuild cache makes cmake abort with "The current CMakeCache.txt
-          # directory ... is different than the directory ... where CMakeCache.txt
-          # was created". Bumping the key abandons those caches so the first
-          # in-container run repopulates them with /workspace/... paths.
-          key: fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-clang-tidy-podman-v2-${{ runner.os }}-
-
-      - name: Install Conan dependencies
-        run: make deps
-
-      - name: Configure CMake with clang-tidy
-        # `make deps` runs Conan inside the dev container, so the generated
-        # conan_toolchain.cmake references container-internal compiler/library
-        # paths. Configure must therefore run inside the same container or the
-        # toolchain will not resolve — this preserves the environment-parity
-        # goal. We reuse the Makefile's container invocation pattern
-        # (DOCKER_HOST + podman-compose exec -T dev).
-        run: |
-          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
-            CONAN_TOOLCHAIN=""
-            if [ -f build/conan-deps/conan_toolchain.cmake ]; then
-              CONAN_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake"
-            fi
-            cmake -S . -B build/x86.debug.clang-tidy \
-              -G Ninja \
-              -DCMAKE_BUILD_TYPE=Debug \
-              -DENABLE_CLANG_TIDY=ON \
-              $CONAN_TOOLCHAIN
-          '
-
-      - name: Build with clang-tidy
-        # Must run inside the dev container for the same reason as the configure
-        # step: the build consumes the container-generated Conan toolchain and
-        # uses the container's clang/clang-tidy. clang-tidy-output.txt and
-        # clang-tidy-build.rc are written under /workspace, which is bind-mounted
-        # back to the host so the gating step below can read them.
-        run: |
-          # clang-tidy build often returns non-zero when diagnostics are found.
-          # The next step parses clang-tidy-output.txt and decides whether those
-          # diagnostics reference real source files (vs. third-party headers).
-          # We must capture the build output without aborting the job — but we
-          # also must record the build rc for the next step to inspect, rather
-          # than silently masking it with continue-on-error.
-          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
-            set +e
-            set -o pipefail
-            cmake --build build/x86.debug.clang-tidy -j"$(nproc)" 2>&1 | tee clang-tidy-output.txt
-            rc=${PIPESTATUS[0]}
-            set -e
-            echo "$rc" > clang-tidy-build.rc
-            echo "clang-tidy build exited rc=$rc (gating happens in next step)"
-          '
-
-      - name: Fail on clang-tidy errors
-        run: |
-          set -euo pipefail
-          # Only fail on errors that reference actual first-party source files
-          # (src/ or include/). clang-tidy diagnostics have the canonical form
-          #   <path>:<line>:<col>: error: <message> [<check>]
-          # so we anchor on ": error: " (with surrounding spaces) — a bare
-          # /error:/ also matches source-context echo lines such as
-          #   8 |   using std::runtime_error::runtime_error;
-          # because "runtime_error::" contains the substring "error:", which
-          # caused false-positive failures once clang-tidy began analysing the
-          # in-container _deps/ tree (e.g. cista_exception.h). We also restrict
-          # to /src/ and /include/ paths and exclude /_deps/ so third-party
-          # header warnings never gate the job. awk always exits 0; it emits
-          # only genuine first-party error: diagnostics.
-          REAL_ERRORS=$(awk '
-            /: error: / &&
-            /\/(src|include)\// &&
-            !/\/_deps\// &&
-            !/no input files/ &&
-            !/no such file or directory/ &&
-            !/unable to handle compilation/ { print }
-          ' clang-tidy-output.txt)
-          if [ -n "$REAL_ERRORS" ]; then
-            echo "::error::clang-tidy reported errors in source files"
-            echo "$REAL_ERRORS"
-            exit 1
-          fi
-          # If the build itself failed for reasons other than diagnostics
-          # (e.g. compiler crash, missing dep), surface that now.
-          build_rc=$(cat clang-tidy-build.rc 2>/dev/null || echo 0)
-          if [ "$build_rc" -ne 0 ]; then
-            echo "::warning::clang-tidy build rc=$build_rc but no source-file errors detected; treating as transient"
-          fi
-          echo "clang-tidy passed"
-
-      - name: Run mypy (Python typecheck)
-        run: uv run mypy conanfile.py
-
-      - name: Verify agent + Python extraction (ADR-015 / ADR-016)
-        run: ./scripts/check-extraction.sh
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-lint`.
+      - name: lint (in container)
+        run: bash scripts/run_ci_local.sh lint
 
   markdownlint:
     name: markdownlint
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    needs: lint
-    permissions:
-      contents: read
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Run markdownlint-cli2
-        uses: DavidAnson/markdownlint-cli2-action@6bf21b07787794f89a243495939cd651942aeabe  # v24.1.0
         with:
-          globs: |
-            **/*.md
-            !.claude/**
-            !CHANGELOG.md
-          config: ".markdownlint.yaml"
+          fetch-depth: 1
+
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
+
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-markdownlint`.
+      - name: markdownlint (in container)
+        run: bash scripts/run_ci_local.sh markdownlint
 
   uv-check:
     name: uv-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    needs: lint
-    permissions:
-      contents: read
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Setup uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
         with:
-          enable-cache: true
-      # Assert the committed uv.lock is in sync with pyproject.toml (ADR-018:
-      # uv replaces pixi/conda for the build toolchain). `uv lock --check` fails
-      # if the lockfile would change — i.e. it was not regenerated after a
-      # manifest edit — the uv equivalent of the former `pixi install --locked`
-      # gate.
-      - name: Check build-toolchain lock
-        run: uv lock --check
-      # `uv sync --locked` proves the pinned wheels (cmake/ninja/conan/gcovr/
-      # pre-commit/mypy) actually resolve and install from the committed lock.
-      - name: Install build toolchain (locked)
-        run: uv sync --locked
+          fetch-depth: 1
+
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
+
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-uv-check`.
+      - name: uv-check (in container)
+        run: bash scripts/run_ci_local.sh uv-check
 
   justfile-check:
     name: justfile-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    needs: lint
-    permissions:
-      contents: read
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Skip if no justfile
-        id: detect
-        run: |
-          if [ ! -f justfile ] && [ ! -f Justfile ]; then
-            echo "::notice::No justfile in repo, skipping justfile-check"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Install just
-        if: steps.detect.outputs.skip == 'false'
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3  # v4.0.0
         with:
-          just-version: "1.36.0"
-      - name: Validate justfile
-        if: steps.detect.outputs.skip == 'false'
-        run: |
-          just --evaluate >/dev/null
-          just --list >/dev/null
+          fetch-depth: 1
+
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
+
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-justfile-check`.
+      - name: justfile-check (in container)
+        run: bash scripts/run_ci_local.sh justfile-check
 
   symlink-check:
     name: symlink-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    needs: lint
-    permissions:
-      contents: read
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Run symlink check
-        run: bash scripts/check-symlinks.sh
+        with:
+          fetch-depth: 1
 
-  # ============================================================
-  # 2. unit-tests
-  #    C++ unit tests (ctest)
-  # ============================================================
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
+
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-symlink-check`.
+      - name: symlink-check (in container)
+        run: bash scripts/run_ci_local.sh symlink-check
+
   unit-tests:
     name: unit-tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    needs: lint
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
 
-      - name: Install build dependencies
-        uses: ./.github/actions/install-build-deps
-
-      - name: Cache Conan packages
+      - name: Cache podman container storage
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            conan-${{ runner.os }}-
+            podman-keystone-${{ runner.os }}-
 
-      - name: Cache FetchContent downloads
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: build/x86.debug/_deps
-          # -podman-v2: invalidate pre-migration host-path-stamped subbuild
-          # caches; in-container builds use /workspace/build/... (see clang-tidy
-          # cache step above for the full rationale).
-          key: fetchcontent-debug-podman-v2-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: |
-            fetchcontent-debug-podman-v2-${{ runner.os }}-
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-unit-tests`.
+      - name: unit-tests (in container)
+        run: bash scripts/run_ci_local.sh unit-tests
 
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba  # v0.0.11
-
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps
-
-      - name: Build debug (C++)
-        run: make compile.debug
-
-      - name: Run C++ unit tests
-        # Must run inside the dev container: `make compile.debug` configures the
-        # build tree in-container (CONTAINER_PREFIX), so the generated
-        # CTestTestfile.cmake references *_include.cmake files by their
-        # in-container /workspace/build/x86.debug paths. Running ctest on the
-        # host fails every include with "include could not find requested file:
-        # /workspace/build/x86.debug/..." (#568 migration gap).
-        run: |
-          DOCKER_HOST="${DOCKER_HOST:-}" podman-compose exec -T dev bash -c '
-            cd build/x86.debug
-            ctest --output-on-failure -L unit -j"$(nproc)" || \
-            ctest --output-on-failure -E "integration|sample|example|application" -j"$(nproc)"
-          '
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-      # Python unit tests removed: the Python orchestration package was
-      # extracted to ProjectAgamemnon per ADR-016. Keystone is now a pure
-      # C++20 transport library and CI runs only the C++ ctest suite.
-
-      - name: Upload C++ test logs
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: unit-test-logs
-          path: build/x86.debug/Testing/
-          retention-days: 7
-
-  # ============================================================
-  # 3. integration-tests
-  #    C++ integration/sample/example/application tests
-  #    + all sanitizer builds (asan, ubsan, tsan, lsan) as matrix.
-  #    The sanitizer Makefile rules and CMake presets add
-  #    -DKEYSTONE_SANITIZER_BUILD=1 to CMAKE_CXX_FLAGS, which makes two
-  #    ThreadPool construction/destruction tests skip themselves at runtime
-  #    via GTEST_SKIP() (see #511, #586). Those two tests run unfiltered in
-  #    the non-sanitizer `unit-tests` job above.
-  # ============================================================
   integration-tests:
     name: integration-tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    needs: lint
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 1
 
-      - name: Install build dependencies
-        uses: ./.github/actions/install-build-deps
-
-      - name: Cache Conan packages
+      - name: Cache podman container storage
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          path: ~/.conan2
-          key: conan-${{ runner.os }}-${{ hashFiles('conanfile.py') }}
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            conan-${{ runner.os }}-
+            podman-keystone-${{ runner.os }}-
 
-      - name: Set up sccache
-        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba  # v0.0.11
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-integration-tests`.
+      - name: integration-tests (in container)
+        run: bash scripts/run_ci_local.sh integration-tests
 
-      - name: Configure sccache
-        run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
-
-      - name: Install Conan dependencies
-        run: make deps
-
-      - name: Build + test (ASan)
-        run: make compile.debug.asan && make test.debug.asan
-
-      - name: Build + test (UBSan)
-        run: make compile.debug.ubsan && make test.debug.ubsan
-
-      - name: Build + test (TSan)
-        # tsan.supp is loaded INSIDE the dev container by the Makefile's `test`
-        # rule (TSAN_OPTIONS=suppressions=/workspace/tsan.supp...). A host-runner
-        # TSAN_OPTIONS here would NOT reach the in-container ctest, because
-        # `podman-compose exec` does not forward host env into the container, so
-        # it is omitted to avoid implying the suppressions load from the host.
-        run: make compile.debug.tsan && make test.debug.tsan
-
-      - name: Build + test (LSan)
-        run: make compile.debug.lsan && make test.debug.lsan
-
-      - name: Show sccache stats
-        if: always()
-        run: sccache --show-stats
-
-      - name: Upload test logs
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: integration-test-logs
-          path: build/x86.debug.*/Testing/
-          retention-days: 7
-
-  # ============================================================
-  # 3a. test  (canonical aggregate)
-  #    Roll-up gate for the test category. Depends on the C++
-  #    unit-tests and integration-tests jobs and emits the
-  #    canonical `test` check-run for the Odysseus ecosystem board.
-  #    The granular unit-tests / integration-tests sub-checks are
-  #    retained above; this job only aggregates their result so a
-  #    single canonical `test` context exists.
-  # ============================================================
   test:
     name: test
     runs-on: ubuntu-24.04
@@ -591,6 +298,7 @@ jobs:
   # ============================================================
   # 4. build
   # ============================================================
+
   build:
     name: build
     runs-on: ubuntu-24.04
@@ -651,6 +359,7 @@ jobs:
   #    C++20 library (ADR-015/016), so this validates library
   #    consumability rather than running a binary. See #596.
   # ============================================================
+
   install:
     name: install
     runs-on: ubuntu-24.04
@@ -726,6 +435,7 @@ jobs:
   #    same packages to a GitHub Release; this job only verifies
   #    they build, emitting the canonical `package` check-run.
   # ============================================================
+
   package:
     name: package
     runs-on: ubuntu-24.04
@@ -826,109 +536,55 @@ jobs:
   # ============================================================
   # 5. schema-validation
   # ============================================================
+
   schema-validation:
     name: schema-validation
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          python-version: "3.13"
+          fetch-depth: 1
 
-      - name: Install check-jsonschema
-        run: pip install check-jsonschema
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
 
-      - name: Validate GitHub Actions workflow YAML files
-        run: |
-          find .github/workflows -name "*.yml" | sort | while read -r f; do
-            echo "Validating: $f"
-            check-jsonschema \
-              --schemafile https://json.schemastore.org/github-workflow \
-              "$f" && echo "  OK" || { echo "  FAIL"; FAILED=1; }
-          done
-          [ -z "${FAILED}" ] || exit 1
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-schema-validation`.
+      - name: schema-validation (in container)
+        run: bash scripts/run_ci_local.sh schema-validation
 
-      - name: Validate merge-queue readiness contract
-        run: ./scripts/check-merge-queue-readiness.sh
-
-  # ============================================================
-  # 7. deps/version-sync
-  # ============================================================
   deps-version-sync:
     name: deps/version-sync
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          python-version: "3.13"
+          fetch-depth: 1
 
-      - name: Cross-check version consistency
-        run: |
-          python3 - <<'PYEOF'
-          import re, sys, pathlib
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
 
-          root = pathlib.Path(".")
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-deps-version-sync`.
+      - name: deps-version-sync (in container)
+        run: bash scripts/run_ci_local.sh deps-version-sync
 
-          cmake_text = (root / "CMakeLists.txt").read_text()
-          cmake_m = re.search(r"project\s*\([^)]*VERSION\s+([\d.]+)", cmake_text, re.DOTALL)
-          cmake_ver = cmake_m.group(1) if cmake_m else None
-
-          conan_text = (root / "conanfile.py").read_text()
-          conan_m = re.search(r'version\s*=\s*["\']([^"\']+)["\']', conan_text)
-          conan_ver = conan_m.group(1) if conan_m else None
-
-          # pixi.toml was removed (Odysseus ADR-018: the build toolchain moved
-          # from pixi/conda to uv). The uv manifest (pyproject.toml) pins the
-          # build TOOLCHAIN, not the released library version, so it is not a
-          # version source of truth. Version sync now spans the C++/build files
-          # only: CMakeLists.txt and conanfile.py.
-          print(f"CMakeLists.txt : {cmake_ver}")
-          print(f"conanfile.py   : {conan_ver}")
-
-          versions = {
-              "CMakeLists.txt": cmake_ver,
-              "conanfile.py":   conan_ver,
-          }
-
-          missing = [k for k, v in versions.items() if v is None]
-          if missing:
-              print(f"::warning::Could not parse version from: {', '.join(missing)}")
-
-          unique = set(v for v in versions.values() if v is not None)
-          if len(unique) > 1:
-              print("::error::Version mismatch across files!")
-              for k, v in versions.items():
-                  print(f"  {k}: {v}")
-              sys.exit(1)
-
-          print(f"\nAll versions agree: {unique.pop()}")
-          PYEOF
-
-  # ============================================================
-  # 7a. release  (canonical)
-  #    PR-time release validation. The homeric-main-baseline ruleset
-  #    requires a `release` status context on every PR, but the only
-  #    job that used to carry that name was the tag-gated publish job
-  #    in release-please.yml (now `publish-release`), which is guarded
-  #    by `release_created == 'true'` and therefore can never post a
-  #    check on a pull request. This job is the real PR-time gate: it
-  #    dry-validates everything the release pipeline depends on
-  #    (release-please config/manifest, version consistency across
-  #    release surfaces, CHANGELOG preconditions, CPack packaging
-  #    metadata) without a second compile, so a broken release setup
-  #    fails the PR instead of the eventual tagged release.
-  # ============================================================
   release:
     name: release
     runs-on: ubuntu-24.04
@@ -1102,312 +758,69 @@ jobs:
   #    pip-audit + Trivy FS + supply-chain dependency-review
   #    + Docker image scan (Trivy container)
   # ============================================================
+
   security-dependency-scan:
     name: security/dependency-scan
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      security-events: write
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      # pip-audit removed: Keystone has no Python runtime dependencies after the
-      # ADR-016 Python orchestration extraction to ProjectAgamemnon (pyproject
-      # and all pypi-dependencies were deleted). The Trivy filesystem scan below
-      # covers the C++ dependency surface; Python dependency auditing now lives
-      # in ProjectAgamemnon.
-
-      - name: Run Trivy filesystem scan (SARIF)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "sarif"
-          output: "dep-scan.sarif"
-          severity: "CRITICAL,HIGH,MEDIUM"
-          # exit-code: "0" ensures the step never fails on findings — the gate
-          # step below decides pass/fail based on the SARIF/JSON contents.
-          exit-code: "0"
+          fetch-depth: 1
 
-      - name: Run Trivy filesystem scan (JSON)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "json"
-          output: "dep-scan.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          # exit-code: "0" — see SARIF step above; gating is centralised below.
-          exit-code: "0"
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
 
-      - name: Upload Trivy FS results to Security tab
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        if: always() && hashFiles('dep-scan.sarif') != ''
-        with:
-          sarif_file: "dep-scan.sarif"
-          category: "trivy-filesystem"
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
+      # All checks run inside the CI container — the same image developers
+      # use via `just ci-security-dependency-scan`.
+      - name: security-dependency-scan (in container)
+        run: bash scripts/run_ci_local.sh security-dependency-scan
 
-      - name: Supply-chain review (PR only)
-        if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5.0.0
-        with:
-          fail-on-severity: critical
-          deny-licenses: GPL-3.0, AGPL-3.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4.2.0
-
-      - name: Build Docker image for scanning
-        id: docker_build
-        # The container scan is a best-effort enrichment of the dependency-scan
-        # job — if the production Containerfile doesn't build cleanly we still
-        # want the FS scan to gate the job. Capture the rc into a step output
-        # so downstream steps can gate explicitly, without continue-on-error.
-        run: |
-          set -euo pipefail
-          if docker build --target production -t keystone:scan .; then
-            echo "built=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "built=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::docker build failed — skipping container scan"
-          fi
-
-      - name: Warn if Docker build skipped
-        if: steps.docker_build.outputs.built == 'false'
-        run: |
-          echo "::warning::Docker build failed — skipping container scan."
-          echo "::warning::Fix the Containerfile to enable Trivy container scanning."
-
-      - name: Run Trivy container scan (SARIF)
-        if: steps.docker_build.outputs.built == 'true'
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          image-ref: "keystone:scan"
-          format: "sarif"
-          output: "container-scan.sarif"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          # exit-code: "0" — never block on findings; gating is centralised below.
-          exit-code: "0"
-
-      - name: Run Trivy container scan (JSON)
-        if: steps.docker_build.outputs.built == 'true'
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          image-ref: "keystone:scan"
-          format: "json"
-          output: "container-scan.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          # exit-code: "0" — see SARIF step above.
-          exit-code: "0"
-
-      - name: Upload Trivy container results to Security tab
-        if: steps.docker_build.outputs.built == 'true' && hashFiles('container-scan.sarif') != ''
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          sarif_file: "container-scan.sarif"
-          category: "trivy-container"
-
-      - name: Dependency scan summary and gate
-        if: always()
-        run: |
-          echo "## Dependency Scan" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Severity | FS | Container |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|----------|----|-----------|" >> "$GITHUB_STEP_SUMMARY"
-          for sev in CRITICAL HIGH MEDIUM LOW; do
-            FS_COUNT=0; CTR_COUNT=0
-            [ -f dep-scan.json ] && FS_COUNT=$(jq "[.Results[]?.Vulnerabilities[]? | select(.Severity==\"$sev\")] | length" dep-scan.json 2>/dev/null || echo 0)
-            [ -f container-scan.json ] && CTR_COUNT=$(jq "[.Results[]?.Vulnerabilities[]? | select(.Severity==\"$sev\")] | length" container-scan.json 2>/dev/null || echo 0)
-            echo "| $sev | $FS_COUNT | $CTR_COUNT |" >> "$GITHUB_STEP_SUMMARY"
-          done
-          CRITICAL_FS=$([ -f dep-scan.json ] && jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' dep-scan.json 2>/dev/null || echo 0)
-          CRITICAL_CTR=$([ -f container-scan.json ] && jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' container-scan.json 2>/dev/null || echo 0)
-          if [ "$CRITICAL_FS" -gt 0 ] || [ "$CRITICAL_CTR" -gt 0 ]; then
-            echo "::error::Critical vulnerabilities found (fs=$CRITICAL_FS container=$CRITICAL_CTR)"
-            exit 1
-          fi
-
-      - name: Upload scan artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        if: always()
-        with:
-          name: dependency-scan-results
-          path: |
-            dep-scan.sarif
-            dep-scan.json
-            container-scan.sarif
-            container-scan.json
-          retention-days: 90
-          if-no-files-found: ignore
-
-  # ============================================================
-  # 9. security/secrets-scan
-  #     gitleaks + Semgrep SAST + CodeQL (c-cpp + python)
-  #     + aggregation report gate
-  # ============================================================
   security-secrets-scan:
     name: security/secrets-scan
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      security-events: write
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout code (full history)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
 
-      # ---------- Gitleaks ----------
-      - name: Install Gitleaks
-        run: |
-          GITLEAKS_VERSION=8.30.1
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-          ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
-          curl -sSfL \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${OS}_${ARCH}.tar.gz" \
-            | tar -xz -C /usr/local/bin gitleaks
-          gitleaks version
+      - name: Cache podman container storage
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.local/share/containers/storage
+          key: podman-keystone-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            podman-keystone-${{ runner.os }}-
 
+      - name: Build CI image (podman)
+        run: podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local .
       - name: Run Gitleaks
-        # gitleaks --exit-code 0 already prevents this step from failing on
-        # findings; the gating step below decides job pass/fail from the SARIF
-        # report. No continue-on-error needed.
         run: |
-          set -euo pipefail
           if [ -f .gitleaks.toml ]; then
-            gitleaks detect --source . --config .gitleaks.toml \
-              --report-format sarif --report-path gitleaks.sarif --exit-code 0
+            podman run --rm --userns=keep-id:uid=1000,gid=1000 \
+              -v "$PWD:/workspace:Z" -w /workspace keystone:local \
+              gitleaks detect --source /workspace --config .gitleaks.toml \
+                --report-format sarif --report-path gitleaks.sarif --redact
           else
-            gitleaks detect --source . \
-              --report-format sarif --report-path gitleaks.sarif --exit-code 0
+            podman run --rm --userns=keep-id:uid=1000,gid=1000 \
+              -v "$PWD:/workspace:Z" -w /workspace keystone:local \
+              gitleaks detect --source /workspace \
+                --report-format sarif --report-path gitleaks.sarif --redact
           fi
 
       - name: Upload Gitleaks SARIF
         if: always() && hashFiles('gitleaks.sarif') != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: github/codeql-action/upload-sarif@b1e036aad851c47cdff5be6a3ec1b0a29c4b0db1  # v3
         with:
-          name: gitleaks-report
-          path: gitleaks.sarif
-          retention-days: 90
-
-      # ---------- Semgrep SAST ----------
-      - name: Run Semgrep
-        id: semgrep
-        # Semgrep findings are informational here — they are uploaded to the
-        # Security tab as SARIF. The job gate below blocks only on Gitleaks
-        # findings, so we capture Semgrep's rc into a step output rather than
-        # silently masking it with continue-on-error.
-        run: |
-          set -euo pipefail
-          pip install --quiet "semgrep>=1,<2"
-          rc=0
-          semgrep scan --config p/security-audit --config p/docker --sarif --output semgrep.sarif || rc=$?
-          echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::semgrep exited rc=$rc (findings or runtime error); SARIF still uploaded if present"
-          fi
-
-      - name: Upload Semgrep SARIF
-        if: always() && hashFiles('semgrep.sarif') != ''
-        uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          sarif_file: semgrep.sarif
-          category: "semgrep"
-
-      # ---------- CodeQL C/C++ ----------
-      - name: Initialize CodeQL (c-cpp)
-        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          languages: c-cpp
-          build-mode: manual
-          queries: security-and-quality
-          config-file: ./.github/codeql/codeql-config.yml
-
-      - name: Install C++ build deps for CodeQL
-        id: codeql_deps
-        # CodeQL c-cpp analysis can still produce useful output even when this
-        # transient apt/conan step fails (network blips, mirror outages). Record
-        # rc in a step output so the analyse step can gate explicitly, rather
-        # than silently masking with continue-on-error.
-        run: |
-          set -euo pipefail
-          rc=0
-          {
-            sudo apt-get update && sudo apt-get install -y \
-              cmake ninja-build clang-18 clang++-18 \
-              libc++-18-dev libc++abi-18-dev libssl-dev
-            pip install conan --break-system-packages
-            conan profile detect --force
-            conan install . \
-              --output-folder=build/conan-deps \
-              --lockfile=conan.lock \
-              --build=missing \
-              -s build_type=Release \
-              -s compiler.cppstd=20
-          } || rc=$?
-          echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::CodeQL build-deps step rc=$rc (CodeQL c-cpp analysis may be incomplete)"
-          fi
-
-      - name: Build for CodeQL (c-cpp)
-        if: steps.codeql_deps.outputs.rc == '0'
-        id: codeql_build
-        # CodeQL build is gated on the deps step. If the build itself fails,
-        # surface as a warning — CodeQL analyse can still emit a partial DB.
-        run: |
-          set -euo pipefail
-          rc=0
-          {
-            cmake -S . -B build/codeql \
-              -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_TOOLCHAIN_FILE=build/conan-deps/conan_toolchain.cmake
-            cmake --build build/codeql
-          } || rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::CodeQL c-cpp build rc=$rc — analysis may be incomplete"
-          fi
-
-      - name: Perform CodeQL Analysis (c-cpp)
-        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          category: "/language:c-cpp"
-
-      # ---------- CodeQL Python ----------
-      - name: Initialize CodeQL (python)
-        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          languages: python
-          build-mode: none
-          queries: security-and-quality
-          config-file: ./.github/codeql/codeql-config.yml
-
-      - name: Perform CodeQL Analysis (python)
-        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38  # v4
-        with:
-          category: "/language:python"
-
-      # ---------- Report gate ----------
-      - name: Security findings gate
-        if: always()
-        run: |
-          SECRETS_FAIL=0
-          if [ -f gitleaks.sarif ]; then
-            COUNT=$(jq '[.runs[].results[]] | length' gitleaks.sarif 2>/dev/null || echo -1)
-            if [ "$COUNT" -gt 0 ]; then
-              echo "::error::Gitleaks found $COUNT potential secret(s)"
-              SECRETS_FAIL=1
-            fi
-          fi
-          if [ "$SECRETS_FAIL" -gt 0 ]; then
-            exit 1
-          fi
-          echo "Secret scan passed"
+          sarif_file: gitleaks.sarif
 
   coverage:
     name: coverage
