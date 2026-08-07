@@ -120,8 +120,10 @@ run_uv() {
 # ============================================================================
 
 run_lint() {
-    # Lint (ruff + mypy + yamllint)
-    run_in_container "uv run ruff check src tests && uv run mypy src && yamllint ."
+    # Lint — Keystone is a pure C++20 library (ADR-015/016): the only Python is
+    # conanfile.py + scripts/, so mypy targets those (main's CI dropped ruff)
+    # and pre-commit covers clang-format/yamllint/trailing-whitespace.
+    run_in_container "uv run mypy conanfile.py && uv run pre-commit run --all-files --show-diff-on-failure"
 }
 
 run_markdownlint() {
@@ -145,13 +147,13 @@ run_unit-tests() {
     # make compile.debug + ctest -L unit). CONTAINER_CHECK/CONTAINER_PREFIX
     # are cleared so the Makefile runs directly in the CI image instead of
     # re-entering the podman-compose dev container.
-    run_in_container "make CONTAINER_CHECK= CONTAINER_PREFIX= deps && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug && (cd build/x86.debug && ctest --output-on-failure -L unit -j\"\$(nproc)\" --timeout 120 || ctest --output-on-failure -E 'integration|sample|example|application' -j\"\$(nproc)\" --timeout 120)"
+    run_in_container "uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug && (cd build/x86.debug && uv run ctest --output-on-failure -L unit -j\"\$(nproc)\" --timeout 120 || uv run ctest --output-on-failure -E 'integration|sample|example|application' -j\"\$(nproc)\" --timeout 120)"
 }
 
 run_integration-tests() {
     # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
     # native CI job, running the Makefile directly inside the CI image.
-    run_in_container "make CONTAINER_CHECK= CONTAINER_PREFIX= deps && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.asan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.asan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.ubsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.ubsan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.tsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.tsan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.lsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.lsan"
+    run_in_container "uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.lsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.lsan"
 }
 
 run_schema-validation() {
