@@ -48,6 +48,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     jq \
     yamllint \
     shellcheck \
+    just \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
@@ -87,7 +88,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     jq \
     yamllint \
     shellcheck \
+    just \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# markdownlint-cli2 (markdownlint gate) — npm tool matching the native CI job
+# (DavidAnson/markdownlint-cli2-action). Not available on PyPI.
+RUN npm install -g --no-audit --no-fund markdownlint-cli2@0.23.2 && markdownlint-cli2 --version
 
 COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 COPY --from=builder /opt/keystone-venv /opt/keystone-venv

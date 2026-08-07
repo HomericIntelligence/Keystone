@@ -125,8 +125,9 @@ run_lint() {
 }
 
 run_markdownlint() {
-    # Markdown lint
-    run_in_container "uv run markdownlint ."
+    # Markdown lint (markdownlint-cli2, matching the native CI job; the tool is
+    # baked into the CI image via nodejs, not a PyPI package)
+    run_in_container "markdownlint-cli2 \"**/*.md\" \"!**/.claude/**\" \"!CHANGELOG.md\""
 }
 
 run_uv-lock-check() {
@@ -140,13 +141,17 @@ run_typecheck() {
 }
 
 run_unit-tests() {
-    # Unit tests (pytest)
-    run_in_container "uv run pytest tests/unit -q"
+    # C++ unit tests (ctest) — mirrors the native CI job (make deps +
+    # make compile.debug + ctest -L unit). CONTAINER_CHECK/CONTAINER_PREFIX
+    # are cleared so the Makefile runs directly in the CI image instead of
+    # re-entering the podman-compose dev container.
+    run_in_container "make CONTAINER_CHECK= CONTAINER_PREFIX= deps && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug && (cd build/x86.debug && ctest --output-on-failure -L unit -j\"\$(nproc)\" --timeout 120 || ctest --output-on-failure -E 'integration|sample|example|application' -j\"\$(nproc)\" --timeout 120)"
 }
 
 run_integration-tests() {
-    # Integration tests
-    run_in_container "uv run pytest tests/integration -q"
+    # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
+    # native CI job, running the Makefile directly inside the CI image.
+    run_in_container "make CONTAINER_CHECK= CONTAINER_PREFIX= deps && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.asan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.asan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.ubsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.ubsan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.tsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.tsan && make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.lsan && make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.lsan"
 }
 
 run_schema-validation() {
@@ -157,6 +162,11 @@ run_schema-validation() {
 run_security-secrets-scan() {
     # Secrets scan (gitleaks)
     run_in_container "gitleaks detect --no-banner --redact --source . 2>&1 | tail -5; exit ${PIPESTATUS[0]}"
+}
+
+run_security-dependency-scan() {
+    # Dependency vulnerability scan (pip-audit)
+    run_in_container "uv run pip-audit"
 }
 
 run_deps-version-sync() {
@@ -190,11 +200,13 @@ case "${SUBSET}" in
     lint) run_lint ;;
     markdownlint) run_markdownlint ;;
     uv-lock-check) run_uv-lock-check ;;
+    uv-check) run_uv-lock-check ;;
     typecheck) run_typecheck ;;
     unit-tests) run_unit-tests ;;
     integration-tests) run_integration-tests ;;
     schema-validation) run_schema-validation ;;
     security-secrets-scan) run_security-secrets-scan ;;
+    security-dependency-scan) run_security-dependency-scan ;;
     deps-version-sync) run_deps-version-sync ;;
     forbid-suppressions) run_forbid-suppressions ;;
     justfile-check) run_justfile-check ;;

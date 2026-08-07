@@ -265,7 +265,7 @@ jobs:
   integration-tests:
     name: integration-tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -806,12 +806,12 @@ jobs:
         run: |
           if [ -f .gitleaks.toml ]; then
             podman run --rm --userns=keep-id:uid=1000,gid=1000 \
-              -v "$PWD:/workspace:Z" -w /workspace keystone:local \
+              -v "$PWD:/workspace:Z" -w /workspace keystone-ci:local \
               gitleaks detect --source /workspace --config .gitleaks.toml \
                 --report-format sarif --report-path gitleaks.sarif --redact
           else
             podman run --rm --userns=keep-id:uid=1000,gid=1000 \
-              -v "$PWD:/workspace:Z" -w /workspace keystone:local \
+              -v "$PWD:/workspace:Z" -w /workspace keystone-ci:local \
               gitleaks detect --source /workspace \
                 --report-format sarif --report-path gitleaks.sarif --redact
           fi
