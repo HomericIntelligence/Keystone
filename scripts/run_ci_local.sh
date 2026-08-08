@@ -123,7 +123,7 @@ run_lint() {
     # Lint — Keystone is a pure C++20 library (ADR-015/016): the only Python is
     # conanfile.py + scripts/, so mypy targets those (main's CI dropped ruff)
     # and pre-commit covers clang-format/yamllint/trailing-whitespace.
-    run_in_container "uv run mypy conanfile.py && uv run pre-commit run --all-files --show-diff-on-failure"
+    run_in_container "uv run mypy conanfile.py && uv run pre-commit clean && uv run pre-commit run --all-files --show-diff-on-failure"
 }
 
 run_markdownlint() {
