@@ -8,14 +8,14 @@
  * broker or scheduler required.
  */
 
-#include "core/message.hpp"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <optional>
 #include <string>
 #include <thread>
 
-#include <gtest/gtest.h>
+#include "core/message.hpp"
 
 using namespace keystone::core;
 using namespace std::chrono_literals;
@@ -58,8 +58,8 @@ TEST(MessageFactory, GeneratedIdsAreUnique) {
 // ---------------------------------------------------------------------------
 
 TEST(MessageFactory, EnhancedCreateSetsActionAndContent) {
-  auto msg = KeystoneMessage::create(
-      "alice", "bob", ActionType::SHUTDOWN, std::nullopt, ContentType::BINARY_CISTA);
+  auto msg = KeystoneMessage::create("alice", "bob", ActionType::SHUTDOWN,
+                                     std::nullopt, ContentType::BINARY_CISTA);
 
   EXPECT_EQ(msg.sender_id, "alice");
   EXPECT_EQ(msg.receiver_id, "bob");
@@ -72,7 +72,8 @@ TEST(MessageFactory, EnhancedCreateSetsActionAndContent) {
 }
 
 TEST(MessageFactory, EnhancedCreateDefaultsToTextPlain) {
-  auto msg = KeystoneMessage::create("alice", "bob", ActionType::RETURN_RESULT, "result");
+  auto msg = KeystoneMessage::create("alice", "bob", ActionType::RETURN_RESULT,
+                                     "result");
   EXPECT_EQ(msg.content_type, ContentType::TEXT_PLAIN);
   ASSERT_TRUE(msg.payload.has_value());
   EXPECT_EQ(*msg.payload, "result");
@@ -83,7 +84,8 @@ TEST(MessageFactory, EnhancedCreateDefaultsToTextPlain) {
 // ---------------------------------------------------------------------------
 
 TEST(MessageFactory, CopyAndMovePreserveFields) {
-  auto original = KeystoneMessage::create("alice", "bob", ActionType::EXECUTE, "data");
+  auto original =
+      KeystoneMessage::create("alice", "bob", ActionType::EXECUTE, "data");
   original.priority = Priority::HIGH;
 
   KeystoneMessage copied(original);

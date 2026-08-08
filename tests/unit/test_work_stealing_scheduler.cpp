@@ -321,8 +321,7 @@ namespace {
 struct CoroTask {
   struct promise_type {
     CoroTask get_return_object() {
-      return CoroTask{
-          std::coroutine_handle<promise_type>::from_promise(*this)};
+      return CoroTask{std::coroutine_handle<promise_type>::from_promise(*this)};
     }
     std::suspend_always initial_suspend() noexcept { return {}; }
     std::suspend_always final_suspend() noexcept { return {}; }

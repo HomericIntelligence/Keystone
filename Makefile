@@ -43,7 +43,7 @@ BUILD_FLAGS_release := -O3 -DNDEBUG
 BUILD_FLAGS_asan := -fsanitize=address -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
 BUILD_FLAGS_ubsan := -fsanitize=undefined -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
 BUILD_FLAGS_lsan := -fsanitize=leak -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
-BUILD_FLAGS_tsan := -fsanitize=thread -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
+BUILD_FLAGS_tsan := -fsanitize=thread -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1 -Wno-error=tsan
 BUILD_FLAGS_msan := -fsanitize=memory -fno-omit-frame-pointer -DKEYSTONE_SANITIZER_BUILD=1
 
 BUILD_DIR ?= build

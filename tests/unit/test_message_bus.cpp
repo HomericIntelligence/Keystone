@@ -9,11 +9,7 @@
  * path is exercised via an injected publisher callback.
  */
 
-#include "concurrency/work_stealing_scheduler.hpp"
-#include "core/config.hpp"
-#include "core/message.hpp"
-#include "core/message_bus.hpp"
-#include "core/message_sink.hpp"
+#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <atomic>
@@ -26,7 +22,11 @@
 #include <string_view>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "concurrency/work_stealing_scheduler.hpp"
+#include "core/config.hpp"
+#include "core/message.hpp"
+#include "core/message_bus.hpp"
+#include "core/message_sink.hpp"
 
 using namespace keystone::core;
 using namespace std::chrono_literals;
@@ -49,7 +49,9 @@ struct CountingSink : public IMessageSink {
 
   void waitForCount(int expected) {
     std::unique_lock<std::mutex> lock(mu);
-    cv.wait_for(lock, 2s, [&] { return count.load(std::memory_order_relaxed) >= expected; });
+    cv.wait_for(lock, 2s, [&] {
+      return count.load(std::memory_order_relaxed) >= expected;
+    });
   }
 };
 
@@ -167,10 +169,11 @@ TEST(MessageBusNats, UnregisteredReceiverForwardsToPublisher) {
 
   std::string captured_subject;
   size_t captured_len = 0;
-  bus.setNatsPublisher([&](std::string_view subject, std::span<const std::byte> payload) {
-    captured_subject = std::string(subject);
-    captured_len = payload.size();
-  });
+  bus.setNatsPublisher(
+      [&](std::string_view subject, std::span<const std::byte> payload) {
+        captured_subject = std::string(subject);
+        captured_len = payload.size();
+      });
 
   // Receiver was never interned → first forwarding branch.
   auto msg = KeystoneMessage::create("client", "remote-agent", "task");
@@ -184,7 +187,8 @@ TEST(MessageBusNats, InternedButUnregisteredReceiverForwards) {
   MessageBus bus;
 
   int publish_calls = 0;
-  bus.setNatsPublisher([&](std::string_view, std::span<const std::byte>) { ++publish_calls; });
+  bus.setNatsPublisher(
+      [&](std::string_view, std::span<const std::byte>) { ++publish_calls; });
 
   auto sink = std::make_shared<CountingSink>();
   // Register then unregister so the id stays interned but has no live sink,
