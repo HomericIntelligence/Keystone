@@ -81,6 +81,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/opt/keystone-venv/bin:$PATH"
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    cmake \
+    ninja-build \
     git \
     curl \
     ca-certificates \
