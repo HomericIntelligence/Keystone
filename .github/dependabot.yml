@@ -114,28 +114,6 @@ updates:
   # ============================================================================
 
   # ============================================================================
-  # Conan - C++ package manager (Python-based, tracked via pip ecosystem)
-  # ============================================================================
-  # NOTE: Conan is managed via pyproject.toml (uv dependency-groups.dev), not pip.
-  # Dependabot pip ecosystem cannot parse dependency-groups in pyproject.toml.
-  # If conan needs updating, do it manually or via `uv lock`.
-    # Only update the conan tool itself; C++ library versions are pinned in conanfile.py
-    allow:
-      - dependency-name: "conan"
-
-    open-pull-requests-limit: 3
-
-    labels:
-      - "dependencies"
-      - "automated"
-      - "cpp"
-    assignees:
-      - "mvillmow"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ============================================================================
   # C++ Dependencies - Manual Management
   # ============================================================================
   #
