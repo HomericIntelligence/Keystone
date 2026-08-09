@@ -71,7 +71,7 @@ jobs:
       - name: Run profiling tests
         run: |
           cd build/profiling
-          ./profiling_tests --gtest_output=xml:profiling_test_results.xml
+          ./bin/profiling_tests --gtest_output=xml:profiling_test_results.xml
 
       - name: Upload test results
         if: always()
