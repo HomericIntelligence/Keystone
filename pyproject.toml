@@ -35,6 +35,13 @@ dev = [
     "pre-commit>=3.0",
     # Typechecks conanfile.py (the C++ Conan recipe — the only Python here).
     "mypy>=1.8.0,<2",
+    # Python tooling for the containerized CI gates (lint, unit/integration
+    # test discovery, dependency scan). Keystone is pure C++20 — these only
+    # drive the repo's policy/CI scripts, not the build. (markdownlint runs via
+    # nodejs+markdownlint-cli2 baked into the CI image — not a PyPI package.)
+    "pytest>=8.0",
+    "ruff>=0.9",
+    "pip-audit>=2.7",
 ]
 
 # Tooling-only manifest: there is no importable `keystone` Python package to
