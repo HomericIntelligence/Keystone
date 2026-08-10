@@ -148,12 +148,12 @@ if [[ "$HTML_ONLY" == "false" ]]; then
     # Capture coverage data.
     # Use llvm-cov gcov wrapper so Clang-built .gcda files are processed correctly
     # (system gcov reports version mismatch '4.8*' vs 'B33*' for Clang-generated data).
-    # --ignore-errors inconsistent: llvm-cov gcov emits __cxx_global_var_init on a line
+    # --ignore-errors inconsistent,format: llvm-cov gcov emits __cxx_global_var_init on a line
     # with no corresponding line coverage data; geninfo rejects this without the flag.
     echo -e "${YELLOW}Capturing coverage data...${NC}"
     lcov --capture --directory . --output-file "$COVERAGE_INFO" \
         $GCOV_TOOL_ARG \
-        --ignore-errors negative,mismatch,source,inconsistent
+        --ignore-errors negative,mismatch,source,inconsistent,format
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to capture coverage data${NC}"
@@ -174,7 +174,7 @@ if [[ "$HTML_ONLY" == "false" ]]; then
         '*/cista/*' \
         '*/spdlog/*' \
         --output-file "$COVERAGE_FILTERED" \
-        --ignore-errors inconsistent,unused
+        --ignore-errors inconsistent,unused,format
 
     if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to filter coverage data${NC}"
@@ -185,7 +185,7 @@ fi
 # Generate HTML report
 echo -e "${YELLOW}Generating HTML report...${NC}"
 genhtml "$COVERAGE_FILTERED" --output-directory "$HTML_OUTPUT_DIR" \
-    --ignore-errors inconsistent
+    --ignore-errors inconsistent,format
 
 if [[ $? -ne 0 ]]; then
     echo -e "${RED}Failed to generate HTML report${NC}"
@@ -195,10 +195,10 @@ fi
 # Print summary
 echo ""
 echo -e "${GREEN}=== Coverage Summary ===${NC}"
-lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent
+lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent,format
 
 # Calculate coverage percentage
-COVERAGE_PERCENT=$(lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent 2>&1 | grep -oP 'lines......: \K[0-9.]+')
+COVERAGE_PERCENT=$(lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent,format 2>&1 | grep -oP 'lines......: \K[0-9.]+')
 
 echo ""
 echo -e "${GREEN}Coverage report generated successfully!${NC}"
