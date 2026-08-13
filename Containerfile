@@ -11,7 +11,7 @@
 FROM ghcr.io/astral-sh/uv:0.12.2@sha256:069a51314a7bb6031777a9273205fe1b0b19e914ef418207d1338b268df641dd AS uv
 
 # Stage 1: Build environment
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:26.04 AS builder
 
 # Build arguments for user permissions (host UID/GID compatibility)
 ARG BUILD_UID=1000
@@ -120,7 +120,7 @@ RUN cmake -S . -B build/release -G Ninja \
     && cmake --build build/release
 
 # Stage 2: Test runner (runs the built test suites)
-FROM ubuntu:24.04 AS test
+FROM ubuntu:26.04 AS test
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -146,7 +146,7 @@ CMD ["sh", "-c", "transport_unit_tests && bridge_unit_tests && concurrency_unit_
 # Stage 3: Production environment (Kubernetes deployment)
 # Ships the Keystone daemon service binary — NOT test executables.
 # See issue #513: the previous version incorrectly packaged test binaries here.
-FROM ubuntu:24.04 AS production
+FROM ubuntu:26.04 AS production
 
 # Install runtime dependencies. wget is used for the healthcheck so that
 # Python3 (a dev tool) is not required in the production image.

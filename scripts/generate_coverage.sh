@@ -185,7 +185,7 @@ fi
 # Generate HTML report
 echo -e "${YELLOW}Generating HTML report...${NC}"
 genhtml "$COVERAGE_FILTERED" --output-directory "$HTML_OUTPUT_DIR" \
-    --ignore-errors inconsistent,format
+    --ignore-errors inconsistent,format,category
 
 if [[ $? -ne 0 ]]; then
     echo -e "${RED}Failed to generate HTML report${NC}"
