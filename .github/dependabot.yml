@@ -1,191 +1,95 @@
-# Dependabot configuration for Keystone HMAS
-# Automates dependency updates for GitHub Actions and Docker base images
-# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+# Dependabot configuration — HomericIntelligence fleet baseline
+# Cadence: monthly. Grouping: minor+patch updates in one PR, major-version
+# bumps in their own PR for focused review. See the Dependabot options
+# reference for details.
 
 version: 2
-
 updates:
-  # ============================================================================
-  # GitHub Actions - Update CI/CD workflow dependencies
-  # ============================================================================
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'uv'
+    directory: '/'
     schedule:
-      # Check weekly on Tuesdays at 10:00 AM ET
-      interval: "weekly"
-      day: "tuesday"
-      time: "10:00"
-      timezone: "America/New_York"
-
-    # Group all GitHub Actions updates together (low risk)
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-
-    # Limit concurrent PRs
-    open-pull-requests-limit: 3
-
-    # PR configuration
+      interval: "monthly"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "automated"
-      - "ci"
-    assignees:
-      - "mvillmow"
+      - "python"
     commit-message:
-      prefix: "chore(ci)"
-      include: "scope"
-
-  # ============================================================================
-  # Docker - Update base images for security patches
-  # ============================================================================
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      # Check weekly on Tuesdays at 11:00 AM ET
-      interval: "weekly"
-      day: "tuesday"
-      time: "11:00"
-      timezone: "America/New_York"
-
-    # Group Docker updates by major version
+      prefix: 'chore(deps)'
     groups:
-      docker-minor-patch:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+  - package-ecosystem: 'docker'
+    directory: '/'
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: 'chore(docker)'
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
       docker-major:
+        patterns:
+          - "*"
         update-types:
           - "major"
-
-    # Limit concurrent PRs
-    open-pull-requests-limit: 3
-
-    # PR configuration
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "automated"
-      - "docker"
-    assignees:
-      - "mvillmow"
+      - "ci"
     commit-message:
-      prefix: "chore(docker)"
-      include: "scope"
-
-  # ============================================================================
-  # GitHub Actions - Additional Configuration Notes
-  # ============================================================================
-  #
-  # Rationale for GitHub Actions updates:
-  # - Actions updates are generally safe and backwards-compatible
-  # - Security patches for actions should be applied promptly
-  # - Grouping all actions updates reduces PR noise
-  #
-  # Review process:
-  # 1. Dependabot creates PR with version bump
-  # 2. CI runs all workflows with new action versions
-  # 3. Review changelog for breaking changes
-  # 4. Merge if CI passes
-  #
-  # ============================================================================
-
-  # ============================================================================
-  # Docker - Additional Configuration Notes
-  # ============================================================================
-  #
-  # Rationale for Docker updates:
-  # - Base image (ubuntu:22.04) receives security patches
-  # - Minor/patch updates typically safe for Ubuntu LTS
-  # - Major version bumps (e.g., 22.04 -> 24.04) require manual review
-  #
-  # Review process:
-  # 1. Dependabot creates PR for base image update
-  # 2. CI rebuilds all Docker stages (builder, runtime, development)
-  # 3. All tests run in new containers
-  # 4. Review build logs for deprecation warnings
-  # 5. Merge if all builds and tests pass
-  #
-  # Manual review required for:
-  # - Major Ubuntu version changes (LTS upgrades)
-  # - GCC/Clang compiler version changes in base image
-  # - Breaking changes in system packages
-  #
-  # ============================================================================
-
-  # ============================================================================
-  # C++ Dependencies - Manual Management
-  # ============================================================================
-  #
-  # NOTE: C++ dependencies are currently managed manually because:
-  #
-  # 1. Google Test - Fetched via CMake FetchContent
-  #    - Version pinned in CMakeLists.txt
-  #    - Updates require testing compatibility
-  #    - Manual review: Ensure no breaking changes in test macros
-  #
-  # 2. concurrentqueue - Header-only library in third_party/
-  #    - Version controlled via git submodule or direct copy
-  #    - Updates require performance benchmarking
-  #    - Manual review: Verify lock-free guarantees maintained
-  #
-  # 3. Future dependencies - Follow same pattern:
-  #    - Pin versions explicitly
-  #    - Test thoroughly before updating
-  #    - Document breaking changes
-  #
-  # Dependabot does not yet support:
-  # - CMake FetchContent dependencies
-  # - Git submodules (limited support)
-  # - Header-only libraries without package managers
-  #
-  # TODO: Consider adding vcpkg or conan when Dependabot adds support
-  #
-  # Manual update process:
-  # 1. Check release notes for new versions
-  # 2. Update version in CMakeLists.txt or third_party/
-  # 3. Run full test suite (unit + E2E)
-  # 4. Run performance benchmarks
-  # 5. Update docs if API changes
-  # 6. Create PR with detailed changelog
-  #
-  # ============================================================================
-
-  # ============================================================================
-  # Security Considerations
-  # ============================================================================
-  #
-  # Automated updates help maintain security by:
-  # - Applying security patches to GitHub Actions
-  # - Updating Docker base images with CVE fixes
-  # - Reducing manual dependency tracking burden
-  #
-  # Security review checklist:
-  # - Check GitHub Security tab for Dependabot alerts
-  # - Review security-scan.yml workflow results
-  # - Verify SARIF uploads in Security tab
-  # - Monitor supply chain security via dependency-review-action
-  #
-  # High-priority security updates:
-  # - Docker base image CVEs
-  # - GitHub Actions with security advisories
-  # - C++ dependencies with known vulnerabilities (manual)
-  #
-  # ============================================================================
-
-  # ============================================================================
-  # Future Enhancements
-  # ============================================================================
-  #
-  # When adding C++ package managers:
-  #
-  # vcpkg example:
-  # - package-ecosystem: "vcpkg"  # Not yet supported by Dependabot
-  #   directory: "/"
-  #   schedule:
-  #     interval: "weekly"
-  #
-  # conan example:
-  # NOTE: Conan is managed via pyproject.toml (uv dependency-groups.dev), not pip.
-  # Dependabot pip ecosystem cannot parse dependency-groups in pyproject.toml.
-  # If conan needs updating, do it manually or via `uv lock`.
+      prefix: 'chore(ci)'
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
