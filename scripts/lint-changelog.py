@@ -41,7 +41,8 @@ def lint(path: str) -> list[str]:
     errors: list[str] = []
 
     try:
-        content = open(path, encoding="utf-8").read()
+        with open(path, encoding="utf-8") as fh:
+            content = fh.read()
     except OSError as exc:
         return [f"Cannot read {path}: {exc}"]
 

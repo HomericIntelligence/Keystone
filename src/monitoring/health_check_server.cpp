@@ -263,8 +263,7 @@ void HealthCheckServer::handleRequest(int client_fd) {
   if (bytes_read < 5) {
     std::string bad_request =
         "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n";
-    [[maybe_unused]] auto result =
-        write(client_fd, bad_request.c_str(), bad_request.size());
+    (void)write(client_fd, bad_request.c_str(), bad_request.size());
     return;
   }
 
@@ -282,8 +281,8 @@ void HealthCheckServer::handleRequest(int client_fd) {
         "HTTP/1.1 405 Method Not Allowed\r\n"
         "Allow: GET\r\n"
         "Content-Length: 0\r\n\r\n";
-    [[maybe_unused]] auto result =
-        write(client_fd, method_not_allowed.c_str(), method_not_allowed.size());
+    (void)write(client_fd, method_not_allowed.c_str(),
+                method_not_allowed.size());
     return;
   }
 
@@ -310,8 +309,7 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result =
-        write(client_fd, response_str.c_str(), response_str.size());
+    (void)write(client_fd, response_str.c_str(), response_str.size());
 
   } else if (is_liveness) {
     // Liveness probe - always return 200 OK if process is alive
@@ -325,8 +323,7 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result =
-        write(client_fd, response_str.c_str(), response_str.size());
+    (void)write(client_fd, response_str.c_str(), response_str.size());
 
   } else if (is_readiness) {
     // Readiness probe - check if system is ready
@@ -354,8 +351,7 @@ void HealthCheckServer::handleRequest(int client_fd) {
     response << body;
 
     std::string response_str = response.str();
-    [[maybe_unused]] auto result =
-        write(client_fd, response_str.c_str(), response_str.size());
+    (void)write(client_fd, response_str.c_str(), response_str.size());
 
   } else {
     // Send 404 for other paths
@@ -365,8 +361,7 @@ void HealthCheckServer::handleRequest(int client_fd) {
         "Content-Length: 27\r\n"
         "\r\n"
         "{\"error\":\"endpoint not found\"}";
-    [[maybe_unused]] auto result =
-        write(client_fd, not_found.c_str(), not_found.size());
+    (void)write(client_fd, not_found.c_str(), not_found.size());
   }
 }
 
