@@ -34,7 +34,7 @@ dev = [
     # Git hooks manager (clang-format / conventional-commit / trailing-ws).
     "pre-commit>=4.6.1",
     # Typechecks conanfile.py (the C++ Conan recipe — the only Python here).
-    "mypy>=1.8.0,<2",
+    "mypy>=2.3.0,<3",
     # Python tooling for the containerized CI gates (lint, unit/integration
     # test discovery, dependency scan). Keystone is pure C++20 — these only
     # drive the repo's policy/CI scripts, not the build. (markdownlint runs via
