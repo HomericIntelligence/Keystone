@@ -24,15 +24,15 @@ requires-python = ">=3.13,<3.14"
 [dependency-groups]
 dev = [
     # C++ build toolchain (formerly conda deps in pixi.toml).
-    "cmake>=3.20",
+    "cmake>=4.4.2",
     "ninja>=1.10",
-    "conan>=2.0",
+    "conan>=2.31.2",
     # Coverage report generator (gcovr wheel; the CI `coverage` job uses the
     # system lcov/genhtml via scripts/generate_coverage.sh, but gcovr is pinned
     # here for local/ad-hoc coverage and ADR-018 parity with Agamemnon/Nestor).
     "gcovr>=7.0",
     # Git hooks manager (clang-format / conventional-commit / trailing-ws).
-    "pre-commit>=3.0",
+    "pre-commit>=4.6.1",
     # Typechecks conanfile.py (the C++ Conan recipe — the only Python here).
     "mypy>=1.8.0,<2",
     # Python tooling for the containerized CI gates (lint, unit/integration
