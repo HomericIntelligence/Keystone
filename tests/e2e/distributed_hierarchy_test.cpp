@@ -385,7 +385,7 @@ TEST_F(DistributedHierarchyTest, DistributedStatisticsCollection) {
   EXPECT_EQ(stats.total_network_messages, 20);
   EXPECT_GT(stats.avg_network_latency_us, 100.0);  // At least min latency
   EXPECT_LE(stats.avg_network_latency_us,
-            10000.0);  // Relaxed for scheduler variance
+            20000.0);  // Relaxed for scheduler variance (ASAN CI variance)
   EXPECT_EQ(stats.queue_depths_per_node.size(), 3u);
 
   // Reset and verify
