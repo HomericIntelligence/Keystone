@@ -228,7 +228,6 @@ BENCHMARK(BM_IntegerIDs_Simulation);
  * Concurrent message creation (multi-threaded allocation pressure)
  */
 static void BM_Concurrent_MessageCreation(benchmark::State& state) {
-  (void)_;
   for (auto _ : state) {
     (void)_;
     auto msg = KeystoneMessage::create(
