@@ -192,7 +192,7 @@ using ClosedCallback = std::function<void()>;
  */
 class NatsConnection {
  public:
-  explicit NatsConnection(NatsConfig config = {});
+  explicit NatsConnection(const NatsConfig& config = {});
   ~NatsConnection();
 
   // Non-copyable, non-movable (owns raw nats.c handle)

@@ -28,6 +28,7 @@ using namespace keystone::core;
 // Benchmark: Retry policy creation
 static void BM_RetryPolicy_Creation(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto policy = RetryPolicy(5, std::chrono::milliseconds(100), 2.0,
                               std::chrono::seconds(30));
     benchmark::DoNotOptimize(policy);
@@ -42,6 +43,7 @@ static void BM_RetryPolicy_ShouldRetry(benchmark::State& state) {
 
   uint32_t attempt = 0;
   for (auto _ : state) {
+    (void)_;
     bool should_retry = policy.shouldRetry(attempt % 150);
     benchmark::DoNotOptimize(should_retry);
     attempt++;
@@ -58,6 +60,7 @@ static void BM_RetryPolicy_BackoffCalculation(benchmark::State& state) {
 
   uint32_t attempt = 0;
   for (auto _ : state) {
+    (void)_;
     auto delay = policy.getBackoffDelay(attempt % 20);
     benchmark::DoNotOptimize(delay);
     attempt++;
@@ -72,6 +75,7 @@ static void BM_RetryPolicy_FullSequence(benchmark::State& state) {
   int32_t max_retries = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
+    (void)_;
     auto policy = RetryPolicy(max_retries, std::chrono::milliseconds(10), 2.0,
                               std::chrono::seconds(10));
 
@@ -94,6 +98,7 @@ static void BM_RetryPolicy_VaryingMultiplier(benchmark::State& state) {
                             std::chrono::seconds(30));
 
   for (auto _ : state) {
+    (void)_;
     for (int32_t attempt = 0; attempt < 10; ++attempt) {
       auto delay = policy.getBackoffDelay(attempt);
       benchmark::DoNotOptimize(delay);
@@ -111,6 +116,7 @@ BENCHMARK(BM_RetryPolicy_VaryingMultiplier)->DenseRange(10, 50, 10);
 // Benchmark: Circuit breaker creation
 static void BM_CircuitBreaker_Creation(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto cb = CircuitBreaker("test", 5, std::chrono::seconds(10),
                              std::chrono::seconds(5));
     benchmark::DoNotOptimize(cb);
@@ -124,6 +130,7 @@ static void BM_CircuitBreaker_AllowRequest_Closed(benchmark::State& state) {
                            std::chrono::seconds(5));
 
   for (auto _ : state) {
+    (void)_;
     bool allowed = cb.allowRequest();
     benchmark::DoNotOptimize(allowed);
   }
@@ -138,6 +145,7 @@ static void BM_CircuitBreaker_RecordSuccess(benchmark::State& state) {
                            std::chrono::seconds(5));
 
   for (auto _ : state) {
+    (void)_;
     cb.recordSuccess();
   }
 
@@ -148,6 +156,7 @@ BENCHMARK(BM_CircuitBreaker_RecordSuccess);
 // Benchmark: recordFailure
 static void BM_CircuitBreaker_RecordFailure(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     state.PauseTiming();
     auto cb = CircuitBreaker("test", 100, std::chrono::seconds(10),
                              std::chrono::seconds(5));
@@ -165,6 +174,7 @@ static void BM_CircuitBreaker_StateTransition(benchmark::State& state) {
   int32_t failure_threshold = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
+    (void)_;
     auto cb = CircuitBreaker("test", failure_threshold,
                              std::chrono::seconds(10), std::chrono::seconds(5));
 
@@ -188,6 +198,7 @@ static void BM_CircuitBreaker_GetState(benchmark::State& state) {
                            std::chrono::seconds(5));
 
   for (auto _ : state) {
+    (void)_;
     auto state_val = cb.getState();
     benchmark::DoNotOptimize(state_val);
   }
@@ -202,6 +213,7 @@ static void BM_CircuitBreaker_Concurrent(benchmark::State& state) {
                            std::chrono::seconds(5));
 
   for (auto _ : state) {
+    (void)_;
     if (cb.allowRequest()) {
       // Simulate success
       cb.recordSuccess();
@@ -219,6 +231,7 @@ BENCHMARK(BM_CircuitBreaker_Concurrent)->ThreadRange(1, 8);
 // Benchmark: Heartbeat monitor creation
 static void BM_HeartbeatMonitor_Creation(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto monitor = HeartbeatMonitor(std::chrono::milliseconds(1000));
     benchmark::DoNotOptimize(monitor);
   }
@@ -231,6 +244,7 @@ static void BM_HeartbeatMonitor_RegisterAgent(benchmark::State& state) {
 
   size_t count = 0;
   for (auto _ : state) {
+    (void)_;
     monitor.registerAgent("agent-" + std::to_string(count++));
   }
 
@@ -244,6 +258,7 @@ static void BM_HeartbeatMonitor_RecordHeartbeat(benchmark::State& state) {
   monitor.registerAgent("test-agent");
 
   for (auto _ : state) {
+    (void)_;
     monitor.recordHeartbeat("test-agent");
   }
 
@@ -258,6 +273,7 @@ static void BM_HeartbeatMonitor_IsAgentAlive(benchmark::State& state) {
   monitor.recordHeartbeat("test-agent");
 
   for (auto _ : state) {
+    (void)_;
     bool alive = monitor.isAgentAlive("test-agent");
     benchmark::DoNotOptimize(alive);
   }
@@ -280,6 +296,7 @@ static void BM_HeartbeatMonitor_GetDeadAgents(benchmark::State& state) {
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
   for (auto _ : state) {
+    (void)_;
     auto dead = monitor.getDeadAgents();
     benchmark::DoNotOptimize(dead);
   }
@@ -303,6 +320,7 @@ static void BM_HeartbeatMonitor_ConcurrentHeartbeat(benchmark::State& state) {
   std::string agent_id = "agent-" + std::to_string(agent_idx);
 
   for (auto _ : state) {
+    (void)_;
     monitor.recordHeartbeat(agent_id);
   }
 

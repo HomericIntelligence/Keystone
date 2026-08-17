@@ -16,6 +16,8 @@ static void BM_WorkStealing_LocalOnly(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 1, .workers_per_node = 4, .network_config = {}};
     SimulatedCluster cluster(config);
@@ -52,6 +54,7 @@ static void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 2,
         .workers_per_node = 4,
@@ -91,6 +94,7 @@ static void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 2,
         .workers_per_node = 4,
@@ -128,6 +132,7 @@ static void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 2,
         .workers_per_node = 4,
@@ -164,6 +169,7 @@ static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 4,
         .workers_per_node = 2,
@@ -214,6 +220,7 @@ static void BM_NetworkOverhead_MessageOnly(benchmark::State& state) {
   const size_t num_messages = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 2,
         .workers_per_node = 2,
@@ -257,6 +264,7 @@ static void BM_AgentAffinity_Registered(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 4, .workers_per_node = 4, .network_config = {}};
     SimulatedCluster cluster(config);
@@ -300,6 +308,7 @@ static void BM_PacketLoss_Impact(benchmark::State& state) {
   const size_t num_messages = 100;
 
   for (auto _ : state) {
+    (void)_;
     SimulatedCluster::Config config{
         .num_nodes = 2,
         .workers_per_node = 2,

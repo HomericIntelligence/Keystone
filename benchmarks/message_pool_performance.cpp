@@ -24,6 +24,7 @@ using namespace keystone::core;
  */
 static void BM_MessageCreation_NoPooing(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "test_command");
     msg.payload = "test payload data";
     msg.priority = Priority::HIGH;
@@ -45,6 +46,7 @@ static void BM_MessageCreation_WithPooling(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     auto msg = MessagePool::acquire();
     msg.msg_id = "test-msg";
     msg.sender_id = "sender";
@@ -66,6 +68,8 @@ static void BM_MessageBurst_NoPooling(benchmark::State& state) {
   const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
+    (void)_;
+    (void)_;
     std::vector<KeystoneMessage> messages;
     messages.reserve(static_cast<size_t>(burst_size));
 
@@ -95,6 +99,7 @@ static void BM_MessageBurst_WithPooling(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     std::vector<KeystoneMessage> messages;
     messages.reserve(static_cast<size_t>(burst_size));
 
@@ -117,6 +122,7 @@ BENCHMARK(BM_MessageBurst_WithPooling)->Arg(10)->Arg(100)->Arg(1000);
  */
 static void BM_SteadyState_NoPooling(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "cmd");
     msg.payload = "payload";
     benchmark::DoNotOptimize(msg);
@@ -137,6 +143,7 @@ static void BM_SteadyState_WithPooling(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     auto msg = MessagePool::acquire();
     msg.sender_id = "sender";
     msg.receiver_id = "receiver";
@@ -160,6 +167,7 @@ static void BM_PoolStatistics(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     auto stats = MessagePool::getStats();
     benchmark::DoNotOptimize(stats);
   }
@@ -184,6 +192,7 @@ static void BM_PoolHitRate(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     auto msg = MessagePool::acquire();
     MessagePool::release(std::move(msg));
   }
@@ -215,6 +224,7 @@ static void BM_ThreadLocalPooling(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     auto msg = MessagePool::acquire();
     msg.command = "test";
     benchmark::DoNotOptimize(msg);
@@ -237,6 +247,7 @@ BENCHMARK(BM_ThreadLocalPooling)->Threads(1)->Threads(2)->Threads(4);
  */
 static void BM_MessageReset(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     KeystoneMessage msg;
     msg.msg_id = "test-id-123";
     msg.sender_id = "sender-agent";
