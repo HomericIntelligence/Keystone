@@ -122,10 +122,11 @@ TEST(AgentIdInterningTest, ThreadSafety) {
           successes++;
         }
 
-        // Verify forward lookup
+        // Verify forward lookup (decrement on mismatch so the final
+        // EXPECT_EQ(successes, total) still catches a broken forward lookup)
         auto id_result = interning.tryGetId(agent_id);
-        if (id_result && *id_result == int_id) {
-          // Success (expected)
+        if (!(id_result && *id_result == int_id)) {
+          successes--;
         }
       }
     });
