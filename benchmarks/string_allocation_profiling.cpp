@@ -30,6 +30,8 @@ using namespace keystone::core;
  */
 static void BM_MessageCreation_Baseline(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
+    (void)_;
     auto msg = KeystoneMessage::create("sender-agent-001", "receiver-agent-002",
                                        "EXECUTE");
     benchmark::DoNotOptimize(msg);
@@ -49,6 +51,7 @@ static void BM_MessageCreation_VariableIDLength(benchmark::State& state) {
   std::string receiver(id_length, 'b');
 
   for (auto _ : state) {
+    (void)_;
     auto msg = KeystoneMessage::create(sender, receiver, "EXECUTE");
     benchmark::DoNotOptimize(msg);
   }
@@ -71,6 +74,7 @@ static void BM_MessageCreation_WithPayload(benchmark::State& state) {
   std::string payload_data(payload_size, 'x');
 
   for (auto _ : state) {
+    (void)_;
     auto msg =
         KeystoneMessage::create("sender", "receiver", "EXECUTE", payload_data);
     benchmark::DoNotOptimize(msg);
@@ -95,6 +99,7 @@ static void BM_HighFrequency_MessageCreation(benchmark::State& state) {
   const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
+    (void)_;
     std::vector<KeystoneMessage> messages;
     messages.reserve(static_cast<size_t>(burst_size));
 
@@ -125,6 +130,7 @@ static void BM_MessageCopy_Overhead(benchmark::State& state) {
   original.payload = "test payload data";
 
   for (auto _ : state) {
+    (void)_;
     // Copy constructor - copies all strings
     KeystoneMessage copy = original;
     benchmark::DoNotOptimize(copy);
@@ -141,6 +147,7 @@ BENCHMARK(BM_MessageCopy_Overhead);
  */
 static void BM_MessageMove_Overhead(benchmark::State& state) {
   for (auto _ : state) {
+    (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "EXECUTE");
     msg.payload = "test payload data";
 
@@ -167,6 +174,7 @@ static void BM_StringInterning_Simulation(benchmark::State& state) {
   pool.insert("EXECUTE");
 
   for (auto _ : state) {
+    (void)_;
     // Find interned strings (no allocation if exists)
     auto sender_it = pool.find("sender-agent");
     auto receiver_it = pool.find("receiver-agent");
@@ -202,6 +210,7 @@ static void BM_IntegerIDs_Simulation(benchmark::State& state) {
   AgentId receiver = 2002;
 
   for (auto _ : state) {
+    (void)_;
     // Integer operations - no allocation
     AgentId s = sender;
     AgentId r = receiver;
@@ -219,7 +228,9 @@ BENCHMARK(BM_IntegerIDs_Simulation);
  * Concurrent message creation (multi-threaded allocation pressure)
  */
 static void BM_Concurrent_MessageCreation(benchmark::State& state) {
+  (void)_;
   for (auto _ : state) {
+    (void)_;
     auto msg = KeystoneMessage::create(
         "sender-" + std::to_string(state.thread_index()),
         "receiver-" + std::to_string(state.thread_index()), "EXECUTE");
@@ -243,6 +254,8 @@ static void BM_Memory_Pressure(benchmark::State& state) {
   const int32_t message_count = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
+    (void)_;
+    (void)_;
     std::vector<KeystoneMessage> messages;
     messages.reserve(static_cast<size_t>(message_count));
 

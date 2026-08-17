@@ -135,8 +135,8 @@ void NatsTlsConfig::validate() const {
 // Construction / destruction
 // ---------------------------------------------------------------------------
 
-NatsConnection::NatsConnection(NatsConfig config)
-    : config_(std::move(config)) {}
+NatsConnection::NatsConnection(const NatsConfig& config)
+    : config_(config) {}
 
 NatsConnection::~NatsConnection() { disconnect(); }
 

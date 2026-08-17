@@ -31,6 +31,7 @@ static void BM_IdleCPU_WithBackoff(benchmark::State& state) {
   std::this_thread::sleep_for(100ms);
 
   for (auto _ : state) {
+    (void)_;
     // Measure CPU usage over 100ms of idle time
     auto start = std::chrono::steady_clock::now();
     std::this_thread::sleep_for(100ms);
@@ -61,6 +62,7 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
   auto task_count = std::make_shared<std::atomic<int32_t>>(0);
 
   for (auto _ : state) {
+    (void)_;
     auto submit_time = std::chrono::steady_clock::now();
 
     scheduler.submit([submit_time, total_latency_ns, task_count]() {
@@ -98,6 +100,7 @@ static void BM_ThroughputWithBackoff(benchmark::State& state) {
   auto counter = std::make_shared<std::atomic<int64_t>>(0);
 
   for (auto _ : state) {
+    (void)_;
     scheduler.submit([counter]() { counter->fetch_add(1); });
   }
 
@@ -118,6 +121,7 @@ static void BM_WakeUpLatency(benchmark::State& state) {
   scheduler.start();
 
   for (auto _ : state) {
+    (void)_;
     // Let workers enter SLEEP phase
     std::this_thread::sleep_for(50ms);
 
@@ -156,6 +160,8 @@ static void BM_WorkStealingDuringBackoff(benchmark::State& state) {
   auto counter = std::make_shared<std::atomic<int32_t>>(0);
 
   for (auto _ : state) {
+    (void)_;
+    (void)_;
     // Submit all work to worker 0 (others will steal)
     for (int32_t i = 0; i < 100; ++i) {
       scheduler.submitTo(0, [counter]() {
@@ -180,6 +186,7 @@ static void BM_RapidSubmitExecute(benchmark::State& state) {
   scheduler.start();
 
   for (auto _ : state) {
+    (void)_;
     auto work_done = std::make_shared<std::atomic<bool>>(false);
 
     scheduler.submit([work_done]() { work_done->store(true); });
@@ -211,6 +218,7 @@ static void BM_BackoffPhaseLatencies(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
     // Wait to enter target phase
     std::this_thread::sleep_for(wait_time);
 
