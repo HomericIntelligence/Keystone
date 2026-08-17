@@ -11,7 +11,12 @@
 FROM ghcr.io/astral-sh/uv:0.12.2@sha256:069a51314a7bb6031777a9273205fe1b0b19e914ef418207d1338b268df641dd AS uv
 
 # Stage 1: Build environment
-FROM ubuntu:24.04 AS builder
+# Base digest pinned 2026-08-16 (noble): carries security patches for glibc
+# (2.39-0ubuntu8.8), libcap2 (2.66-5ubuntu2.4), tar, expat, dpkg, python3.12,
+# libgcrypt20 (CVE-2026-4046/4437/4438, CVE-2026-4878, CVE-2025-45582/66382,
+# CVE-2026-2219, CVE-2025-13462, CVE-2024-2236). Bump the digest regularly
+# (see `docker buildx imagetools inspect ubuntu:24.04`).
+FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS builder
 
 # Build arguments for user permissions (host UID/GID compatibility)
 ARG BUILD_UID=1000
@@ -32,7 +37,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 # OpenSSL headers, lcov, and git come from apt; the CMake/Ninja/Conan/gcovr
 # build toolchain is uv-managed as locked PyPI wheels (Odysseus ADR-018), not
 # apt/pip. build-essential is retained for the system linker/headers.
-RUN apt-get update && apt-get install -y \
+# `apt-get upgrade` first applies the remaining noble security updates on top
+# of the pinned base digest (e.g. libssl3t64, libsystemd0/libudev1) so the
+# image ships the latest patched OS layer.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     build-essential \
     clang-18 \
     clang++-18 \
@@ -120,10 +128,10 @@ RUN cmake -S . -B build/release -G Ninja \
     && cmake --build build/release
 
 # Stage 2: Test runner (runs the built test suites)
-FROM ubuntu:24.04 AS test
+FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS test
 
 # Install only runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -146,11 +154,11 @@ CMD ["sh", "-c", "transport_unit_tests && bridge_unit_tests && concurrency_unit_
 # Stage 3: Production environment (Kubernetes deployment)
 # Ships the Keystone daemon service binary — NOT test executables.
 # See issue #513: the previous version incorrectly packaged test binaries here.
-FROM ubuntu:24.04 AS production
+FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS production
 
 # Install runtime dependencies. wget is used for the healthcheck so that
 # Python3 (a dev tool) is not required in the production image.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libstdc++6 \
     wget \
     && rm -rf /var/lib/apt/lists/*
