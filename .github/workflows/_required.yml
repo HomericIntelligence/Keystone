@@ -783,6 +783,78 @@ jobs:
       - name: security-dependency-scan (in container)
         run: bash scripts/run_ci_local.sh security-dependency-scan
 
+      # Container image scan (Trivy). Builds the production stage and scans
+      # the OS layer for package CVEs, uploading SARIF so findings surface in
+      # the Security tab (category trivy-container). This is the scan that
+      # produced the historical library/projectkeystone OsPackageVulnerability
+      # alerts; the base digest pin + apt-get upgrade in Containerfile keep
+      # the OS layer patched, and this step keeps the alerts fresh. The SARIF
+      # upload carries ALL severities so MEDIUM/LOW findings stay honestly
+      # reported (auto-closing only once actually fixed), while the summary
+      # gate fails fast on CRITICAL/HIGH per Bucket F (no continue-on-error).
+      - name: Build production image for scan (podman)
+        run: podman build --target production -t keystone:scan .
+
+      - name: Save scan image to OCI tar
+        run: podman save -o container-scan.tar keystone:scan
+
+      - name: Run Trivy container scan (SARIF, all severities)
+        run: |
+          podman run --rm \
+            -v "$PWD:/workspace:Z" -w /workspace \
+            aquasec/trivy:0.58.1 image \
+              --severity CRITICAL,HIGH,MEDIUM,LOW \
+              --no-progress \
+              --format sarif \
+              --output container-scan.sarif \
+              --scanners vuln \
+              --input container-scan.tar
+
+      - name: Run Trivy container scan (JSON summary)
+        run: |
+          podman run --rm \
+            -v "$PWD:/workspace:Z" -w /workspace \
+            aquasec/trivy:0.58.1 image \
+              --severity CRITICAL,HIGH,MEDIUM,LOW \
+              --no-progress \
+              --format json \
+              --output container-scan.json \
+              --scanners vuln \
+              --input container-scan.tar
+
+      - name: Container scan summary
+        if: always()
+        run: |
+          python3 - <<'PYEOF'
+          import json, pathlib
+
+          p = pathlib.Path("container-scan.json")
+          if not p.is_file():
+              print("container-scan.json missing — scan did not run")
+              raise SystemExit(0)
+          data = json.loads(p.read_text())
+          counts = {}
+          for res in data.get("Results", []):
+              for v in res.get("Vulnerabilities", []):
+                  sev = v.get("Severity", "UNKNOWN")
+                  counts[sev] = counts.get(sev, 0) + 1
+          print("## Container scan")
+          print("| Severity | Count |")
+          print("|----------|-------|")
+          for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+              print(f"| {sev} | {counts.get(sev, 0)} |")
+          if counts.get("CRITICAL", 0) or counts.get("HIGH", 0):
+              print("::error::Critical/high vulnerabilities in container image")
+              raise SystemExit(1)
+          PYEOF
+
+      - name: Upload Trivy container SARIF to Security tab
+        if: always() && hashFiles('container-scan.sarif') != ''
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        with:
+          sarif_file: container-scan.sarif
+          category: trivy-container
+
   security-secrets-scan:
     name: security/secrets-scan
     runs-on: ubuntu-24.04
