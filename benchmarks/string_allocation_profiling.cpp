@@ -28,7 +28,7 @@ using namespace keystone::core;
  * Baseline: Message creation with string allocations
  * Allocates 4+ strings: msg_id (UUID), sender_id, receiver_id, command
  */
-static void BM_MessageCreation_Baseline(benchmark::State& state) {
+void BM_MessageCreation_Baseline(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     (void)_;
@@ -45,7 +45,7 @@ BENCHMARK(BM_MessageCreation_Baseline);
 /**
  * Measure string allocation overhead by varying sender/receiver ID lengths
  */
-static void BM_MessageCreation_VariableIDLength(benchmark::State& state) {
+void BM_MessageCreation_VariableIDLength(benchmark::State& state) {
   int32_t id_length = static_cast<int32_t>(state.range(0));
   std::string sender(id_length, 'a');
   std::string receiver(id_length, 'b');
@@ -69,7 +69,7 @@ BENCHMARK(BM_MessageCreation_VariableIDLength)
 /**
  * Measure allocation overhead with payload strings
  */
-static void BM_MessageCreation_WithPayload(benchmark::State& state) {
+void BM_MessageCreation_WithPayload(benchmark::State& state) {
   int32_t payload_size = static_cast<int32_t>(state.range(0));
   std::string payload_data(payload_size, 'x');
 
@@ -95,7 +95,7 @@ BENCHMARK(BM_MessageCreation_WithPayload)
  * High-frequency message creation (simulates 10K msgs/sec load)
  * This measures allocation rate under realistic load
  */
-static void BM_HighFrequency_MessageCreation(benchmark::State& state) {
+void BM_HighFrequency_MessageCreation(benchmark::State& state) {
   const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
@@ -125,7 +125,7 @@ BENCHMARK(BM_HighFrequency_MessageCreation)
 /**
  * Measure string copy overhead when passing messages
  */
-static void BM_MessageCopy_Overhead(benchmark::State& state) {
+void BM_MessageCopy_Overhead(benchmark::State& state) {
   auto original = KeystoneMessage::create("sender", "receiver", "EXECUTE");
   original.payload = "test payload data";
 
@@ -145,7 +145,7 @@ BENCHMARK(BM_MessageCopy_Overhead);
 /**
  * Measure string move overhead (should be cheaper than copy)
  */
-static void BM_MessageMove_Overhead(benchmark::State& state) {
+void BM_MessageMove_Overhead(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "EXECUTE");
@@ -166,7 +166,7 @@ BENCHMARK(BM_MessageMove_Overhead);
  * Measure allocation overhead of string interning simulation
  * (Potential optimization from issue #22)
  */
-static void BM_StringInterning_Simulation(benchmark::State& state) {
+void BM_StringInterning_Simulation(benchmark::State& state) {
   // Simulate string pool (unordered_set keeps single copy)
   static std::unordered_set<std::string> pool;
   pool.insert("sender-agent");
@@ -204,7 +204,7 @@ BENCHMARK(BM_StringInterning_Simulation);
 /**
  * Measure overhead of integer agent IDs (potential optimization)
  */
-static void BM_IntegerIDs_Simulation(benchmark::State& state) {
+void BM_IntegerIDs_Simulation(benchmark::State& state) {
   using AgentId = uint64_t;
   AgentId sender = 1001;
   AgentId receiver = 2002;
@@ -227,7 +227,7 @@ BENCHMARK(BM_IntegerIDs_Simulation);
 /**
  * Concurrent message creation (multi-threaded allocation pressure)
  */
-static void BM_Concurrent_MessageCreation(benchmark::State& state) {
+void BM_Concurrent_MessageCreation(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     auto msg = KeystoneMessage::create(
@@ -249,7 +249,7 @@ BENCHMARK(BM_Concurrent_MessageCreation)
 /**
  * Memory pressure test: Create and hold many messages
  */
-static void BM_Memory_Pressure(benchmark::State& state) {
+void BM_Memory_Pressure(benchmark::State& state) {
   const int32_t message_count = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {

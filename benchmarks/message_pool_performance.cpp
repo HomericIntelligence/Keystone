@@ -22,7 +22,7 @@ using namespace keystone::core;
 /**
  * Baseline: Create and destroy messages without pooling
  */
-static void BM_MessageCreation_NoPooing(benchmark::State& state) {
+void BM_MessageCreation_NoPooing(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "test_command");
@@ -38,7 +38,7 @@ BENCHMARK(BM_MessageCreation_NoPooing);
 /**
  * With pooling: Acquire and release messages
  */
-static void BM_MessageCreation_WithPooling(benchmark::State& state) {
+void BM_MessageCreation_WithPooling(benchmark::State& state) {
   // Warmup pool
   for (int32_t i = 0; i < 100; ++i) {
     auto msg = MessagePool::acquire();
@@ -64,7 +64,7 @@ BENCHMARK(BM_MessageCreation_WithPooling);
 /**
  * Burst pattern: Create many messages then destroy them (no pooling)
  */
-static void BM_MessageBurst_NoPooling(benchmark::State& state) {
+void BM_MessageBurst_NoPooling(benchmark::State& state) {
   const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   for (auto _ : state) {
@@ -88,7 +88,7 @@ BENCHMARK(BM_MessageBurst_NoPooling)->Arg(10)->Arg(100)->Arg(1000);
 /**
  * Burst pattern: Acquire many messages then release them (with pooling)
  */
-static void BM_MessageBurst_WithPooling(benchmark::State& state) {
+void BM_MessageBurst_WithPooling(benchmark::State& state) {
   const int32_t burst_size = static_cast<int32_t>(state.range(0));
 
   // Warmup pool
@@ -120,7 +120,7 @@ BENCHMARK(BM_MessageBurst_WithPooling)->Arg(10)->Arg(100)->Arg(1000);
 /**
  * Steady-state: Continuous acquire/release (simulates message passing)
  */
-static void BM_SteadyState_NoPooling(benchmark::State& state) {
+void BM_SteadyState_NoPooling(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     auto msg = KeystoneMessage::create("sender", "receiver", "cmd");
@@ -135,7 +135,7 @@ BENCHMARK(BM_SteadyState_NoPooling);
 /**
  * Steady-state: Continuous acquire/release with pool (optimal case)
  */
-static void BM_SteadyState_WithPooling(benchmark::State& state) {
+void BM_SteadyState_WithPooling(benchmark::State& state) {
   // Warmup
   for (int32_t i = 0; i < 10; ++i) {
     auto msg = MessagePool::acquire();
@@ -159,7 +159,7 @@ BENCHMARK(BM_SteadyState_WithPooling);
 /**
  * Pool statistics overhead
  */
-static void BM_PoolStatistics(benchmark::State& state) {
+void BM_PoolStatistics(benchmark::State& state) {
   // Warmup
   for (int32_t i = 0; i < 100; ++i) {
     auto msg = MessagePool::acquire();
@@ -178,7 +178,7 @@ BENCHMARK(BM_PoolStatistics);
 /**
  * Pool hit rate under load
  */
-static void BM_PoolHitRate(benchmark::State& state) {
+void BM_PoolHitRate(benchmark::State& state) {
   MessagePool::clear();
   MessagePool::resetStats();
 
@@ -210,7 +210,7 @@ BENCHMARK(BM_PoolHitRate);
 /**
  * Multi-threaded pooling (thread-local isolation)
  */
-static void BM_ThreadLocalPooling(benchmark::State& state) {
+void BM_ThreadLocalPooling(benchmark::State& state) {
   // Each thread gets its own pool
   if (state.thread_index() == 0) {
     MessagePool::clear();
@@ -245,7 +245,7 @@ BENCHMARK(BM_ThreadLocalPooling)->Threads(1)->Threads(2)->Threads(4);
 /**
  * Message field reset overhead
  */
-static void BM_MessageReset(benchmark::State& state) {
+void BM_MessageReset(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
     KeystoneMessage msg;

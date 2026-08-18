@@ -23,7 +23,7 @@ using namespace std::chrono_literals;
 
 // Benchmark: Idle CPU usage (no work)
 // This measures CPU consumption when scheduler has no work
-static void BM_IdleCPU_WithBackoff(benchmark::State& state) {
+void BM_IdleCPU_WithBackoff(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -54,7 +54,7 @@ static void BM_IdleCPU_WithBackoff(benchmark::State& state) {
 BENCHMARK(BM_IdleCPU_WithBackoff)->UseManualTime()->Iterations(10);
 
 // Benchmark: Latency under load
-static void BM_LatencyUnderLoad(benchmark::State& state) {
+void BM_LatencyUnderLoad(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -93,7 +93,7 @@ static void BM_LatencyUnderLoad(benchmark::State& state) {
 BENCHMARK(BM_LatencyUnderLoad)->Iterations(1000);
 
 // Benchmark: Throughput with backoff
-static void BM_ThroughputWithBackoff(benchmark::State& state) {
+void BM_ThroughputWithBackoff(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -116,7 +116,7 @@ static void BM_ThroughputWithBackoff(benchmark::State& state) {
 BENCHMARK(BM_ThroughputWithBackoff);
 
 // Benchmark: Wake-up latency from SLEEP phase
-static void BM_WakeUpLatency(benchmark::State& state) {
+void BM_WakeUpLatency(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -153,7 +153,7 @@ static void BM_WakeUpLatency(benchmark::State& state) {
 BENCHMARK(BM_WakeUpLatency)->Iterations(10);
 
 // Benchmark: Work stealing across workers during backoff
-static void BM_WorkStealingDuringBackoff(benchmark::State& state) {
+void BM_WorkStealingDuringBackoff(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -181,7 +181,7 @@ static void BM_WorkStealingDuringBackoff(benchmark::State& state) {
 BENCHMARK(BM_WorkStealingDuringBackoff)->Iterations(10);
 
 // Benchmark: Rapid submit/execute cycles (stress test)
-static void BM_RapidSubmitExecute(benchmark::State& state) {
+void BM_RapidSubmitExecute(benchmark::State& state) {
   WorkStealingScheduler scheduler(4);
   scheduler.start();
 
@@ -202,7 +202,7 @@ static void BM_RapidSubmitExecute(benchmark::State& state) {
 BENCHMARK(BM_RapidSubmitExecute);
 
 // Benchmark: Compare SPIN vs YIELD vs SLEEP phase latencies
-static void BM_BackoffPhaseLatencies(benchmark::State& state) {
+void BM_BackoffPhaseLatencies(benchmark::State& state) {
   WorkStealingScheduler scheduler(1);  // Single worker for determinism
   scheduler.start();
 
