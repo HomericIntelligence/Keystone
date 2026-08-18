@@ -12,7 +12,7 @@ using namespace keystone::simulation;
 using namespace std::chrono_literals;
 
 // Benchmark: Local-only work stealing (single node baseline)
-static void BM_WorkStealing_LocalOnly(benchmark::State& state) {
+void BM_WorkStealing_LocalOnly(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -50,7 +50,7 @@ static void BM_WorkStealing_LocalOnly(benchmark::State& state) {
 BENCHMARK(BM_WorkStealing_LocalOnly)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Two nodes with 100µs network latency
-static void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
+void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -90,7 +90,7 @@ static void BM_WorkStealing_TwoNodes_100us(benchmark::State& state) {
 BENCHMARK(BM_WorkStealing_TwoNodes_100us)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Two nodes with 500µs network latency
-static void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
+void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -128,7 +128,7 @@ static void BM_WorkStealing_TwoNodes_500us(benchmark::State& state) {
 BENCHMARK(BM_WorkStealing_TwoNodes_500us)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Two nodes with 1ms network latency
-static void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
+void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -165,7 +165,7 @@ static void BM_WorkStealing_TwoNodes_1ms(benchmark::State& state) {
 BENCHMARK(BM_WorkStealing_TwoNodes_1ms)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Load balancing effectiveness (imbalanced submission)
-static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
+void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -216,7 +216,7 @@ static void BM_LoadBalancing_Imbalanced(benchmark::State& state) {
 BENCHMARK(BM_LoadBalancing_Imbalanced)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Network overhead measurement (message-only)
-static void BM_NetworkOverhead_MessageOnly(benchmark::State& state) {
+void BM_NetworkOverhead_MessageOnly(benchmark::State& state) {
   const size_t num_messages = state.range(0);
 
   for (auto _ : state) {
@@ -260,7 +260,7 @@ static void BM_NetworkOverhead_MessageOnly(benchmark::State& state) {
 BENCHMARK(BM_NetworkOverhead_MessageOnly)->Arg(50)->Arg(100)->Arg(200);
 
 // Benchmark: Agent affinity (registered agents)
-static void BM_AgentAffinity_Registered(benchmark::State& state) {
+void BM_AgentAffinity_Registered(benchmark::State& state) {
   const size_t num_tasks = state.range(0);
 
   for (auto _ : state) {
@@ -303,7 +303,7 @@ static void BM_AgentAffinity_Registered(benchmark::State& state) {
 BENCHMARK(BM_AgentAffinity_Registered)->Arg(100)->Arg(500)->Arg(1000);
 
 // Benchmark: Packet loss impact
-static void BM_PacketLoss_Impact(benchmark::State& state) {
+void BM_PacketLoss_Impact(benchmark::State& state) {
   const double packet_loss = static_cast<double>(state.range(0)) / 100.0;
   const size_t num_messages = 100;
 

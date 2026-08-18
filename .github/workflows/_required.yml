@@ -990,3 +990,71 @@ jobs:
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # ============================================================
+  # 22. analyze  (restored CodeQL, see commit 79e8e0e)
+  #    The consolidation deleted codeql-analysis.yml but never added the
+  #    Analyze job to this file, so C++ had no CodeQL coverage and the
+  #    cpp/unused-* alerts from the old workflow could never auto-close.
+  #    Restored from the deleted workflow (c-cpp manual build + python).
+  # ============================================================
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: c-cpp
+            build-mode: manual
+          - language: python
+            build-mode: none
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # C++ manual build steps -- only run for c-cpp
+      - name: Install build dependencies
+        if: matrix.language == 'c-cpp'
+        uses: ./.github/actions/install-build-deps
+        with:
+          cache-conan: "true"
+
+      - name: Cache FetchContent downloads
+        if: matrix.language == 'c-cpp'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: build/codeql/_deps
+          key: fetchcontent-codeql-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-codeql-${{ runner.os }}-
+
+      - name: Install Conan dependencies
+        if: matrix.language == 'c-cpp'
+        run: conan install . --output-folder=build/codeql/conan-deps --build=missing -s build_type=Release -s compiler.cppstd=20
+
+      - name: Build for CodeQL analysis
+        if: matrix.language == 'c-cpp'
+        run: |
+          cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=build/codeql/conan-deps/conan_toolchain.cmake
+          cmake --build build/codeql
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        with:
+          category: "/language:${{ matrix.language }}"
