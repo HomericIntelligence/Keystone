@@ -84,11 +84,27 @@ TEST_F(ProfilingTest, PercentileCalculation) {
   EXPECT_NEAR(stats->p50_us, 500.0, 1200.0);
 
   // P95 should be near end (950µs ± tolerance for overhead)
+  //
+  // TSan-instrumented builds (integration-tests runs test.debug.tsan) inflate
+  // the tail of the timing distribution: occasional multi-ms stalls push p95
+  // past the 950±1200µs window even though the median stays well inside it
+  // (observed p95_us ≈ 2680µs on a loaded runner, diff 1730µs). The wall-clock
+  // assertions are therefore only meaningful without a race detector; the
+  // ordering + range checks below hold under every build configuration and are
+  // what actually validate the percentile calculation.
+#if !defined(__SANITIZE_THREAD__) && \
+    (!defined(__has_feature) || !__has_feature(thread_sanitizer))
   EXPECT_NEAR(stats->p95_us, 950.0, 1200.0);
+#endif
 
   // Ordering (this should always hold regardless of overhead)
   EXPECT_LE(stats->p50_us, stats->p95_us);
   EXPECT_LE(stats->p95_us, stats->p99_us);
+
+  // Bounds (percentiles must lie within the observed sample range)
+  EXPECT_GE(stats->p50_us, stats->min_us);
+  EXPECT_LE(stats->p95_us, stats->max_us);
+  EXPECT_LE(stats->p99_us, stats->max_us);
 }
 
 TEST_F(ProfilingTest, GenerateReport) {
