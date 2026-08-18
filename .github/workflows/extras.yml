@@ -30,7 +30,11 @@ jobs:
     name: benchmarks
     if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Raised from 20 to 30: the install-build-deps step (apt-get update + conan
+    # install) intermittently exceeds 20 minutes on GitHub-hosted runners during
+    # slow-network windows, cancelling the whole extras run and re-posting
+    # cancelled statuses for the required `coverage` check (which blocks the PR).
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
