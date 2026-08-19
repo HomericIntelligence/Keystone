@@ -385,3 +385,21 @@ Before opening a PR:
 **Last Updated**: 2026-04-25
 **Version**: 3.0 (Pure Transport — HMAS and Python orchestration extracted to ProjectAgamemnon per ADR-015)
 **Project**: Keystone
+
+## Design Philosophy
+
+The transport architecture above follows design principles inherited from
+**ProjectOdyssey**, applied to native C++:
+
+- **Correctness is non-negotiable (KISS).** C++20 with `-Werror` and a full
+  unit-test tier; no compilation warnings, no unchecked failure paths — a
+  distributed system cannot paper over a locally-detectable bug.
+- **Lean transport (YAGNI).** Keystone owns the pure transport layer only;
+  orchestration and agent logic were extracted to Agamemnon (ADR-015/016), so
+  every remaining component has one job and one reason to change.
+- **Deterministic builds (reproducibility).** uv/CMake presets, pinned
+  toolchains, and digest-locked containers mean the same commit builds the same
+  binary everywhere.
+- **Fail closed at the boundary (POLA).** Rate limiting, subject validation,
+  and claim checks happen at ingress — untrusted traffic never reaches the
+  coordination core.
