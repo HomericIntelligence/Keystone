@@ -403,4 +403,3 @@ The transport architecture above follows design principles inherited from
 - **Fail closed at the boundary (POLA).** Rate limiting, subject validation,
   and claim checks happen at ingress — untrusted traffic never reaches the
   coordination core.
-
