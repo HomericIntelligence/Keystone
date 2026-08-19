@@ -22,7 +22,7 @@ NPROC ?= $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 # Only start the dev container if it is not already running; bound the start with
 # a 60s timeout and never mask a genuine failure (fixes #636 — the old form
 # hung 10+ minutes on a wedged compose and swallowed errors with `|| true`).
-CONTAINER_CHECK := @if [ -z "$$(DOCKER_HOST="$(DOCKER_HOST)" podman-compose ps -q dev 2>/dev/null)" ]; then echo "Starting dev container (timeout 60s)..."; timeout 60 DOCKER_HOST="$(DOCKER_HOST)" podman-compose up -d dev; fi
+CONTAINER_CHECK := @if [ -z "$$(env DOCKER_HOST="$(DOCKER_HOST)" podman-compose ps -q dev 2>/dev/null)" ]; then echo "Starting dev container (timeout 60s)..."; env DOCKER_HOST="$(DOCKER_HOST)" timeout 60 podman-compose up -d dev; fi
 CONTAINER_PREFIX := DOCKER_HOST="$(DOCKER_HOST)" podman-compose exec -T dev
 
 # Sanitizer runtime options that must be set INSIDE the dev container.
