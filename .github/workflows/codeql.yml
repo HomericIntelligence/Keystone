@@ -1,0 +1,61 @@
+# Fleet-standard CodeQL analysis — C++ language restored (#655, part of
+# HomericIntelligence/Odysseus#455 rollout). The GitHub-managed dynamic
+# workflow only analyzed Python since 2026-08-08; this committed workflow
+# guarantees cpp analysis on every PR/push and weekly.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: security/codeql-${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [cpp, python, actions]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3  # v4
+        with:
+          languages: ${{ matrix.language }}
+          config-file: .github/codeql/codeql-config.yml
+
+      - name: Install Conan dependencies
+        if: matrix.language == 'cpp'
+        run: |
+          pip install conan
+          conan profile detect --exist-ok
+          conan install . --output-folder=build-conan --build=missing -s build_type=Debug -s compiler.cppstd=20
+
+      - name: Autobuild
+        if: matrix.language != 'python'
+        uses: github/codeql-action/autobuild@5595ccaf912efad79be6eef63a5619ff05969be3  # v4
+        env:
+          CONAN_OUTPUT_DIR: build-conan
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3  # v4
+        with:
+          category: "/language:${{ matrix.language }}"
