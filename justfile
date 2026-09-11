@@ -17,10 +17,10 @@ fleet-test-only:
     uv run ctest --test-dir build/fleet --output-on-failure
 
 fleet-format:
-    uvx --from clang-format==20.1.8 clang-format -i src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+    uvx --from clang-format==18.1.0 clang-format --style=Google -i src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
 
 fleet-format-check:
-    uvx --from clang-format==20.1.8 clang-format --dry-run --Werror src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+    uvx --from clang-format==18.1.0 clang-format --style=Google --dry-run --Werror src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
 
 fleet-cmake-format:
     uvx --from cmakelang==0.6.13 cmake-format -i src/fleet/CMakeLists.txt

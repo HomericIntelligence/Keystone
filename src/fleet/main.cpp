@@ -1,3 +1,5 @@
+#include <nats.h>
+
 #include <algorithm>
 #include <charconv>
 #include <chrono>
@@ -7,14 +9,12 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-
-#include <nats.h>
-#include <nlohmann/json.hpp>
 
 namespace {
 using Json = nlohmann::json;
@@ -35,8 +35,9 @@ void check(natsStatus status) {
 bool identifier(std::string_view value) {
   return !value.empty() && value.size() <= 128 &&
          std::all_of(value.begin(), value.end(), [](unsigned char c) {
-           return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
-                  c == '_' || c == '-' || c == ':' || c == '.';
+           return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') || c == '_' || c == '-' || c == ':' ||
+                  c == '.';
          });
 }
 
@@ -108,18 +109,24 @@ Config config(int argc, char** argv) {
     } else if (key == "--worker-id") {
       result.worker = value;
     } else if (key == "--generation") {
-      auto parsed = std::from_chars(value.data(), value.data() + value.size(), result.generation);
-      if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size()) {
+      auto parsed = std::from_chars(value.data(), value.data() + value.size(),
+                                    result.generation);
+      if (parsed.ec != std::errc{} ||
+          parsed.ptr != value.data() + value.size()) {
         throw std::runtime_error("invalid_generation");
       }
     } else {
       throw std::runtime_error("unknown_option");
     }
   }
-  if (!identifier(result.stream) || result.stream.find('.') != std::string::npos ||
-      !identifier(result.consumer) || result.consumer.find('.') != std::string::npos ||
-      !identifier(result.worker) || result.worker.find('.') != std::string::npos ||
-      !subject(result.filter, true) || !subject(result.publish_prefix) || result.generation == 0) {
+  if (!identifier(result.stream) ||
+      result.stream.find('.') != std::string::npos ||
+      !identifier(result.consumer) ||
+      result.consumer.find('.') != std::string::npos ||
+      !identifier(result.worker) ||
+      result.worker.find('.') != std::string::npos ||
+      !subject(result.filter, true) || !subject(result.publish_prefix) ||
+      result.generation == 0) {
     throw std::runtime_error("invalid_configuration");
   }
   if (!result.filter.starts_with("hi.myrmidon.") &&
@@ -136,12 +143,14 @@ Config config(int argc, char** argv) {
     }
     const auto port = std::string_view(result.url).substr(prefix.size());
     unsigned int number{};
-    const auto parsed = std::from_chars(port.data(), port.data() + port.size(), number);
-    if (parsed.ec != std::errc{} || parsed.ptr != port.data() + port.size() || number == 0 ||
-        number > 65535) {
+    const auto parsed =
+        std::from_chars(port.data(), port.data() + port.size(), number);
+    if (parsed.ec != std::errc{} || parsed.ptr != port.data() + port.size() ||
+        number == 0 || number > 65535) {
       throw std::runtime_error("invalid_loopback_port");
     }
-  } else if (!result.url.starts_with("tls://") || result.url.find('@') != std::string::npos) {
+  } else if (!result.url.starts_with("tls://") ||
+             result.url.find('@') != std::string::npos) {
     throw std::runtime_error("authenticated_tls_required");
   }
   return result;
@@ -163,8 +172,10 @@ std::string now() {
   std::tm utc{};
   gmtime_r(&seconds, &utc);
   std::ostringstream output;
-  output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S") << '.' << std::setfill('0') << std::setw(3)
-         << (std::chrono::duration_cast<std::chrono::milliseconds>(timestamp.time_since_epoch())
+  output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S") << '.' << std::setfill('0')
+         << std::setw(3)
+         << (std::chrono::duration_cast<std::chrono::milliseconds>(
+                 timestamp.time_since_epoch())
                  .count() %
              1000)
          << 'Z';
@@ -182,8 +193,8 @@ void emit(const Json& frame) {
   }
 }
 
-// A bounded read rejects an unterminated/truncated final frame. A partial command
-// must never execute merely because the SSH attachment ended.
+// A bounded read rejects an unterminated/truncated final frame. A partial
+// command must never execute merely because the SSH attachment ended.
 bool readFrame(std::string& line) {
   line.clear();
   char character{};
@@ -207,7 +218,8 @@ class Gateway {
   explicit Gateway(Config configuration) : cfg_(std::move(configuration)) {
     natsOptions* raw_options{};
     check(natsOptions_Create(&raw_options));
-    Handle<natsOptions, natsOptions_Destroy> options(raw_options, natsOptions_Destroy);
+    Handle<natsOptions, natsOptions_Destroy> options(raw_options,
+                                                     natsOptions_Destroy);
     check(natsOptions_SetURL(options.get(), cfg_.url.c_str()));
     check(natsOptions_SetTimeout(options.get(), 3000));
     check(natsOptions_SetMaxReconnect(options.get(), 0));
@@ -222,10 +234,12 @@ class Gateway {
         check(natsOptions_LoadCATrustedCertificates(options.get(), ca.c_str()));
       }
       if (!credentials.empty()) {
-        check(natsOptions_SetUserCredentialsFromFiles(options.get(), credentials.c_str(), nullptr));
+        check(natsOptions_SetUserCredentialsFromFiles(
+            options.get(), credentials.c_str(), nullptr));
       }
       if (!cert.empty() && !key.empty()) {
-        check(natsOptions_LoadCertificatesChain(options.get(), cert.c_str(), key.c_str()));
+        check(natsOptions_LoadCertificatesChain(options.get(), cert.c_str(),
+                                                key.c_str()));
       } else if (!cert.empty() || !key.empty()) {
         throw std::runtime_error("incomplete_client_certificate");
       } else if (credentials.empty()) {
@@ -242,17 +256,20 @@ class Gateway {
     check(natsConnection_JetStream(&context, connection_.get(), &options_js));
     js_.reset(context);
     jsConsumerInfo* raw_info{};
-    check(js_GetConsumerInfo(
-        &raw_info, js_.get(), cfg_.stream.c_str(), cfg_.consumer.c_str(), nullptr, nullptr));
-    Handle<jsConsumerInfo, jsConsumerInfo_Destroy> info(raw_info, jsConsumerInfo_Destroy);
+    check(js_GetConsumerInfo(&raw_info, js_.get(), cfg_.stream.c_str(),
+                             cfg_.consumer.c_str(), nullptr, nullptr));
+    Handle<jsConsumerInfo, jsConsumerInfo_Destroy> info(raw_info,
+                                                        jsConsumerInfo_Destroy);
     const auto* consumer = info->Config;
     if (consumer == nullptr || consumer->AckPolicy != js_AckExplicit ||
         consumer->MaxAckPending != 1 || consumer->FilterSubject == nullptr ||
-        cfg_.filter != consumer->FilterSubject || consumer->Durable == nullptr ||
-        cfg_.consumer != consumer->Durable ||
-        (consumer->DeliverSubject != nullptr && consumer->DeliverSubject[0] != '\0')) {
+        cfg_.filter != consumer->FilterSubject ||
+        consumer->Durable == nullptr || cfg_.consumer != consumer->Durable ||
+        (consumer->DeliverSubject != nullptr &&
+         consumer->DeliverSubject[0] != '\0')) {
       throw std::runtime_error(
-          "consumer_requires_matching_durable_pull_explicit_ack_max_pending_one");
+          "consumer_requires_matching_durable_pull_explicit_ack_max_pending_"
+          "one");
     }
     jsSubOptions subscribe;
     jsSubOptions_Init(&subscribe);
@@ -260,8 +277,8 @@ class Gateway {
     subscribe.Consumer = cfg_.consumer.c_str();
     subscribe.ManualAck = true;
     natsSubscription* subscription{};
-    check(js_PullSubscribe(
-        &subscription, js_.get(), cfg_.filter.c_str(), nullptr, nullptr, &subscribe, nullptr));
+    check(js_PullSubscribe(&subscription, js_.get(), cfg_.filter.c_str(),
+                           nullptr, nullptr, &subscribe, nullptr));
     subscription_.reset(subscription);
   }
 
@@ -289,7 +306,8 @@ class Gateway {
         envelope.value("schema", Json()) != "hi/fleet/v1") {
       return result;
     }
-    for (const auto* field : {"correlationId", "taskId", "executionId", "agentId"}) {
+    for (const auto* field :
+         {"correlationId", "taskId", "executionId", "agentId"}) {
       if (envelope.contains(field) && envelope[field].is_string() &&
           identifier(envelope[field].get<std::string>())) {
         result[field] = envelope[field];
@@ -309,34 +327,39 @@ class Gateway {
     return result;
   }
 
-  void observe(const Json& identifiers,
-               std::string_view operation,
-               std::string_view message_subject,
-               std::size_t bytes,
+  void observe(const Json& identifiers, std::string_view operation,
+               std::string_view message_subject, std::size_t bytes,
                std::string_view result) {
     Json observation = identifiers;
     observation["schema"] = "hi/fleet/observation/v1";
-    observation["eventId"] = epoch_ + ":" + std::to_string(++observation_sequence_);
-    observation["sourceId"] = "keystone:" + cfg_.worker + ":" + cfg_.consumer + ":" + epoch_;
+    observation["eventId"] =
+        epoch_ + ":" + std::to_string(++observation_sequence_);
+    observation["sourceId"] =
+        "keystone:" + cfg_.worker + ":" + cfg_.consumer + ":" + epoch_;
     observation["sourceSequence"] = observation_sequence_;
     observation["observedAt"] = now();
-    observation["source"] = operation == "deliver" || operation == "redeliver" ? "Agamemnon"
-                                                                               : "Hephaestus";
-    observation["target"] = operation == "deliver" || operation == "redeliver" ? "Hephaestus"
-                            : operation == "publish"                           ? "Agamemnon"
-                                                                               : "Keystone";
+    observation["source"] = operation == "deliver" || operation == "redeliver"
+                                ? "Agamemnon"
+                                : "Hephaestus";
+    observation["target"] = operation == "deliver" || operation == "redeliver"
+                                ? "Hephaestus"
+                            : operation == "publish" ? "Agamemnon"
+                                                     : "Keystone";
     observation["workerId"] = cfg_.worker;
     observation["generation"] = cfg_.generation;
     observation["transport"] = "nats-jetstream";
     observation["subject"] = message_subject;
     observation["consumerId"] = cfg_.consumer;
     observation["stream"] = cfg_.stream;
-    if (operation == "publish" || operation == "deliver" || operation == "redeliver") {
+    if (operation == "publish" || operation == "deliver" ||
+        operation == "redeliver") {
       observation["bytes"] = bytes;
     }
     observation["operation"] = operation;
     observation["result"] = result;
-    emit({{"schema", kSchema}, {"type", "observation"}, {"observation", observation}});
+    emit({{"schema", kSchema},
+          {"type", "observation"},
+          {"observation", observation}});
   }
 
   Json pull() {
@@ -344,7 +367,8 @@ class Gateway {
       throw std::runtime_error("delivery_pending");
     }
     natsMsgList messages{};
-    const auto status = natsSubscription_Fetch(&messages, subscription_.get(), 1, 1000, nullptr);
+    const auto status = natsSubscription_Fetch(&messages, subscription_.get(),
+                                               1, 1000, nullptr);
     if (status == NATS_TIMEOUT) {
       natsMsgList_Destroy(&messages);
       return {{"ok", true}, {"empty", true}};
@@ -370,25 +394,26 @@ class Gateway {
     }
     pending_bytes_ = static_cast<std::size_t>(length);
     const std::string payload(natsMsg_GetData(pending_.get()), pending_bytes_);
-    // Validate UTF-8 before emitting metadata; payload remains otherwise opaque.
+    // Validate UTF-8 before emitting metadata; payload remains otherwise
+    // opaque.
     static_cast<void>(Json(payload).dump());
     pending_metadata_ = metadata(payload);
     const char* message_id{};
-    if (natsMsgHeader_Get(pending_.get(), "Nats-Msg-Id", &message_id) == NATS_OK &&
+    if (natsMsgHeader_Get(pending_.get(), "Nats-Msg-Id", &message_id) ==
+            NATS_OK &&
         message_id != nullptr && identifier(message_id)) {
       pending_metadata_["messageId"] = message_id;
     }
     jsMsgMetaData* raw_metadata{};
     check(natsMsg_GetMetaData(&raw_metadata, pending_.get()));
-    Handle<jsMsgMetaData, jsMsgMetaData_Destroy> meta(raw_metadata, jsMsgMetaData_Destroy);
+    Handle<jsMsgMetaData, jsMsgMetaData_Destroy> meta(raw_metadata,
+                                                      jsMsgMetaData_Destroy);
     if (!pending_metadata_.contains("messageId")) {
-      pending_metadata_["messageId"] = cfg_.stream + ":" + std::to_string(meta->Sequence.Stream);
+      pending_metadata_["messageId"] =
+          cfg_.stream + ":" + std::to_string(meta->Sequence.Stream);
     }
-    observe(pending_metadata_,
-            meta->NumDelivered > 1 ? "redeliver" : "deliver",
-            pending_subject_,
-            pending_bytes_,
-            "received");
+    observe(pending_metadata_, meta->NumDelivered > 1 ? "redeliver" : "deliver",
+            pending_subject_, pending_bytes_, "received");
     return {{"ok", true},
             {"empty", false},
             {"deliveryId", delivery_},
@@ -413,23 +438,18 @@ class Gateway {
     options.MsgId = message_id.c_str();
     options.MaxWait = 3000;
     jsPubAck* raw_ack{};
-    const auto status = js_Publish(&raw_ack,
-                                   js_.get(),
-                                   destination.c_str(),
-                                   payload.data(),
-                                   static_cast<int>(payload.size()),
-                                   &options,
-                                   nullptr);
+    const auto status =
+        js_Publish(&raw_ack, js_.get(), destination.c_str(), payload.data(),
+                   static_cast<int>(payload.size()), &options, nullptr);
     Handle<jsPubAck, jsPubAck_Destroy> ack(raw_ack, jsPubAck_Destroy);
     auto identifiers = metadata(payload);
     identifiers["messageId"] = message_id;
-    observe(identifiers,
-            "publish",
-            destination,
-            payload.size(),
+    observe(identifiers, "publish", destination, payload.size(),
             status == NATS_OK ? "confirmed" : "unknown");
     check(status);
-    return {{"ok", true}, {"streamSequence", ack->Sequence}, {"duplicate", ack->Duplicate}};
+    return {{"ok", true},
+            {"streamSequence", ack->Sequence},
+            {"duplicate", ack->Duplicate}};
   }
 
   Json acknowledge(const std::string& operation, const std::string& delivery) {
@@ -448,10 +468,7 @@ class Gateway {
     }
     // For NAK/in-progress a flush only confirms transport round-trip, not an
     // explicit JetStream acknowledgement; report the distinction in telemetry.
-    observe(pending_metadata_,
-            operation,
-            pending_subject_,
-            pending_bytes_,
+    observe(pending_metadata_, operation, pending_subject_, pending_bytes_,
             status != NATS_OK    ? "unknown"
             : operation == "ack" ? "confirmed"
                                  : "sent");
@@ -460,7 +477,8 @@ class Gateway {
       pending_.reset();
       delivery_.clear();
     }
-    return {{"ok", true}, {"confirmation", operation == "ack" ? "broker" : "transport"}};
+    return {{"ok", true},
+            {"confirmation", operation == "ack" ? "broker" : "transport"}};
   }
 
   Config cfg_;
@@ -473,20 +491,24 @@ class Gateway {
   Json pending_metadata_;
   // Reverse destruction order keeps the connection alive until delivery and
   // subscription handles are destroyed. None of these destructors ACKs work.
-  Handle<natsConnection, natsConnection_Destroy> connection_{nullptr, natsConnection_Destroy};
+  Handle<natsConnection, natsConnection_Destroy> connection_{
+      nullptr, natsConnection_Destroy};
   Handle<jsCtx, jsCtx_Destroy> js_{nullptr, jsCtx_Destroy};
-  Handle<natsSubscription, natsSubscription_Destroy> subscription_{nullptr,
-                                                                   natsSubscription_Destroy};
+  Handle<natsSubscription, natsSubscription_Destroy> subscription_{
+      nullptr, natsSubscription_Destroy};
   Handle<natsMsg, natsMsg_Destroy> pending_{nullptr, natsMsg_Destroy};
 };
 }  // namespace
 
 int main(int argc, char** argv) {
   if (argc == 2 && std::string_view(argv[1]) == "--help") {
-    std::cout << "keystone-fleet-gateway --stream NAME --consumer DURABLE --subject FILTER\n"
-                 "  --publish-prefix hi.fleet.events.WORKER --worker-id WORKER --generation N\n"
+    std::cout << "keystone-fleet-gateway --stream NAME --consumer DURABLE "
+                 "--subject FILTER\n"
+                 "  --publish-prefix hi.fleet.events.WORKER --worker-id WORKER "
+                 "--generation N\n"
                  "  [--nats-url tls://HOST:PORT] [--allow-loopback-test]\n"
-                 "Authenticated allocation attachment over bounded JSONL stdin/stdout.\n";
+                 "Authenticated allocation attachment over bounded JSONL "
+                 "stdin/stdout.\n";
     return 0;
   }
   std::signal(SIGPIPE, SIG_IGN);
@@ -494,7 +516,8 @@ int main(int argc, char** argv) {
     Gateway gateway(config(argc, argv));
     std::string line;
     while (readFrame(line)) {
-      Json response{{"schema", kSchema}, {"type", "response"}, {"requestId", nullptr}};
+      Json response{
+          {"schema", kSchema}, {"type", "response"}, {"requestId", nullptr}};
       try {
         const auto request = Json::parse(line);
         if (!request.is_object() || text(request, "schema") != kSchema ||
@@ -513,7 +536,8 @@ int main(int argc, char** argv) {
     return 0;
   } catch (const std::exception&) {
     // Configuration and framing errors terminate the attachment without ACK.
-    std::cerr << "keystone-fleet-gateway: startup, framing, or attachment failure\n";
+    std::cerr
+        << "keystone-fleet-gateway: startup, framing, or attachment failure\n";
     return 2;
   }
 }
