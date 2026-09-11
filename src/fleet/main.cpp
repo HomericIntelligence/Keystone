@@ -1,4 +1,6 @@
 #include <nats.h>
+#include <signal.h>
+#include <status.h>
 
 #if defined(__APPLE__)
 #include <crt_externs.h>
@@ -13,17 +15,21 @@
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
+#include <exception>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <random>
 #include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <utility>
 
 namespace {
 using Json = nlohmann::json;
@@ -43,7 +49,7 @@ void check(natsStatus status) {
 
 bool identifier(std::string_view value) {
   return !value.empty() && value.size() <= 128 &&
-         std::all_of(value.begin(), value.end(), [](unsigned char c) {
+         std::ranges::all_of(value, [](unsigned char c) {
            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
                   (c >= '0' && c <= '9') || c == '_' || c == '-' || c == ':' ||
                   c == '.';
@@ -200,7 +206,9 @@ std::string now() {
   const auto TIMESTAMP = std::chrono::system_clock::now();
   const auto SECONDS = std::chrono::system_clock::to_time_t(TIMESTAMP);
   std::tm utc{};
-  gmtime_r(&SECONDS, &utc);
+  if (gmtime_r(&SECONDS, &utc) == nullptr) {
+    throw std::runtime_error("clock_conversion_failed");
+  }
   std::ostringstream output;
   output << std::put_time(&utc, "%Y-%m-%dT%H:%M:%S") << '.' << std::setfill('0')
          << std::setw(3)
@@ -248,24 +256,24 @@ class Gateway {
   explicit Gateway(Config configuration) : cfg(std::move(configuration)) {
     natsOptions* raw_options{};
     check(natsOptions_Create(&raw_options));
-    Handle<natsOptions, natsOptions_Destroy> options(raw_options,
-                                                     natsOptions_Destroy);
-    check(natsOptions_SetURL(options.get(), cfg.url.c_str()));
-    check(natsOptions_SetTimeout(options.get(), 3000));
-    check(natsOptions_SetMaxReconnect(options.get(), 0));
-    check(natsOptions_SetName(options.get(), "keystone-fleet-gateway"));
+    const Handle<natsOptions, natsOptions_Destroy> OPTIONS(raw_options,
+                                                           natsOptions_Destroy);
+    check(natsOptions_SetURL(OPTIONS.get(), cfg.url.c_str()));
+    check(natsOptions_SetTimeout(OPTIONS.get(), 3000));
+    check(natsOptions_SetMaxReconnect(OPTIONS.get(), 0));
+    check(natsOptions_SetName(OPTIONS.get(), "keystone-fleet-gateway"));
     if (!cfg.loopback_test) {
-      check(natsOptions_SetSecure(options.get(), true));
+      check(natsOptions_SetSecure(OPTIONS.get(), true));
       if (!cfg.ca.empty()) {
-        check(natsOptions_LoadCATrustedCertificates(options.get(),
+        check(natsOptions_LoadCATrustedCertificates(OPTIONS.get(),
                                                     cfg.ca.c_str()));
       }
       if (!cfg.credentials.empty()) {
         check(natsOptions_SetUserCredentialsFromFiles(
-            options.get(), cfg.credentials.c_str(), nullptr));
+            OPTIONS.get(), cfg.credentials.c_str(), nullptr));
       }
       if (!cfg.cert.empty() && !cfg.key.empty()) {
-        check(natsOptions_LoadCertificatesChain(options.get(), cfg.cert.c_str(),
+        check(natsOptions_LoadCertificatesChain(OPTIONS.get(), cfg.cert.c_str(),
                                                 cfg.key.c_str()));
       } else if (!cfg.cert.empty() || !cfg.key.empty()) {
         throw std::runtime_error("incomplete_client_certificate");
@@ -274,7 +282,7 @@ class Gateway {
       }
     }
     natsConnection* raw_connection{};
-    check(natsConnection_Connect(&raw_connection, options.get()));
+    check(natsConnection_Connect(&raw_connection, OPTIONS.get()));
     connection.reset(raw_connection);
     jsCtx* context{};
     jsOptions options_js;
@@ -365,20 +373,22 @@ class Gateway {
     Json observation = identifiers;
     observation["schema"] = "hi/fleet/observation/v1";
     observation["eventId"] =
-        EPOCH + ":" + std::to_string(++observation_sequence);
+        epoch + ":" + std::to_string(++observation_sequence);
     observation["sourceId"] =
-        "keystone:" + cfg.worker + ":" + cfg.consumer + ":" + EPOCH;
+        "keystone:" + cfg.worker + ":" + cfg.consumer + ":" + epoch;
     observation["sourceSequence"] = observation_sequence;
     observation["observedAt"] = now();
     observation["source"] =
         fact.operation == "deliver" || fact.operation == "redeliver"
             ? "Agamemnon"
             : "Hephaestus";
-    observation["target"] =
-        fact.operation == "deliver" || fact.operation == "redeliver"
-            ? "Hephaestus"
-        : fact.operation == "publish" ? "Agamemnon"
-                                      : "Keystone";
+    if (fact.operation == "deliver" || fact.operation == "redeliver") {
+      observation["target"] = "Hephaestus";
+    } else if (fact.operation == "publish") {
+      observation["target"] = "Agamemnon";
+    } else {
+      observation["target"] = "Keystone";
+    }
     observation["workerId"] = cfg.worker;
     observation["generation"] = cfg.generation;
     observation["transport"] = "nats-jetstream";
@@ -418,7 +428,7 @@ class Gateway {
     pending.reset(*messages.Msgs);
     *messages.Msgs = nullptr;
     natsMsgList_Destroy(&messages);
-    delivery = EPOCH + ":d:" + std::to_string(++delivery_sequence);
+    delivery = epoch + ":d:" + std::to_string(++delivery_sequence);
     const char* raw_subject = natsMsg_GetSubject(pending.get());
     pending_subject = raw_subject == nullptr ? "" : raw_subject;
     const int LENGTH = natsMsg_GetDataLength(pending.get());
@@ -509,12 +519,14 @@ class Gateway {
     }
     // For NAK/in-progress a flush only confirms transport round-trip, not an
     // explicit JetStream acknowledgement; report the distinction in telemetry.
+    std::string_view result = "unknown";
+    if (status == NATS_OK) {
+      result = operation == "ack" ? "confirmed" : "sent";
+    }
     observe(pending_metadata, {.operation = operation,
                                .subject = pending_subject,
                                .bytes = pending_bytes,
-                               .result = status != NATS_OK    ? "unknown"
-                                         : operation == "ack" ? "confirmed"
-                                                              : "sent"});
+                               .result = result});
     check(status);
     if (operation != "inProgress") {
       pending.reset();
@@ -525,7 +537,7 @@ class Gateway {
   }
 
   Config cfg;
-  const std::string EPOCH{newEpoch()};
+  std::string epoch{newEpoch()};
   std::uint64_t observation_sequence{};
   std::uint64_t delivery_sequence{};
   std::string delivery;
