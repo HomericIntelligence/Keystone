@@ -575,6 +575,9 @@ endif()
 # =====================================================================
 include(GNUInstallDirs)
 
+# Allocation-local stdio attachment; no scheduler, stream, or consumer creation.
+add_subdirectory(src/fleet)
+
 # Install runtime libraries (keystone package)
 install(
   TARGETS keystone_core keystone_concurrency keystone_simulation

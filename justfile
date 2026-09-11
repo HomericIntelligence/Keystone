@@ -3,6 +3,31 @@ set shell := ["bash", "-c"]
 default:
   @just --list
 
+# Focused allocation-gateway build; only transport dependencies, at most 2 jobs.
+fleet-build:
+    uv run cmake -S src/fleet -B build/fleet -DCMAKE_BUILD_TYPE=Debug
+    uv run cmake --build build/fleet --parallel 2
+
+# Starts private loopback NATS instances; requires nats-server on PATH.
+fleet-test: fleet-build
+    uv run ctest --test-dir build/fleet --output-on-failure
+
+# Re-run the built gateway tests without consuming another build slot.
+fleet-test-only:
+    uv run ctest --test-dir build/fleet --output-on-failure
+
+fleet-format:
+    uvx --from clang-format==20.1.8 clang-format -i src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
+fleet-format-check:
+    uvx --from clang-format==20.1.8 clang-format --dry-run --Werror src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
+fleet-cmake-format:
+    uvx --from cmakelang==0.6.13 cmake-format -i src/fleet/CMakeLists.txt
+
+fleet-docs-check:
+    npx --yes markdownlint-cli@0.39.0 --config .markdownlint.yaml docs/runbooks/fleet-gateway.md CHANGELOG.md
+
 # Bootstrap the local notes/ scratch workspace (not version-controlled).
 # Required for .claude/agents/* workflows that write to /notes/issues/<N>.
 setup-notes:

@@ -11,6 +11,12 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ## [Unreleased]
 
+### Added
+
+- Add the allocation-local Fleet JSONL gateway for existing durable JetStream
+  consumers, explicit acknowledgments, bounded publications, and metadata-only
+  dashboard observations. See `docs/runbooks/fleet-gateway.md`.
+
 ### Changed
 
 - `build`: migrate the build toolchain from pixi/conda to uv (Odysseus ADR-018,
