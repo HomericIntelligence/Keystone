@@ -22,8 +22,13 @@ fleet-format:
 fleet-format-check:
     uvx --from clang-format==18.1.0 clang-format --style=Google --dry-run --Werror src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
 
+# Check owned gateway code with the repository clang-tidy policy.
+fleet-tidy:
+    uv run cmake -S src/fleet -B build/fleet-tidy -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    clang-tidy -p build/fleet-tidy --warnings-as-errors='*' --header-filter='(^|/)(src/fleet|tests/integration)/' src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
 fleet-cmake-format:
-    uvx --from cmakelang==0.6.13 cmake-format -i src/fleet/CMakeLists.txt
+    uvx --from cmakelang==0.6.13 cmake-format -i src/fleet/CMakeLists.txt tests/integration/fleet_install.cmake
 
 fleet-docs-check:
     npx --yes markdownlint-cli@0.39.0 --config .markdownlint.yaml docs/runbooks/fleet-gateway.md CHANGELOG.md

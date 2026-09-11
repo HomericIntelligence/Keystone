@@ -123,7 +123,7 @@ run_lint() {
     # Lint — Keystone is a pure C++20 library (ADR-015/016): the only Python is
     # conanfile.py + scripts/, so mypy targets those (main's CI dropped ruff)
     # and pre-commit covers clang-format/yamllint/trailing-whitespace.
-    run_in_container "uv run mypy conanfile.py && uv run pre-commit clean && uv run pre-commit run --all-files --show-diff-on-failure"
+    run_in_container "uv run mypy conanfile.py && uv run pre-commit clean && uv run pre-commit run --all-files --show-diff-on-failure && just fleet-tidy"
 }
 
 run_markdownlint() {
@@ -153,7 +153,7 @@ run_unit-tests() {
 run_integration-tests() {
     # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
     # native CI job, running the Makefile directly inside the CI image.
-    run_in_container "uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.lsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.lsan"
+    run_in_container "command -v nats-server && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= CMAKE_FEATURE_FLAGS=-DENABLE_FLEET_INTEGRATION_TESTS=ON compile.debug.asan test.debug.asan compile.debug.ubsan test.debug.ubsan compile.debug.tsan test.debug.tsan compile.debug.lsan test.debug.lsan"
 }
 
 run_schema-validation() {

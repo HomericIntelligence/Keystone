@@ -1,6 +1,8 @@
+#include <gtest/gtest.h>
+
+// The primary test interface precedes the POSIX process/transport interfaces.
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <gtest/gtest.h>
 #include <nats.h>
 #include <poll.h>
 #include <spawn.h>
@@ -8,6 +10,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#include <crt_externs.h>
+#endif
+
+#include <array>
+#include <bit>
 #include <chrono>
 #include <csignal>
 #include <filesystem>
@@ -16,73 +24,102 @@
 #include <thread>
 #include <vector>
 
-extern char** environ;
-
 namespace {
 using Json = nlohmann::json;
 using namespace std::chrono_literals;
 
+std::array<int, 2> makePipe() {
+  std::array<int, 2> descriptors{};
+#if defined(__linux__)
+  if (pipe2(descriptors.data(), O_CLOEXEC) != 0) {
+    throw std::runtime_error("pipe failed");
+  }
+#else
+  if (pipe(descriptors.data()) != 0) {
+    throw std::runtime_error("pipe failed");
+  }
+  for (int descriptor : descriptors) {
+    if (fcntl(descriptor, F_SETFD, FD_CLOEXEC) != 0) {
+      close(descriptors[0]);
+      close(descriptors[1]);
+      throw std::runtime_error("close-on-exec setup failed");
+    }
+  }
+#endif
+  return descriptors;
+}
+
 class Child {
  public:
-  explicit Child(const std::vector<std::string>& arguments) {
-    int input[2];
-    int output[2];
-    if (pipe(input) != 0 || pipe(output) != 0) {
-      throw std::runtime_error("pipe failed");
-    }
-    for (int descriptor : {input[0], input[1], output[0], output[1]}) {
-      if (fcntl(descriptor, F_SETFD, FD_CLOEXEC) != 0) {
-        throw std::runtime_error("close-on-exec setup failed");
-      }
+  explicit Child(std::vector<std::string> arguments) {
+    const auto INPUT_PIPE = makePipe();
+    std::array<int, 2> output_pipe{};
+    try {
+      output_pipe = makePipe();
+    } catch (...) {
+      close(INPUT_PIPE[0]);
+      close(INPUT_PIPE[1]);
+      throw;
     }
     std::vector<char*> argv;
-    for (const auto& arg : arguments) {
-      argv.push_back(const_cast<char*>(arg.c_str()));
+    argv.reserve(arguments.size() + 1);
+    for (auto& arg : arguments) {
+      argv.push_back(arg.data());
     }
     argv.push_back(nullptr);
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
-    posix_spawn_file_actions_adddup2(&actions, input[0], STDIN_FILENO);
-    posix_spawn_file_actions_adddup2(&actions, output[1], STDOUT_FILENO);
-    for (int descriptor : {input[0], input[1], output[0], output[1]}) {
+    posix_spawn_file_actions_adddup2(&actions, INPUT_PIPE[0], STDIN_FILENO);
+    posix_spawn_file_actions_adddup2(&actions, output_pipe[1], STDOUT_FILENO);
+    for (int descriptor :
+         {INPUT_PIPE[0], INPUT_PIPE[1], output_pipe[0], output_pipe[1]}) {
       posix_spawn_file_actions_addclose(&actions, descriptor);
     }
-    const int spawned =
-        posix_spawnp(&pid_, argv[0], &actions, nullptr, argv.data(), environ);
+#if defined(__APPLE__)
+    auto** process_environment = *_NSGetEnviron();
+#else
+    auto** process_environment = environ;
+#endif
+    const int SPAWNED = posix_spawnp(&pid, argv[0], &actions, nullptr,
+                                     argv.data(), process_environment);
     posix_spawn_file_actions_destroy(&actions);
-    close(input[0]);
-    close(output[1]);
-    input_ = input[1];
-    output_ = output[0];
-    if (spawned != 0) {
-      close(input_);
-      close(output_);
+    close(INPUT_PIPE[0]);
+    close(output_pipe[1]);
+    input = INPUT_PIPE[1];
+    output = output_pipe[0];
+    if (SPAWNED != 0) {
+      close(input);
+      close(output);
       throw std::runtime_error("process could not start");
     }
   }
+  Child(const Child&) = delete;
+  Child& operator=(const Child&) = delete;
+  Child(Child&&) = delete;
+  Child& operator=(Child&&) = delete;
   ~Child() {
     closeInput();
-    close(output_);
-    if (pid_ > 0) {
-      kill(pid_, SIGTERM);
-      waitpid(pid_, nullptr, 0);
+    close(output);
+    if (pid > 0) {
+      kill(pid, SIGTERM);
+      waitpid(pid, nullptr, 0);
     }
   }
   void closeInput() {
-    if (input_ >= 0) {
-      close(input_);
-      input_ = -1;
+    if (input >= 0) {
+      close(input);
+      input = -1;
     }
   }
-  void send(const Json& value) {
-    const auto bytes = value.dump() + '\n';
-    if (!sendRaw(bytes)) {
+  void send(const Json& value) const {
+    const auto BYTES = value.dump() + '\n';
+    if (!sendRaw(BYTES)) {
       throw std::runtime_error("write failed");
     }
   }
-  bool sendRaw(std::string_view bytes) {
+  [[nodiscard]] bool sendRaw(std::string_view bytes) const {
     while (!bytes.empty()) {
-      auto written = write(input_, bytes.data(), bytes.size());
+      auto written = write(input, bytes.data(), bytes.size());
       if (written <= 0) {
         return false;
       }
@@ -93,19 +130,19 @@ class Child {
   Json receive() {
     std::string line;
     for (;;) {
-      pollfd descriptor{output_, POLLIN, 0};
+      pollfd descriptor{output, POLLIN, 0};
       if (poll(&descriptor, 1, 5000) <= 0) {
         throw std::runtime_error("gateway response timed out");
       }
       char character{};
-      if (read(output_, &character, 1) != 1) {
+      if (read(output, &character, 1) != 1) {
         throw std::runtime_error("gateway closed output");
       }
       if (character == '\n') {
         return Json::parse(line);
       }
       line += character;
-      if (line.size() > 1024 * 1024) {
+      if (line.size() > 1024UL * 1024UL) {
         throw std::runtime_error("response exceeded frame limit");
       }
     }
@@ -126,16 +163,16 @@ class Child {
   int finish() {
     closeInput();
     int status{};
-    waitpid(pid_, &status, 0);
-    pid_ = -1;
+    waitpid(pid, &status, 0);
+    pid = -1;
     return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
   }
   std::vector<Json> observations;
 
  private:
-  pid_t pid_{};
-  int input_{-1};
-  int output_{-1};
+  pid_t pid{};
+  int input{-1};
+  int output{-1};
 };
 
 class FleetGateway : public ::testing::Test {
@@ -143,45 +180,43 @@ class FleetGateway : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(std::filesystem::exists(FLEET_GATEWAY_BINARY))
         << "Fleet's allocation attachment executable has not been implemented";
-    std::signal(SIGPIPE, SIG_IGN);
-    char pattern[] = "/tmp/keystone-fleet-test-XXXXXX";
-    auto* path = mkdtemp(pattern);
+    ASSERT_NE(std::signal(SIGPIPE, SIG_IGN), SIG_ERR);
+    auto pattern = std::to_array("/tmp/keystone-fleet-test-XXXXXX");
+    auto* path = mkdtemp(pattern.data());
     ASSERT_NE(path, nullptr);
-    directory_ = path;
+    directory = path;
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     ASSERT_GE(socket_fd, 0);
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     ASSERT_EQ(
-        bind(socket_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)),
+        bind(socket_fd, std::bit_cast<sockaddr*>(&address), sizeof(address)),
         0);
     socklen_t size = sizeof(address);
-    ASSERT_EQ(
-        getsockname(socket_fd, reinterpret_cast<sockaddr*>(&address), &size),
-        0);
-    const auto port = std::to_string(ntohs(address.sin_port));
+    ASSERT_EQ(getsockname(socket_fd, std::bit_cast<sockaddr*>(&address), &size),
+              0);
+    const auto PORT = std::to_string(ntohs(address.sin_port));
     close(socket_fd);
-    url_ = "nats://127.0.0.1:" + port;
-    server_ = std::make_unique<Child>(
-        std::vector<std::string>{"nats-server", "-js", "-a", "127.0.0.1", "-p",
-                                 port, "-sd", directory_});
+    url = "nats://127.0.0.1:" + PORT;
+    server = std::make_unique<Child>(std::vector<std::string>{
+        "nats-server", "-js", "-a", "127.0.0.1", "-p", PORT, "-sd", directory});
     for (int attempt = 0; attempt < 100; ++attempt) {
-      if (natsConnection_ConnectTo(&connection_, url_.c_str()) == NATS_OK) {
+      if (natsConnection_ConnectTo(&connection, url.c_str()) == NATS_OK) {
         break;
       }
       std::this_thread::sleep_for(20ms);
     }
-    ASSERT_NE(connection_, nullptr) << "isolated nats-server did not start";
-    ASSERT_EQ(natsConnection_JetStream(&js_, connection_, nullptr), NATS_OK);
+    ASSERT_NE(connection, nullptr) << "isolated nats-server did not start";
+    ASSERT_EQ(natsConnection_JetStream(&js, connection, nullptr), NATS_OK);
     jsStreamConfig stream;
     jsStreamConfig_Init(&stream);
     stream.Name = "homeric-myrmidon";
-    const char* subjects[] = {"hi.myrmidon.>", "hi.fleet.events.>"};
-    stream.Subjects = subjects;
+    std::array<const char*, 2> subjects{"hi.myrmidon.>", "hi.fleet.events.>"};
+    stream.Subjects = subjects.data();
     stream.SubjectsLen = 2;
     stream.Storage = js_MemoryStorage;
-    ASSERT_EQ(js_AddStream(nullptr, js_, &stream, nullptr, nullptr), NATS_OK);
+    ASSERT_EQ(js_AddStream(nullptr, js, &stream, nullptr, nullptr), NATS_OK);
     jsConsumerConfig consumer;
     jsConsumerConfig_Init(&consumer);
     consumer.Durable = "agent-one";
@@ -189,60 +224,80 @@ class FleetGateway : public ::testing::Test {
     consumer.AckPolicy = js_AckExplicit;
     consumer.AckWait = 500000000;
     consumer.MaxAckPending = 1;
-    ASSERT_EQ(js_AddConsumer(nullptr, js_, "homeric-myrmidon", &consumer,
+    ASSERT_EQ(js_AddConsumer(nullptr, js, "homeric-myrmidon", &consumer,
                              nullptr, nullptr),
               NATS_OK);
   }
   void TearDown() override {
-    jsCtx_Destroy(js_);
-    natsConnection_Destroy(connection_);
-    server_.reset();
-    if (!directory_.empty()) {
-      std::filesystem::remove_all(directory_);
+    jsCtx_Destroy(js);
+    natsConnection_Destroy(connection);
+    server.reset();
+    if (!directory.empty()) {
+      std::filesystem::remove_all(directory);
     }
   }
   std::unique_ptr<Child> gateway(const std::string& consumer = "agent-one") {
     return std::make_unique<Child>(std::vector<std::string>{
-        FLEET_GATEWAY_BINARY, "--nats-url", url_, "--allow-loopback-test",
+        FLEET_GATEWAY_BINARY, "--nats-url", url, "--allow-loopback-test",
         "--stream", "homeric-myrmidon", "--consumer", consumer, "--subject",
         "hi.myrmidon.cpp.contributor.task.*", "--publish-prefix",
         "hi.fleet.events.worker-one", "--worker-id", "worker-one",
         "--generation", "7"});
   }
   void publishWork() {
-    const auto bytes = envelope_.dump();
+    const auto BYTES = envelope.dump();
     ASSERT_EQ(
-        js_Publish(nullptr, js_, "hi.myrmidon.cpp.contributor.task.task-one",
-                   bytes.data(), static_cast<int>(bytes.size()), nullptr,
+        js_Publish(nullptr, js, "hi.myrmidon.cpp.contributor.task.task-one",
+                   BYTES.data(), static_cast<int>(BYTES.size()), nullptr,
                    nullptr),
         NATS_OK);
   }
-  Json pull(Child& child) { return child.request({{"operation", "pull"}}); }
-  std::string directory_;
-  std::string url_;
-  natsConnection* connection_{};
-  jsCtx* js_{};
-  std::unique_ptr<Child> server_;
-  Json envelope_{{"schema", "hi/fleet/v1"},
-                 {"commandId", "command-one"},
-                 {"correlationId", "correlation-one"},
-                 {"taskId", "task-one"},
-                 {"agentId", "agent-one"},
-                 {"generation", 7},
-                 {"operation", "start"},
-                 {"payload", {{"prompt", "DO-NOT-LOG-SECRET"}}}};
+  static Json pull(Child& child) {
+    return child.request({{"operation", "pull"}});
+  }
+  std::string directory;
+  std::string url;
+  natsConnection* connection{};
+  jsCtx* js{};
+  std::unique_ptr<Child> server;
+  Json envelope{{"schema", "hi/fleet/v1"},
+                {"commandId", "command-one"},
+                {"correlationId", "correlation-one"},
+                {"taskId", "task-one"},
+                {"agentId", "agent-one"},
+                {"generation", 7},
+                {"operation", "start"},
+                {"payload", {{"prompt", "DO-NOT-LOG-SECRET"}}}};
 };
+
+TEST_F(FleetGateway, AcceptsBrokerEndpointFromStartupEnvironment) {
+  publishWork();
+  Child child({"/usr/bin/env", "KEYSTONE_NATS_URL=" + url, FLEET_GATEWAY_BINARY,
+               "--allow-loopback-test", "--stream", "homeric-myrmidon",
+               "--consumer", "agent-one", "--subject",
+               "hi.myrmidon.cpp.contributor.task.*", "--publish-prefix",
+               "hi.fleet.events.worker-one", "--worker-id", "worker-one",
+               "--generation", "7"});
+  const auto RESPONSE = pull(child);
+  ASSERT_EQ(RESPONSE.at("ok"), true);
+  EXPECT_EQ(Json::parse(RESPONSE.at("payload").get<std::string>()), envelope);
+  EXPECT_EQ(child
+                .request({{"operation", "ack"},
+                          {"deliveryId", RESPONSE.at("deliveryId")}})
+                .at("confirmation"),
+            "broker");
+}
 
 TEST_F(FleetGateway, DeliversOpaqueEnvelopeAndAcknowledgesOnlyOnRequest) {
   publishWork();
   auto child = gateway();
-  const auto response = pull(*child);
-  ASSERT_EQ(response.at("ok"), true);
-  EXPECT_EQ(Json::parse(response.at("payload").get<std::string>()), envelope_);
-  EXPECT_EQ(response.at("subject"),
+  const auto RESPONSE = pull(*child);
+  ASSERT_EQ(RESPONSE.at("ok"), true);
+  EXPECT_EQ(Json::parse(RESPONSE.at("payload").get<std::string>()), envelope);
+  EXPECT_EQ(RESPONSE.at("subject"),
             "hi.myrmidon.cpp.contributor.task.task-one");
-  EXPECT_EQ(response.at("numDelivered"), 1);
-  const auto delivery = response.at("deliveryId");
+  EXPECT_EQ(RESPONSE.at("numDelivered"), 1);
+  const auto& delivery = RESPONSE.at("deliveryId");
   EXPECT_EQ(pull(*child).at("ok"), false);
   EXPECT_EQ(child->request({{"operation", "ack"}, {"deliveryId", "foreign"}})
                 .at("ok"),
@@ -255,7 +310,7 @@ TEST_F(FleetGateway, DeliversOpaqueEnvelopeAndAcknowledgesOnlyOnRequest) {
       child->request({{"operation", "ack"}, {"deliveryId", delivery}}).at("ok"),
       true);
   jsConsumerInfo* info{};
-  ASSERT_EQ(js_GetConsumerInfo(&info, js_, "homeric-myrmidon", "agent-one",
+  ASSERT_EQ(js_GetConsumerInfo(&info, js, "homeric-myrmidon", "agent-one",
                                nullptr, nullptr),
             NATS_OK);
   EXPECT_EQ(info->NumAckPending, 0);
@@ -271,7 +326,7 @@ TEST_F(FleetGateway, DeliversOpaqueEnvelopeAndAcknowledgesOnlyOnRequest) {
   EXPECT_FALSE(observation.at("observedAt").get<std::string>().empty());
   EXPECT_EQ(Json(child->observations).dump().find("DO-NOT-LOG-SECRET"),
             std::string::npos);
-  EXPECT_EQ(observation.at("bytes"), envelope_.dump().size());
+  EXPECT_EQ(observation.at("bytes"), envelope.dump().size());
   EXPECT_FALSE(child->observations.back().contains("bytes"))
       << "ACK wire size was not measured and must not reuse payload length";
   EXPECT_EQ(child->finish(), 0);
@@ -307,7 +362,7 @@ TEST_F(FleetGateway, RejectsPublishOutsideConfiguredBoundaryAndDeduplicates) {
   auto child = gateway();
   Json publish{{"operation", "publish"},
                {"subject", "hi.fleet.events.worker-one"},
-               {"payload", envelope_.dump()},
+               {"payload", envelope.dump()},
                {"messageId", "event-one"}};
   auto rejected = publish;
   rejected["subject"] = "hi.fleet.events.worker-one-foreign";
@@ -326,7 +381,7 @@ TEST_F(FleetGateway, RejectsMissingConsumerWithoutCreatingOne) {
   auto child = gateway("missing-agent");
   EXPECT_NE(child->finish(), 0);
   jsConsumerInfo* info{};
-  EXPECT_EQ(js_GetConsumerInfo(&info, js_, "homeric-myrmidon", "missing-agent",
+  EXPECT_EQ(js_GetConsumerInfo(&info, js, "homeric-myrmidon", "missing-agent",
                                nullptr, nullptr),
             NATS_NOT_FOUND);
   jsConsumerInfo_Destroy(info);
@@ -335,33 +390,33 @@ TEST_F(FleetGateway, RejectsMissingConsumerWithoutCreatingOne) {
 TEST_F(FleetGateway, NakPermitsBrokerRedelivery) {
   publishWork();
   auto child = gateway();
-  const auto first = pull(*child);
-  ASSERT_EQ(first.at("ok"), true);
+  const auto FIRST = pull(*child);
+  ASSERT_EQ(FIRST.at("ok"), true);
   EXPECT_EQ(child
                 ->request({{"operation", "nak"},
-                           {"deliveryId", first.at("deliveryId")}})
+                           {"deliveryId", FIRST.at("deliveryId")}})
                 .at("ok"),
             true);
-  const auto second = pull(*child);
-  ASSERT_EQ(second.at("ok"), true);
-  EXPECT_GE(second.at("numDelivered").get<int>(), 2);
+  const auto SECOND = pull(*child);
+  ASSERT_EQ(SECOND.at("ok"), true);
+  EXPECT_GE(SECOND.at("numDelivered").get<int>(), 2);
 }
 
 TEST_F(FleetGateway, InProgressDoesNotCompleteTheMessage) {
   publishWork();
   auto child = gateway();
-  const auto first = pull(*child);
-  ASSERT_EQ(first.at("ok"), true);
+  const auto FIRST = pull(*child);
+  ASSERT_EQ(FIRST.at("ok"), true);
   for (int count = 0; count < 3; ++count) {
     std::this_thread::sleep_for(250ms);
     EXPECT_EQ(child
                   ->request({{"operation", "inProgress"},
-                             {"deliveryId", first.at("deliveryId")}})
+                             {"deliveryId", FIRST.at("deliveryId")}})
                   .at("ok"),
               true);
   }
   jsConsumerInfo* info{};
-  ASSERT_EQ(js_GetConsumerInfo(&info, js_, "homeric-myrmidon", "agent-one",
+  ASSERT_EQ(js_GetConsumerInfo(&info, js, "homeric-myrmidon", "agent-one",
                                nullptr, nullptr),
             NATS_OK);
   EXPECT_EQ(info->NumAckPending, 1);
@@ -369,7 +424,7 @@ TEST_F(FleetGateway, InProgressDoesNotCompleteTheMessage) {
   jsConsumerInfo_Destroy(info);
   EXPECT_EQ(child
                 ->request({{"operation", "ack"},
-                           {"deliveryId", first.at("deliveryId")}})
+                           {"deliveryId", FIRST.at("deliveryId")}})
                 .at("ok"),
             true);
 }
@@ -381,7 +436,7 @@ TEST_F(FleetGateway, SeparateLogicalConsumersCanHoldWorkConcurrently) {
   consumer.FilterSubject = "hi.myrmidon.cpp.contributor.task.*";
   consumer.AckPolicy = js_AckExplicit;
   consumer.MaxAckPending = 1;
-  ASSERT_EQ(js_AddConsumer(nullptr, js_, "homeric-myrmidon", &consumer, nullptr,
+  ASSERT_EQ(js_AddConsumer(nullptr, js, "homeric-myrmidon", &consumer, nullptr,
                            nullptr),
             NATS_OK);
   publishWork();
@@ -401,12 +456,12 @@ TEST_F(FleetGateway, IncompleteFrameCannotPublishOnEof) {
                {"requestId", "request-one"},
                {"operation", "publish"},
                {"subject", "hi.fleet.events.worker-one"},
-               {"payload", envelope_.dump()},
+               {"payload", envelope.dump()},
                {"messageId", "event-one"}};
   ASSERT_TRUE(child->sendRaw(command.dump()));
   EXPECT_EQ(child->finish(), 2);
   jsStreamInfo* info{};
-  ASSERT_EQ(js_GetStreamInfo(&info, js_, "homeric-myrmidon", nullptr, nullptr),
+  ASSERT_EQ(js_GetStreamInfo(&info, js, "homeric-myrmidon", nullptr, nullptr),
             NATS_OK);
   EXPECT_EQ(info->State.Msgs, 0);
   jsStreamInfo_Destroy(info);
@@ -422,9 +477,9 @@ TEST_F(FleetGateway, InvalidJsonDoesNotLeakContentAndSubsequentRequestsWork) {
   publishWork();
   auto child = gateway();
   ASSERT_TRUE(child->sendRaw("{DO-NOT-LOG-SECRET}\n"));
-  const auto error = child->receive();
-  EXPECT_EQ(error.at("ok"), false);
-  EXPECT_EQ(error.dump().find("DO-NOT-LOG-SECRET"), std::string::npos);
+  const auto ERROR = child->receive();
+  EXPECT_EQ(ERROR.at("ok"), false);
+  EXPECT_EQ(ERROR.dump().find("DO-NOT-LOG-SECRET"), std::string::npos);
   EXPECT_EQ(pull(*child).at("ok"), true);
 }
 
@@ -434,7 +489,7 @@ TEST_F(FleetGateway, RejectsConsumerWithoutExplicitAcknowledgments) {
   consumer.Durable = "unsafe-agent";
   consumer.FilterSubject = "hi.myrmidon.cpp.contributor.task.*";
   consumer.AckPolicy = js_AckNone;
-  ASSERT_EQ(js_AddConsumer(nullptr, js_, "homeric-myrmidon", &consumer, nullptr,
+  ASSERT_EQ(js_AddConsumer(nullptr, js, "homeric-myrmidon", &consumer, nullptr,
                            nullptr),
             NATS_OK);
   auto child = gateway("unsafe-agent");

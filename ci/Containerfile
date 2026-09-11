@@ -85,6 +85,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     g++ \
     cmake \
     ninja-build \
+    clang-tidy \
+    libssl-dev \
     git \
     curl \
     ca-certificates \
@@ -96,6 +98,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     nodejs \
     npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Private loopback brokers for the Fleet gateway sanitizer tests.
+RUN curl -fsSL --retry 5 --retry-all-errors \
+    https://github.com/nats-io/nats-server/releases/download/v2.10.24/nats-server-v2.10.24-linux-amd64.tar.gz \
+    -o /tmp/nats-server.tar.gz \
+    && printf '%s  %s\n' ee6500f364e3a741b496ae0296c04f2a9d53bbaabac457104ac74596b4a59d85 /tmp/nats-server.tar.gz | sha256sum --check \
+    && tar xzf /tmp/nats-server.tar.gz -C /usr/local/bin --strip-components=1 nats-server-v2.10.24-linux-amd64/nats-server \
+    && rm /tmp/nats-server.tar.gz
 
 # markdownlint-cli2 (markdownlint gate) — npm tool matching the native CI job
 # (DavidAnson/markdownlint-cli2-action). Not available on PyPI.

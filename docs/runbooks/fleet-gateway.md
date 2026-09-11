@@ -11,7 +11,10 @@ submit Slurm jobs, provide an agent runtime, or make task-ownership decisions.
 
 1. Build with `just fleet-build`. The executable is
    `build/fleet/bin/keystone-fleet-gateway`. The normal Keystone build also includes
-   and installs it.
+   and installs it. The runtime component includes the shared NATS library and
+   its SONAME links. The gateway uses a relative library search path, so the
+   installed `bin` and `lib` directories must move together. OpenSSL and the
+   platform C/C++ runtime remain system dependencies.
 2. Provision the canonical Keystone stream and a durable **pull** consumer using
    the existing deployment process. Require explicit acknowledgment,
    `MaxAckPending=1`, and the exact configured filter. The gateway refuses an absent
@@ -160,12 +163,16 @@ backpressure stops that binding without creating additional work deliveries.
 1. Put `nats-server` on PATH and run `just fleet-test`. It builds at most two jobs
    concurrently and launches fresh private loopback JetStream servers in temporary
    directories. `just fleet-test-only` reruns the already-built tests.
-2. Run `just fleet-format-check`. The focused recipe uses pinned clang-format
-   tooling. Standard repository format/lint/sanitizer checks still apply before
-   merging.
+2. Run `just fleet-format-check` and `just fleet-tidy`. The first recipe uses
+   pinned clang-format tooling. The second needs system clang-tidy and uses the
+   repository policy with warnings treated as errors.
 3. In a full Keystone build, opt in with
-   `-DENABLE_FLEET_INTEGRATION_TESTS=ON`; the existing non-integration test gate does
-   not require a local server installation.
+   `-DENABLE_FLEET_INTEGRATION_TESTS=ON`. The canonical integration CI command sets
+   this option for ASan, UBSan, TSan, and LSan. Its image contains a pinned test
+   broker. The gateway integration tests and the relocated runtime install test
+   must appear in each sanitizer result. The install test removes loader-path
+   overrides before it starts the installed executable. The existing unit-only
+   gate does not require a local server installation.
 4. Before deployment, separately prove allocation placement, SSH/Teleport
    identity, TLS/subject authorization, broker reachability, supervisor lifecycle,
    requeue recovery, and coexistence with the worker's private Unix socket.

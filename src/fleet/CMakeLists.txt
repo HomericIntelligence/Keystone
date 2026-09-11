@@ -57,8 +57,23 @@ target_link_libraries(keystone_fleet_gateway
                       PRIVATE nats nlohmann_json::nlohmann_json)
 target_compile_options(keystone_fleet_gateway PRIVATE -Wall -Wextra -Wpedantic
                                                       -Werror)
+file(RELATIVE_PATH _fleet_library_path "${CMAKE_INSTALL_FULL_BINDIR}"
+     "${CMAKE_INSTALL_FULL_LIBDIR}")
+if(APPLE)
+  set(_fleet_origin "@loader_path")
+else()
+  set(_fleet_origin "$ORIGIN")
+endif()
+set_target_properties(
+  keystone_fleet_gateway
+  PROPERTIES INSTALL_RPATH "${_fleet_origin}/${_fleet_library_path}"
+             INSTALL_RPATH_USE_LINK_PATH FALSE)
 install(TARGETS keystone_fleet_gateway
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT keystone)
+# The dependency's upstream install belongs to CPack's excluded Unspecified
+# component. Keep its real library and SONAME links with our runtime component.
+install(TARGETS nats LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+                             COMPONENT keystone)
 
 if(ENABLE_FLEET_INTEGRATION_TESTS)
   add_executable(fleet_gateway_tests
@@ -77,4 +92,13 @@ if(ENABLE_FLEET_INTEGRATION_TESTS)
   add_test(NAME fleet_gateway_integration COMMAND fleet_gateway_tests)
   set_tests_properties(fleet_gateway_integration PROPERTIES TIMEOUT 60 LABELS
                                                             integration)
+  add_test(
+    NAME fleet_gateway_install
+    COMMAND
+      "${CMAKE_COMMAND}" "-DFLEET_BUILD_DIR=${CMAKE_BINARY_DIR}"
+      "-DFLEET_BINDIR=${CMAKE_INSTALL_BINDIR}"
+      "-DFLEET_LIBDIR=${CMAKE_INSTALL_LIBDIR}" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../tests/integration/fleet_install.cmake")
+  set_tests_properties(fleet_gateway_install PROPERTIES TIMEOUT 60 LABELS
+                                                        integration)
 endif()

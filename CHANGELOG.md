@@ -16,6 +16,8 @@ Starting from v0.2.0, this file is maintained automatically by
 - Add the allocation-local Fleet JSONL gateway for existing durable JetStream
   consumers, explicit acknowledgments, bounded publications, and metadata-only
   dashboard observations. See `docs/runbooks/fleet-gateway.md`.
+- Bundle the gateway's shared NATS dependency in the runtime component and test
+  the relocated install. Include Fleet tests in the canonical sanitizer matrix.
 
 ### Changed
 
