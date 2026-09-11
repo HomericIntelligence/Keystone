@@ -1,17 +1,20 @@
 #include <gtest/gtest.h>
 
-// The primary test interface precedes the POSIX process/transport interfaces.
+// POSIX process types and macros are part of the C interface.
+extern "C" {
 #include <fcntl.h>
 #include <nats.h>
 #include <netinet/in.h>
+#include <sched.h>
 #include <signal.h>
 #include <spawn.h>
 #include <status.h>
+#include <stdlib.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+}
 
 #if defined(__APPLE__)
 #include <crt_externs.h>

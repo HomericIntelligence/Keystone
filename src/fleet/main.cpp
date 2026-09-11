@@ -1,6 +1,9 @@
+// NATS and the POSIX signal interface expose C declarations.
+extern "C" {
 #include <nats.h>
 #include <signal.h>
 #include <status.h>
+}
 
 #if defined(__APPLE__)
 #include <crt_externs.h>
