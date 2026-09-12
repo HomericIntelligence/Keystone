@@ -346,6 +346,9 @@ cat build/static_analysis/cppcheck-report.txt
 
 ## CI/CD Quality Gates
 
+Use [the local CI runbook](docs/runbooks/local-ci.md) for `just ci-build`,
+`just ci-all`, focused subsets, and the mapping to required hosted checks.
+
 Keystone enforces 5 quality gates in CI/CD:
 
 1. **Code Coverage** (≥95%)

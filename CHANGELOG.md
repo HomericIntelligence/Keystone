@@ -21,6 +21,10 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Changed
 
+- Restore the complete local CI dispatcher and propagate validator, scanner,
+  test, and policy failures. Add native amd64/arm64 CI tool installation with
+  verified archive hashes and document the local/hosted gate mapping.
+
 - `build`: migrate the build toolchain from pixi/conda to uv (Odysseus ADR-018,
   mirroring Nestor #133 and Agamemnon #457). CMake, Ninja, Conan, gcovr, and
   pre-commit are now uv-managed locked PyPI wheels (`pyproject.toml` + `uv.lock`

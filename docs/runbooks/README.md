@@ -27,6 +27,7 @@ A runbook is a step-by-step guide for responding to a specific alert or incident
 ### Fleet allocation transport
 
 - [Fleet gateway](fleet-gateway.md) - Durable allocation attachment and dashboard observations
+- [Local CI](local-ci.md) - Complete local checks and the required hosted gate mapping
 
 ### Critical Alerts (P0)
 

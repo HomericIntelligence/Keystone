@@ -3,6 +3,11 @@ set shell := ["bash", "-c"]
 default:
   @just --list
 
+# CI-launcher regressions use only an isolated fake container/tool boundary.
+test-ci-local:
+    uv run --locked bash scripts/test-ci-local.sh
+    bash ci/test-install-tool.sh
+
 # Focused allocation-gateway build; only transport dependencies, at most 2 jobs.
 fleet-build:
     uv run cmake -S src/fleet -B build/fleet -DCMAKE_BUILD_TYPE=Debug
@@ -174,7 +179,23 @@ pack-dry-run:
 
 # Build the CI container image (podman first, docker fallback)
 ci-build:
-    podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local . || docker build -f ci/Containerfile -t keystone-ci:local .
+    ./scripts/run_ci_local.sh image-build
+
+# Local equivalents of the separate hosted build/install/package/coverage checks.
+ci-release-build:
+    ./scripts/run_ci_local.sh build
+
+ci-install:
+    ./scripts/run_ci_local.sh install
+
+ci-package:
+    ./scripts/run_ci_local.sh package
+
+ci-coverage:
+    ./scripts/run_ci_local.sh coverage
+
+ci-release-check:
+    ./scripts/run_ci_local.sh release
 
 # Run CI lint checks in container
 ci-lint:

@@ -11,7 +11,7 @@
 # Container engine: auto-detected (podman first, docker fallback).
 # Override: CONTAINER_ENGINE=docker ./scripts/run_ci_local.sh
 #
-# Image: uses 'keystone-ci:local' if available, falls back to GHCR image.
+# Image: requires 'keystone-ci:local' built from the current source.
 # Build locally: just ci-build  (or: podman build -f ci/Containerfile -t keystone-ci:local .)
 
 set -euo pipefail
@@ -96,23 +96,14 @@ run_step() {
 
 run_in_container() {
     local cmd="$1"
-    local caches=""
-    if [ -d "${PROJECT_ROOT}/.pixi" ]; then
-        mkdir -p "${HOME}/.cache/pixi"
-        caches="-v ${HOME}/.cache/pixi:/home/ci/.cache/pixi:Z"
+    local engine_arguments=(run --rm)
+    if [ "${CONTAINER_ENGINE##*/}" != docker ]; then
+        engine_arguments+=("--userns=keep-id:uid=1000,gid=1000")
     fi
-    # shellcheck disable=SC2086
-    "${CONTAINER_ENGINE}" run --rm --userns=keep-id:uid=1000,gid=1000 $caches \
+    "${CONTAINER_ENGINE}" "${engine_arguments[@]}" \
         -v "${PROJECT_ROOT}:/workspace:Z" -w /workspace \
-        "${IMAGE}" bash -lc "$cmd"
-}
-
-run_pixi() {
-    run_in_container "pixi install --locked --quiet && $1"
-}
-
-run_uv() {
-    run_in_container "uv run $1"
+        -e CMAKE_BUILD_PARALLEL_LEVEL=2 \
+        "${IMAGE}" bash -lc "set -euo pipefail; $cmd"
 }
 
 # ============================================================================
@@ -123,7 +114,7 @@ run_lint() {
     # Lint — Keystone is a pure C++20 library (ADR-015/016): the only Python is
     # conanfile.py + scripts/, so mypy targets those (main's CI dropped ruff)
     # and pre-commit covers clang-format/yamllint/trailing-whitespace.
-    run_in_container "uv run mypy conanfile.py && uv run pre-commit clean && uv run pre-commit run --all-files --show-diff-on-failure && just fleet-tidy"
+    run_in_container 'uv run --locked mypy conanfile.py scripts/check-release.py && uv run --locked ruff check scripts/check-release.py && uv run --locked ruff format --check scripts/check-release.py && shellcheck scripts/run_ci_local.sh scripts/test-ci-local.sh scripts/check-ci-policy.sh scripts/check-symlinks.sh ci/install-tool.sh ci/test-install-tool.sh && uv run --locked pre-commit run --all-files --show-diff-on-failure && just check-extraction && just test-ci-local && just fleet-tidy'
 }
 
 run_markdownlint() {
@@ -139,7 +130,7 @@ run_uv-lock-check() {
 
 run_typecheck() {
     # Type check
-    run_in_container "uv run mypy src"
+    run_in_container 'uv run --locked mypy conanfile.py scripts/check-release.py'
 }
 
 run_unit-tests() {
@@ -147,23 +138,23 @@ run_unit-tests() {
     # make compile.debug + ctest -L unit). CONTAINER_CHECK/CONTAINER_PREFIX
     # are cleared so the Makefile runs directly in the CI image instead of
     # re-entering the podman-compose dev container.
-    run_in_container "uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug && (cd build/x86.debug && uv run ctest --output-on-failure -L unit -j\"\$(nproc)\" --timeout 120 || uv run ctest --output-on-failure -E 'integration|sample|example|application' -j\"\$(nproc)\" --timeout 120)"
+    run_in_container 'uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug && cd build/x86.debug && uv run --locked ctest --output-on-failure --no-tests=error -L unit -j2 --timeout 120'
 }
 
 run_integration-tests() {
     # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
     # native CI job, running the Makefile directly inside the CI image.
-    run_in_container "command -v nats-server && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= CMAKE_FEATURE_FLAGS=-DENABLE_FLEET_INTEGRATION_TESTS=ON compile.debug.asan test.debug.asan compile.debug.ubsan test.debug.ubsan compile.debug.tsan test.debug.tsan compile.debug.lsan test.debug.lsan"
+    run_in_container 'command -v nats-server && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= CMAKE_FEATURE_FLAGS=-DENABLE_FLEET_INTEGRATION_TESTS=ON compile.debug.asan test.debug.asan compile.debug.ubsan test.debug.ubsan compile.debug.tsan test.debug.tsan compile.debug.lsan test.debug.lsan'
 }
 
 run_schema-validation() {
     # Schema validation
-    run_in_container "uv run check-jsonschema --check-metaschema .github/workflows/*.yml 2>/dev/null || true"
+    run_in_container 'uv run --locked check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml'
 }
 
 run_security-secrets-scan() {
     # Secrets scan (gitleaks)
-    run_in_container "gitleaks detect --no-banner --redact --source . 2>&1 | tail -5; exit ${PIPESTATUS[0]}"
+    run_in_container 'gitleaks detect --no-banner --redact --source .'
 }
 
 run_security-dependency-scan() {
@@ -178,7 +169,7 @@ run_deps-version-sync() {
 
 run_forbid-suppressions() {
     # No silent failure suppressions
-    run_in_container "! grep -rE '|| true|set +e' scripts/run_ci_local.sh || echo 'forbid-suppressions OK'"
+    run_in_container 'bash scripts/check-ci-policy.sh'
 }
 
 run_justfile-check() {
@@ -188,7 +179,38 @@ run_justfile-check() {
 
 run_symlink-check() {
     # Symlink integrity
-    run_in_container "git ls-files -s | grep '^120000' > /dev/null 2>&1 || echo 'no symlinks'"
+    run_in_container 'bash scripts/check-symlinks.sh'
+}
+
+run_release() {
+    # Execute the same static release checks; no tag/release publication.
+    run_in_container 'uv run --locked python scripts/check-release.py'
+}
+
+run_build() {
+    run_in_container 'uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.release'
+}
+
+run_install() {
+    run_in_container 'uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.release && uv run --locked bash scripts/check-install.sh'
+}
+
+run_package() {
+    run_in_container "$(cat <<'COMMAND'
+        uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps
+        uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.release
+        cd build/x86.release
+        for format in DEB RPM TGZ ZIP; do uv run --locked cpack -G "$format"; done
+        shopt -s nullglob
+        packages=(*.deb *.rpm *.tar.gz *.zip)
+        if [ "${#packages[@]}" -eq 0 ]; then echo "CPack produced no package artifacts" >&2; exit 1; fi
+        printf "%s\n" "${packages[@]}"
+COMMAND
+)"
+}
+
+run_coverage() {
+    run_in_container 'uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.coverage test.debug.coverage && BUILD_DIR=build/x86.coverage.debug uv run --locked bash scripts/generate_coverage.sh'
 }
 
 # ============================================================================
@@ -196,9 +218,25 @@ run_symlink-check() {
 # ============================================================================
 
 detect_engine
+if [ "$SUBSET" = image-build ]; then
+    cd "$PROJECT_ROOT"
+    build_arguments=(build)
+    if [ "${CONTAINER_ENGINE##*/}" != docker ]; then
+        build_arguments+=(--ignorefile ci/.dockerignore)
+    fi
+    "${CONTAINER_ENGINE}" "${build_arguments[@]}" -f ci/Containerfile -t "$LOCAL_IMAGE" .
+    exit 0
+fi
 select_image
 
 case "${SUBSET}" in
+    all)
+        for subset in forbid-suppressions uv-lock-check lint markdownlint justfile-check \
+            symlink-check schema-validation deps-version-sync release unit-tests integration-tests \
+            build install package coverage security-secrets-scan security-dependency-scan; do
+            run_step "$subset" "run_${subset}"
+        done
+        ;;
     lint) run_lint ;;
     markdownlint) run_markdownlint ;;
     uv-lock-check) run_uv-lock-check ;;
@@ -213,6 +251,11 @@ case "${SUBSET}" in
     forbid-suppressions) run_forbid-suppressions ;;
     justfile-check) run_justfile-check ;;
     symlink-check) run_symlink-check ;;
+    release) run_release ;;
+    build) run_build ;;
+    install) run_install ;;
+    package) run_package ;;
+    coverage) run_coverage ;;
 
     *)
     log_error "Unknown subset '${SUBSET}'"
