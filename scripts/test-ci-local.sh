@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Exercise the real CI launcher with controlled container and tool boundaries.
+# Exercise the real CI launcher with controlled engine/tools and the Markdown CLI.
 set -euo pipefail
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REAL_JUST="$(command -v just)"
+REAL_MARKDOWNLINT="$(command -v markdownlint-cli2)"
 TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/keystone-ci-test.XXXXXX")"
 trap 'rm -rf "$TEST_ROOT"' EXIT
 
@@ -269,6 +270,30 @@ build_cache_symlink_is_not_a_source_failure() {
     expect_success
 }
 
+markdown_fixture() {
+    cp "$SOURCE_ROOT/.markdownlint.yaml" "$SOURCE_ROOT/.markdownlint-cli2.jsonc" \
+        "$SOURCE_ROOT/.markdownlintignore" "$FIXTURE/repo/"
+    ln -sf "$REAL_MARKDOWNLINT" "$FIXTURE/bin/markdownlint-cli2"
+    mkdir -p "$FIXTURE/repo/build/fleet-tidy/_deps/fixture-src" "$FIXTURE/repo/docs/build"
+    printf '# Source\n\nValid source documentation.\n' > "$FIXTURE/repo/docs/build/source.md"
+    printf '# Generated dependency\n\n## Duplicate\n\n## Duplicate\n' \
+        > "$FIXTURE/repo/build/fleet-tidy/_deps/fixture-src/README.md"
+}
+
+markdown_ignores_generated_build_dependencies() {
+    markdown_fixture
+    launch markdownlint
+    expect_success
+}
+
+markdown_rejects_invalid_source_beside_build_dependencies() {
+    markdown_fixture
+    printf '# Source\n\n## Duplicate\n\n## Duplicate\n' > "$FIXTURE/repo/docs/build/source.md"
+    launch markdownlint
+    expect_failure || return 1
+    grep -q 'docs/build/source.md:.*MD024' "$FIXTURE/output"
+}
+
 release_checks_execute_declared_steps() {
     cat > "$FIXTURE/repo/.github/workflows/_required.yml" <<'WORKFLOW'
 jobs:
@@ -330,6 +355,8 @@ dispatch_test() {
         broken_symlink_fails) broken_symlink_fails ;;
         valid_tracked_symlink_passes) valid_tracked_symlink_passes ;;
         build_cache_symlink_is_not_a_source_failure) build_cache_symlink_is_not_a_source_failure ;;
+        markdown_ignores_generated_build_dependencies) markdown_ignores_generated_build_dependencies ;;
+        markdown_rejects_invalid_source_beside_build_dependencies) markdown_rejects_invalid_source_beside_build_dependencies ;;
         release_checks_execute_declared_steps) release_checks_execute_declared_steps ;;
         release_checks_stop_on_failure) release_checks_stop_on_failure ;;
         release_job_context_cannot_be_ignored) release_job_context_cannot_be_ignored ;;
@@ -345,6 +372,7 @@ dispatch_test() {
 for test in all_dispatches schema_failure schema_contract schema_missing queue_contract_failure scanner_failure scanner_success \
     suppression_failure suppression_success failed_build_stops_tests failed_tests_cannot_fall_back \
     empty_tests_fail broken_symlink_fails valid_tracked_symlink_passes build_cache_symlink_is_not_a_source_failure \
+    markdown_ignores_generated_build_dependencies markdown_rejects_invalid_source_beside_build_dependencies \
     release_checks_execute_declared_steps release_checks_stop_on_failure \
     all_includes_install_package_and_coverage package_failure_is_not_success no_packages_is_not_success \
     image_build_failure_does_not_switch_engine required_workflow_opt_out_fails \

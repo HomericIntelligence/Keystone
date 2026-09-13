@@ -119,8 +119,9 @@ run_lint() {
 
 run_markdownlint() {
     # Markdown lint (markdownlint-cli2, matching the native CI job; the tool is
-    # baked into the CI image via nodejs, not a PyPI package)
-    run_in_container "markdownlint-cli2 \"**/*.md\" \"!**/.claude/**\" \"!CHANGELOG.md\""
+    # baked into the CI image via nodejs, not a PyPI package). Earlier build
+    # stages create dependency documentation under the root build directory.
+    run_in_container "markdownlint-cli2 \"**/*.md\" \"!**/.claude/**\" \"!CHANGELOG.md\" \"!build/**\""
 }
 
 run_uv-lock-check() {
