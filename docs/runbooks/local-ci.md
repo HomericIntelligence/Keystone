@@ -39,7 +39,7 @@ second build with another engine.
 | uv lock and dependency synchronization | `uv-lock-check`, `deps-version-sync` | Locked environment and manifest checks |
 | Justfile and symlinks | `justfile-check`, `symlink-check` | Justfile parsing and tracked symlink integrity; generated build caches are excluded |
 | Workflow schema and queue contract | `just ci-schema-validation` | Bundled GitHub workflow schema, then actual required-job eligibility and recorded queue policy |
-| Unit tests | `just ci-unit-tests` | Current debug build and nonempty `unit` CTest selection; failure cannot fall back to a second selection |
+| Unit tests | `just ci-unit-tests` | Current debug build and discovered GoogleTest cases labeled `unit`, plus the sanitizer feature guard; failure cannot fall back to a second selection |
 | Integration and sanitizers | `just ci-integration-tests` | ASan, UBSan, TSan, and LSan, including the Fleet gateway and installed gateway checks against private brokers |
 | Build | `just ci-release-build` | Current release build with Conan dependencies |
 | Install | `just ci-install` | Canonical staging-layout and `find_package` consumer check |
@@ -57,6 +57,19 @@ includes every supported local check above. It does not upload reports, publish
 releases, or change provider state.
 
 ## Evidence boundaries
+
+The `unit` label belongs to the core, concurrency, scheduler-backoff, simulation,
+transport, and bridge unit targets. The separate profiling target joins this
+selection only when `ENABLE_PROFILING` is enabled. Scheduler-backoff cases retain
+`RUN_SERIAL`; E2E and integration targets remain outside the unit selection.
+The ordinary debug build runs `ThreadPoolTest.CreateAndDestroy` and
+`ThreadPoolTest.HardwareConcurrency`, which intentionally skip under sanitizers.
+
+`just test-ci-local` first exercises the repository's literal GoogleTest
+discovery calls with actual CMake/CTest and imported test-list fixtures. It
+checks selected case names, nonunit exclusions, and the serial property without
+compiling C++ or fetching dependencies. This registration regression does not
+replace execution of the real test bodies in `just ci-unit-tests`.
 
 `just test-ci-local` runs the real launcher with controlled engine/tool
 boundaries. It tests dispatch, failure propagation, missing validators, package

@@ -3,8 +3,9 @@ set shell := ["bash", "-c"]
 default:
   @just --list
 
-# CI-launcher regressions use only an isolated fake container/tool boundary.
+# CI contracts use controlled tools and actual CMake/CTest discovery.
 test-ci-local:
+    uv run --locked python scripts/test-unit-test-selection.py
     uv run --locked bash scripts/test-ci-local.sh
     bash ci/test-install-tool.sh
     uv run --locked bash scripts/test-merge-queue-readiness.sh
