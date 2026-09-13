@@ -8,7 +8,7 @@
 # with that name", so we alias the digest-pinned image to a stage name here and
 # COPY from the alias. Keep this pin in sync with astral-sh/setup-uv in
 # .github/workflows/*.yml when bumping (Odysseus ADR-018).
-FROM ghcr.io/astral-sh/uv:0.12.2@sha256:069a51314a7bb6031777a9273205fe1b0b19e914ef418207d1338b268df641dd AS uv
+FROM ghcr.io/astral-sh/uv:0.12.8@sha256:d1cbaeadc234fe19c0d93daabcf5e98738cd93c6d1dd4918ef6aa30735feb23a AS uv
 
 # Stage 1: Build environment
 # Base digest pinned 2026-08-16 (noble): carries security patches for glibc
