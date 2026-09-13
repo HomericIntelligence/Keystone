@@ -7,6 +7,7 @@ default:
 test-ci-local:
     uv run --locked bash scripts/test-ci-local.sh
     bash ci/test-install-tool.sh
+    uv run --locked bash scripts/test-merge-queue-readiness.sh
 
 # Focused allocation-gateway build; only transport dependencies, at most 2 jobs.
 fleet-build:
@@ -83,7 +84,7 @@ lint:
 check-extraction:
   ./scripts/check-extraction.sh
 
-# Validate that required workflows and activation docs remain merge-queue ready.
+# Validate actual required queue jobs and the recorded live policy.
 check-merge-queue-readiness:
   ./scripts/check-merge-queue-readiness.sh
 

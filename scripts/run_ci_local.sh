@@ -114,7 +114,7 @@ run_lint() {
     # Lint — Keystone is a pure C++20 library (ADR-015/016): the only Python is
     # conanfile.py + scripts/, so mypy targets those (main's CI dropped ruff)
     # and pre-commit covers clang-format/yamllint/trailing-whitespace.
-    run_in_container 'uv run --locked mypy conanfile.py scripts/check-release.py && uv run --locked ruff check scripts/check-release.py && uv run --locked ruff format --check scripts/check-release.py && shellcheck scripts/run_ci_local.sh scripts/test-ci-local.sh scripts/check-ci-policy.sh scripts/check-symlinks.sh ci/install-tool.sh ci/test-install-tool.sh && uv run --locked pre-commit run --all-files --show-diff-on-failure && just check-extraction && just test-ci-local && just fleet-tidy'
+    run_in_container 'uv run --locked mypy conanfile.py scripts/check-release.py && uv run --locked ruff check scripts/check-release.py && uv run --locked ruff format --check scripts/check-release.py && shellcheck scripts/run_ci_local.sh scripts/test-ci-local.sh scripts/check-ci-policy.sh scripts/check-symlinks.sh scripts/check-merge-queue-readiness.sh scripts/test-merge-queue-readiness.sh ci/install-tool.sh ci/test-install-tool.sh && uv run --locked pre-commit run --all-files --show-diff-on-failure && just check-extraction && just test-ci-local && just fleet-tidy'
 }
 
 run_markdownlint() {
@@ -149,7 +149,7 @@ run_integration-tests() {
 
 run_schema-validation() {
     # Schema validation
-    run_in_container 'uv run --locked check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml'
+    run_in_container 'uv run --locked check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml && bash scripts/check-merge-queue-readiness.sh'
 }
 
 run_security-secrets-scan() {

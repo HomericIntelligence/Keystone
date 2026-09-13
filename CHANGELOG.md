@@ -21,6 +21,8 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Changed
 
+- Run all 13 existing required checks on merge-group commits, including real
+  coverage, and reject queue-ineligible jobs through the shared CI guard.
 - Restore the complete local CI dispatcher and propagate validator, scanner,
   test, and policy failures. Add native amd64/arm64 CI tool installation with
   verified archive hashes and document the local/hosted gate mapping.

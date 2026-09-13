@@ -295,37 +295,38 @@ The `quality-summary` job runs after all quality gates complete:
 
 ## Branch Protection Rules
 
-The live `main` rulesets require these existing GitHub Actions contexts. Merge
-queue rollout must preserve all of them:
+The live `main` rulesets require these 13 GitHub Actions contexts. Queue
+execution must preserve all of them:
 
 - `lint`, `unit-tests`, `integration-tests`, `test`, `build`, and `package`
 - `security/dependency-scan` and `security/secrets-scan`
 - `schema-validation` and `deps/version-sync`
-- `coverage` and `release`
+- `coverage`, `install`, and `release`
 
 The rulesets also preserve required signatures, linear history, deletion and
 non-fast-forward protection, zero required approvals, review-thread resolution,
-and non-strict status checks. Queue activation does not weaken or replace those
-rules.
+and non-strict status checks. Queue repairs do not weaken or replace those rules.
 
-## Merge Queue Activation
+## Merge Queue Verification
 
-The workflows are prepared for a staged merge-queue rollout by handling
-`merge_group/checks_requested`. This repository has no canonical, repo-owned
-ruleset configuration file, so an administrator must perform activation only
-after this readiness change merges and the repository smoke check is ready.
+The queue is already active. `_required.yml` handles
+`merge_group/checks_requested` and executes all 13 required contexts, including
+its unconditional coverage job. The separate `merge-queue-smoke` workflow is
+advisory. Extra benchmark, NATS, and coverage jobs remain off the queue; their
+skipped results cannot replace the required suite.
 
-Add one `merge_queue` rule to the existing active `homeric-main-baseline`
-ruleset while preserving every existing condition, bypass actor, rule, required
-context, and enforcement field. The rule must use this exact payload:
+The earlier smoke-only rollout assumed a later protection change that was not
+applied. The readiness check now follows the existing protection instead of
+requiring that uncompleted rollout. The following rule was observed on
+2026-09-12; it is a read-only snapshot, not a ruleset update payload:
 
 ```json
 {
   "type": "merge_queue",
   "parameters": {
     "check_response_timeout_minutes": 60,
-    "grouping_strategy": "ALLGREEN",
-    "max_entries_to_build": 10,
+    "grouping_strategy": "HEADGREEN",
+    "max_entries_to_build": 2,
     "max_entries_to_merge": 5,
     "merge_method": "SQUASH",
     "min_entries_to_merge": 1,
@@ -334,23 +335,26 @@ context, and enforcement field. The rule must use this exact payload:
 }
 ```
 
-Activation is a full-replacement ruleset write and therefore requires this
-operator sequence:
+1. Complete independent review and actual local and hosted CI on the exact PR
+   head before normal queue admission.
+2. Read `gh api repos/HomericIntelligence/Keystone/rules/branches/main` and retain
+   the raw response. Compare all required contexts and queue parameters above;
+   stop if the live policy differs.
+3. Have the authorized coordinator admit the designated reviewed PR through the
+   ordinary expected-head queue path. Do not bypass protection or copy statuses.
+4. Capture its actual queue entry, enqueue time, and queue-head SHA. Bind the
+   `merge_group` workflow runs and their job/check responses to that SHA.
+5. Require every one of the 13 contexts to finish successfully through its real
+   job before recording acceptance and the normal squash merge. A skipped
+   required job or the advisory smoke result alone is insufficient.
 
-1. Fetch and retain the complete live ruleset as the rollback snapshot.
-2. Verify the snapshot includes all required contexts listed above and every
-   current non-queue rule.
-3. Append only the queue rule, update the ruleset, and read it back.
-4. Compare the read-back with the snapshot, allowing only the new queue rule.
-   If any unrelated field changed, immediately restore the snapshot.
-5. Enqueue one representative pull request and record the
-   `merge_group/checks_requested` workflow run, all required check conclusions,
-   and the queued squash merge result on
-   [Keystone #610](https://github.com/HomericIntelligence/Keystone/issues/610).
-
-This activation belongs to the post-merge rollout tracked by
-[Odysseus #386](https://github.com/HomericIntelligence/Odysseus/issues/386); it
-must not be performed from the implementation PR.
+`just check-merge-queue-readiness` validates the supported literal workflow
+configuration and recursively checks required-job dependencies. The schema
+gate also invokes it. It rejects job-level conditions, ignored failures,
+missing or duplicate producers, and required jobs with no unconditional
+command. It does not simulate GitHub scheduling or prove a queue run. Keep
+raw failed or incomplete run evidence and repair the cause; do not weaken
+protection to make the queue advance.
 
 ## Local Validation
 

@@ -1,10 +1,7 @@
 name: Merge Queue Smoke
 
-# Sole merge_group workflow. Full CI (up to 16 jobs re-queued per merge group,
-# 70-90 min under runner-slot starvation) already ran on the pull_request; the
-# queue only needs a fast real sanity gate. One job = one runner slot, < 5 min.
-# PR-side CI is untouched: this workflow emits the single `merge-queue-smoke`
-# context that the branch rulesets gate the queue on after rollout.
+# Advisory queue smoke check. _required.yml runs all 13 live required contexts
+# on the same queue head. This fast check does not replace those gates.
 
 on:
   merge_group:
@@ -41,7 +38,7 @@ jobs:
       - name: Verify version consistency across release surfaces
         run: |
           python3 - <<'PYEOF'
-          import json, re, pathlib, sys, tomllib
+          import json, re, pathlib, sys
 
           root = pathlib.Path(".")
 
@@ -59,14 +56,10 @@ jobs:
           )
           conan_ver = conan_m.group(1) if conan_m else None
 
-          with open(root / "pixi.toml", "rb") as fh:
-              pixi_ver = tomllib.load(fh).get("project", {}).get("version")
-
           versions = {
               ".release-please-manifest.json": manifest_ver,
               "CMakeLists.txt":                cmake_ver,
               "conanfile.py":                  conan_ver,
-              "pixi.toml":                     pixi_ver,
           }
           for k, v in versions.items():
               print(f"{k:32s}: {v}")

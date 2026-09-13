@@ -19,10 +19,13 @@ setup() {
     printf 'name: fixture\non: push\njobs: {}\n' > "$FIXTURE/repo/.github/workflows/test.yml"
     printf 'jobs:\n  release:\n    steps:\n      - run: "true"\n' > "$FIXTURE/repo/.github/workflows/_required.yml"
     printf 'default:\n  echo fixture\n' > "$FIXTURE/repo/justfile"
-    for helper in check-install generate_coverage; do
+    for helper in check-install generate_coverage check-merge-queue-readiness; do
         cat > "$FIXTURE/repo/scripts/$helper.sh" <<'HELPER'
 #!/usr/bin/env bash
 printf '%s\n' "${0##*/}" >> "$CI_TEST_CALLS"
+if [ "${0##*/}" = check-merge-queue-readiness.sh ] && [ "${CI_TEST_FAIL:-}" = queue-contract ]; then
+    exit 48
+fi
 HELPER
     done
     git -C "$FIXTURE/repo" init -q
@@ -210,6 +213,12 @@ schema_missing() {
     launch schema-validation
     expect_failure
 }
+queue_contract_failure() {
+    CI_TEST_FAIL=queue-contract
+    launch schema-validation
+    if [ "$RESULT" -ne 48 ]; then cat "$FIXTURE/output"; return 1; fi
+    grep -q '^check-merge-queue-readiness.sh$' "$CI_TEST_CALLS"
+}
 scanner_failure() { CI_TEST_FAIL=gitleaks; launch security-secrets-scan; expect_failure; }
 scanner_success() { launch security-secrets-scan; expect_success; }
 suppression_failure() {
@@ -309,6 +318,7 @@ dispatch_test() {
         schema_failure) schema_failure ;;
         schema_contract) schema_contract ;;
         schema_missing) schema_missing ;;
+        queue_contract_failure) queue_contract_failure ;;
         scanner_failure) scanner_failure ;;
         scanner_success) scanner_success ;;
         suppression_failure) suppression_failure ;;
@@ -332,7 +342,7 @@ dispatch_test() {
         *) return 1 ;;
     esac
 }
-for test in all_dispatches schema_failure schema_contract schema_missing scanner_failure scanner_success \
+for test in all_dispatches schema_failure schema_contract schema_missing queue_contract_failure scanner_failure scanner_success \
     suppression_failure suppression_success failed_build_stops_tests failed_tests_cannot_fall_back \
     empty_tests_fail broken_symlink_fails valid_tracked_symlink_passes build_cache_symlink_is_not_a_source_failure \
     release_checks_execute_declared_steps release_checks_stop_on_failure \
