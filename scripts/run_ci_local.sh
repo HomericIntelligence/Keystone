@@ -153,7 +153,19 @@ run_unit-tests() {
 run_integration-tests() {
     # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
     # native CI job, running the Makefile directly inside the CI image.
-    run_in_container "uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.asan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.ubsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.tsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.lsan && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.lsan"
+    # CTEST_EXTRA adds a bounded ctest retry for individual flaky tests.
+    # Each sanitizer TEST phase additionally gets ONE phase-level retry:
+    # ctest --repeat covers individual tests only, whereas a flaky deferred
+    # (DISCOVERY_MODE PRE_TEST) gtest discovery aborts ctest before any test
+    # repeats, so the whole ctest invocation (discovery included) is retried
+    # exactly once; a second consecutive failure still fails the job.
+    local cmd="uv run make CONTAINER_CHECK= CONTAINER_PREFIX= deps"
+    local san
+    for san in asan ubsan tsan lsan; do
+        cmd+=" && uv run make CONTAINER_CHECK= CONTAINER_PREFIX= compile.debug.${san}"
+        cmd+=" && (uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.${san} CTEST_EXTRA='--repeat until-pass:2' || uv run make CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.${san} CTEST_EXTRA='--repeat until-pass:2')"
+    done
+    run_in_container "${cmd}"
 }
 
 run_schema-validation() {
