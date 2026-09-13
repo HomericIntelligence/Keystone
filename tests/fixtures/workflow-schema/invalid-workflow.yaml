@@ -1,0 +1,11 @@
+name: Invalid workflow schema fixture
+
+on:
+  push:
+
+jobs:
+  invalid:
+    name: invalid
+    runs-on: ubuntu-latest
+    steps:
+      - name: Step with no run or uses directive

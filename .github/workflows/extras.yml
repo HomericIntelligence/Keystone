@@ -1,25 +1,20 @@
 name: Extras (non-blocking)
 
-# Benchmarks, NATS integration, and coverage — informational only, not required for merge.
-# These jobs produce build artifacts and Codecov reports but do not block PRs.
+# Benchmarks and NATS integration are informational. Coverage emits a live
+# required context, so the complete workflow runs for pull requests and
+# synthetic merge-group commits.
 
 on:
   push:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
-  # The `coverage` context is required by the live main ruleset, so this
-  # workflow must keep triggering on merge_group to emit it until the
-  # ruleset is flipped to require only merge-queue-smoke (tracked
-  # separately; needs org-admin credentials to execute). Every job below
-  # skips merge-queue builds (`if: github.event_name != 'merge_group'`): the
-  # skipped conclusion satisfies the required context, while under ALLGREEN
-  # grouping an actually-run sub-threshold `coverage` reading (it exits 1
-  # below its 75% target) would eject otherwise-green PRs from the queue.
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
-  group: extras-${{ github.ref }}
+  group: extras-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -28,7 +23,6 @@ permissions:
 jobs:
   benchmarks:
     name: benchmarks
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     # Raised from 20 to 30: the install-build-deps step (apt-get update + conan
     # install) intermittently exceeds 20 minutes on GitHub-hosted runners during
@@ -98,7 +92,6 @@ jobs:
 
   nats-integration:
     name: NATS integration tests
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     # 20 (was 15): leave headroom for a cold dev-image rebuild — any
     # Containerfile/conanfile.py change misses the exact-match image cache in
@@ -179,7 +172,6 @@ jobs:
 
   coverage:
     name: coverage
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
 

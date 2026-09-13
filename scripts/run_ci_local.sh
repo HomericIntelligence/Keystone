@@ -157,8 +157,11 @@ run_integration-tests() {
 }
 
 run_schema-validation() {
-    # Schema validation
-    run_in_container "uv run check-jsonschema --check-metaschema .github/workflows/*.yml 2>/dev/null || true"
+    # GitHub workflow schema validation and its negative regression are both
+    # fail-closed. Merge-queue topology is an additional structural contract.
+    run_in_container "./scripts/check-workflow-schema.sh"
+    run_in_container "./scripts/test-workflow-schema-validation.sh"
+    run_in_container "./scripts/check-merge-queue-readiness.sh"
 }
 
 run_security-secrets-scan() {

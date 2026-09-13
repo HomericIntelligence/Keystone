@@ -12,10 +12,13 @@ on:
   pull_request:
     branches: [main, develop]
 
+  merge_group:
+    types: [checks_requested]
+
   workflow_dispatch:
 
 concurrency:
-  group: required-${{ github.ref }}
+  group: required-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:

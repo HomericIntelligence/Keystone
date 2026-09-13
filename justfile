@@ -52,6 +52,14 @@ check-extraction:
 check-merge-queue-readiness:
   ./scripts/check-merge-queue-readiness.sh
 
+# Fail-closed GitHub Actions schema validation for both workflow extensions.
+check-workflow-schema:
+  ./scripts/check-workflow-schema.sh
+
+# Prove that semantic workflow-schema failures are rejected.
+test-workflow-schema-validation:
+  ./scripts/test-workflow-schema-validation.sh
+
 format:
   uv run make format
 
