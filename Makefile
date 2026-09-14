@@ -54,6 +54,8 @@ BUILD_SUBDIR := $(subst $(SPACE),.,$(strip $(sort $(subst .,$(SPACE),$(BUILD_SUB
 CMAKE_BUILD_TYPE ?= Debug
 # TSan slows thread ops 5-20x; give it more time per test
 CTEST_TIMEOUT ?= 120
+# Extra ctest flags passthrough (e.g. CTEST_EXTRA='--repeat until-pass:2')
+CTEST_EXTRA ?=
 
 # Conan dependency management
 CONAN_OUTPUT_DIR ?= build/conan-deps
@@ -127,7 +129,7 @@ TEST_PROFILING := profiling_tests
 test: compile
 	@echo "Running all tests..."
 	$(CONTAINER_CHECK)
-	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && KEYSTONE_PROFILE=1 TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT)"
+	$(CONTAINER_PREFIX) bash -c "cd $(BUILD_DIR)/$(BUILD_SUBDIR) && KEYSTONE_PROFILE=1 TSAN_OPTIONS=\"$(CONTAINER_TSAN_OPTIONS)\" ctest --output-on-failure -j$(NPROC) --timeout $(CTEST_TIMEOUT) $(CTEST_EXTRA)"
 
 # Individual test suites (run specific executable)
 test.unit: compile

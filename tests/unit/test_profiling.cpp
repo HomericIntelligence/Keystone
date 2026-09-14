@@ -92,10 +92,16 @@ TEST_F(ProfilingTest, PercentileCalculation) {
   // assertions are therefore only meaningful without a race detector; the
   // ordering + range checks below hold under every build configuration and are
   // what actually validate the percentile calculation.
+#ifdef __has_feature
+#define KEYSTONE_TEST_HAS_FEATURE(feature) __has_feature(feature)
+#else
+#define KEYSTONE_TEST_HAS_FEATURE(feature) 0
+#endif
 #if !defined(__SANITIZE_THREAD__) && \
-    (!defined(__has_feature) || !__has_feature(thread_sanitizer))
+    !KEYSTONE_TEST_HAS_FEATURE(thread_sanitizer)
   EXPECT_NEAR(stats->p95_us, 950.0, 1200.0);
 #endif
+#undef KEYSTONE_TEST_HAS_FEATURE
 
   // Ordering (this should always hold regardless of overhead)
   EXPECT_LE(stats->p50_us, stats->p95_us);

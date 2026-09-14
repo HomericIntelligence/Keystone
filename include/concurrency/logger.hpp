@@ -246,16 +246,16 @@ class Logger {
       init();
     }
 
-    // Inject context into message
-    std::string context = LogContext::getContextString();
-    std::string full_fmt = context + " " + fmt;
-
-    // Use runtime format to avoid compile-time format string requirement
+    // Inject context into the format string and use runtime formatting to
+    // avoid the compile-time format string requirement. The context prefix is
+    // built inline so no named locals are instantiated per template expansion.
     if constexpr (sizeof...(args) > 0) {
-      logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt),
+      logger_->log(spdlog::source_loc{}, level,
+                   fmt::runtime(LogContext::getContextString() + " " + fmt),
                    std::forward<Args>(args)...);
     } else {
-      logger_->log(spdlog::source_loc{}, level, fmt::runtime(full_fmt));
+      logger_->log(spdlog::source_loc{}, level,
+                   fmt::runtime(LogContext::getContextString() + " " + fmt));
     }
   }
 };

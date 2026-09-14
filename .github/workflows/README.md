@@ -12,13 +12,13 @@ security scanning of the Keystone HMAS (Hierarchical Multi-Agent System) codebas
 - **`extras.yml`** emits the separately required `coverage` context and advisory
   benchmark/NATS checks.
 - **`release-please.yml`** manages releases after pushes to `main`.
-- **`merge-queue-smoke.yml`** is the ONLY workflow that runs for
-  `merge_group/checks_requested`. It runs a single fast `merge-queue-smoke`
-  job (< 5 minutes, one runner slot) of real validation steps. Full CI
-  validates every commit at pull-request time and is left untouched.
 
-Existing push, pull-request, manual, and scheduled behavior is unchanged; only
-the merge-queue surface moved to the dedicated smoke workflow.
+The live baseline also requires `_required.yml`'s `install` job; the complete
+context list is recorded in the quality-gates guide below.
+
+The required and extras workflows execute their real jobs for both pull-request
+and `merge_group/checks_requested` commits. Event-and-SHA-scoped concurrency
+keeps those independent validation runs from cancelling one another.
 
 ## Workflow Details
 
@@ -205,15 +205,19 @@ All workflows run on:
 
 ### Merge Queue
 
-Only `merge-queue-smoke.yml` runs for `merge_group/checks_requested`. GitHub
-creates that event against the speculative group ref; the `merge-queue-smoke`
-job re-validates fast repository invariants there, while the exhaustive suites
-run at pull-request time (each queued commit already passed them on its PR).
+`_required.yml` and `extras.yml` both run for `merge_group/checks_requested`.
+GitHub creates that event against the speculative group ref, and every live
+required context is re-emitted by the same real producers that validate pull
+requests.
 
-Queue activation is a separate post-merge administration step (every ruleset's
-required contexts must first be replaced with `merge-queue-smoke`). See
+Queue activation and any required-context cutover remain separate post-merge
+administration steps. The active queue currently uses `HEADGREEN`; this
+producer change does not mutate it.
+[Keystone #671](https://github.com/HomericIntelligence/Keystone/issues/671)
+owns the live emit-before-require cutover, full ruleset read-back, and rollback
+evidence. See
 [CI/CD Quality Gates](../../docs/CICD_QUALITY_GATES.md#merge-queue-activation)
-for the preserved required-context baseline and approved queue policy.
+for the observed live state and ownership boundary.
 
 ### Push Events
 

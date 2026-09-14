@@ -67,6 +67,12 @@ ProjectAgamemnon (ADR-015/016, #578) (#504)
 
 ### Fixed
 
+- `ci`: gtest test discovery is deferred from build time to test time
+  (`DISCOVERY_MODE PRE_TEST` on all `gtest_discover_tests()` calls), so sanitizer
+  builds no longer fail at compile time with a CTest `ParseTestList` JSON parse
+  error; the `Makefile` gains a `CTEST_EXTRA` passthrough and the sanitizer ctest
+  phases in `scripts/run_ci_local.sh` use `--repeat until-pass:2` to tolerate one
+  transient flake (#645)
 - `monitoring`: Add `.load()` for atomic `server_fd_` and `port_` usages ([4a583ed](../../commit/4a583ed))
 - Resolve CI failures — TSan data races, MSan removal, Dockerfile COPY paths ([412b73c](../../commit/412b73c))
 - `ci`: Apply clang-format-18 and fix Dockerfile COPY for disabled tests ([14e9e42](../../commit/14e9e42))

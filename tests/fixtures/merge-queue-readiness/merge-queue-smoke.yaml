@@ -1,0 +1,12 @@
+name: Alternate-extension smoke fixture
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  merge-queue-smoke:
+    name: merge-queue-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - run: "true"

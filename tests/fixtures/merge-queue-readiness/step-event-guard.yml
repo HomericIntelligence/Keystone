@@ -1,0 +1,16 @@
+name: Required validator step guard fixture
+
+on:
+  pull_request:
+    branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Suppressed required validation
+        if: github.event_name != 'merge_group'
+        run: "true"
