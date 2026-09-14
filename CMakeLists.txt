@@ -292,7 +292,8 @@ add_executable(distributed_hierarchy_tests
 target_link_libraries(distributed_hierarchy_tests keystone_simulation
                       keystone_concurrency keystone_core GTest::gtest_main)
 
-gtest_discover_tests(distributed_hierarchy_tests)
+gtest_discover_tests(distributed_hierarchy_tests DISCOVERY_MODE PRE_TEST
+                     DISCOVERY_TIMEOUT 300)
 
 # E2E distributed gRPC tests removed: they exercised the HMAS gRPC
 # coordinator/registry orchestration layer now living in ProjectAgamemnon
@@ -339,7 +340,8 @@ add_executable(
 target_link_libraries(unit_tests keystone_core keystone_concurrency
                       keystone_transport GTest::gtest_main)
 
-gtest_discover_tests(unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 300
+                     PROPERTIES LABELS unit)
 
 # Profiling Tests (Phase 2.3 - Issue #53) Separate test suite for profiling
 # tests (slow, opt-in)
@@ -350,7 +352,8 @@ if(ENABLE_PROFILING)
 
   target_link_libraries(profiling_tests keystone_core GTest::gtest_main)
 
-  gtest_discover_tests(profiling_tests PROPERTIES LABELS unit)
+  gtest_discover_tests(profiling_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT
+                       300 PROPERTIES LABELS unit)
 
   message(STATUS "Profiling tests enabled (ENABLE_PROFILING=ON)")
 else()
@@ -376,7 +379,8 @@ add_executable(
 target_link_libraries(concurrency_unit_tests keystone_concurrency keystone_core
                       GTest::gtest_main)
 
-gtest_discover_tests(concurrency_unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(concurrency_unit_tests DISCOVERY_MODE PRE_TEST
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Stream C1: 3-phase backoff tests. Kept in their own binary and marked
 # RUN_SERIAL because they assert wall-clock latency bounds: under `ctest -jN`
@@ -387,8 +391,9 @@ add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp)
 target_link_libraries(scheduler_backoff_tests keystone_concurrency
                       keystone_core GTest::gtest_main)
 
-gtest_discover_tests(scheduler_backoff_tests PROPERTIES RUN_SERIAL TRUE LABELS
-                                                        unit)
+gtest_discover_tests(
+  scheduler_backoff_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 300
+  PROPERTIES RUN_SERIAL TRUE LABELS unit)
 
 # Unit Tests - Simulation (Phase D.3)
 add_executable(
@@ -400,7 +405,8 @@ add_executable(
 target_link_libraries(simulation_unit_tests keystone_simulation
                       keystone_concurrency keystone_core GTest::gtest_main)
 
-gtest_discover_tests(simulation_unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(simulation_unit_tests DISCOVERY_MODE PRE_TEST
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Transport library — NATS connection with TLS support (issue #122),
 # NATSListener pull-based fetch loop (issues #178, #205, #307), and
@@ -431,7 +437,8 @@ add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
 
 target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 
-gtest_discover_tests(transport_unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(transport_unit_tests DISCOVERY_MODE PRE_TEST
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Unit Tests — TransparentBridge (issue #512)
 add_executable(bridge_unit_tests tests/unit/test_transparent_bridge.cpp)
@@ -439,7 +446,8 @@ add_executable(bridge_unit_tests tests/unit/test_transparent_bridge.cpp)
 target_link_libraries(bridge_unit_tests keystone_transport keystone_core
                       GTest::gtest_main)
 
-gtest_discover_tests(bridge_unit_tests PROPERTIES LABELS unit)
+gtest_discover_tests(bridge_unit_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT
+                     300 PROPERTIES LABELS unit)
 
 # Registry and NATS agent-integration tests removed: they exercised the agent
 # hierarchy (TaskAgent inbox/coordination) that was extracted to
@@ -462,7 +470,8 @@ if(ENABLE_TLS_INTEGRATION_TESTS)
   target_link_libraries(tls_integration_tests keystone_transport
                         GTest::gtest_main)
 
-  gtest_discover_tests(tls_integration_tests)
+  gtest_discover_tests(tls_integration_tests DISCOVERY_MODE PRE_TEST
+                       DISCOVERY_TIMEOUT 300)
 
   message(
     STATUS "TLS integration tests enabled (ENABLE_TLS_INTEGRATION_TESTS=ON)")
@@ -479,7 +488,8 @@ add_executable(scheduler_sigterm_tests
 target_link_libraries(scheduler_sigterm_tests keystone_concurrency
                       keystone_core GTest::gtest_main)
 
-gtest_discover_tests(scheduler_sigterm_tests)
+gtest_discover_tests(scheduler_sigterm_tests DISCOVERY_MODE PRE_TEST
+                     DISCOVERY_TIMEOUT 300)
 
 # Add test target
 add_custom_target(

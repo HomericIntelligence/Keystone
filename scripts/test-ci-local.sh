@@ -12,11 +12,14 @@ setup() {
     FIXTURE="$TEST_ROOT/$1"
     mkdir -p "$FIXTURE/repo/scripts" "$FIXTURE/repo/.github/workflows" "$FIXTURE/bin"
     cp "$SOURCE_ROOT/scripts/run_ci_local.sh" "$FIXTURE/repo/scripts/"
-    for helper in check-symlinks.sh check-extraction.sh check-ci-policy.sh check-release.py; do
+    for helper in check-symlinks.sh check-extraction.sh check-ci-policy.sh check-release.py \
+        check-workflow-schema.sh test-workflow-schema-validation.sh; do
         if [ -f "$SOURCE_ROOT/scripts/$helper" ]; then
             cp "$SOURCE_ROOT/scripts/$helper" "$FIXTURE/repo/scripts/"
         fi
     done
+    mkdir -p "$FIXTURE/repo/tests/fixtures"
+    cp -R "$SOURCE_ROOT/tests/fixtures/workflow-schema" "$FIXTURE/repo/tests/fixtures/"
     printf 'name: fixture\non: push\njobs: {}\n' > "$FIXTURE/repo/.github/workflows/test.yml"
     printf 'jobs:\n  release:\n    steps:\n      - run: "true"\n' > "$FIXTURE/repo/.github/workflows/_required.yml"
     printf 'default:\n  echo fixture\n' > "$FIXTURE/repo/justfile"
@@ -28,6 +31,7 @@ if [ "${0##*/}" = check-merge-queue-readiness.sh ] && [ "${CI_TEST_FAIL:-}" = qu
     exit 48
 fi
 HELPER
+        chmod +x "$FIXTURE/repo/scripts/$helper.sh"
     done
     git -C "$FIXTURE/repo" init -q
     git -C "$FIXTURE/repo" add .
@@ -99,6 +103,13 @@ case "$name" in
         if [ "${CI_TEST_FAIL:-}" = gitleaks ]; then echo 'controlled redacted finding'; exit 43; fi
         ;;
     check-jsonschema)
+        # The negative-schema harness runs its real helper against a declared
+        # invalid workflow. Model that validator result at the tool boundary.
+        if [[ " $* " = *' tests/fixtures/workflow-schema/invalid-workflow.yaml '* ]]; then
+            if [ "${CI_TEST_FAIL:-}" = accepted-invalid-schema ]; then exit 0; fi
+            echo 'Schema validation errors were encountered' >&2
+            exit 1
+        fi
         if [ "${CI_TEST_FAIL:-}" = schema ]; then echo 'invalid workflow' >&2; exit 44; fi
         if [ "${CI_TEST_FAIL:-}" = schema-contract ]; then
             if [[ " $* " != *' --builtin-schema vendor.github-workflows '* ]]; then exit 45; fi
@@ -219,6 +230,22 @@ queue_contract_failure() {
     launch schema-validation
     if [ "$RESULT" -ne 48 ]; then cat "$FIXTURE/output"; return 1; fi
     grep -q '^check-merge-queue-readiness.sh$' "$CI_TEST_CALLS"
+}
+all_schema_failure_stops_queue() {
+    CI_TEST_FAIL=schema
+    launch all
+    expect_failure || return 1
+    grep -q 'invalid workflow' "$FIXTURE/output" || return 1
+    if grep -q '^check-merge-queue-readiness.sh$' "$CI_TEST_CALLS"; then return 1; fi
+    if grep -qE 'compile.release|^cpack ' "$CI_TEST_CALLS"; then return 1; fi
+}
+all_negative_schema_failure_stops_queue() {
+    CI_TEST_FAIL=accepted-invalid-schema
+    launch all
+    expect_failure || return 1
+    grep -q 'invalid .yaml workflow fixture passed schema validation' "$FIXTURE/output" || return 1
+    if grep -q '^check-merge-queue-readiness.sh$' "$CI_TEST_CALLS"; then return 1; fi
+    if grep -qE 'compile.release|^cpack ' "$CI_TEST_CALLS"; then return 1; fi
 }
 scanner_failure() { CI_TEST_FAIL=gitleaks; launch security-secrets-scan; expect_failure; }
 scanner_success() { launch security-secrets-scan; expect_success; }
@@ -344,6 +371,8 @@ dispatch_test() {
         schema_contract) schema_contract ;;
         schema_missing) schema_missing ;;
         queue_contract_failure) queue_contract_failure ;;
+        all_schema_failure_stops_queue) all_schema_failure_stops_queue ;;
+        all_negative_schema_failure_stops_queue) all_negative_schema_failure_stops_queue ;;
         scanner_failure) scanner_failure ;;
         scanner_success) scanner_success ;;
         suppression_failure) suppression_failure ;;
@@ -370,6 +399,7 @@ dispatch_test() {
     esac
 }
 for test in all_dispatches schema_failure schema_contract schema_missing queue_contract_failure scanner_failure scanner_success \
+    all_schema_failure_stops_queue all_negative_schema_failure_stops_queue \
     suppression_failure suppression_success failed_build_stops_tests failed_tests_cannot_fall_back \
     empty_tests_fail broken_symlink_fails valid_tracked_symlink_passes build_cache_symlink_is_not_a_source_failure \
     markdown_ignores_generated_build_dependencies markdown_rejects_invalid_source_beside_build_dependencies \

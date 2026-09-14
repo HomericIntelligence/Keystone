@@ -8,15 +8,25 @@
 # with that name", so we alias the digest-pinned image to a stage name here and
 # COPY from the alias. Keep this pin in sync with astral-sh/setup-uv in
 # .github/workflows/*.yml when bumping (Odysseus ADR-018).
-FROM ghcr.io/astral-sh/uv:0.12.2@sha256:069a51314a7bb6031777a9273205fe1b0b19e914ef418207d1338b268df641dd AS uv
+FROM ghcr.io/astral-sh/uv:0.12.8@sha256:d1cbaeadc234fe19c0d93daabcf5e98738cd93c6d1dd4918ef6aa30735feb23a AS uv
 
 # Stage 1: Build environment
-# Base digest pinned 2026-08-16 (noble): carries security patches for glibc
+# Base digest pinned 2026-08-24 (noble): carries security patches for glibc
 # (2.39-0ubuntu8.8), libcap2 (2.66-5ubuntu2.4), tar, expat, dpkg, python3.12,
 # libgcrypt20 (CVE-2026-4046/4437/4438, CVE-2026-4878, CVE-2025-45582/66382,
-# CVE-2026-2219, CVE-2025-13462, CVE-2024-2236). Bump the digest regularly
-# (see `docker buildx imagetools inspect ubuntu:24.04`).
-FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS builder
+# CVE-2026-2219, CVE-2025-13462, CVE-2024-2236), plus libssl3t64
+# (3.0.13-0ubuntu3.12) and libsystemd0/libudev1 (255.4-1ubuntu8.17).
+# Bump the digest regularly (see `docker buildx imagetools inspect ubuntu:24.04`).
+#
+# Known no-fix residue (issue #649, verified by Trivy scan 2026-08-24 against
+# this exact base + `apt-get upgrade -y`): util-linux family (CVE-2026-27456),
+# p11-kit (CVE-2026-13757), systemd libs (CVE-2026-40228), zlib1g
+# (CVE-2026-27171), passwd/login (CVE-2024-56433), libgcrypt20 (CVE-2024-2236),
+# libattr1 (CVE-2026-54371) and wget (CVE-2021-31879) are at their newest
+# noble versions; Ubuntu has published no patched release for any of them yet,
+# so they cannot be cleared by a rebuild or package bump and remain honestly
+# reported until upstream ships fixes.
+FROM ubuntu:24.04@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316 AS builder
 
 # Build arguments for user permissions (host UID/GID compatibility)
 ARG BUILD_UID=1000
@@ -128,7 +138,7 @@ RUN cmake -S . -B build/release -G Ninja \
     && cmake --build build/release
 
 # Stage 2: Test runner (runs the built test suites)
-FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS test
+FROM ubuntu:24.04@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316 AS test
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
@@ -154,10 +164,18 @@ CMD ["sh", "-c", "transport_unit_tests && bridge_unit_tests && concurrency_unit_
 # Stage 3: Production environment (Kubernetes deployment)
 # Ships the Keystone daemon service binary — NOT test executables.
 # See issue #513: the previous version incorrectly packaged test binaries here.
-FROM ubuntu:24.04@sha256:019e8eb29a85e74d64925745884f2ec79aa27e3feab36353d24656f4d6b89467 AS production
+FROM ubuntu:24.04@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316 AS production
 
 # Install runtime dependencies. wget is used for the healthcheck so that
 # Python3 (a dev tool) is not required in the production image.
+#
+# wget CVE-2021-31879 note: this old, disputed CVE has no noble or upstream
+# fix and stays flagged by scanners at the latest noble version
+# (1.21.4-1ubuntu4.5). It is NOT exposed here: the healthcheck only requests a
+# fixed localhost URL with no redirects followed (-qO- against 127.0.0.1), so
+# the scheme/redirect handling the advisory concerns is unreachable. Left in
+# place rather than suppressed so the Security tab reports it honestly until a
+# patched wget ships.
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     libstdc++6 \
     wget \

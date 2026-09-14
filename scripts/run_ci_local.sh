@@ -145,12 +145,22 @@ run_unit-tests() {
 run_integration-tests() {
     # C++ integration/sanitizer matrix (asan/ubsan/tsan/lsan) — mirrors the
     # native CI job, running the Makefile directly inside the CI image.
-    run_in_container 'command -v nats-server && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= CMAKE_FEATURE_FLAGS=-DENABLE_FLEET_INTEGRATION_TESTS=ON compile.debug.asan test.debug.asan compile.debug.ubsan test.debug.ubsan compile.debug.tsan test.debug.tsan compile.debug.lsan test.debug.lsan'
+    # Retain main's bounded retry for deferred GoogleTest discovery and each
+    # sanitizer test while enabling the Fleet integration target in every build.
+    local cmd="command -v nats-server && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps"
+    local san
+    for san in asan ubsan tsan lsan; do
+        cmd+=" && uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= CMAKE_FEATURE_FLAGS=-DENABLE_FLEET_INTEGRATION_TESTS=ON compile.debug.${san}"
+        cmd+=" && (uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.${san} CTEST_EXTRA='--repeat until-pass:2' || uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= test.debug.${san} CTEST_EXTRA='--repeat until-pass:2')"
+    done
+    run_in_container "${cmd}"
 }
 
 run_schema-validation() {
-    # Schema validation
-    run_in_container 'uv run --locked check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml && bash scripts/check-merge-queue-readiness.sh'
+    # Validate both extensions, the negative fixture, and actual queue topology.
+    run_in_container "./scripts/check-workflow-schema.sh" &&
+    run_in_container "./scripts/test-workflow-schema-validation.sh" &&
+    run_in_container "./scripts/check-merge-queue-readiness.sh"
 }
 
 run_security-secrets-scan() {

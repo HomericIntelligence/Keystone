@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: required-${{ github.ref }}
+  group: required-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -865,7 +865,7 @@ jobs:
 
       - name: Upload Trivy container SARIF to Security tab
         if: always() && hashFiles('container-scan.sarif') != ''
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v3
         with:
           sarif_file: container-scan.sarif
           category: trivy-container
@@ -908,7 +908,7 @@ jobs:
 
       - name: Upload Gitleaks SARIF
         if: always() && hashFiles('gitleaks.sarif') != ''
-        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v3
         with:
           sarif_file: gitleaks.sarif
 
@@ -1038,7 +1038,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v3
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -1072,6 +1072,6 @@ jobs:
           cmake --build build/codeql
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3  # v3
+        uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v3
         with:
           category: "/language:${{ matrix.language }}"

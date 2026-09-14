@@ -38,9 +38,9 @@ second build with another engine.
 | Markdown | `just ci-markdownlint` | The image's markdownlint-cli2 |
 | uv lock and dependency synchronization | `uv-lock-check`, `deps-version-sync` | Locked environment and manifest checks |
 | Justfile and symlinks | `justfile-check`, `symlink-check` | Justfile parsing and tracked symlink integrity; generated build caches are excluded |
-| Workflow schema and queue contract | `just ci-schema-validation` | Bundled GitHub workflow schema, then actual required-job eligibility and recorded queue policy |
+| Workflow schema and queue contract | `just ci-schema-validation` | Bundled GitHub workflow schema for both extensions, its invalid-workflow regression, and actual required-job eligibility |
 | Unit tests | `just ci-unit-tests` | Current debug build and discovered GoogleTest cases labeled `unit`, plus the sanitizer feature guard; failure cannot fall back to a second selection |
-| Integration and sanitizers | `just ci-integration-tests` | ASan, UBSan, TSan, and LSan, including the Fleet gateway and installed gateway checks against private brokers |
+| Integration and sanitizers | `just ci-integration-tests` | ASan, UBSan, TSan, and LSan, including the Fleet gateway and installed gateway checks against private brokers; bounded retries preserve the main branch's discovery policy |
 | Build | `just ci-release-build` | Current release build with Conan dependencies |
 | Install | `just ci-install` | Canonical staging-layout and `find_package` consumer check |
 | Package | `just ci-package` | DEB, RPM, TGZ, and ZIP CPack generators and nonempty artifact checks |
@@ -77,14 +77,15 @@ results, and source-policy checks. The installer tests use actual checksum
 verification over deliberately corrupt bytes. These tests do not establish a
 successful container build or a successful installation from a release archive.
 
-The queue fixtures run the actual Bash readiness checker against private
+The queue fixtures run the actual readiness checker against private
 workflow copies. They cover conditional required jobs and dependencies,
 missing or duplicate contexts, and forbidden publisher admission. The launcher
 fixture also verifies that a rejected queue contract fails the schema subset.
-The smoke fixture executes its actual version-comparison code against the
-current CMake, Conan, and release-please metadata, including disagreement.
+Version checks use the canonical required workflow's comparison against CMake,
+Conan, and release-please metadata, including disagreement.
 All 13 live required contexts execute in `_required.yml` on merge groups;
-the smoke workflow is advisory. See [queue verification](../CICD_QUALITY_GATES.md#merge-queue-verification)
+the extras workflow also retains its real coverage producer. See
+[queue verification](../CICD_QUALITY_GATES.md#merge-queue-verification)
 for the separate actual queue-head acceptance step.
 
 The release adapter reads the canonical workflow instead of maintaining another

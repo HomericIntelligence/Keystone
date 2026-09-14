@@ -1,19 +1,20 @@
 name: Extras (non-blocking)
 
-# Additional benchmark, NATS, and coverage runs on push/PR.
-# The canonical required coverage job is in _required.yml and runs on queue heads.
+# Benchmarks and NATS integration are informational. Coverage emits a live
+# required context, so the complete workflow runs for pull requests and
+# synthetic merge-group commits.
 
 on:
   push:
     branches: [main, develop, "claude/**"]
   pull_request:
     branches: [main, develop]
-  # Keep these additional jobs off the queue. Required coverage must execute
-  # in _required.yml; a skipped result cannot substitute for that measurement.
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 concurrency:
-  group: extras-${{ github.ref }}
+  group: extras-${{ github.event_name }}-${{ github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -22,7 +23,6 @@ permissions:
 jobs:
   benchmarks:
     name: benchmarks
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     # Raised from 20 to 30: the install-build-deps step (apt-get update + conan
     # install) intermittently exceeds 20 minutes on GitHub-hosted runners during
@@ -65,11 +65,9 @@ jobs:
 
       - name: Configure sccache
         run: |
-          {
-            echo "SCCACHE_GHA_ENABLED=true"
-            echo "CMAKE_C_COMPILER_LAUNCHER=sccache"
-            echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache"
-          } >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
         run: make deps
@@ -94,7 +92,6 @@ jobs:
 
   nats-integration:
     name: NATS integration tests
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     # 20 (was 15): leave headroom for a cold dev-image rebuild — any
     # Containerfile/conanfile.py change misses the exact-match image cache in
@@ -140,11 +137,9 @@ jobs:
 
       - name: Configure sccache
         run: |
-          {
-            echo "SCCACHE_GHA_ENABLED=true"
-            echo "CMAKE_C_COMPILER_LAUNCHER=sccache"
-            echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache"
-          } >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
         run: make deps
@@ -177,7 +172,6 @@ jobs:
 
   coverage:
     name: coverage
-    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
 
@@ -211,11 +205,9 @@ jobs:
 
       - name: Configure sccache
         run: |
-          {
-            echo "SCCACHE_GHA_ENABLED=true"
-            echo "CMAKE_C_COMPILER_LAUNCHER=sccache"
-            echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache"
-          } >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
+          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> $GITHUB_ENV
 
       - name: Install Conan dependencies
         run: make deps
