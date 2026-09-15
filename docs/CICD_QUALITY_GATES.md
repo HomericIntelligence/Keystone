@@ -295,8 +295,8 @@ The `quality-summary` job runs after all quality gates complete:
 
 ## Branch Protection Rules
 
-The live `main` rulesets require these existing GitHub Actions contexts. Merge
-queue rollout must preserve all of them:
+The live `main` rulesets require these 13 GitHub Actions contexts. Queue
+execution must preserve all of them:
 
 - `lint`, `unit-tests`, `integration-tests`, `test`, `build`, `install`, and
   `package`
@@ -306,26 +306,48 @@ queue rollout must preserve all of them:
 
 The rulesets also preserve required signatures, linear history, deletion and
 non-fast-forward protection, zero required approvals, review-thread resolution,
-and non-strict status checks. Queue activation does not weaken or replace those
-rules.
+and non-strict status checks. Queue repairs do not weaken or replace those rules.
 
-## Merge Queue Activation
+## Merge Queue Verification
 
-The active `homeric-main-baseline` ruleset already has a merge queue. Its
-observed live queue state is `HEADGREEN` with 10 entries building concurrently,
-groups of 1–5 entries, a five-minute group wait, a 60-minute check timeout, and
-squash merge. These values describe current state; they are not an executable
-desired-state template, and this producer change does not mutate them.
+The active `homeric-main-baseline` ruleset already has a merge queue. On
+2026-09-14, its observed state was `HEADGREEN` with two entries building
+concurrently, groups of 1–5 entries, a five-minute group wait, a 60-minute check
+timeout, and squash merge. This is a read-only observation. The implementation
+does not change the ruleset.
 
 The required and extras workflows handle `merge_group/checks_requested` so a
 representative synthetic commit can emit the same real contexts as its pull
-request. Live context replacement and the final queue-policy transition are
-owned exclusively by
+request. The former smoke-only carrier is removed. Both workflows retain their
+real coverage jobs; a skipped result cannot replace a required measurement.
+
+Live context replacement and the final queue-policy transition are owned by
 [Keystone #671](https://github.com/HomericIntelligence/Keystone/issues/671).
 That operational issue requires snapshot, emit-before-require probes, complete
 GET-derived updates, read-back comparison, and rollback evidence before the
 queue moves to its final 180-minute aggregate-gate baseline. No ruleset write
 or queue activation belongs in this implementation PR.
+
+1. Complete independent review and actual local and hosted CI on the exact PR
+   head before normal queue admission.
+2. Read `gh api repos/HomericIntelligence/Keystone/rules/branches/main` and retain
+   the raw response. Compare all required contexts and queue parameters above;
+   resolve any policy difference before admission.
+3. Have the authorized coordinator admit the designated reviewed PR through the
+   ordinary expected-head queue path. Do not bypass protection or copy statuses.
+4. Capture its actual queue entry, enqueue time, and queue-head SHA. Bind the
+   `merge_group` workflow runs and their job/check responses to that SHA.
+5. Require every one of the 13 contexts to finish successfully through its real
+   job before recording acceptance and the normal squash merge. A skipped
+   required job is insufficient.
+
+`just check-merge-queue-readiness` validates the supported literal workflow
+configuration and recursively checks required-job dependencies. The schema
+gate also invokes it. It rejects job-level conditions, ignored failures,
+missing or duplicate producers within one workflow, and required jobs with no
+unconditional command. It does not simulate GitHub scheduling or prove a queue
+run. Keep raw failed or incomplete run evidence and repair the cause; do not
+weaken protection to make the queue advance.
 
 ## Local Validation
 

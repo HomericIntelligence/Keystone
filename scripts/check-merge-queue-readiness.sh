@@ -147,6 +147,8 @@ def require_event_parity(path: Path, workflow: dict[str, Any]) -> None:
         fail(f"{path}: missing merge_group event mapping")
     elif merge_group.get("types") != ["checks_requested"]:
         fail(f"{path}: merge_group must be limited to checks_requested")
+    elif set(merge_group) != {"types"}:
+        fail(f"{path}: unsupported merge_group configuration")
 
 
 def require_event_sha_concurrency(path: Path, workflow: dict[str, Any]) -> None:
@@ -246,8 +248,60 @@ def require_context_reachability(
         return set()
 
     jobs = workflow.get("jobs", {})
+    checked_jobs: set[str] = set()
+    visiting_jobs: set[str] = set()
+
+    def check_queue_job(job_id: str) -> None:
+        if job_id in visiting_jobs:
+            fail(f"{path}: queue dependency cycle: {job_id}")
+            return
+        if job_id in checked_jobs:
+            return
+        job = jobs.get(job_id)
+        if not isinstance(job, dict):
+            fail(f"{path}: queue dependency is missing: {job_id}")
+            return
+        checked_jobs.add(job_id)
+        visiting_jobs.add(job_id)
+        if "if" in job and names.get(job_id) not in REQUIRED_CONTEXTS:
+            fail(f"{path}: queue dependency {job_id} must be unconditional")
+        if "continue-on-error" in job:
+            fail(f"{path}: queue job {job_id} must not ignore failure")
+
+        steps = job.get("steps")
+        if not isinstance(steps, list) or not any(
+            isinstance(step, dict)
+            and isinstance(step.get("run"), str)
+            and step["run"].strip()
+            and "if" not in step
+            and "continue-on-error" not in step
+            for step in steps
+        ):
+            fail(f"{path}: queue job has no unconditional command: {job_id}")
+
+        dependencies = job.get("needs", [])
+        if isinstance(dependencies, str):
+            dependencies = [dependencies]
+        if not isinstance(dependencies, list) or any(
+            not isinstance(dependency, str)
+            or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_-]*", dependency) is None
+            for dependency in dependencies
+        ):
+            fail(f"{path}: unsupported queue dependencies: {job_id}")
+        else:
+            for dependency in dependencies:
+                check_queue_job(dependency)
+        visiting_jobs.remove(job_id)
+
     for context in sorted(owned_contexts):
         matching_jobs = [job_id for job_id, name in names.items() if name == context]
+        # Coverage intentionally has a real producer in each workflow. Each
+        # workflow must still have one unambiguous job for a required context.
+        if len(matching_jobs) != 1:
+            fail(
+                f"{path}: required context {context} needs exactly one producer "
+                "per workflow"
+            )
         for job_id in matching_jobs:
             job = jobs[job_id]
             if "if" in job:
@@ -255,6 +309,7 @@ def require_context_reachability(
                     f"{path}: required context {context} ({job_id}) must be "
                     "unconditional for pull_request and merge_group"
                 )
+            check_queue_job(job_id)
     for violation in required_step_event_guard_violations(path, workflow, names):
         fail(violation)
     return set(owned_contexts)

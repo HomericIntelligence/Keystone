@@ -15,19 +15,29 @@
 # ============================================================================
 # Stage 0: uv binary — pinned GitHub release, checksum-verified
 # ============================================================================
+FROM node:26-slim@sha256:4ebb5ace66f15a24c14c492e01a8beeed4fddf970a856109f5126e703e5fe503 AS node
 FROM python:3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91 AS uv
 
+COPY ci/install-tool.sh /tmp/install-tool.sh
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL --retry 5 --retry-all-errors https://github.com/astral-sh/uv/releases/download/0.12.1/uv-x86_64-unknown-linux-gnu.tar.gz -o /tmp/uv.tar.gz \
-    && printf '%s%s  %s\n' "90b2f223fb69d19db49e117da601f64978" "593417988530aa733d456141b4bcbb" /tmp/uv.tar.gz | sha256sum --check \
-    && tar xzf /tmp/uv.tar.gz -C /usr/local/bin --strip-components=1 \
-    && rm /tmp/uv.tar.gz
+    && bash /tmp/install-tool.sh uv /usr/local/bin
+
+# ============================================================================
+# Shared Python/Node base — hook setup and runtime use the same tool paths.
+# ============================================================================
+FROM python:3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91 AS base
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && apt-get update && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
+ENV PRE_COMMIT_HOME=/opt/pre-commit-cache
 
 # ============================================================================
 # Stage 1: Builder — install uv and the locked project environment
 # ============================================================================
-FROM python:3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91 AS builder
+FROM base AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
@@ -62,9 +72,9 @@ RUN git init . && \
     rm -rf .git
 
 # ============================================================================
-# Stage 2: Runtime — minimal image without build tools
+# Stage 2: CI runtime — native build, package, lint, and coverage tools
 # ============================================================================
-FROM python:3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91
+FROM base
 
 LABEL org.opencontainers.image.title="keystone-ci"
 LABEL org.opencontainers.image.description="CI container for Keystone — linting, testing, security scans"
@@ -85,6 +95,16 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     g++ \
     cmake \
     ninja-build \
+    clang-tidy \
+    libssl-dev \
+    pkg-config \
+    dpkg-dev \
+    file \
+    rpm \
+    zip \
+    unzip \
+    lcov \
+    bc \
     git \
     curl \
     ca-certificates \
@@ -93,9 +113,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     yamllint \
     shellcheck \
     just \
-    nodejs \
-    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Private loopback brokers for the Fleet gateway sanitizer tests.
+COPY ci/install-tool.sh /tmp/install-tool.sh
+RUN bash /tmp/install-tool.sh nats-server /usr/local/bin && nats-server --version
 
 # markdownlint-cli2 (markdownlint gate) — npm tool matching the native CI job
 # (DavidAnson/markdownlint-cli2-action). Not available on PyPI.
@@ -105,21 +127,18 @@ COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 COPY --from=builder /opt/keystone-venv /opt/keystone-venv
 
 # gitleaks (secrets scan) — same pin as the workflow (GITLEAKS_VERSION 8.30.1)
-RUN curl -sSfL --retry 5 --retry-all-errors https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
-    | tar -xz -C /usr/local/bin gitleaks \
-    && gitleaks version
+RUN bash /tmp/install-tool.sh gitleaks /usr/local/bin && gitleaks version
 
-# Copy pre-commit hook cache from builder (baked-in hook envs)
-COPY --from=builder /root/.cache/pre-commit /root/.cache/pre-commit
+# The cache database and hook environments contain absolute paths. Preserve
+# their build-time location rather than relocating a root-owned cache.
+COPY --from=builder /opt/pre-commit-cache /opt/pre-commit-cache
 
 # Create non-root user for rootless Podman compatibility
 RUN groupadd -r ci && useradd -r -g ci -u 1000 -m -s /bin/bash ci \
     && mkdir -p /home/ci/.cache \
     && chown -R ci:ci /home/ci
 
-RUN cp -r /root/.cache/pre-commit /home/ci/.cache/ 2>/dev/null || true && \
-    chown -R ci:ci /home/ci/.cache && \
-    chown -R ci:ci /opt/keystone-venv
+RUN chown -R ci:ci /opt/pre-commit-cache /opt/keystone-venv
 
 WORKDIR /workspace
 

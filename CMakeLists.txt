@@ -340,7 +340,8 @@ add_executable(
 target_link_libraries(unit_tests keystone_core keystone_concurrency
                       keystone_transport GTest::gtest_main)
 
-gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 300)
+gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 300
+                     PROPERTIES LABELS unit)
 
 # Profiling Tests (Phase 2.3 - Issue #53) Separate test suite for profiling
 # tests (slow, opt-in)
@@ -351,8 +352,8 @@ if(ENABLE_PROFILING)
 
   target_link_libraries(profiling_tests keystone_core GTest::gtest_main)
 
-  gtest_discover_tests(profiling_tests DISCOVERY_MODE PRE_TEST
-                       DISCOVERY_TIMEOUT 300)
+  gtest_discover_tests(profiling_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT
+                       300 PROPERTIES LABELS unit)
 
   message(STATUS "Profiling tests enabled (ENABLE_PROFILING=ON)")
 else()
@@ -379,20 +380,21 @@ target_link_libraries(concurrency_unit_tests keystone_concurrency keystone_core
                       GTest::gtest_main)
 
 gtest_discover_tests(concurrency_unit_tests DISCOVERY_MODE PRE_TEST
-                     DISCOVERY_TIMEOUT 300)
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Stream C1: 3-phase backoff tests. Kept in their own binary and marked
 # RUN_SERIAL because they assert wall-clock latency bounds: under `ctest -jN`
 # the other scheduler suites saturate the runner's cores and inflate the
 # measured SPIN/SLEEP wake-up latencies past their assertions.
-add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp)
+add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp
+                                       tests/unit/test_scheduler_sleep.cpp)
 
 target_link_libraries(scheduler_backoff_tests keystone_concurrency
                       keystone_core GTest::gtest_main)
 
 gtest_discover_tests(
-  scheduler_backoff_tests PROPERTIES RUN_SERIAL TRUE DISCOVERY_MODE PRE_TEST
-                                     DISCOVERY_TIMEOUT 300)
+  scheduler_backoff_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 300
+  PROPERTIES RUN_SERIAL TRUE LABELS unit)
 
 # Unit Tests - Simulation (Phase D.3)
 add_executable(
@@ -405,7 +407,7 @@ target_link_libraries(simulation_unit_tests keystone_simulation
                       keystone_concurrency keystone_core GTest::gtest_main)
 
 gtest_discover_tests(simulation_unit_tests DISCOVERY_MODE PRE_TEST
-                     DISCOVERY_TIMEOUT 300)
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Transport library — NATS connection with TLS support (issue #122),
 # NATSListener pull-based fetch loop (issues #178, #205, #307), and
@@ -437,7 +439,7 @@ add_executable(transport_unit_tests tests/unit/test_nats_connection.cpp)
 target_link_libraries(transport_unit_tests keystone_transport GTest::gtest_main)
 
 gtest_discover_tests(transport_unit_tests DISCOVERY_MODE PRE_TEST
-                     DISCOVERY_TIMEOUT 300)
+                     DISCOVERY_TIMEOUT 300 PROPERTIES LABELS unit)
 
 # Unit Tests — TransparentBridge (issue #512)
 add_executable(bridge_unit_tests tests/unit/test_transparent_bridge.cpp)
@@ -445,8 +447,8 @@ add_executable(bridge_unit_tests tests/unit/test_transparent_bridge.cpp)
 target_link_libraries(bridge_unit_tests keystone_transport keystone_core
                       GTest::gtest_main)
 
-gtest_discover_tests(bridge_unit_tests DISCOVERY_MODE PRE_TEST
-                     DISCOVERY_TIMEOUT 300)
+gtest_discover_tests(bridge_unit_tests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT
+                     300 PROPERTIES LABELS unit)
 
 # Registry and NATS agent-integration tests removed: they exercised the agent
 # hierarchy (TaskAgent inbox/coordination) that was extracted to
@@ -585,6 +587,9 @@ endif()
 # =====================================================================
 include(GNUInstallDirs)
 
+# Allocation-local stdio attachment; no scheduler, stream, or consumer creation.
+add_subdirectory(src/fleet)
+
 # Install runtime libraries (keystone package)
 install(
   TARGETS keystone_core keystone_concurrency keystone_simulation
@@ -700,6 +705,7 @@ set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
 # Component-based packaging
 set(CPACK_COMPONENTS_ALL keystone keystone-dev keystone-doc keystone-test
                          keystone-misc)
+set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
 
 # Component descriptions
 set(CPACK_COMPONENT_KEYSTONE_DISPLAY_NAME "Keystone Runtime Libraries")
@@ -752,25 +758,27 @@ set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 
-# DEB package dependencies
-set(CPACK_DEBIAN_KEYSTONE_PACKAGE_NAME "libkeystone0")
-set(CPACK_DEBIAN_KEYSTONE_PACKAGE_DEPENDS "libc6 (>= 2.34), libstdc++6 (>= 12)")
+# Package metadata uses the effective group name, not the install component.
+# Keep the names already emitted by grouped CPack packaging. Derive runtime
+# dependencies and their ABI versions from the packaged ELF files.
+set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "keystone-runtime")
+set(CPACK_DEBIAN_RUNTIME_PACKAGE_SHLIBDEPS ON)
 
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_NAME "libkeystone-dev")
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_SUGGESTS "ninja-build, clang-format")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_NAME "keystone-development")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_SUGGESTS "ninja-build, clang-format")
 
-set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_NAME "keystone-doc")
-set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_ARCHITECTURE "all")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_NAME "keystone-documentation")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_ARCHITECTURE "all")
 
-set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_NAME "keystone-test")
-set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_TESTING_PACKAGE_NAME "keystone-testing")
+set(CPACK_DEBIAN_TESTING_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION})")
 
-set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
-set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_TOOLS_PACKAGE_NAME "keystone-tools")
+set(CPACK_DEBIAN_TOOLS_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION})")
 
 # RPM-specific settings
 set(CPACK_RPM_PACKAGE_LICENSE "BSD-3-Clause")
@@ -779,20 +787,19 @@ set(CPACK_RPM_ENABLE_COMPONENT_DEPENDS ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
 # RPM package names
-set(CPACK_RPM_KEYSTONE_PACKAGE_NAME "keystone")
-set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_NAME "keystone-devel")
-set(CPACK_RPM_KEYSTONE-DOC_PACKAGE_NAME "keystone-doc")
-set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_NAME "keystone-test")
-set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
+set(CPACK_RPM_RUNTIME_PACKAGE_NAME "keystone-Runtime")
+set(CPACK_RPM_DEVELOPMENT_PACKAGE_NAME "keystone-Development")
+set(CPACK_RPM_DOCUMENTATION_PACKAGE_NAME "keystone-Documentation")
+set(CPACK_RPM_TESTING_PACKAGE_NAME "keystone-Testing")
+set(CPACK_RPM_TOOLS_PACKAGE_NAME "keystone-Tools")
 
-# RPM package dependencies
-set(CPACK_RPM_KEYSTONE_PACKAGE_REQUIRES "glibc >= 2.34")
-set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
-set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}")
-set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}")
+# Keep RPM's automatic ELF requirements/provides; add package-level edges.
+set(CPACK_RPM_DEVELOPMENT_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
+set(CPACK_RPM_TESTING_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}")
+set(CPACK_RPM_TOOLS_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}")
 
 # Archive settings (TGZ, ZIP)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)

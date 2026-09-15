@@ -42,8 +42,10 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.9",
     "pip-audit>=2.7",
-    # Fail-closed validation for every committed GitHub Actions workflow.
+    # Includes a bundled GitHub Actions workflow schema; validation is offline.
     "check-jsonschema>=0.38.0,<1",
+    "pyyaml>=6.0,<7",
+    "types-pyyaml>=6.0,<7",
 ]
 
 # Tooling-only manifest: there is no importable `keystone` Python package to

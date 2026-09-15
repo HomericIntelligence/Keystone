@@ -3,6 +3,48 @@ set shell := ["bash", "-c"]
 default:
   @just --list
 
+# CI contracts use controlled tools and actual CMake/CTest discovery.
+test-ci-local:
+    uv run --locked python scripts/test-unit-test-selection.py
+    uv run --locked python scripts/test-generate-coverage.py
+    uv run --locked bash scripts/test-ci-local.sh
+    bash ci/test-install-tool.sh
+    uv run --locked bash scripts/test-merge-queue-readiness.sh
+
+# Real CPack/DEB metadata contracts; requires Linux and dpkg-dev.
+test-package-metadata:
+    uv run --locked python scripts/test-package-metadata.py
+
+# Focused allocation-gateway build; only transport dependencies, at most 2 jobs.
+fleet-build:
+    uv run cmake -S src/fleet -B build/fleet -DCMAKE_BUILD_TYPE=Debug
+    uv run cmake --build build/fleet --parallel 2
+
+# Starts private loopback NATS instances; requires nats-server on PATH.
+fleet-test: fleet-build
+    uv run ctest --test-dir build/fleet --output-on-failure
+
+# Re-run the built gateway tests without consuming another build slot.
+fleet-test-only:
+    uv run ctest --test-dir build/fleet --output-on-failure
+
+fleet-format:
+    uvx --from clang-format==18.1.0 clang-format --style=Google -i src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
+fleet-format-check:
+    uvx --from clang-format==18.1.0 clang-format --style=Google --dry-run --Werror src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
+# Check owned gateway code with the repository clang-tidy policy.
+fleet-tidy:
+    uv run cmake -S src/fleet -B build/fleet-tidy -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    clang-tidy -p build/fleet-tidy --warnings-as-errors='*' --header-filter='(^|/)(src/fleet|tests/integration)/' src/fleet/main.cpp tests/integration/test_fleet_gateway.cpp
+
+fleet-cmake-format:
+    uvx --from cmakelang==0.6.13 cmake-format -i src/fleet/CMakeLists.txt tests/integration/fleet_install.cmake
+
+fleet-docs-check:
+    npx --yes markdownlint-cli@0.39.0 --config .markdownlint.yaml docs/runbooks/fleet-gateway.md CHANGELOG.md
+
 # Bootstrap the local notes/ scratch workspace (not version-controlled).
 # Required for .claude/agents/* workflows that write to /notes/issues/<N>.
 setup-notes:
@@ -48,7 +90,7 @@ lint:
 check-extraction:
   ./scripts/check-extraction.sh
 
-# Validate that required workflows and activation docs remain merge-queue ready.
+# Validate actual required queue jobs and the recorded live policy.
 check-merge-queue-readiness:
   ./scripts/check-merge-queue-readiness.sh
 
@@ -152,7 +194,23 @@ pack-dry-run:
 
 # Build the CI container image (podman first, docker fallback)
 ci-build:
-    podman build --ignorefile ci/.dockerignore -f ci/Containerfile -t keystone-ci:local . || docker build -f ci/Containerfile -t keystone-ci:local .
+    ./scripts/run_ci_local.sh image-build
+
+# Local equivalents of the separate hosted build/install/package/coverage checks.
+ci-release-build:
+    ./scripts/run_ci_local.sh build
+
+ci-install:
+    ./scripts/run_ci_local.sh install
+
+ci-package:
+    ./scripts/run_ci_local.sh package
+
+ci-coverage:
+    ./scripts/run_ci_local.sh coverage
+
+ci-release-check:
+    ./scripts/run_ci_local.sh release
 
 # Run CI lint checks in container
 ci-lint:

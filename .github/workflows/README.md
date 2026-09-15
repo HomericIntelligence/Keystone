@@ -216,7 +216,7 @@ producer change does not mutate it.
 [Keystone #671](https://github.com/HomericIntelligence/Keystone/issues/671)
 owns the live emit-before-require cutover, full ruleset read-back, and rollback
 evidence. See
-[CI/CD Quality Gates](../../docs/CICD_QUALITY_GATES.md#merge-queue-activation)
+[CI/CD Quality Gates](../../docs/CICD_QUALITY_GATES.md#merge-queue-verification)
 for the observed live state and ownership boundary.
 
 ### Push Events
