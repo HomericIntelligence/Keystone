@@ -29,6 +29,12 @@ second build with another engine.
 5. Confirm the required hosted checks and their artifact identities for that
    same commit before merge. Local CI does not replace these checks.
 
+The hosted `package` job runs CPack in the Compose `dev` service, built from the
+root `Containerfile`'s `development` stage. Local `just ci-package` uses
+`ci/Containerfile`. Both images declare `file` and `dpkg-dev` for DEB dependency
+inspection and `rpm` for RPM generation. Rebuild the corresponding image when
+its inputs change; each image's package-tool inventory needs its own evidence.
+
 ## Check ownership
 
 | Required check | Local entry point or subset | What runs |
