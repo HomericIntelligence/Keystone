@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "concurrency/scheduler_accessor.hpp"
+#include "scheduler_sleep.hpp"
 
 // Phase D: CPU affinity support (Linux-specific)
 #ifdef __linux__
@@ -93,7 +94,7 @@ void WorkStealingScheduler::submitTo(size_t worker_index,
   worker_queues_[worker_index]->push(std::move(work_item));
 
   // Stream C1: Wake up workers in SLEEP phase immediately
-  shutdown_cv_.notify_all();
+  detail::notifySchedulerWork(shutdown_cv_, shutdown_mutex_);
 }
 
 void WorkStealingScheduler::submitTo(size_t worker_index,
@@ -111,7 +112,7 @@ void WorkStealingScheduler::submitTo(size_t worker_index,
   worker_queues_[worker_index]->push(std::move(work_item));
 
   // Stream C1: Wake up workers in SLEEP phase immediately
-  shutdown_cv_.notify_all();
+  detail::notifySchedulerWork(shutdown_cv_, shutdown_mutex_);
 }
 
 void WorkStealingScheduler::shutdown() {
@@ -244,17 +245,10 @@ std::optional<WorkItem> WorkStealingScheduler::tryStealWithBackoff(
   }
 
   // Phase 3: SLEEP (1001+ iterations)
-  while (true) {
-    if (auto work = tryStealOnce(worker_index, "SLEEP")) {
-      return work;
-    }
-    std::unique_lock<std::mutex> lock(shutdown_mutex_);
-    shutdown_cv_.wait_for(lock, SLEEP_DURATION,
-                          [this]() { return shutdown_requested_.load(); });
-    if (shutdown_requested_.load()) {
-      return std::nullopt;
-    }
-  }
+  return detail::sleepUntilWork(
+      shutdown_cv_, shutdown_mutex_, SLEEP_DURATION,
+      [this, worker_index]() { return tryStealOnce(worker_index, "SLEEP"); },
+      [this]() { return shutdown_requested_.load(); });
 }
 
 void WorkStealingScheduler::workerLoop(size_t worker_index) {

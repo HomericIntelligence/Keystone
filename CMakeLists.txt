@@ -386,7 +386,8 @@ gtest_discover_tests(concurrency_unit_tests DISCOVERY_MODE PRE_TEST
 # RUN_SERIAL because they assert wall-clock latency bounds: under `ctest -jN`
 # the other scheduler suites saturate the runner's cores and inflate the
 # measured SPIN/SLEEP wake-up latencies past their assertions.
-add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp)
+add_executable(scheduler_backoff_tests tests/unit/test_scheduler_backoff.cpp
+                                       tests/unit/test_scheduler_sleep.cpp)
 
 target_link_libraries(scheduler_backoff_tests keystone_concurrency
                       keystone_core GTest::gtest_main)

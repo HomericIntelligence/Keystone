@@ -400,6 +400,13 @@ Publisher → MessageBus.routeMessage(msg)
 - **HeartbeatMonitor**: Liveness tracking
 - **MessagePool**: Zero-allocation message pooling
 
+The scheduler keeps its existing queues and public API. Submission now takes
+the shared wake mutex after enqueueing work. SLEEP workers use that mutex for
+their final queue check and condition-variable wait. End-to-end submission is
+therefore not lock-free. The narrow proposed update to ADR-002 is documented in
+[ADR-017: Reliable scheduler sleep notifications](docs/plan/adr/ADR-017-reliable-scheduler-sleep-notifications.md).
+Contention and throughput effects remain unmeasured.
+
 ## Documentation
 
 - [AGENTS.md](AGENTS.md) - Project overview for Claude Code

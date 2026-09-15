@@ -65,6 +65,22 @@ selection only when `ENABLE_PROFILING` is enabled. Scheduler-backoff cases retai
 The ordinary debug build runs `ThreadPoolTest.CreateAndDestroy` and
 `ThreadPoolTest.HardwareConcurrency`, which intentionally skip under sanitizers.
 
+The scheduler's SPIN and YIELD iteration budgets remain 100 and 1000. Its SLEEP
+phase checks queues and enters its condition-variable wait under the same mutex
+that submission uses for notification. Each wake rechecks work; the one-millisecond
+timeout is a fallback. Shutdown still wakes workers and drains remaining work.
+
+`SchedulerSleepTest` exercises that shared SLEEP implementation with the real
+queue and a controlled condition-variable boundary. It checks notification before
+and during a wait, repeated notifications, and shutdown without measuring host
+speed. `SchedulerPerformanceTest.WorkerQueuedHandoffLatency` retains the existing
+200-microsecond limit (5 milliseconds under ASan or TSan). The sole worker queues
+its next callback before returning to the work loop; a sleep cannot establish a
+worker's backoff phase. This performance case and the existing idle-wakeup and
+load-latency cases remain in the required `unit` selection with `RUN_SERIAL`.
+These focused checks do not establish idle CPU consumption or Fleet throughput;
+those claims require separate measurements.
+
 `just test-ci-local` first exercises the repository's literal GoogleTest
 discovery calls with actual CMake/CTest and imported test-list fixtures. It
 checks selected case names, nonunit exclusions, and the serial property without
