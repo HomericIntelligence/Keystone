@@ -21,6 +21,9 @@ Starting from v0.2.0, this file is maintained automatically by
 
 ### Changed
 
+- Preserve grouped package names while fixing their dependency metadata. Derive
+  DEB runtime library requirements from packaged ELF files and reject dependency
+  inspection failures; retain RPM automatic requirements and provides.
 - Run all 13 existing required checks on merge-group commits, including real
   coverage, and reject queue-ineligible jobs through the shared CI guard.
 - Restore the complete local CI dispatcher and propagate validator, scanner,

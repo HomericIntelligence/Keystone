@@ -98,6 +98,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     clang-tidy \
     libssl-dev \
     pkg-config \
+    dpkg-dev \
+    file \
     rpm \
     zip \
     unzip \

@@ -705,6 +705,7 @@ set(CPACK_RESOURCE_FILE_README "${PROJECT_SOURCE_DIR}/README.md")
 # Component-based packaging
 set(CPACK_COMPONENTS_ALL keystone keystone-dev keystone-doc keystone-test
                          keystone-misc)
+set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
 
 # Component descriptions
 set(CPACK_COMPONENT_KEYSTONE_DISPLAY_NAME "Keystone Runtime Libraries")
@@ -757,25 +758,27 @@ set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 
-# DEB package dependencies
-set(CPACK_DEBIAN_KEYSTONE_PACKAGE_NAME "libkeystone0")
-set(CPACK_DEBIAN_KEYSTONE_PACKAGE_DEPENDS "libc6 (>= 2.34), libstdc++6 (>= 12)")
+# Package metadata uses the effective group name, not the install component.
+# Keep the names already emitted by grouped CPack packaging. Derive runtime
+# dependencies and their ABI versions from the packaged ELF files.
+set(CPACK_DEBIAN_RUNTIME_PACKAGE_NAME "keystone-runtime")
+set(CPACK_DEBIAN_RUNTIME_PACKAGE_SHLIBDEPS ON)
 
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_NAME "libkeystone-dev")
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
-set(CPACK_DEBIAN_KEYSTONE-DEV_PACKAGE_SUGGESTS "ninja-build, clang-format")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_NAME "keystone-development")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION}), cmake (>= 3.20)")
+set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_SUGGESTS "ninja-build, clang-format")
 
-set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_NAME "keystone-doc")
-set(CPACK_DEBIAN_KEYSTONE-DOC_PACKAGE_ARCHITECTURE "all")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_NAME "keystone-documentation")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_ARCHITECTURE "all")
 
-set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_NAME "keystone-test")
-set(CPACK_DEBIAN_KEYSTONE-TEST_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_TESTING_PACKAGE_NAME "keystone-testing")
+set(CPACK_DEBIAN_TESTING_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION})")
 
-set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
-set(CPACK_DEBIAN_KEYSTONE-MISC_PACKAGE_DEPENDS
-    "libkeystone0 (= ${CPACK_PACKAGE_VERSION})")
+set(CPACK_DEBIAN_TOOLS_PACKAGE_NAME "keystone-tools")
+set(CPACK_DEBIAN_TOOLS_PACKAGE_DEPENDS
+    "keystone-runtime (= ${CPACK_PACKAGE_VERSION})")
 
 # RPM-specific settings
 set(CPACK_RPM_PACKAGE_LICENSE "BSD-3-Clause")
@@ -784,20 +787,19 @@ set(CPACK_RPM_ENABLE_COMPONENT_DEPENDS ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
 # RPM package names
-set(CPACK_RPM_KEYSTONE_PACKAGE_NAME "keystone")
-set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_NAME "keystone-devel")
-set(CPACK_RPM_KEYSTONE-DOC_PACKAGE_NAME "keystone-doc")
-set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_NAME "keystone-test")
-set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_NAME "keystone-tools")
+set(CPACK_RPM_RUNTIME_PACKAGE_NAME "keystone-Runtime")
+set(CPACK_RPM_DEVELOPMENT_PACKAGE_NAME "keystone-Development")
+set(CPACK_RPM_DOCUMENTATION_PACKAGE_NAME "keystone-Documentation")
+set(CPACK_RPM_TESTING_PACKAGE_NAME "keystone-Testing")
+set(CPACK_RPM_TOOLS_PACKAGE_NAME "keystone-Tools")
 
-# RPM package dependencies
-set(CPACK_RPM_KEYSTONE_PACKAGE_REQUIRES "glibc >= 2.34")
-set(CPACK_RPM_KEYSTONE-DEV_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
-set(CPACK_RPM_KEYSTONE-TEST_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}")
-set(CPACK_RPM_KEYSTONE-MISC_PACKAGE_REQUIRES
-    "keystone = ${CPACK_PACKAGE_VERSION}")
+# Keep RPM's automatic ELF requirements/provides; add package-level edges.
+set(CPACK_RPM_DEVELOPMENT_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}, cmake >= 3.20")
+set(CPACK_RPM_TESTING_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}")
+set(CPACK_RPM_TOOLS_PACKAGE_REQUIRES
+    "keystone-Runtime = ${CPACK_PACKAGE_VERSION}")
 
 # Archive settings (TGZ, ZIP)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)

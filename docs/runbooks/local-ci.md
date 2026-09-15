@@ -43,7 +43,7 @@ second build with another engine.
 | Integration and sanitizers | `just ci-integration-tests` | ASan, UBSan, TSan, and LSan, including the Fleet gateway and installed gateway checks against private brokers; bounded retries preserve the main branch's discovery policy |
 | Build | `just ci-release-build` | Current release build with Conan dependencies |
 | Install | `just ci-install` | Canonical staging-layout and `find_package` consumer check |
-| Package | `just ci-package` | DEB, RPM, TGZ, and ZIP CPack generators and nonempty artifact checks |
+| Package | `just ci-package` | Real CPack metadata regression checks, DEB/RPM/TGZ/ZIP generation, and nonempty artifacts |
 | Coverage | `just ci-coverage` | Coverage build, tests, and the existing report/threshold script |
 | Static release validation | `just ci-release-check` | Literal release-validation commands read from the canonical required workflow; no publication |
 | Secrets | `just ci-security-secrets-scan` | Gitleaks with redacted output and its real failure status |

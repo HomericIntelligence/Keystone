@@ -13,8 +13,12 @@ submit Slurm jobs, provide an agent runtime, or make task-ownership decisions.
    `build/fleet/bin/keystone-fleet-gateway`. The normal Keystone build also includes
    and installs it. The runtime component includes the shared NATS library and
    its SONAME links. The gateway uses a relative library search path, so the
-   installed `bin` and `lib` directories must move together. OpenSSL and the
-   platform C/C++ runtime remain system dependencies.
+   installed `bin` and `lib` directories must move together. The grouped runtime
+   package is `keystone-runtime` on DEB systems and `keystone-Runtime` on RPM
+   systems. Install it through the package manager so its declared C/C++ runtime
+   dependencies are resolved. Shared OpenSSL is required only when the packaged
+   NATS library links to it dynamically. Follow the [packaging contract](../PACKAGING.md)
+   for artifact inspection and clean-runtime validation before deployment.
 2. Provision the canonical Keystone stream and a durable **pull** consumer using
    the existing deployment process. Require explicit acknowledgment,
    `MaxAckPending=1`, and the exact configured filter. The gateway refuses an absent

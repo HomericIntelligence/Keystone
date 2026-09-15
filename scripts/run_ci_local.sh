@@ -208,6 +208,7 @@ run_install() {
 
 run_package() {
     run_in_container "$(cat <<'COMMAND'
+        just test-package-metadata
         uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= deps
         uv run --locked make NPROC=2 CONTAINER_CHECK= CONTAINER_PREFIX= compile.release
         cd build/x86.release

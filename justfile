@@ -11,6 +11,10 @@ test-ci-local:
     bash ci/test-install-tool.sh
     uv run --locked bash scripts/test-merge-queue-readiness.sh
 
+# Real CPack/DEB metadata contracts; requires Linux and dpkg-dev.
+test-package-metadata:
+    uv run --locked python scripts/test-package-metadata.py
+
 # Focused allocation-gateway build; only transport dependencies, at most 2 jobs.
 fleet-build:
     uv run cmake -S src/fleet -B build/fleet -DCMAKE_BUILD_TYPE=Debug

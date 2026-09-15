@@ -1,584 +1,138 @@
 # Keystone Packaging Guide
 
-This document describes the CPack-based packaging system for Keystone HMAS.
-
-## Package Overview
-
-Keystone is distributed as five separate packages to support different use cases:
-
-### 1. keystone (Runtime Package)
-
-**Package Names:**
-
-- DEB: `libkeystone0`
-- RPM: `keystone`
-- Archive: `Keystone-<version>-Linux-keystone.tar.gz`
-
-**Contents:**
-
-- Runtime shared libraries (`.so` files)
-- Core documentation (README.md, LICENSE, AGENTS.md)
-
-**Target Users:** End users running applications built with Keystone
-
-**Dependencies:**
-
-- libc6 >= 2.34
-- libstdc++6 >= 12
-
-### 2. keystone-dev (Development Package)
-
-**Package Names:**
-
-- DEB: `libkeystone-dev`
-- RPM: `keystone-devel`
-- Archive: `Keystone-<version>-Linux-keystone-dev.tar.gz`
-
-**Contents:**
-
-- All public header files (`.hpp`)
-- Static libraries (`.a` files)
-- CMake package configuration files
-  - `KeystoneConfig.cmake`
-  - `KeystoneConfigVersion.cmake`
-  - `KeystoneTargets.cmake`
-- Proto files (if gRPC enabled)
-- Build documentation (Dockerfile, docker-compose.yaml)
-
-**Target Users:** Developers building applications with Keystone
-
-**Dependencies:**
-
-- keystone (runtime package)
-- cmake >= 3.20
-
-**Usage Example:**
-
-```cmake
-# In your CMakeLists.txt
-find_package(Keystone REQUIRED COMPONENTS core concurrency)
-
-add_executable(my_app main.cpp)
-target_link_libraries(my_app
-    Keystone::keystone_core
-    Keystone::keystone_concurrency
-)
-```
-
-### 3. keystone-doc (Documentation Package)
-
-**Package Names:**
-
-- DEB: `keystone-doc`
-- RPM: `keystone-doc`
-- Archive: `Keystone-<version>-Linux-keystone-doc.tar.gz`
-
-**Contents:**
-
-- Complete documentation from `docs/` directory
-  - Architecture guides (FOUR_LAYER_ARCHITECTURE.md, etc.)
-  - Phase plans (PHASE_*.md)
-  - API references
-  - Deployment guides (KUBERNETES_DEPLOYMENT.md, etc.)
-
-**Target Users:** Developers, architects, and technical writers
-
-**Dependencies:** None (architecture-independent)
-
-### 4. keystone-test (Test Package)
-
-**Package Names:**
-
-- DEB: `keystone-test`
-- RPM: `keystone-test`
-- Archive: `Keystone-<version>-Linux-keystone-test.tar.gz`
-
-**Contents:**
-
-- All test executables
-  - Unit tests (`unit_tests`, `concurrency_unit_tests`, `simulation_unit_tests`)
-  - E2E tests (`basic_delegation_tests`, `module_coordination_tests`, etc.)
-  - gRPC tests (if enabled: `distributed_grpc_tests`)
-
-**Target Users:** QA engineers, CI/CD systems, release validation
-
-**Dependencies:**
-
-- keystone (runtime package)
-
-**Installation Location:**
-
-- `/usr/bin/tests/` (system-wide)
-- `bin/tests/` (local install)
-
-**Usage Example:**
-
-```bash
-# Install test package
-sudo apt install keystone-test
-
-# Run all tests
-/usr/bin/tests/unit_tests
-/usr/bin/tests/basic_delegation_tests
-/usr/bin/tests/module_coordination_tests
-
-# Run with GTest filters
-/usr/bin/tests/unit_tests --gtest_filter=MessageBus.*
-```
-
-### 5. keystone-misc (Tools Package)
-
-**Package Names:**
-
-- DEB: `keystone-tools`
-- RPM: `keystone-tools`
-- Archive: `Keystone-<version>-Linux-keystone-misc.tar.gz`
-
-**Contents:**
-
-- Benchmark executables
-  - `message_pool_benchmarks`
-  - `distributed_benchmarks`
-- Load testing tools
-  - `hmas_load_test`
-- Fuzz testing targets (if enabled)
-  - `fuzz_message_serialization`
-  - `fuzz_message_bus_routing`
-  - `fuzz_work_stealing`
-  - `fuzz_retry_policy`
-
-**Target Users:** Performance engineers, security researchers
-
-**Dependencies:**
-
-- keystone (runtime package)
-
-**Installation Locations:**
-
-- `/usr/bin/benchmarks/` - Benchmark tools
-- `/usr/bin/tools/` - Load testing tools
-- `/usr/bin/fuzz/` - Fuzz testing targets
-
-## Building Packages
-
-### Prerequisites
-
-```bash
-# Install CMake and build tools
-sudo apt install cmake ninja-build
-
-# Install packaging tools
-sudo apt install dpkg rpm
-```
-
-### Basic Build
-
-```bash
-# Configure with CMake
-mkdir -p build && cd build
-cmake -G Ninja ..
-
-# Build all targets
-ninja
-
-# Generate all packages
-cpack
-```
-
-This generates:
-
-- `Keystone-0.1.0-Linux-keystone.tar.gz`
-- `Keystone-0.1.0-Linux-keystone-dev.tar.gz`
-- `Keystone-0.1.0-Linux-keystone-doc.tar.gz`
-- `Keystone-0.1.0-Linux-keystone-test.tar.gz`
-- `Keystone-0.1.0-Linux-keystone-misc.tar.gz`
-- `libkeystone0_0.1.0_amd64.deb` (and 4 more .deb files)
-- `keystone-0.1.0-1.x86_64.rpm` (and 4 more .rpm files)
-
-### Build with gRPC Support
-
-```bash
-mkdir -p build && cd build
-cmake -G Ninja ..
-ninja
-cpack
-```
-
-### Build Specific Package Format
-
-```bash
-# TGZ archives only
-cpack -G TGZ
-
-# DEB packages only
-cpack -G DEB
-
-# RPM packages only
-cpack -G RPM
-
-# ZIP archives only
-cpack -G ZIP
-```
-
-### Build Specific Component
-
-```bash
-# Build only runtime package
-cpack -G TGZ -D CPACK_COMPONENTS_ALL=keystone
-
-# Build runtime + development
-cpack -G DEB -D CPACK_COMPONENTS_ALL="keystone;keystone-dev"
-
-# Build all except tests
-cpack -G TGZ -D CPACK_COMPONENTS_ALL="keystone;keystone-dev;keystone-doc;keystone-misc"
-```
-
-### Docker Build
-
-```bash
-# Build packages in Docker (ensures reproducible builds)
-docker build --target builder -t keystone-builder .
-docker run --rm -v $(pwd)/packages:/out keystone-builder bash -c \
-    "cd /workspace/build && cpack && cp *.tar.gz *.deb *.rpm /out/"
-```
-
-## Installing Packages
-
-### Debian/Ubuntu (.deb)
-
-```bash
-# Install runtime only
-sudo dpkg -i libkeystone0_0.1.0_amd64.deb
-
-# Install development package
-sudo dpkg -i libkeystone-dev_0.1.0_amd64.deb
-
-# Install all packages
-sudo dpkg -i *.deb
-
-# Or use apt for dependency resolution
-sudo apt install ./libkeystone0_0.1.0_amd64.deb
-```
-
-### RedHat/CentOS (.rpm)
-
-```bash
-# Install runtime only
-sudo rpm -i keystone-0.1.0-1.x86_64.rpm
-
-# Install development package
-sudo rpm -i keystone-devel-0.1.0-1.x86_64.rpm
-
-# Install all packages
-sudo rpm -i *.rpm
-
-# Or use yum/dnf for dependency resolution
-sudo yum localinstall keystone-0.1.0-1.x86_64.rpm
-```
-
-### Archive (.tar.gz, .zip)
-
-```bash
-# Extract runtime package
-tar -xzf Keystone-0.1.0-Linux-keystone.tar.gz -C /opt/keystone
-
-# Set library path
-export LD_LIBRARY_PATH=/opt/keystone/lib:$LD_LIBRARY_PATH
-
-# Or install to system directories
-sudo tar -xzf Keystone-0.1.0-Linux-keystone.tar.gz -C /usr/local
-sudo ldconfig
-```
-
-## Uninstalling Packages
-
-### Debian/Ubuntu
-
-```bash
-# Remove runtime package
-sudo apt remove libkeystone0
-
-# Remove all keystone packages
-sudo apt remove 'libkeystone*' 'keystone-*'
-
-# Purge (remove config files too)
-sudo apt purge 'libkeystone*' 'keystone-*'
-```
-
-### RedHat/CentOS
-
-```bash
-# Remove runtime package
-sudo rpm -e keystone
-
-# Remove all keystone packages
-sudo rpm -e keystone keystone-devel keystone-doc keystone-test keystone-tools
-```
-
-## Package Dependencies
-
-### Dependency Graph
-
-```
-keystone (runtime)
-    ├─── keystone-dev (depends on keystone)
-    ├─── keystone-test (depends on keystone)
-    └─── keystone-misc (depends on keystone)
-
-keystone-doc (independent, no dependencies)
-```
-
-### Installing Minimal Set
-
-For **end users** (just run applications):
-
-```bash
-sudo apt install libkeystone0
-```
-
-For **developers** (build applications):
-
-```bash
-sudo apt install libkeystone-dev  # Automatically installs libkeystone0
-```
-
-For **QA engineers** (run tests):
-
-```bash
-sudo apt install keystone-test  # Automatically installs libkeystone0
-```
-
-For **complete installation** (all packages):
-
-```bash
-sudo apt install libkeystone0 libkeystone-dev keystone-doc keystone-test keystone-tools
-```
-
-## Package Contents Reference
-
-### keystone Runtime Package
-
-```
-/usr/lib/
-├── libkeystone_core.so
-├── libkeystone_concurrency.so
-└── libkeystone_simulation.so
-
-/usr/share/doc/Keystone/
-├── README.md
-├── AGENTS.md
-└── LICENSE
-```
-
-### keystone-dev Development Package
-
-```
-/usr/include/keystone/
-├── core/
-│   ├── message.hpp
-│   ├── message_bus.hpp
-│   └── ...
-├── concurrency/
-│   ├── task.hpp
-│   ├── thread_pool.hpp
-│   └── ...
-└── simulation/
-    └── ...
-
-/usr/lib/
-├── libkeystone_core.a
-├── libkeystone_concurrency.a
-└── libkeystone_simulation.a
-
-/usr/lib/cmake/Keystone/
-├── KeystoneConfig.cmake
-├── KeystoneConfigVersion.cmake
-└── KeystoneTargets.cmake
-
-/usr/share/doc/Keystone/build/
-├── Dockerfile
-└── docker-compose.yaml
-```
-
-### keystone-doc Documentation Package
-
-```
-/usr/share/doc/Keystone/
-├── MONITORING.md
-├── KUBERNETES_DEPLOYMENT.md
-├── PHASE_8_COMPLETE.md
-├── plan/
-│   ├── FOUR_LAYER_ARCHITECTURE.md
-│   ├── TDD_FOUR_LAYER_ROADMAP.md
-│   ├── PHASE_*_PLAN.md
-│   └── ...
-└── ...
-```
-
-### keystone-test Test Package
-
-```
-/usr/bin/tests/
-├── basic_delegation_tests
-├── module_coordination_tests
-├── component_coordination_tests
-├── async_delegation_tests
-├── distributed_hierarchy_tests
-├── unit_tests
-├── concurrency_unit_tests
-└── simulation_unit_tests
-```
-
-### keystone-misc Tools Package
-
-```
-/usr/bin/benchmarks/
-├── message_pool_benchmarks
-└── distributed_benchmarks
-
-/usr/bin/tools/
-└── hmas_load_test
-
-/usr/bin/fuzz/ (if ENABLE_FUZZING=ON)
-├── fuzz_message_serialization
-├── fuzz_message_bus_routing
-├── fuzz_work_stealing
-└── fuzz_retry_policy
-```
-
-## CI/CD Integration
-
-### GitHub Actions Example
-
-```yaml
-name: Build and Package
-
-on: [push, pull_request]
-
-jobs:
-  package:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y cmake ninja-build dpkg rpm
-
-      - name: Build
-        run: |
-          mkdir -p build && cd build
-          cmake -G Ninja ..
-          ninja
-
-      - name: Create packages
-        run: |
-          cd build
-          cpack
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: packages
-          path: |
-            build/*.tar.gz
-            build/*.deb
-            build/*.rpm
-```
-
-### GitLab CI Example
-
-```yaml
-package:
-  stage: build
-  image: ubuntu:22.04
-  script:
-    - apt update && apt install -y cmake ninja-build dpkg rpm
-    - mkdir -p build && cd build
-    - cmake -G Ninja ..
-    - ninja
-    - cpack
-  artifacts:
-    paths:
-      - build/*.tar.gz
-      - build/*.deb
-      - build/*.rpm
-    expire_in: 1 week
-```
-
-## Source Package
-
-To create a source package (for distribution to other developers):
-
-```bash
-cd build
-cpack --config CPackSourceConfig.cmake
-```
-
-This generates:
-
-- `Keystone-0.1.0-Source.tar.gz`
-- `Keystone-0.1.0-Source.zip`
-
-Source packages exclude build artifacts and version control files.
-
-## Version Management
-
-Package version is defined in `CMakeLists.txt`:
-
-```cmake
-set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "1")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
-```
-
-For releases, update these values and rebuild:
-
-```bash
-# Update version in CMakeLists.txt
-sed -i 's/VERSION_PATCH "0"/VERSION_PATCH "1"/' CMakeLists.txt
-
-# Rebuild packages
-cd build
-cmake ..
-ninja
-cpack
-```
-
-## Troubleshooting
-
-### Missing LICENSE file
-
-If LICENSE file is missing:
-
-```bash
-touch LICENSE
-echo "BSD 3-Clause License" > LICENSE
-cpack
-```
-
-### Package component not found
-
-Ensure all targets are built before packaging:
-
-```bash
-ninja  # Build all targets first
-cpack  # Then create packages
-```
-
-### DEB/RPM not generated on macOS
-
-DEB and RPM generators only work on Linux. Use Docker:
-
-```bash
-docker run --rm -v $(pwd):/workspace -w /workspace ubuntu:22.04 bash -c \
-    "apt update && apt install -y cmake ninja-build dpkg rpm && \
-     mkdir -p build && cd build && cmake -G Ninja .. && ninja && cpack"
-```
-
-## References
-
-- [CPack Documentation](https://cmake.org/cmake/help/latest/module/CPack.html)
-- [Keystone Architecture](docs/plan/FOUR_LAYER_ARCHITECTURE.md)
-- [Build System Guide](docs/plan/build-system.md)
+Keystone distributes C++ transport libraries, the server, and the Fleet
+attachment gateway with CPack. Package configuration lives in the root
+`CMakeLists.txt`; installation rules assign files to components, and CPack
+groups those components into five artifacts. Packaging does not add an
+orchestration authority or a Python runtime.
+
+## Package identities
+
+The existing group names and delivered package identities are preserved:
+
+| Group | Install component | DEB name | RPM name |
+| --- | --- | --- | --- |
+| Runtime | `keystone` | `keystone-runtime` | `keystone-Runtime` |
+| Development | `keystone-dev` | `keystone-development` | `keystone-Development` |
+| Documentation | `keystone-doc` | `keystone-documentation` | `keystone-Documentation` |
+| Testing | `keystone-test` | `keystone-testing` | `keystone-Testing` |
+| Tools | `keystone-misc` | `keystone-tools` | `keystone-Tools` |
+
+Artifact filenames use the group, for example
+`Keystone-0.1.0-Linux-Runtime.deb` and
+`Keystone-0.1.0-Linux-Development.tar.gz`. The architecture is recorded in
+DEB/RPM metadata; the `Linux` filename does not identify an ABI or architecture.
+
+CPack uses `ONE_PER_GROUP`. Per-package settings therefore use uppercase group
+keys such as `CPACK_DEBIAN_RUNTIME_PACKAGE_SHLIBDEPS`. Settings under
+`CPACK_DEBIAN_KEYSTONE_*` do not configure the grouped runtime package.
+Switching to component-only packaging would change the delivered interface.
+
+## Contents and dependencies
+
+The Runtime group contains `keystone-fleet-gateway`, `keystone-server`, the
+NATS shared library and its SONAME links, and core documentation. The gateway
+uses a relative library search path; an archive deployment must keep its
+installed `bin` and `lib` directories together.
+
+DEB runtime requirements are generated by `dpkg-shlibdeps` from the packaged
+ELF files. RPM keeps its automatic shared-library requirements and provides.
+These tools determine the actual external libraries and ABI versions needed
+by the build. A fixed libc or compiler-version floor is not sufficient evidence
+that a newer build runs on an older system.
+
+Shared OpenSSL is an external runtime dependency only when the packaged NATS
+library links to it dynamically. A build that links OpenSSL statically has a
+different dependency set. Inspect the current artifacts; do not copy an older
+build's dependency list.
+
+The Development group contains public headers, static libraries, CMake package
+configuration and build documentation. It requires the matching Runtime package
+and CMake 3.20 or newer. The Testing and Tools groups require the matching Runtime
+package. Testing contains the installed test executables; Tools contains the
+selected benchmarks and optional fuzz executables. Documentation contains the
+extended documentation and is architecture-independent in DEB metadata.
+
+## Build and inspect
+
+1. Prepare the supported CI environment described in the
+   [local CI runbook](runbooks/local-ci.md). DEB dependency generation requires
+   `dpkg-dev` and `file`; RPM generation requires `rpm`. The CI image declares
+   these tools. Dependency-inspection failures must fail package generation.
+2. Run the canonical package gate:
+
+   ```sh
+   just ci-package
+   ```
+
+   It runs the CPack metadata regression check, builds the release targets and
+   generates DEB, RPM, TGZ and ZIP artifacts under `build/x86.release/`.
+   The regression check is also available separately on a prepared Linux host:
+
+   ```sh
+   just test-package-metadata
+   ```
+
+   This check consumes the production CPack configuration with a small system
+   ELF as controlled input. It verifies actual DEB names, runtime and
+   inter-package dependencies, documentation architecture, and rejection of a
+   failed dependency inspector. It does not build or execute the gateway.
+3. Record artifact hashes, source commit, build image, toolchain and
+   architecture. Inspect the current runtime packages with the native tools:
+
+   ```sh
+   dpkg-deb --field build/x86.release/Keystone-0.1.0-Linux-Runtime.deb
+   rpm -qp --requires build/x86.release/Keystone-0.1.0-Linux-Runtime.rpm
+   rpm -qp --provides build/x86.release/Keystone-0.1.0-Linux-Runtime.rpm
+   ```
+
+   Replace the example version with the generated version. An empty runtime
+   dependency list is a failure even if CPack exited successfully.
+4. Extract a private copy for inspection. Check ELF dynamic dependencies,
+   symbol versions and library search paths with `readelf -d` and
+   `readelf --version-info`. Compare the external requirements with package
+   metadata, accounting for NATS supplied by the same Runtime artifact.
+
+The source version is the root `project(Keystone VERSION ...)` value.
+The accepted [CPack ADR](plan/adr/ADR-012-cpack-build-system-decisions.md)
+records the original build decisions; this guide describes the current
+transport package contract.
+
+## Install and validate
+
+1. Select a fresh runtime environment compatible with the artifact's
+   architecture and declared ABI requirements. Record its image digest and
+   initial package inventory. A Debian-produced RPM is not a compatibility
+   promise for every RPM distribution.
+2. Install the exact Runtime artifact through the native dependency resolver:
+
+   ```sh
+   sudo apt install ./Keystone-0.1.0-Linux-Runtime.deb
+   ```
+
+   On an appropriate RPM system:
+
+   ```sh
+   sudo dnf install ./Keystone-0.1.0-Linux-Runtime.rpm
+   ```
+
+   Use the matching format and replace the example version. Retain the complete
+   transaction and resolved dependency versions. Do not preinstall a blanket
+   dependency list that could hide missing package metadata.
+3. Start the installed `keystone-fleet-gateway --help` with loader overrides
+   cleared and no source, build tree, Conan cache or dependency-prefix mounts.
+   Require exit zero and gateway help output. Confirm that NATS resolves from
+   the installed package, all other libraries have providers in the package
+   dependency closure, and installed file hashes match the artifact.
+4. Preserve the command outputs, statuses and source/artifact/image binding.
+   Package generation and the build-environment installation test do not replace
+   this independent clean-runtime check. A library already present in the base
+   image still needs a correct package dependency declaration.
+
+Archive formats have no package-manager dependency resolution. Their consumers
+must supply the same external runtime libraries and preserve the installed
+layout. Complete the same independent runtime validation before distributing
+an archive.
+
+See the [Fleet gateway runbook](runbooks/fleet-gateway.md) for allocation
+attachment and authenticated NATS operation after installation.
