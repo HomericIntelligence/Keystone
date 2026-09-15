@@ -87,6 +87,15 @@ checks selected case names, nonunit exclusions, and the serial property without
 compiling C++ or fetching dependencies. This registration regression does not
 replace execution of the real test bodies in `just ci-unit-tests`.
 
+The coverage script evaluates the same lcov summary that it prints. It accepts
+the separator widths used by different lcov versions and requires exactly one
+valid line-coverage percentage. Missing, malformed, or duplicate summaries fail
+the gate. Coverage-tool failures retain their exit status, and the minimum stays
+at 75%. `just test-ci-local` runs the public script with controlled lcov/genhtml
+processes to test summary parsing, the threshold boundary, and failure propagation.
+These synthetic fixtures do not measure Keystone coverage; `just ci-coverage`
+must produce the actual report and enforce its threshold.
+
 `just test-ci-local` runs the real launcher with controlled engine/tool
 boundaries. It tests dispatch, failure propagation, missing validators, package
 results, and source-policy checks. The installer tests use actual checksum

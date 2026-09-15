@@ -195,10 +195,37 @@ fi
 # Print summary
 echo ""
 echo -e "${GREEN}=== Coverage Summary ===${NC}"
-lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent,format
+# Capture once so the reported summary is also the threshold input. lcov
+# versions write the summary to different streams and use different dot counts.
+if COVERAGE_SUMMARY=$(lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent,format 2>&1); then
+    printf '%s\n' "$COVERAGE_SUMMARY"
+else
+    COVERAGE_STATUS=$?
+    printf '%s\n' "$COVERAGE_SUMMARY" >&2
+    exit "$COVERAGE_STATUS"
+fi
 
-# Calculate coverage percentage
-COVERAGE_PERCENT=$(lcov --summary "$COVERAGE_FILTERED" --ignore-errors inconsistent,format 2>&1 | grep -oP 'lines......: \K[0-9.]+')
+# Require exactly one valid percentage. Missing, malformed, or duplicate line
+# summaries cannot establish coverage and must not pass the gate.
+if ! COVERAGE_PERCENT=$(awk '
+    /^[[:space:]]*lines[.]+:/ {
+        count++
+        if ($2 !~ /^[0-9]+([.][0-9]+)?%$/) {
+            invalid = 1
+            next
+        }
+        percent = $2
+        sub(/%$/, "", percent)
+        if (percent + 0 > 100) invalid = 1
+    }
+    END {
+        if (count != 1 || invalid) exit 1
+        print percent
+    }
+' <<< "$COVERAGE_SUMMARY"); then
+    echo -e "${RED}Invalid or missing line coverage in lcov summary${NC}" >&2
+    exit 1
+fi
 
 echo ""
 echo -e "${GREEN}Coverage report generated successfully!${NC}"
